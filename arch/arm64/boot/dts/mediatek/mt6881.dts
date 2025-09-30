@@ -1,0 +1,5071 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (c) 2025 MediaTek Inc.
+ */
+
+/dts-v1/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/gce/mt6881-gce.h>
+#include <dt-bindings/soc/mediatek,boot-mode.h>
+#include <dt-bindings/memory/mt6881-larb-port.h>
+
+/ {
+	model = "MT6881";
+	compatible = "mediatek,MT6881";
+	interrupt-parent = <&gic>;
+	#address-cells = <2>;
+	#size-cells = <2>;
+
+	aliases {
+		i2c0 = &i2c0;
+		i2c1 = &i2c1;
+		i2c2 = &i2c2;
+		i2c3 = &i2c3;
+		i2c4 = &i2c4;
+		i2c5 = &i2c5;
+		i2c6 = &i2c6;
+		i2c7 = &i2c7;
+		i2c8 = &i2c8;
+		i2c9 = &i2c9;
+		i2c10 = &i2c10;
+		i2c11 = &i2c11;
+		i2c12 = &i2c12;
+		ovl3 = &disp_ovl0_2l;
+		ovl4 = &disp_ovl1_2l;
+		ovl5 = &disp_ovl2_2l;
+		ovl6 = &disp_ovl3_2l;
+		dsi0 = &dsi0;
+		mutex0 = &disp_mutex0;
+#if 0
+		wdma1 = &disp_wdma1;
+		rsz0 = &disp_rsz0;
+		rsz4 = &disp_rsz1;
+		postmask0 = &disp_postmask0;
+		dsc0 = &disp_dsc_wrap0;
+#endif
+	};
+
+	/* chosen */
+	chosen: chosen {
+		bootargs = "console=tty0 root=/dev/ram \
+			    8250.nr_uarts=4 \
+			    nosoftlockup \
+			    loglevel=8 \
+			    androidboot.hardware=mt6881 \
+			    initcall_debug=1 \
+			    vmalloc=400M swiotlb=noforce cma=64M \
+			    firmware_class.path=/vendor/firmware \
+			    initcall_debug=1";
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		/*TODO: check cpus node with Chip announcement wiki */
+		cpu0: cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-aXX";
+			reg = <0x0000>;
+			enable-method = "psci";
+		};
+
+		cpu-map {
+			cluster0 {
+				core0 {
+				};
+			};
+			cluster1 {
+				core0 {
+				};
+			};
+		};
+	};
+
+	psci {
+		compatible = "arm,psci-1.0";
+		method = "smc";
+	};
+
+	mcupm: mcupm {
+		compatible = "mediatek,mcupms_v0";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		mcupm-mst-mbox@c070000 {
+			device_type = "mcupm_mbox";
+			enabled = <1>;
+			reg = <0 0x0c0df600 0 0xa00>,
+					<0 0x0c072004 0 0x4>,
+					<0 0x0c072018 0 0x4>,
+					<0 0x0c072000 0 0x4>,
+					<0 0x0c072010 0 0x4>;
+
+			reg-names = "mbox_base",
+						"mbox_set",
+						"mbox_clr",
+						"mbox_send",
+						"mbox_recv";
+
+			interrupts = <GIC_SPI 48 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 49 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 50 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 52 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 53 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 54 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 55 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 56 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 57 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 58 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 59 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 60 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 61 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 62 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 63 IRQ_TYPE_LEVEL_HIGH 0>;
+
+			interrupt-names = "mbox0",
+						  "mbox1",
+						  "mbox2",
+						  "mbox3",
+						  "mbox4",
+						  "mbox5",
+						  "mbox6",
+						  "mbox7",
+						  "mbox8",
+						  "mbox9",
+						  "mbox10",
+						  "mbox11",
+						  "mbox12",
+						  "mbox13",
+						  "mbox14",
+						  "mbox15";
+
+			/* chan_id, pin_id, send_size, offset */
+			send-table =
+				<0 0 4 0>, /* PLATFORM */
+				<1 1 4 0>,
+				<2 2 9 0>,
+				<3 3 3 0>,
+				<4 4 3 0>,
+				<5 5 1 0>,
+				<6 6 4 0>,
+				<7 7 4 0>,
+				<8 8 4 0>,
+				<9 9 4 0>,
+				<10 10 4 0>,
+				<11 11 4 0>,
+				<12 12 4 0>,
+				<13 13 4 0>,
+				<14 14 4 0>,
+				<15 15 4 0>;
+
+			/* chan_id, pin_id, recv_size, recv_opt, cb_ctx_opt, offset */
+			recv-table =
+				<0 0 1 0 0 20>, /* PLATFORM */
+				<1 1 4 0 0 20>,
+				<2 2 1 0 0 20>,
+				<3 3 1 0 0 20>,
+				<4 4 1 0 0 20>,
+				<5 5 4 0 0 20>,
+				<6 6 1 1 0 20>,
+				<7 7 1 0 0 20>,
+				<8 8 1 0 0 20>,
+				<9 9 4 0 0 20>,
+				<10 10 1 0 0 20>,
+				<11 11 1 0 0 20>,
+				<12 12 1 0 0 20>,
+				<13 13 1 0 0 20>,
+				<14 14 1 0 0 20>,
+				<15 15 1 0 0 20>;
+		};
+	};
+
+	gic: interrupt-controller@c400000 {
+		/*TODO: please check interrupt controller again*/
+		compatible = "arm,gic-v3";
+		#interrupt-cells = <4>;
+		#address-cells = <2>;
+		#size-cells = <2>;
+		#redistributor-regions = <1>;
+		interrupt-parent = <&gic>;
+		interrupt-controller;
+		 reg = <0 0x0c400000 0 0x40000>, /* distributor */
+			<0 0xc440000 0 0x200000>; /* redistributor */
+		interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH 0>;
+	};
+
+	memory@40000000 {
+		device_type = "memory";
+		reg = <0 0x40000000 0 0x40000000>;
+	};
+
+	odm: odm {
+		compatible = "simple-bus";
+		/* reserved for overlay by odm */
+	};
+
+	reserved_memory: reserved-memory {
+		/*TODO: add reserved memory node here*/
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+	};
+
+	clocks {
+		clk26m: clk26m {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <26000000>;
+		};
+	};
+
+	timer: timer {
+		compatible = "arm,armv8-timer";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 13 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_PPI 14 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_PPI 11 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_PPI 10 IRQ_TYPE_LEVEL_HIGH 0>;
+		clock-frequency = <1000000000>;
+	};
+
+	/* firmware: firmware { */
+	/*	scmi: scmi { */
+	/*		compatible = "arm,scmi"; */
+	/*		mboxes = <&tinysys_mbox 0>, <&tinysys_mbox 1>; */
+	/*		shmem = <&scmi_tx_shmem>, <&scmi_rx_shmem>; */
+	/*		mbox-names = "tx", "rx"; */
+	/*		#address-cells = <1>; */
+	/*		#size-cells = <0>; */
+
+	/*		scmi_tinysys: protocol@80 { */
+	/*			reg = <0x80>; */
+	/*			scmi-qos = <1>; */
+	/*			scmi-dispplatdbg = <2>; */
+	/*			scmi-met = <3>; */
+	/*			scmi-apmcupm = <4>; */
+	/*			scmi-mminfra = <5>; */
+	/*			scmi-gpupm = <6>; */
+	/*			scmi-plt = <7>; */
+	/*			scmi-smi = <8>; */
+	/*			scmi-cm = <9>; */
+	/*			scmi-slbc = <10>; */
+	/*			scmi-ssc = <11>; */
+	/*			scmi-ise = <12>; */
+	/*		}; */
+	/*	}; */
+	/* }; */
+
+	sspm: sspm@1c300000 {
+		compatible = "mediatek,sspm";
+		reg = <0 0x1c300000 0 0x2c000>,
+			<0 0x1c340000 0 0x10000>,
+			<0 0x1c380000 0 0x80>;
+
+		reg-names = "sspm_base",
+				"cfgreg",
+				"mbox_share";
+
+		interrupts = <GIC_SPI 636 IRQ_TYPE_LEVEL_HIGH 0>;
+
+		interrupt-names = "ipc";
+		sspm-res-ram-start = <0x0>;
+		sspm-res-ram-size = <0x110000>; /* 1M + 64K */
+		mediatek,fake-sspm = <1>;
+
+		/*  reserved memory ID need to align sspm_resrvedmem_define.h */
+		/* <reserved memory ID, size> */
+		sspm-mem-tbl = <0 0x100100>, /* logger */
+				<1 0x0>, /* pwarp */
+				<2 0x0>, /* pmic */
+				<3 0x1800>, /* upd */
+				<4 0x1000>, /* qos */
+				<5 0x2000>, /* swpm */
+				<6 0x9000>, /* smi */
+				<7 0x1000>, /* gpu */
+				<8 0x1000>; /* slbc */
+
+		sspm-share-region-base = <0x24000>; /* 144K */
+		sspm-share-region-size = <0x8000>; /* 32K */
+	};
+
+	ssram1@1c350000 {
+		compatible = "mmio-sram_1";
+		reg = <0x0 0x1c350000 0x0 0x80>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0 0x0 0x1c350000 0x80>;
+
+		scmi_tx_shmem: tiny-mbox@0 {
+			compatible = "arm,scmi-shmem";
+			reg = <0x0 0x80>;
+		};
+	};
+
+	ssram2@1c360000 {
+		compatible = "mmio-sram_2";
+		reg = <0x0 0x1c360000 0x0 0x80>;
+
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges = <0 0x0 0x1c360000 0x80>;
+
+		scmi_rx_shmem: tiny-mbox@1 {
+			compatible = "arm,scmi-shmem";
+			reg = <0x0 0x80>;
+		};
+	};
+
+	tinysys_mbox: tinysys-mbox@1c351000 {
+		compatible = "mediatek,tinysys_mbox";
+		reg = <0 0x1c351000 0 0x1000>,
+			  <0 0x1c361000 0 0x1000>;
+		/* for profiling */
+		shmem = <&scmi_tx_shmem>, <&scmi_rx_shmem>;
+		interrupts = <GIC_SPI 637 IRQ_TYPE_LEVEL_HIGH 0>,
+			     <GIC_SPI 638 IRQ_TYPE_LEVEL_HIGH 0>;
+		#mbox-cells = <1>;
+		/* for secure mode */
+		/* secure-sspm-mbox-clr = <1>; */
+		/* secure-sspm-md2spm-clr = <1>; */
+	};
+
+	/* ATF logger */
+	atf_logger: atf-logger {
+		compatible = "mediatek,tfa_debug";
+	};
+
+	hcp: hcp@15001000 {
+		compatible = "mediatek,hcp8s_e";
+		reg = <0 0x15001000 0 0x4000>;
+		iommus = <&disp_iommu M4U_L15_P0_DIP_NR2_DMA_R0>;
+	};
+
+	imgsys_cmdq: imgsys-cmdq@15002000 {
+		compatible = "mediatek,imgsys-cmdq-8s";
+		iommus = <&disp_iommu M4U_L15_P0_DIP_NR2_DMA_R0>;
+		reg = <0 0x15002000 0 0x4000>;
+	};
+
+	imgsys_acp: imgsys-acp@15003000 {
+		compatible = "mediatek,imgsys-isp8s-acp-mt6881";
+		reg = <0 0x15003000 0 0x4000>;
+		mediatek,imgsys-coherent = "disable";
+	};
+
+	imgsys_fw: imgsys-fw@15000000 {
+		compatible = "mediatek,imgsys-isp8s-mt6881";
+		reg = <0 0x15010000 0 0x4000>, // 0 IMGSYS_TOP
+			<0 0x15760000 0 0x10000>, // 1 IMGSYS_TRAW
+			<0 0x15050000 0 0x10000>, // 2 IMGSYS_LTRAW
+			<0 0x15190000 0 0x10000>, // 3 IMGSYS_DIP
+			<0 0x151a0000 0 0x10000>, // 4 IMGSYS_DIP_NR1
+			<0 0x151b0000 0 0x20000>, // 5 IMGSYS_DIP_NR2
+			<0 0x151d0000 0 0x10000>, // 6 IMGSYS_DIP_CINE
+			<0 0x15250000 0 0x10000>, // 7 IMGSYS_PQDIP_A
+			<0 0x15540000 0 0x10000>, // 8 IMGSYS_PQDIP_B
+			<0 0x15240000 0 0x10000>, // 9 IMGSYS_WPE_EIS
+			<0 0x15500000 0 0x10000>, // 10 IMGSYS_WPE_TNR
+			<0 0x15640000 0 0x10000>, // 11 IMGSYS_WPE_LITE
+			<0 0x15200000 0 0x00100>, // 12 IMGSYS_WPE1_DIP1
+			<0 0x00000000 0 0x10000>, // 13 IMGSYS_OMC_TNR
+			<0 0x00000000 0 0x10000>, // 14 IMGSYS_OMC_LITE
+			<0 0x15550000 0 0x10000>, // 15 IMGSYS_ME
+			<0 0x00000000 0 0x01500>, // 16 IMGSYS_ADL_A
+			<0 0x00000000 0 0x01500>, // 17 IMGSYS_ADL_B
+			<0 0x15500000 0 0x00100>, // 18 IMGSYS_WPE2_DIP1
+			<0 0x15600000 0 0x00100>, // 19 IMGSYS_WPE3_DIP1
+			<0 0x15100000 0 0x00100>, // 20 IMGSYS_DIP_TOP
+			<0 0x15120000 0 0x00100>, // 21 IMGSYS_DIP_TOP_NR
+			<0 0x15150000 0 0x00100>, // 22 IMGSYS_DIP_TOP_NR2
+			<0 0x15700000 0 0x00100>, // 23 IMGSYS_TRAW_DIP1
+			<0 0x15560000 0 0x10000>, // 24 IMGSYS_ME_MMG
+			<0 0x00000000 0 0x00200>, // 25 IMGSYS_DFP_TOP
+			<0 0x00000000 0 0x00200>, // 26 IMGSYS_DFP_FE
+			<0 0x00000000 0 0x00100>, // 27 IMGSYS_DFP_DRZH2N
+			<0 0x00000000 0 0x00200>, // 28 IMGSYS_DFP_FM
+			<0 0x00000000 0 0x00200>, // 29 IMGSYS_DFP2_TOP
+			<0 0x00000000 0 0x00300>, // 30 IMGSYS_DFP2_DVGF
+			<0 0x15780000 0 0x00150>, // 31 IMGSYS_VCORE
+			<0 0x15320000 0 0x10000>, // 32 IMGSYS_MAE
+			<0 0x15060000 0 0x01000>, // 33 IMGSYS_ISC
+			<0 0x15270000 0 0x00100>, // 34 IMGSYS_WPE_EIS_PQDIP_A
+			<0 0x15580000 0 0x00100>, // 35 IMGSYS_WPE_TNR_PQDIP_B
+			<0 0x15810000 0 0x00100>, // 36 IMGSYS_MAIN_WPE0
+			<0 0x15820000 0 0x00100>, // 37 IMGSYS_MAIN_WPE1
+			<0 0x15830000 0 0x00100>, // 38 IMGSYS_MAIN_WPE2
+			<0 0x158b0000 0 0x00100>; // 39 IMGSYS_MAIN_OMC_LITE
+		mediatek,imgsys-ver = <1>;
+		mediatek,hcp = <&hcp>;
+		mediatek,imgsys-cmdq = <&imgsys_cmdq>;
+		iommus = <&disp_iommu M4U_L15_P0_DIP_NR2_DMA_R0>;
+		mboxes =
+			/* normal thread */
+			<&gce_m 0 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 1 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 2 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 3 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 4 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 5 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 6 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 7 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 9 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 12 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 13 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 16 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 17 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 18 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 19 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 20 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 21 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 22 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 23 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 24 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 25 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 26 3000 CMDQ_THR_PRIO_2>,
+			<&gce_m 28 3000 CMDQ_THR_PRIO_1>,
+			<&gce_m 29 3000 CMDQ_THR_PRIO_1>,
+			<&gce_m 31 3000 CMDQ_THR_PRIO_1>,
+			/* power thread */
+			<&gce_m_2 24 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+			<&gce_m_2 25 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+			<&gce_m_2 26 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+			<&gce_m_2 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+			<&gce_m_2 28 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+			/* qos thread */
+			<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+#if 0
+			/* secure thread */
+			<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+			/* sec mae */
+			<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+			/* slc */
+			<&gce_m_sec 8 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
+#endif
+			/* thread list end */
+		traw-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW0_CQ_THR_DONE_TRAW0_0>;
+		traw-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW0_CQ_THR_DONE_TRAW0_1>;
+		traw-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW0_CQ_THR_DONE_TRAW0_2>;
+		traw-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW0_CQ_THR_DONE_TRAW0_3>;
+		traw-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW0_CQ_THR_DONE_TRAW0_4>;
+		traw-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW0_CQ_THR_DONE_TRAW0_5>;
+		ltraw-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW1_CQ_THR_DONE_TRAW0_0>;
+		ltraw-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW1_CQ_THR_DONE_TRAW0_1>;
+		ltraw-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW1_CQ_THR_DONE_TRAW0_2>;
+		ltraw-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW1_CQ_THR_DONE_TRAW0_3>;
+		ltraw-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW1_CQ_THR_DONE_TRAW0_4>;
+		ltraw-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_TRAW1_CQ_THR_DONE_TRAW0_5>;
+		dip-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DIP_CQ_THR_DONE_P2_0>;
+		dip-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DIP_CQ_THR_DONE_P2_1>;
+		dip-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DIP_CQ_THR_DONE_P2_2>;
+		dip-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DIP_CQ_THR_DONE_P2_3>;
+		dip-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DIP_CQ_THR_DONE_P2_4>;
+		dip-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DIP_CQ_THR_DONE_P2_5>;
+		pqa-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_A_CQ_THR_DONE_P2_0>;
+		pqa-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_A_CQ_THR_DONE_P2_1>;
+		pqa-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_A_CQ_THR_DONE_P2_2>;
+		pqa-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_A_CQ_THR_DONE_P2_3>;
+		pqa-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_A_CQ_THR_DONE_P2_4>;
+		pqa-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_A_CQ_THR_DONE_P2_5>;
+		pqb-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_B_CQ_THR_DONE_P2_0>;
+		pqb-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_B_CQ_THR_DONE_P2_1>;
+		pqb-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_B_CQ_THR_DONE_P2_2>;
+		pqb-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_B_CQ_THR_DONE_P2_3>;
+		pqb-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_B_CQ_THR_DONE_P2_4>;
+		pqb-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_PQDIP_B_CQ_THR_DONE_P2_5>;
+		wpe-eis-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_EIS_CQ_THR_DONE_P2_0>;
+		wpe-eis-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_EIS_CQ_THR_DONE_P2_1>;
+		wpe-eis-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_EIS_CQ_THR_DONE_P2_2>;
+		wpe-eis-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_EIS_CQ_THR_DONE_P2_3>;
+		wpe-eis-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_EIS_CQ_THR_DONE_P2_4>;
+		wpe-eis-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_EIS_CQ_THR_DONE_P2_5>;
+		wpe-tnr-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_0>;
+		wpe-tnr-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_1>;
+		wpe-tnr-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_2>;
+		wpe-tnr-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_3>;
+		wpe-tnr-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_4>;
+		wpe-tnr-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_5>;
+#if 0
+		wpe-lite-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_LITE_CQ_THR_DONE_P2_0>;
+		wpe-lite-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_LITE_CQ_THR_DONE_P2_1>;
+		wpe-lite-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_LITE_CQ_THR_DONE_P2_2>;
+		wpe-lite-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_LITE_CQ_THR_DONE_P2_3>;
+		wpe-lite-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_LITE_CQ_THR_DONE_P2_4>;
+		wpe-lite-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_LITE_CQ_THR_DONE_P2_5>;
+		omc-lite-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_OMC_LITE_CQ_THR_DONE_P2_0>;
+		omc-lite-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_OMC_LITE_CQ_THR_DONE_P2_1>;
+		omc-lite-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_OMC_LITE_CQ_THR_DONE_P2_2>;
+		omc-lite-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_OMC_LITE_CQ_THR_DONE_P2_3>;
+		omc-lite-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_OMC_LITE_CQ_THR_DONE_P2_4>;
+		omc-lite-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_OMC_LITE_CQ_THR_DONE_P2_5>;
+		wpe-depth-cq-thread0-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DWPE_CQ_THR_DONE_0>;
+		wpe-depth-cq-thread1-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DWPE_CQ_THR_DONE_1>;
+		wpe-depth-cq-thread2-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DWPE_CQ_THR_DONE_2>;
+		wpe-depth-cq-thread3-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DWPE_CQ_THR_DONE_3>;
+		wpe-depth-cq-thread4-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DWPE_CQ_THR_DONE_4>;
+		wpe-depth-cq-thread5-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DWPE_CQ_THR_DONE_5>;
+		adl-tile-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_ADLRD_PASS2_DONE_EVENT>;
+		adl-slice-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_ADLRD_PASS2_DONE_EVENT>;
+#endif
+		/* Known as standalone engines */
+		me-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_ME_DONE>;
+		fdvt-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_IMGSYS_IPE_FDVT0_DONE>;
+#if 0
+		/* DPE */
+		dpe-dvs-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DVS_CMQ_EVENT>;
+		dpe-fe-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DFP_EVENT_0>;
+		dpe-fm-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DFP_EVENT_1>;
+		dpe-dvgf-frame-done =
+			/bits/ 16 <CMDQ_EVENT_IMGSYS1_DFP_EVENT_2>;
+#endif
+		/* HW TOKEN */
+		wpe-eis-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_WPE_EIS>;
+		omc-tnr-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_OMC_TNR>;
+		wpe-lite-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_WPE_LITE>;
+		traw-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_TRAW>;
+		ltraw-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_LTRAW>;
+		dip-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_DIP>;
+		pqdip-a-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PQDIP_A>;
+		pqdip-b-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PQDIP_B>;
+		me-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IPESYS_ME>;
+		apu-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_ADL>;
+		vss-traw-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_VSS_TRAW>;
+		vss-ltraw-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_VSS_LTRAW>;
+		vss-dip-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_VSS_DIP>;
+		omc-lite-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_OMC_LITE>;
+		mae-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_MAE>;
+		dpe-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_DPE>;
+		dfp-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_DFP>;
+		adl-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_ADL>;
+		wpe-depth-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_DWPE>;
+		traw-smt-sync-token =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_TRAW_SMT>;
+		sw-sync-token-pool-1 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_1>;
+		sw-sync-token-pool-2 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_2>;
+		sw-sync-token-pool-3 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_3>;
+		sw-sync-token-pool-4 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_4>;
+		sw-sync-token-pool-5 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_5>;
+		sw-sync-token-pool-6 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_6>;
+		sw-sync-token-pool-7 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_7>;
+		sw-sync-token-pool-8 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_8>;
+		sw-sync-token-pool-9 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_9>;
+		sw-sync-token-pool-10 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_10>;
+		sw-sync-token-pool-11 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_11>;
+		sw-sync-token-pool-12 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_12>;
+		sw-sync-token-pool-13 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_13>;
+		sw-sync-token-pool-14 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_14>;
+		sw-sync-token-pool-15 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_15>;
+		sw-sync-token-pool-16 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_16>;
+		sw-sync-token-pool-17 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_17>;
+		sw-sync-token-pool-18 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_18>;
+		sw-sync-token-pool-19 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_19>;
+		sw-sync-token-pool-20 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_20>;
+		sw-sync-token-pool-21 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_21>;
+		sw-sync-token-pool-22 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_22>;
+		sw-sync-token-pool-23 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_23>;
+		sw-sync-token-pool-24 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_24>;
+		sw-sync-token-pool-25 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_25>;
+		sw-sync-token-pool-26 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_26>;
+		sw-sync-token-pool-27 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_27>;
+		sw-sync-token-pool-28 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_28>;
+		sw-sync-token-pool-29 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_29>;
+		sw-sync-token-pool-30 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_30>;
+		sw-sync-token-pool-31 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_31>;
+		sw-sync-token-pool-32 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_32>;
+		sw-sync-token-pool-33 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_33>;
+		sw-sync-token-pool-34 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_34>;
+		sw-sync-token-pool-35 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_35>;
+		sw-sync-token-pool-36 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_36>;
+		sw-sync-token-pool-37 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_37>;
+		sw-sync-token-pool-38 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_38>;
+		sw-sync-token-pool-39 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_39>;
+		sw-sync-token-pool-40 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_40>;
+		sw-sync-token-pool-41 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_41>;
+		sw-sync-token-pool-42 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_42>;
+		sw-sync-token-pool-43 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_43>;
+		sw-sync-token-pool-44 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_44>;
+		sw-sync-token-pool-45 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_45>;
+		sw-sync-token-pool-46 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_46>;
+		sw-sync-token-pool-47 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_47>;
+		sw-sync-token-pool-48 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_48>;
+		sw-sync-token-pool-49 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_49>;
+		sw-sync-token-pool-50 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_50>;
+		sw-sync-token-pool-51 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_51>;
+		sw-sync-token-pool-52 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_52>;
+		sw-sync-token-pool-53 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_53>;
+		sw-sync-token-pool-54 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_54>;
+		sw-sync-token-pool-55 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_55>;
+		sw-sync-token-pool-56 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_56>;
+		sw-sync-token-pool-57 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_57>;
+		sw-sync-token-pool-58 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_58>;
+		sw-sync-token-pool-59 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_59>;
+		sw-sync-token-pool-60 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_60>;
+		sw-sync-token-pool-61 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_61>;
+		sw-sync-token-pool-62 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_62>;
+		sw-sync-token-pool-63 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_63>;
+		sw-sync-token-pool-64 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_64>;
+		sw-sync-token-pool-65 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_65>;
+		sw-sync-token-pool-66 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_66>;
+		sw-sync-token-pool-67 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_67>;
+		sw-sync-token-pool-68 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_68>;
+		sw-sync-token-pool-69 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_69>;
+		sw-sync-token-pool-70 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_70>;
+		sw-sync-token-pool-71 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_71>;
+		sw-sync-token-pool-72 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_72>;
+		sw-sync-token-pool-73 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_73>;
+		sw-sync-token-pool-74 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_74>;
+		sw-sync-token-pool-75 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_75>;
+		sw-sync-token-pool-76 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_76>;
+		sw-sync-token-pool-77 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_77>;
+		sw-sync-token-pool-78 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_78>;
+		sw-sync-token-pool-79 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_79>;
+		sw-sync-token-pool-80 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_80>;
+		sw-sync-token-pool-81 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_81>;
+		sw-sync-token-pool-82 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_82>;
+		sw-sync-token-pool-83 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_83>;
+		sw-sync-token-pool-84 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_84>;
+		sw-sync-token-pool-85 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_85>;
+		sw-sync-token-pool-86 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_86>;
+		sw-sync-token-pool-87 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_87>;
+		sw-sync-token-pool-88 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_88>;
+		sw-sync-token-pool-89 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_89>;
+		sw-sync-token-pool-90 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_90>;
+		sw-sync-token-pool-91 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_91>;
+		sw-sync-token-pool-92 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_92>;
+		sw-sync-token-pool-93 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_93>;
+		sw-sync-token-pool-94 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_94>;
+		sw-sync-token-pool-95 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_95>;
+		sw-sync-token-pool-96 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_96>;
+		sw-sync-token-pool-97 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_97>;
+		sw-sync-token-pool-98 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_98>;
+		sw-sync-token-pool-99 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_99>;
+		sw-sync-token-pool-100 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_100>;
+		sw-sync-token-pool-101 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_101>;
+		sw-sync-token-pool-102 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_102>;
+		sw-sync-token-pool-103 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_103>;
+		sw-sync-token-pool-104 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_104>;
+		sw-sync-token-pool-105 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_105>;
+		sw-sync-token-pool-106 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_106>;
+		sw-sync-token-pool-107 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_107>;
+		sw-sync-token-pool-108 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_108>;
+		sw-sync-token-pool-109 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_109>;
+		sw-sync-token-pool-110 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_110>;
+		sw-sync-token-pool-111 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_111>;
+		sw-sync-token-pool-112 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_112>;
+		sw-sync-token-pool-113 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_113>;
+		sw-sync-token-pool-114 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_114>;
+		sw-sync-token-pool-115 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_115>;
+		sw-sync-token-pool-116 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_116>;
+		sw-sync-token-pool-117 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_117>;
+		sw-sync-token-pool-118 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_118>;
+		sw-sync-token-pool-119 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_119>;
+		sw-sync-token-pool-120 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_120>;
+		sw-sync-token-pool-121 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_121>;
+		sw-sync-token-pool-122 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_122>;
+		sw-sync-token-pool-123 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_123>;
+		sw-sync-token-pool-124 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_124>;
+		sw-sync-token-pool-125 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_125>;
+		sw-sync-token-pool-126 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_126>;
+		sw-sync-token-pool-127 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_127>;
+		sw-sync-token-pool-128 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_128>;
+		sw-sync-token-pool-129 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_129>;
+		sw-sync-token-pool-130 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_130>;
+		sw-sync-token-pool-131 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_131>;
+		sw-sync-token-pool-132 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_132>;
+		sw-sync-token-pool-133 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_133>;
+		sw-sync-token-pool-134 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_134>;
+		sw-sync-token-pool-135 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_135>;
+		sw-sync-token-pool-136 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_136>;
+		sw-sync-token-pool-137 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_137>;
+		sw-sync-token-pool-138 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_138>;
+		sw-sync-token-pool-139 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_139>;
+		sw-sync-token-pool-140 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_140>;
+		sw-sync-token-pool-141 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_141>;
+		sw-sync-token-pool-142 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_142>;
+		sw-sync-token-pool-143 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_143>;
+		sw-sync-token-pool-144 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_144>;
+		sw-sync-token-pool-145 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_145>;
+		sw-sync-token-pool-146 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_146>;
+		sw-sync-token-pool-147 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_147>;
+		sw-sync-token-pool-148 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_148>;
+		sw-sync-token-pool-149 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_149>;
+		sw-sync-token-pool-150 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_150>;
+		sw-sync-token-pool-151 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_151>;
+		sw-sync-token-pool-152 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_152>;
+		sw-sync-token-pool-153 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_153>;
+		sw-sync-token-pool-154 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_154>;
+		sw-sync-token-pool-155 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_155>;
+		sw-sync-token-pool-156 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_156>;
+		sw-sync-token-pool-157 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_157>;
+		sw-sync-token-pool-158 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_158>;
+		sw-sync-token-pool-159 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_159>;
+		sw-sync-token-pool-160 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_160>;
+		sw-sync-token-pool-161 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_161>;
+		sw-sync-token-pool-162 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_162>;
+		sw-sync-token-pool-163 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_163>;
+		sw-sync-token-pool-164 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_164>;
+		sw-sync-token-pool-165 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_165>;
+		sw-sync-token-pool-166 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_166>;
+		sw-sync-token-pool-167 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_167>;
+		sw-sync-token-pool-168 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_168>;
+		sw-sync-token-pool-169 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_169>;
+		sw-sync-token-pool-170 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_170>;
+		sw-sync-token-pool-171 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_171>;
+		sw-sync-token-pool-172 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_172>;
+		sw-sync-token-pool-173 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_173>;
+		sw-sync-token-pool-174 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_174>;
+		sw-sync-token-pool-175 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_175>;
+		sw-sync-token-pool-176 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_176>;
+		sw-sync-token-pool-177 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_177>;
+		sw-sync-token-pool-178 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_178>;
+		sw-sync-token-pool-179 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_179>;
+		sw-sync-token-pool-180 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_180>;
+		sw-sync-token-pool-181 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_181>;
+		sw-sync-token-pool-182 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_182>;
+		sw-sync-token-pool-183 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_183>;
+		sw-sync-token-pool-184 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_184>;
+		sw-sync-token-pool-185 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_185>;
+		sw-sync-token-pool-186 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_186>;
+		sw-sync-token-pool-187 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_187>;
+		sw-sync-token-pool-188 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_188>;
+		sw-sync-token-pool-189 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_189>;
+		sw-sync-token-pool-190 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_190>;
+		sw-sync-token-pool-191 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_191>;
+		sw-sync-token-pool-192 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_192>;
+		sw-sync-token-pool-193 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_193>;
+		sw-sync-token-pool-194 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_194>;
+		sw-sync-token-pool-195 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_195>;
+		sw-sync-token-pool-196 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_196>;
+		sw-sync-token-pool-197 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_197>;
+		sw-sync-token-pool-198 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_198>;
+		sw-sync-token-pool-199 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_199>;
+		sw-sync-token-pool-200 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_200>;
+		sw-sync-token-pool-201 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_201>;
+		sw-sync-token-pool-202 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_202>;
+		sw-sync-token-pool-203 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_203>;
+		sw-sync-token-pool-204 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_204>;
+		sw-sync-token-pool-205 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_205>;
+		sw-sync-token-pool-206 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_206>;
+		sw-sync-token-pool-207 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_207>;
+		sw-sync-token-pool-208 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_208>;
+		sw-sync-token-pool-209 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_209>;
+		sw-sync-token-pool-210 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_210>;
+		sw-sync-token-pool-211 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_211>;
+		sw-sync-token-pool-212 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_212>;
+		sw-sync-token-pool-213 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_213>;
+		sw-sync-token-pool-214 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_214>;
+		sw-sync-token-pool-215 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_215>;
+		sw-sync-token-pool-216 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_216>;
+		sw-sync-token-pool-217 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_217>;
+		sw-sync-token-pool-218 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_218>;
+		sw-sync-token-pool-219 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_219>;
+		sw-sync-token-pool-220 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_220>;
+		sw-sync-token-pool-221 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_221>;
+		sw-sync-token-pool-222 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_222>;
+		sw-sync-token-pool-223 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_223>;
+		sw-sync-token-pool-224 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_224>;
+		sw-sync-token-pool-225 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_225>;
+		sw-sync-token-pool-226 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_226>;
+		sw-sync-token-pool-227 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_227>;
+		sw-sync-token-pool-228 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_228>;
+		sw-sync-token-pool-229 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_229>;
+		sw-sync-token-pool-230 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_230>;
+		sw-sync-token-pool-231 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_231>;
+		sw-sync-token-pool-232 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_232>;
+		sw-sync-token-pool-233 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_233>;
+		sw-sync-token-pool-234 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_234>;
+		sw-sync-token-pool-235 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_235>;
+		sw-sync-token-pool-236 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_236>;
+		sw-sync-token-pool-237 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_237>;
+		sw-sync-token-pool-238 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_238>;
+		sw-sync-token-pool-239 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_239>;
+		sw-sync-token-pool-240 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_240>;
+		sw-sync-token-pool-241 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_241>;
+		sw-sync-token-pool-242 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_242>;
+		sw-sync-token-pool-243 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_243>;
+		sw-sync-token-pool-244 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_244>;
+		sw-sync-token-pool-245 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_245>;
+		sw-sync-token-pool-246 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_246>;
+		sw-sync-token-pool-247 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_247>;
+		sw-sync-token-pool-248 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_248>;
+		sw-sync-token-pool-249 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_249>;
+		sw-sync-token-pool-250 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_250>;
+		sw-sync-token-pool-251 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_251>;
+		sw-sync-token-pool-252 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_252>;
+		sw-sync-token-pool-253 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_253>;
+		sw-sync-token-pool-254 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_254>;
+		sw-sync-token-pool-255 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_255>;
+		sw-sync-token-pool-256 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_256>;
+		sw-sync-token-pool-257 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_257>;
+		sw-sync-token-pool-258 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_258>;
+		sw-sync-token-pool-259 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_259>;
+		sw-sync-token-pool-260 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_260>;
+		sw-sync-token-pool-261 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_261>;
+		sw-sync-token-pool-262 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_262>;
+		sw-sync-token-pool-263 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_263>;
+		sw-sync-token-pool-264 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_264>;
+		sw-sync-token-pool-265 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_265>;
+		sw-sync-token-pool-266 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_266>;
+		sw-sync-token-pool-267 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_267>;
+		sw-sync-token-pool-268 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_268>;
+		sw-sync-token-pool-269 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_269>;
+		sw-sync-token-pool-270 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_270>;
+		sw-sync-token-pool-271 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_271>;
+		sw-sync-token-pool-272 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_272>;
+		sw-sync-token-pool-273 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_273>;
+		sw-sync-token-pool-274 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_274>;
+		sw-sync-token-pool-275 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_275>;
+		sw-sync-token-pool-276 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_276>;
+		sw-sync-token-pool-277 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_277>;
+		sw-sync-token-pool-278 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_278>;
+		sw-sync-token-pool-279 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_279>;
+		sw-sync-token-pool-280 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_280>;
+		sw-sync-token-pool-281 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_281>;
+		sw-sync-token-pool-282 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_282>;
+		sw-sync-token-pool-283 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_283>;
+		sw-sync-token-pool-284 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_284>;
+		sw-sync-token-pool-285 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_285>;
+		sw-sync-token-pool-286 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_286>;
+		sw-sync-token-pool-287 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_287>;
+		sw-sync-token-pool-288 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_288>;
+		sw-sync-token-pool-289 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_289>;
+		sw-sync-token-pool-290 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_290>;
+		sw-sync-token-pool-291 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_291>;
+		sw-sync-token-pool-292 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_292>;
+		sw-sync-token-pool-293 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_293>;
+		sw-sync-token-pool-294 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_294>;
+		sw-sync-token-pool-295 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_295>;
+		sw-sync-token-pool-296 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_296>;
+		sw-sync-token-pool-297 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_297>;
+		sw-sync-token-pool-298 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_298>;
+		sw-sync-token-pool-299 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_299>;
+		sw-sync-token-pool-300 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_POOL_300>;
+		dpe-sw-sync-token-pool-1 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_1>;
+		dpe-sw-sync-token-pool-2 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_2>;
+		dpe-sw-sync-token-pool-3 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_3>;
+		dpe-sw-sync-token-pool-4 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_4>;
+		dpe-sw-sync-token-pool-5 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_5>;
+		dpe-sw-sync-token-pool-6 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_6>;
+		dpe-sw-sync-token-pool-7 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_7>;
+		dpe-sw-sync-token-pool-8 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_8>;
+		dpe-sw-sync-token-pool-9 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_9>;
+		dpe-sw-sync-token-pool-10 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_10>;
+		dpe-sw-sync-token-pool-11 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_11>;
+		dpe-sw-sync-token-pool-12 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_12>;
+		dpe-sw-sync-token-pool-13 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_13>;
+		dpe-sw-sync-token-pool-14 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_DPE_POOL_14>;
+		aiseg-sw-sync-token-pool-1 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_1>;
+		aiseg-sw-sync-token-pool-2 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_2>;
+		aiseg-sw-sync-token-pool-3 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_3>;
+		aiseg-sw-sync-token-pool-4 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_4>;
+		aiseg-sw-sync-token-pool-5 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_5>;
+		aiseg-sw-sync-token-pool-6 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_6>;
+		aiseg-sw-sync-token-pool-7 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_7>;
+		aiseg-sw-sync-token-pool-8 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_8>;
+		aiseg-sw-sync-token-pool-9 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_9>;
+		aiseg-sw-sync-token-pool-10 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_10>;
+		aiseg-sw-sync-token-pool-11 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_11>;
+		aiseg-sw-sync-token-pool-12 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_12>;
+		aiseg-sw-sync-token-pool-13 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_13>;
+		aiseg-sw-sync-token-pool-14 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_14>;
+		aiseg-sw-sync-token-pool-15 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_15>;
+		aiseg-sw-sync-token-pool-16 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_16>;
+		aiseg-sw-sync-token-pool-17 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_17>;
+		aiseg-sw-sync-token-pool-18 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_18>;
+		aiseg-sw-sync-token-pool-19 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_19>;
+		aiseg-sw-sync-token-pool-20 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_20>;
+		aiseg-sw-sync-token-pool-21 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_21>;
+		aiseg-sw-sync-token-pool-22 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_22>;
+		aiseg-sw-sync-token-pool-23 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_23>;
+		aiseg-sw-sync-token-pool-24 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_24>;
+		aiseg-sw-sync-token-pool-25 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_25>;
+		aiseg-sw-sync-token-pool-26 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_26>;
+		aiseg-sw-sync-token-pool-27 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_27>;
+		aiseg-sw-sync-token-pool-28 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_28>;
+		aiseg-sw-sync-token-pool-29 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_29>;
+		aiseg-sw-sync-token-pool-30 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_30>;
+		aiseg-sw-sync-token-pool-31 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_31>;
+		aiseg-sw-sync-token-pool-32 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_32>;
+		aiseg-sw-sync-token-pool-33 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_33>;
+		aiseg-sw-sync-token-pool-34 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_34>;
+		aiseg-sw-sync-token-pool-35 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_35>;
+		aiseg-sw-sync-token-pool-36 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_36>;
+		aiseg-sw-sync-token-pool-37 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_37>;
+		aiseg-sw-sync-token-pool-38 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_38>;
+		aiseg-sw-sync-token-pool-39 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_39>;
+		aiseg-sw-sync-token-pool-40 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_40>;
+		aiseg-sw-sync-token-pool-41 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_41>;
+		aiseg-sw-sync-token-pool-42 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_42>;
+		aiseg-sw-sync-token-pool-43 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_43>;
+		aiseg-sw-sync-token-pool-44 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_44>;
+		aiseg-sw-sync-token-pool-45 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_45>;
+		aiseg-sw-sync-token-pool-46 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_46>;
+		aiseg-sw-sync-token-pool-47 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_47>;
+		aiseg-sw-sync-token-pool-48 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_48>;
+		aiseg-sw-sync-token-pool-49 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_49>;
+		aiseg-sw-sync-token-pool-50 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_50>;
+		aiseg-sw-sync-token-pool-51 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_51>;
+		aiseg-sw-sync-token-pool-52 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_52>;
+		aiseg-sw-sync-token-pool-53 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_53>;
+		aiseg-sw-sync-token-pool-54 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_54>;
+		aiseg-sw-sync-token-pool-55 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_55>;
+		aiseg-sw-sync-token-pool-56 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_56>;
+		aiseg-sw-sync-token-pool-57 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_57>;
+		aiseg-sw-sync-token-pool-58 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_58>;
+		aiseg-sw-sync-token-pool-59 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_59>;
+		aiseg-sw-sync-token-pool-60 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_60>;
+		aiseg-sw-sync-token-pool-61 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_61>;
+		aiseg-sw-sync-token-pool-62 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_62>;
+		aiseg-sw-sync-token-pool-63 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_63>;
+		aiseg-sw-sync-token-pool-64 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_64>;
+		aiseg-sw-sync-token-pool-65 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_65>;
+		aiseg-sw-sync-token-pool-66 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_66>;
+		aiseg-sw-sync-token-pool-67 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_67>;
+		aiseg-sw-sync-token-pool-68 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_68>;
+		aiseg-sw-sync-token-pool-69 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_69>;
+		aiseg-sw-sync-token-pool-70 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_70>;
+		aiseg-sw-sync-token-pool-71 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_71>;
+		aiseg-sw-sync-token-pool-72 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_72>;
+		aiseg-sw-sync-token-pool-73 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_73>;
+		aiseg-sw-sync-token-pool-74 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_74>;
+		aiseg-sw-sync-token-pool-75 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_75>;
+		aiseg-sw-sync-token-pool-76 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_76>;
+		aiseg-sw-sync-token-pool-77 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_77>;
+		aiseg-sw-sync-token-pool-78 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_78>;
+		aiseg-sw-sync-token-pool-79 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_79>;
+		aiseg-sw-sync-token-pool-80 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_80>;
+		aiseg-sw-sync-token-pool-81 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_81>;
+		aiseg-sw-sync-token-pool-82 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_82>;
+		aiseg-sw-sync-token-pool-83 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_83>;
+		aiseg-sw-sync-token-pool-84 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_84>;
+		aiseg-sw-sync-token-pool-85 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_85>;
+		aiseg-sw-sync-token-pool-86 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_86>;
+		aiseg-sw-sync-token-pool-87 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_87>;
+		aiseg-sw-sync-token-pool-88 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_88>;
+		aiseg-sw-sync-token-pool-89 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_89>;
+		aiseg-sw-sync-token-pool-90 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_90>;
+		aiseg-sw-sync-token-pool-91 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_91>;
+		aiseg-sw-sync-token-pool-92 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_92>;
+		aiseg-sw-sync-token-pool-93 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_93>;
+		aiseg-sw-sync-token-pool-94 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_94>;
+		aiseg-sw-sync-token-pool-95 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_95>;
+		aiseg-sw-sync-token-pool-96 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_96>;
+		aiseg-sw-sync-token-pool-97 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_97>;
+		aiseg-sw-sync-token-pool-98 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_98>;
+		aiseg-sw-sync-token-pool-99 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_99>;
+		aiseg-sw-sync-token-pool-100 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_AISEG_POOL_100>;
+		pkt-reuse-sw-sync-token-pool-0 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_0>;
+		pkt-reuse-sw-sync-token-pool-1 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_1>;
+		pkt-reuse-sw-sync-token-pool-2 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_2>;
+		pkt-reuse-sw-sync-token-pool-3 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_3>;
+		pkt-reuse-sw-sync-token-pool-4 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_4>;
+		pkt-reuse-sw-sync-token-pool-5 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_5>;
+		pkt-reuse-sw-sync-token-pool-6 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_6>;
+		pkt-reuse-sw-sync-token-pool-7 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_7>;
+		pkt-reuse-sw-sync-token-pool-8 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_8>;
+		pkt-reuse-sw-sync-token-pool-9 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_9>;
+		pkt-reuse-sw-sync-token-pool-10 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_10>;
+		pkt-reuse-sw-sync-token-pool-11 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_11>;
+		pkt-reuse-sw-sync-token-pool-12 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_12>;
+		pkt-reuse-sw-sync-token-pool-13 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_13>;
+		pkt-reuse-sw-sync-token-pool-14 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_14>;
+		pkt-reuse-sw-sync-token-pool-15 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_15>;
+		pkt-reuse-sw-sync-token-pool-16 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_16>;
+		pkt-reuse-sw-sync-token-pool-17 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_17>;
+		pkt-reuse-sw-sync-token-pool-18 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_18>;
+		pkt-reuse-sw-sync-token-pool-19 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_19>;
+		pkt-reuse-sw-sync-token-pool-20 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_20>;
+		pkt-reuse-sw-sync-token-pool-21 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_21>;
+		pkt-reuse-sw-sync-token-pool-22 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_22>;
+		pkt-reuse-sw-sync-token-pool-23 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_23>;
+		pkt-reuse-sw-sync-token-pool-24 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_24>;
+		pkt-reuse-sw-sync-token-pool-25 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_25>;
+		pkt-reuse-sw-sync-token-pool-26 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_26>;
+		pkt-reuse-sw-sync-token-pool-27 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_27>;
+		pkt-reuse-sw-sync-token-pool-28 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_28>;
+		pkt-reuse-sw-sync-token-pool-29 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_29>;
+		pkt-reuse-sw-sync-token-pool-30 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_30>;
+		pkt-reuse-sw-sync-token-pool-31 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_31>;
+		pkt-reuse-sw-sync-token-pool-32 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_32>;
+		pkt-reuse-sw-sync-token-pool-33 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_33>;
+		pkt-reuse-sw-sync-token-pool-34 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_34>;
+		pkt-reuse-sw-sync-token-pool-35 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_35>;
+		pkt-reuse-sw-sync-token-pool-36 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_36>;
+		pkt-reuse-sw-sync-token-pool-37 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_37>;
+		pkt-reuse-sw-sync-token-pool-38 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_38>;
+		pkt-reuse-sw-sync-token-pool-39 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_39>;
+		pkt-reuse-sw-sync-token-pool-40 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_40>;
+		pkt-reuse-sw-sync-token-pool-41 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_41>;
+		pkt-reuse-sw-sync-token-pool-42 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_42>;
+		pkt-reuse-sw-sync-token-pool-43 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_43>;
+		pkt-reuse-sw-sync-token-pool-44 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_44>;
+		pkt-reuse-sw-sync-token-pool-45 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_45>;
+		pkt-reuse-sw-sync-token-pool-46 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_46>;
+		pkt-reuse-sw-sync-token-pool-47 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_47>;
+		pkt-reuse-sw-sync-token-pool-48 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_48>;
+		pkt-reuse-sw-sync-token-pool-49 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_49>;
+		pkt-reuse-sw-sync-token-pool-50 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_50>;
+		pkt-reuse-sw-sync-token-pool-51 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_51>;
+		pkt-reuse-sw-sync-token-pool-52 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_52>;
+		pkt-reuse-sw-sync-token-pool-53 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_53>;
+		pkt-reuse-sw-sync-token-pool-54 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_54>;
+		pkt-reuse-sw-sync-token-pool-55 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_55>;
+		pkt-reuse-sw-sync-token-pool-56 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_56>;
+		pkt-reuse-sw-sync-token-pool-57 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_57>;
+		pkt-reuse-sw-sync-token-pool-58 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_58>;
+		pkt-reuse-sw-sync-token-pool-59 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_59>;
+		pkt-reuse-sw-sync-token-pool-60 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_60>;
+		pkt-reuse-sw-sync-token-pool-61 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_61>;
+		pkt-reuse-sw-sync-token-pool-62 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_62>;
+		pkt-reuse-sw-sync-token-pool-63 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_63>;
+		pkt-reuse-sw-sync-token-pool-64 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_64>;
+		pkt-reuse-sw-sync-token-pool-65 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_65>;
+		pkt-reuse-sw-sync-token-pool-66 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_66>;
+		pkt-reuse-sw-sync-token-pool-67 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_67>;
+		pkt-reuse-sw-sync-token-pool-68 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_68>;
+		pkt-reuse-sw-sync-token-pool-69 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_69>;
+		pkt-reuse-sw-sync-token-pool-70 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_70>;
+		pkt-reuse-sw-sync-token-pool-71 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_71>;
+		pkt-reuse-sw-sync-token-pool-72 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_72>;
+		pkt-reuse-sw-sync-token-pool-73 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_73>;
+		pkt-reuse-sw-sync-token-pool-74 =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_PKT_REUSE_74>;
+		sw-sync-token-tzmp-isp-wait =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISP_WAIT>;
+		sw-sync-token-tzmp-isp-set =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISP_SET>;
+		sw-sync-token-tzmp-adl-wait =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ADL_WAIT>;
+		sw-sync-token-tzmp-adl-set =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ADL_SET>;
+		sw-sync-token-tzmp-aie-wait =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
+		sw-sync-token-tzmp-aie-set =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
+		sw-sync-token-tzmp-isc-wait =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISC_WAIT>;
+		sw-sync-token-tzmp-isc-set =
+			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISC_SET>;
+#if 0
+		mediatek,imgsys-hwqos-support;
+		hwqos-sync-token =
+				/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_QOS_LOCK>;
+		mmqos-supply = <&mmqos>;
+		interrupts = <GIC_SPI 699 IRQ_TYPE_LEVEL_HIGH 0>;
+
+		ccf-apply;
+		mediatek,larbs =
+				<&smi_larb9>,
+				<&smi_larb10>,
+				<&smi_larb11>,
+				<&smi_larb12>,
+				<&smi_larb15>,
+				<&smi_larb18>,
+				<&smi_larb22>,
+				<&smi_larb28>,
+				<&smi_larb38>,
+				<&smi_larb39>,
+				<&smi_larb40>,
+				<&smi_larb48>,
+				<&smi_larb49>;
+		clocks =
+			<&cksys_mm_clk CKSYS_MM_CAMTM_SEL>,
+			<&img_vcore_d1a_clk IMG_VCORE_GALS_DISP_CAM_P2>,
+			<&img_vcore_d1a_clk IMG_VCORE_MAIN_CAM_P2>,
+			<&img_vcore_d1a_clk IMG_VCORE_SUB0_CAM_P2>,
+			<&img_vcore_d1a_clk IMG_VCORE_SUB1_CAM_P2>,
+			<&img_vcore_d1a_clk IMG_VCORE_SUB2_CAM_P2>,
+			<&imgsys_main_clk IMG_FDVT_CAM_P2>,
+			<&imgsys_main_clk IMG_LARB12_CAM_P2>,
+			<&imgsys_main_clk IMG_IPESYS_CVFS26_CAM_P2>,
+			<&imgsys_main_clk IMG_LARB9_CAM_P2>,
+			<&imgsys_main_clk IMG_TRAW0_CAM_P2>,
+			<&imgsys_main_clk IMG_TRAW1_CAM_P2>,
+			<&imgsys_main_clk IMG_DIP0_CAM_P2>,
+			<&imgsys_main_clk IMG_WPE0_CAM_P2>,
+			<&imgsys_main_clk IMG_IPE_CAM_P2>,
+			<&imgsys_main_clk IMG_WPE1_CAM_P2>,
+			<&imgsys_main_clk IMG_WPE2_CAM_P2>,
+			<&imgsys_main_clk IMG_AVS_CAM_P2>,
+			<&imgsys_main_clk IMG_IPS_CAM_P2>,
+			<&imgsys_main_clk IMG_ADLWR1_CAM_P2>,
+			<&imgsys_main_clk IMG_ROOTCQ_CAM_P2>,
+			<&imgsys_main_clk IMG_BLS_CAM_P2>,
+			<&imgsys_main_clk IMG_SUB_COMMON0_CAM_P2>,
+			<&imgsys_main_clk IMG_SUB_COMMON1_CAM_P2>,
+			<&imgsys_main_clk IMG_SUB_COMMON2_CAM_P2>,
+			<&imgsys_main_clk IMG_SUB_COMMON3_CAM_P2>,
+			<&imgsys_main_clk IMG_SUB_COMMON4_CAM_P2>,
+			<&imgsys_main_clk IMG_SUB_COMMON5_CAM_P2>,
+			<&imgsys_main_clk IMG_SUB_COMMON6_CAM_P2>,
+			<&imgsys_main_clk IMG26_CAM_P2>,
+			<&imgsys_main_clk IMG_BWR_CAM_P2>,
+			<&imgsys_main_clk IMG_ISC_CAM_P2>,
+			<&imgsys_main_clk IMGSYS_CVFS26_CAM_P2>,
+			<&dip_top_dip1_clk DIP_TOP_DIP1_DIP_TOP_CAM_P2>,
+			<&dip_top_dip1_clk DIP_TOP_DIP1_LARB10_CAM_P2>,
+			<&dip_top_dip1_clk DIP_TOP_DIP1_LARB15_CAM_P2>,
+			<&dip_top_dip1_clk DIP_TOP_DIP1_LARB38_CAM_P2>,
+			<&dip_top_dip1_clk DIP_TOP_DIP1_LARB39_CAM_P2>,
+			<&dip_nr1_dip1_clk DIP_NR1_DIP1_LARB_CAM_P2>,
+			<&dip_nr1_dip1_clk DIP_NR1_DIP1_DIP_NR1_CAM_P2>,
+			<&dip_nr2_dip1_clk DIP_NR2_DIP1_DIP_NR_CAM_P2>,
+			<&dip_nr2_dip1_clk DIP_NR2_DIP1_LARB15_CAM_P2>,
+			<&dip_nr2_dip1_clk DIP_NR2_DIP1_LARB39_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_LARB_U0_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_LARB_U1_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_WPE_MACRO_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_WPE_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_PQDIP_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_PQDIP_DMA_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_OMC_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_DPE_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_DFPS_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_DFP0_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_DFP1_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_ME_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_MMG_CAM_P2>,
+			<&wpe_eis_dip1_clk WPE_EIS_DIP1_WPE_26M_EN_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_LARB_U0_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_LARB_U1_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_WPE_MACRO_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_WPE_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_PQDIP_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_PQDIP_DMA_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_OMC_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_DPE_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_DFPS_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_DFP0_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_DFP1_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_ME_CAM_P2>,
+			<&wpe_tnr_dip1_clk WPE_TNR_DIP1_MMG_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_LARB_U0_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_LARB_U1_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_WPE_MACRO_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_WPE_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_PQDIP_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_PQDIP_DMA_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_OMC_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_DPE_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_DFPS_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_DFP0_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_DFP1_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_ME_CAM_P2>,
+			<&wpe_lite_dip1_clk WPE_LITE_DIP1_MMG_CAM_P2>,
+			<&traw_dip1_clk TRAW_DIP1_LARB28_CAM_P2>,
+			<&traw_dip1_clk TRAW_DIP1_LARB40_CAM_P2>,
+			<&traw_dip1_clk TRAW_DIP1_TRAW_CAM_P2>,
+			<&traw_cap_dip1_clk TRAW_CAP_DIP1_TRAW_CAP_CAM_P2>,
+			<&dip_cine_dip1_clk DIP_CINE_DIP1_LARB_CAM_P2>,
+			<&dip_cine_dip1_clk DIP_CINE_DIP1_DIP_CINE_CAM_P2>,
+			<&mmdvfs_mux MMDVFS_USER_IMG>;
+		clock-names =
+			"CKSYS_MM_CAMTM_SEL",
+			"VCORE_GALS",
+			"VCORE_MAIN",
+			"VCORE_SUB0",
+			"VCORE_SUB1",
+			"VCORE_SUB2",
+			"IMG_FDVT",
+			"IMG_LARB12",
+			"IMG_IPE_CVFS26",
+			"IMG_LARB9",
+			"IMG_TRAW0",
+			"IMG_TRAW1",
+			"IMG_DIP0",
+			"IMG_WPE0",
+			"IMG_IPE",
+			"IMG_WPE1",
+			"IMG_WPE2",
+			"IMG_AVS",
+			"IMG_IPS",
+			"IMG_ADLWR1",
+			"IMG_ROOTCQ",
+			"IMG_BLS",
+			"IMG_SUB_COMMON0",
+			"IMG_SUB_COMMON1",
+			"IMG_SUB_COMMON2",
+			"IMG_SUB_COMMON3",
+			"IMG_SUB_COMMON4",
+			"IMG_SUB_COMMON5",
+			"IMG_SUB_COMMON6",
+			"IMG26",
+			"IMG_BWR",
+			"IMG_ISC",
+			"IMG_CVFS26",
+			"DIP_TOP_DIP1_DIP_TOP",
+			"DIP_TOP_DIP1_LARB10",
+			"DIP_TOP_DIP1_LARB15",
+			"DIP_TOP_DIP1_LARB38",
+			"DIP_TOP_DIP1_LARB39",
+			"DIP_NR1_DIP1_LARB",
+			"DIP_NR1_DIP1_DIP_NR1",
+			"DIP_NR2_DIP1_DIP_NR",
+			"DIP_NR2_DIP1_LARB15",
+			"DIP_NR2_DIP1_LARB39",
+			"WPE_EIS_DIP1_LARB_U0",
+			"WPE_EIS_DIP1_LARB_U1",
+			"WPE_EIS_DIP1_WPE_MACRO",
+			"WPE_EIS_DIP1_WPE",
+			"WPE_EIS_DIP1_PQDIP",
+			"WPE_EIS_DIP1_PQDIP_DMA",
+			"WPE_EIS_DIP1_OMC",
+			"WPE_EIS_DIP1_DPE",
+			"WPE_EIS_DIP1_DFPS",
+			"WPE_EIS_DIP1_DFP0",
+			"WPE_EIS_DIP1_DFP1",
+			"WPE_EIS_DIP1_ME",
+			"WPE_EIS_DIP1_MMG",
+			"WPE_EIS_DIP1_WPE_26M_EN",
+			"WPE_TNR_DIP1_LARB_U0",
+			"WPE_TNR_DIP1_LARB_U1",
+			"WPE_TNR_DIP1_WPE_MACRO",
+			"WPE_TNR_DIP1_WPE",
+			"WPE_TNR_DIP1_PQDIP",
+			"WPE_TNR_DIP1_PQDIP_DMA",
+			"WPE_TNR_DIP1_OMC",
+			"WPE_TNR_DIP1_DPE",
+			"WPE_TNR_DIP1_DFPS",
+			"WPE_TNR_DIP1_DFP0",
+			"WPE_TNR_DIP1_DFP1",
+			"WPE_TNR_DIP1_ME",
+			"WPE_TNR_DIP1_MMG",
+			"WPE_LITE_DIP1_LARB_U0",
+			"WPE_LITE_DIP1_LARB_U1",
+			"WPE_LITE_DIP1_WPE_MACRO",
+			"WPE_LITE_DIP1_WPE",
+			"WPE_LITE_DIP1_PQDIP",
+			"WPE_LITE_DIP1_PQDIP_DMA",
+			"WPE_LITE_DIP1_OMC",
+			"WPE_LITE_DIP1_DPE",
+			"WPE_LITE_DIP1_DFPS",
+			"WPE_LITE_DIP1_DFP0",
+			"WPE_LITE_DIP1_DFP1",
+			"WPE_LITE_DIP1_ME",
+			"WPE_LITE_DIP1_MMG",
+			"TRAW_DIP1_LARB28",
+			"TRAW_DIP1_LARB40",
+			"TRAW_DIP1_TRAW",
+			"TRAW_CAP_DIP1_TRAW_CAP",
+			"DIP_CINE_DIP1_LARB",
+			"DIP_CINE_DIP1",
+			"mmdvfs_mux";
+		operating-points-v2 = <&opp_table_img>;
+		mediatek,imgsys-dvfs-pix-mode = <4>;
+		imgsys-supply = <&gce_m_sec>;
+		mediatek,imgsys-qof-ver = <31>;
+#endif
+	};
+
+	tboard_thermistor1: thermal-ntc1@1c013128 {
+		compatible = "mediatek,mt6685-tia-ntc";
+		status = "disabled";
+		#thermal-sensor-cells = <0>;
+		reg = <0 0x1c013128 0 0x4>; /* TIA DATA T0 */
+		temperature-lookup-table =
+			<(-40000) 4397119>,
+			<(-39000) 4092874>,
+			<(-38000) 3811717>,
+			<(-37000) 3551749>,
+			<(-36000) 3311236>,
+			<(-35000) 3088599>,
+			<(-34000) 2882396>,
+			<(-33000) 2691310>,
+			<(-32000) 2514137>,
+			<(-31000) 2349778>,
+			<(-30000) 2197225>,
+			<(-29000) 2055558>,
+			<(-28000) 1923932>,
+			<(-27000) 1801573>,
+			<(-26000) 1687773>,
+			<(-25000) 1581881>,
+			<(-24000) 1483100>,
+			<(-23000) 1391113>,
+			<(-22000) 1305413>,
+			<(-21000) 1225531>,
+			<(-20000) 1151037>,
+			<(-19000) 1081535>,
+			<(-18000) 1016661>,
+			<(-17000) 956080>,
+			<(-16000) 899481>,
+			<(-15000) 846579>,
+			<(-14000) 797111>,
+			<(-13000) 750834>,
+			<(-12000) 707524>,
+			<(-11000) 666972>,
+			<(-10000) 628988>,
+			<(-9000) 593342>,
+			<(-8000) 559931>,
+			<(-7000) 528602>,
+			<(-6000) 499212>,
+			<(-5000) 471632>,
+			<(-4000) 445772>,
+			<(-3000) 421480>,
+			<(-2000) 398652>,
+			<(-1000) 377193>,
+			<0 357012>,
+			<1000 338006>,
+			<2000 320122>,
+			<3000 303287>,
+			<4000 287434>,
+			<5000 272500>,
+			<6000 258426>,
+			<7000 245160>,
+			<8000 232649>,
+			<9000 220847>,
+			<10000 209710>,
+			<11000 199196>,
+			<12000 189268>,
+			<13000 179890>,
+			<14000 171027>,
+			<15000 162651>,
+			<16000 154726>,
+			<17000 147232>,
+			<18000 140142>,
+			<19000 133432>,
+			<20000 127080>,
+			<21000 121066>,
+			<22000 115368>,
+			<23000 109970>,
+			<24000 104852>,
+			<25000 100000>,
+			<26000 95398>,
+			<27000 91032>,
+			<28000 86889>,
+			<29000 82956>,
+			<30000 79222>,
+			<31000 75675>,
+			<32000 72306>,
+			<33000 69104>,
+			<34000 66061>,
+			<35000 63167>,
+			<36000 60415>,
+			<37000 57797>,
+			<38000 55306>,
+			<39000 52934>,
+			<40000 50677>,
+			<41000 48528>,
+			<42000 46482>,
+			<43000 44533>,
+			<44000 42675>,
+			<45000 40904>,
+			<46000 39213>,
+			<47000 37601>,
+			<48000 36063>,
+			<49000 34595>,
+			<50000 33195>,
+			<51000 31859>,
+			<52000 30584>,
+			<53000 29366>,
+			<54000 28203>,
+			<55000 27091>,
+			<56000 26028>,
+			<57000 25013>,
+			<58000 24042>,
+			<59000 23113>,
+			<60000 22224>,
+			<61000 21374>,
+			<62000 20560>,
+			<63000 19782>,
+			<64000 19036>,
+			<65000 18322>,
+			<66000 17640>,
+			<67000 16986>,
+			<68000 16360>,
+			<69000 15759>,
+			<70000 15184>,
+			<71000 14631>,
+			<72000 14100>,
+			<73000 13591>,
+			<74000 13103>,
+			<75000 12635>,
+			<76000 12187>,
+			<77000 11756>,
+			<78000 11343>,
+			<79000 10946>,
+			<80000 10565>,
+			<81000 10199>,
+			<82000 9847>,
+			<83000 9509>,
+			<84000 9184>,
+			<85000 8872>,
+			<86000 8572>,
+			<87000 8283>,
+			<88000 8005>,
+			<89000 7738>,
+			<90000 7481>,
+			<91000 7234>,
+			<92000 6997>,
+			<93000 6769>,
+			<94000 6548>,
+			<95000 6337>,
+			<96000 6132>,
+			<97000 5934>,
+			<98000 5744>,
+			<99000 5561>,
+			<100000 5384>,
+			<101000 5214>,
+			<102000 5051>,
+			<103000 4893>,
+			<104000 4741>,
+			<105000 4594>,
+			<106000 4453>,
+			<107000 4316>,
+			<108000 4184>,
+			<109000 4057>,
+			<110000 3934>,
+			<111000 3816>,
+			<112000 3701>,
+			<113000 3591>,
+			<114000 3484>,
+			<115000 3380>,
+			<116000 3281>,
+			<117000 3185>,
+			<118000 3093>,
+			<119000 3003>,
+			<120000 2916>,
+			<121000 2832>,
+			<122000 2751>,
+			<123000 2672>,
+			<124000 2596>,
+			<125000 2522>;
+	};
+
+	tboard_thermistor2: thermal-ntc2@1c01312c {
+		compatible = "mediatek,mt6685-tia-ntc";
+		status = "disabled";
+		#thermal-sensor-cells = <0>;
+		reg = <0 0x1c01312c 0 0x4>; /* TIA DATA T1 */
+		temperature-lookup-table =
+			<(-40000) 4397119>,
+			<(-39000) 4092874>,
+			<(-38000) 3811717>,
+			<(-37000) 3551749>,
+			<(-36000) 3311236>,
+			<(-35000) 3088599>,
+			<(-34000) 2882396>,
+			<(-33000) 2691310>,
+			<(-32000) 2514137>,
+			<(-31000) 2349778>,
+			<(-30000) 2197225>,
+			<(-29000) 2055558>,
+			<(-28000) 1923932>,
+			<(-27000) 1801573>,
+			<(-26000) 1687773>,
+			<(-25000) 1581881>,
+			<(-24000) 1483100>,
+			<(-23000) 1391113>,
+			<(-22000) 1305413>,
+			<(-21000) 1225531>,
+			<(-20000) 1151037>,
+			<(-19000) 1081535>,
+			<(-18000) 1016661>,
+			<(-17000) 956080>,
+			<(-16000) 899481>,
+			<(-15000) 846579>,
+			<(-14000) 797111>,
+			<(-13000) 750834>,
+			<(-12000) 707524>,
+			<(-11000) 666972>,
+			<(-10000) 628988>,
+			<(-9000) 593342>,
+			<(-8000) 559931>,
+			<(-7000) 528602>,
+			<(-6000) 499212>,
+			<(-5000) 471632>,
+			<(-4000) 445772>,
+			<(-3000) 421480>,
+			<(-2000) 398652>,
+			<(-1000) 377193>,
+			<0 357012>,
+			<1000 338006>,
+			<2000 320122>,
+			<3000 303287>,
+			<4000 287434>,
+			<5000 272500>,
+			<6000 258426>,
+			<7000 245160>,
+			<8000 232649>,
+			<9000 220847>,
+			<10000 209710>,
+			<11000 199196>,
+			<12000 189268>,
+			<13000 179890>,
+			<14000 171027>,
+			<15000 162651>,
+			<16000 154726>,
+			<17000 147232>,
+			<18000 140142>,
+			<19000 133432>,
+			<20000 127080>,
+			<21000 121066>,
+			<22000 115368>,
+			<23000 109970>,
+			<24000 104852>,
+			<25000 100000>,
+			<26000 95398>,
+			<27000 91032>,
+			<28000 86889>,
+			<29000 82956>,
+			<30000 79222>,
+			<31000 75675>,
+			<32000 72306>,
+			<33000 69104>,
+			<34000 66061>,
+			<35000 63167>,
+			<36000 60415>,
+			<37000 57797>,
+			<38000 55306>,
+			<39000 52934>,
+			<40000 50677>,
+			<41000 48528>,
+			<42000 46482>,
+			<43000 44533>,
+			<44000 42675>,
+			<45000 40904>,
+			<46000 39213>,
+			<47000 37601>,
+			<48000 36063>,
+			<49000 34595>,
+			<50000 33195>,
+			<51000 31859>,
+			<52000 30584>,
+			<53000 29366>,
+			<54000 28203>,
+			<55000 27091>,
+			<56000 26028>,
+			<57000 25013>,
+			<58000 24042>,
+			<59000 23113>,
+			<60000 22224>,
+			<61000 21374>,
+			<62000 20560>,
+			<63000 19782>,
+			<64000 19036>,
+			<65000 18322>,
+			<66000 17640>,
+			<67000 16986>,
+			<68000 16360>,
+			<69000 15759>,
+			<70000 15184>,
+			<71000 14631>,
+			<72000 14100>,
+			<73000 13591>,
+			<74000 13103>,
+			<75000 12635>,
+			<76000 12187>,
+			<77000 11756>,
+			<78000 11343>,
+			<79000 10946>,
+			<80000 10565>,
+			<81000 10199>,
+			<82000 9847>,
+			<83000 9509>,
+			<84000 9184>,
+			<85000 8872>,
+			<86000 8572>,
+			<87000 8283>,
+			<88000 8005>,
+			<89000 7738>,
+			<90000 7481>,
+			<91000 7234>,
+			<92000 6997>,
+			<93000 6769>,
+			<94000 6548>,
+			<95000 6337>,
+			<96000 6132>,
+			<97000 5934>,
+			<98000 5744>,
+			<99000 5561>,
+			<100000 5384>,
+			<101000 5214>,
+			<102000 5051>,
+			<103000 4893>,
+			<104000 4741>,
+			<105000 4594>,
+			<106000 4453>,
+			<107000 4316>,
+			<108000 4184>,
+			<109000 4057>,
+			<110000 3934>,
+			<111000 3816>,
+			<112000 3701>,
+			<113000 3591>,
+			<114000 3484>,
+			<115000 3380>,
+			<116000 3281>,
+			<117000 3185>,
+			<118000 3093>,
+			<119000 3003>,
+			<120000 2916>,
+			<121000 2832>,
+			<122000 2751>,
+			<123000 2672>,
+			<124000 2596>,
+			<125000 2522>;
+	};
+
+	tboard_thermistor3: thermal-ntc3@1c013130 {
+		compatible = "mediatek,mt6685-tia-ntc";
+		status = "disabled";
+		#thermal-sensor-cells = <0>;
+		reg = <0 0x1c013130 0 0x4>; /* TIA DATA T0 */
+		temperature-lookup-table =
+			<(-40000) 4397119>,
+			<(-39000) 4092874>,
+			<(-38000) 3811717>,
+			<(-37000) 3551749>,
+			<(-36000) 3311236>,
+			<(-35000) 3088599>,
+			<(-34000) 2882396>,
+			<(-33000) 2691310>,
+			<(-32000) 2514137>,
+			<(-31000) 2349778>,
+			<(-30000) 2197225>,
+			<(-29000) 2055558>,
+			<(-28000) 1923932>,
+			<(-27000) 1801573>,
+			<(-26000) 1687773>,
+			<(-25000) 1581881>,
+			<(-24000) 1483100>,
+			<(-23000) 1391113>,
+			<(-22000) 1305413>,
+			<(-21000) 1225531>,
+			<(-20000) 1151037>,
+			<(-19000) 1081535>,
+			<(-18000) 1016661>,
+			<(-17000) 956080>,
+			<(-16000) 899481>,
+			<(-15000) 846579>,
+			<(-14000) 797111>,
+			<(-13000) 750834>,
+			<(-12000) 707524>,
+			<(-11000) 666972>,
+			<(-10000) 628988>,
+			<(-9000) 593342>,
+			<(-8000) 559931>,
+			<(-7000) 528602>,
+			<(-6000) 499212>,
+			<(-5000) 471632>,
+			<(-4000) 445772>,
+			<(-3000) 421480>,
+			<(-2000) 398652>,
+			<(-1000) 377193>,
+			<0 357012>,
+			<1000 338006>,
+			<2000 320122>,
+			<3000 303287>,
+			<4000 287434>,
+			<5000 272500>,
+			<6000 258426>,
+			<7000 245160>,
+			<8000 232649>,
+			<9000 220847>,
+			<10000 209710>,
+			<11000 199196>,
+			<12000 189268>,
+			<13000 179890>,
+			<14000 171027>,
+			<15000 162651>,
+			<16000 154726>,
+			<17000 147232>,
+			<18000 140142>,
+			<19000 133432>,
+			<20000 127080>,
+			<21000 121066>,
+			<22000 115368>,
+			<23000 109970>,
+			<24000 104852>,
+			<25000 100000>,
+			<26000 95398>,
+			<27000 91032>,
+			<28000 86889>,
+			<29000 82956>,
+			<30000 79222>,
+			<31000 75675>,
+			<32000 72306>,
+			<33000 69104>,
+			<34000 66061>,
+			<35000 63167>,
+			<36000 60415>,
+			<37000 57797>,
+			<38000 55306>,
+			<39000 52934>,
+			<40000 50677>,
+			<41000 48528>,
+			<42000 46482>,
+			<43000 44533>,
+			<44000 42675>,
+			<45000 40904>,
+			<46000 39213>,
+			<47000 37601>,
+			<48000 36063>,
+			<49000 34595>,
+			<50000 33195>,
+			<51000 31859>,
+			<52000 30584>,
+			<53000 29366>,
+			<54000 28203>,
+			<55000 27091>,
+			<56000 26028>,
+			<57000 25013>,
+			<58000 24042>,
+			<59000 23113>,
+			<60000 22224>,
+			<61000 21374>,
+			<62000 20560>,
+			<63000 19782>,
+			<64000 19036>,
+			<65000 18322>,
+			<66000 17640>,
+			<67000 16986>,
+			<68000 16360>,
+			<69000 15759>,
+			<70000 15184>,
+			<71000 14631>,
+			<72000 14100>,
+			<73000 13591>,
+			<74000 13103>,
+			<75000 12635>,
+			<76000 12187>,
+			<77000 11756>,
+			<78000 11343>,
+			<79000 10946>,
+			<80000 10565>,
+			<81000 10199>,
+			<82000 9847>,
+			<83000 9509>,
+			<84000 9184>,
+			<85000 8872>,
+			<86000 8572>,
+			<87000 8283>,
+			<88000 8005>,
+			<89000 7738>,
+			<90000 7481>,
+			<91000 7234>,
+			<92000 6997>,
+			<93000 6769>,
+			<94000 6548>,
+			<95000 6337>,
+			<96000 6132>,
+			<97000 5934>,
+			<98000 5744>,
+			<99000 5561>,
+			<100000 5384>,
+			<101000 5214>,
+			<102000 5051>,
+			<103000 4893>,
+			<104000 4741>,
+			<105000 4594>,
+			<106000 4453>,
+			<107000 4316>,
+			<108000 4184>,
+			<109000 4057>,
+			<110000 3934>,
+			<111000 3816>,
+			<112000 3701>,
+			<113000 3591>,
+			<114000 3484>,
+			<115000 3380>,
+			<116000 3281>,
+			<117000 3185>,
+			<118000 3093>,
+			<119000 3003>,
+			<120000 2916>,
+			<121000 2832>,
+			<122000 2751>,
+			<123000 2672>,
+			<124000 2596>,
+			<125000 2522>;
+	};
+
+	thermal_zones: thermal-zones {
+		ap_ntc: ap_ntc {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tboard_thermistor1>;
+
+			trips {
+				ap_ntc_crit: ap-ntc-crit {
+					temperature = <119000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+
+		ltepa_ntc: ltepa_ntc {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tboard_thermistor2>;
+
+			trips {
+				ltepa_ntc_crit: ltepa-ntc-crit {
+					temperature = <119000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+
+		nrpa_ntc: nrpa_ntc {
+			polling-delay = <0>; /* milliseconds */
+			polling-delay-passive = <0>; /* milliseconds */
+			thermal-sensors = <&tboard_thermistor3>;
+
+			trips {
+				nrpa_ntc_crit: nrpa-ntc-crit {
+					temperature = <119000>;
+					hysteresis = <2000>;
+					type = "passive";
+				};
+			};
+		};
+	};
+
+	soc {
+		compatible = "simple-bus";
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+		dma-ranges = <0x0 0x0 0x0 0x0 0x10 0x0>;
+
+		i2c0: i2c@11e00000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11e00000 0 0x1000>,
+				<0 0x11300300 0 0x80>;
+			interrupts = <GIC_SPI 528 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C0_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11e05e00 0x1>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <121>;
+			sda-gpio-id = <122>;
+		};
+
+		i2c1: i2c@11e01000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11e01000 0 0x1000>,
+				<0 0x11300380 0 0x80>;
+			interrupts = <GIC_SPI 529 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C1_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11e05e00 0x2>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <123>;
+			sda-gpio-id = <124>;
+		};
+
+		i2c2: i2c@11d70000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11d70000 0 0x1000>,
+				<0 0x11300400 0 0x100>;
+			interrupts = <GIC_SPI 530 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C2_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11d78e00 0x1>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <125>;
+			sda-gpio-id = <126>;
+		};
+
+		i2c3: i2c@11e02000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11e02000 0 0x1000>,
+				<0 0x11300500 0 0x80>;
+			interrupts = <GIC_SPI 531 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C3_I2C>, */
+			/* <&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11e05e00 0x4>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <127>;
+			sda-gpio-id = <128>;
+		};
+
+		i2c4: i2c@11d71000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11d71000 0 0x1000>,
+				<0 0x11300580 0 0x100>;
+			interrupts = <GIC_SPI 532 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_es_clk CLK_IMPES_I2C4_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11d78e00 0x2>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <129>;
+			sda-gpio-id = <130>;
+		};
+
+		i2c5: i2c@11e03000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11e03000 0 0x1000>,
+				<0 0x11300680 0 0x80>;
+			interrupts = <GIC_SPI 533 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C5_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11e05e00 0x8>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <131>;
+			sda-gpio-id = <132>;
+		};
+
+		i2c6: i2c@11e04000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11e04000 0 0x1000>,
+				<0 0x11300700 0 0x80>;
+			interrupts = <GIC_SPI 534 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C6_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11e05e00 0x10>;    /* *reg*  *value* */
+			clock-div = <1>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			scl-gpio-id = <133>;
+			sda-gpio-id = <134>;
+		};
+
+		i2c7: i2c@11d72000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11d72000 0 0x1000>,
+				<0 0x11300780 0 0x100>;
+			interrupts = <GIC_SPI 535 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_es_clk CLK_IMPES_I2C7_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11d78e00 0x4>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <135>;
+			sda-gpio-id = <136>;
+		};
+
+		i2c8: i2c@11d73000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11d73000 0 0x1000>,
+				<0 0x11300880 0 0x100>;
+			interrupts = <GIC_SPI 536 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_es_clk CLK_IMPES_I2C8_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11d78e00 0x8>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <137>;
+			sda-gpio-id = <138>;
+		};
+
+		i2c9: i2c@11d74000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11d74000 0 0x1000>,
+				<0 0x11300980 0 0x100>;
+			interrupts = <GIC_SPI 537 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C9_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11d78e00 0x10>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <139>;
+			sda-gpio-id = <140>;
+		};
+
+		i2c10: i2c@11d75000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11d75000 0 0x1000>,
+				<0 0x11300a80 0 0x80>;
+			interrupts = <GIC_SPI 538 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C10_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11d78e00 0x20>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <141>;
+			sda-gpio-id = <142>;
+		};
+
+		i2c11: i2c@11d76000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11d76000 0 0x1000>,
+				<0 0x11300b00 0 0x80>;
+			interrupts = <GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C11_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11d78e00 0x40>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <143>;
+			sda-gpio-id = <144>;
+		};
+
+		i2c12: i2c@11d77000 {
+			compatible = "mediatek,mt6991-i2c";
+			reg = <0 0x11d77000 0 0x1000>,
+				<0 0x11300b80 0 0x80>;
+			interrupts = <GIC_SPI 540 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C12_I2C>, */
+			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
+			clocks = <&clk26m>, <&clk26m>;
+			clock-names = "main", "dma";
+			i2c-clock-info = <0x11d78e00 0x80>;    /* *reg*  *value* */
+			clock-div = <1>;
+			scl-gpio-id = <145>;
+			sda-gpio-id = <146>;
+		};
+
+		apdma: dma-controller@11300c00 {
+				compatible = "mediatek,mt6985-uart-dma";
+				reg =   <0 0x11300c00 0 0x80>,
+					<0 0x11300c80 0 0x80>,
+					<0 0x11300d00 0 0x80>,
+					<0 0x11300d80 0 0x80>,
+					<0 0x11300e00 0 0x80>,
+					<0 0x11300e80 0 0x80>,
+					<0 0x11300f00 0 0x80>,
+					<0 0x11300f80 0 0x80>;
+				interrupts =    <GIC_SPI 560 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 561 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 562 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 563 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 564 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 565 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 566 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 567 IRQ_TYPE_LEVEL_HIGH 0>;
+				// clocks = <&pericfg_ao_clk CLK_PERAOP_DMA_B_UART>;
+				// clock-names = "apdma";
+				dma-requests = <8>;
+				#dma-cells = <1>;
+		};
+
+		uart0: serial@11001000 {
+			compatible = "mediatek,mt6577-uart";
+			reg = <0 0x11001000 0 0x1000>;
+			interrupts = <GIC_SPI 522 IRQ_TYPE_LEVEL_HIGH 0>;
+			// clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAOP_UART0_UART>;
+			// clock-names = "baud", "bus";
+			dmas = <&apdma 0 &apdma 1>;
+			dma-names = "tx", "rx";
+			uart-line = <0>;
+		};
+
+		uart1: serial@11002000 {
+			compatible = "mediatek,mt6577-uart";
+			reg = <0 0x11002000 0 0x1000>;
+			interrupts = <GIC_SPI 523 IRQ_TYPE_LEVEL_HIGH 0>;
+			// clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAOP_UART1_UART>;
+			// clock-names = "baud", "bus";
+			dmas = <&apdma 2 &apdma 3>;
+			dma-names = "tx", "rx";
+			uart-line = <1>;
+		};
+
+		uart2: serial@11003000 {
+			compatible = "mediatek,mt6577-uart";
+			reg = <0 0x11003000 0 0x1000>;
+			interrupts = <GIC_SPI 524 IRQ_TYPE_LEVEL_HIGH 0>;
+			// clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAOP_UART2_UART>;
+			// clock-names = "baud", "bus";
+			dmas = <&apdma 4 &apdma 5>;
+			dma-names = "tx", "rx";
+			uart-line = <2>;
+		};
+
+		uart3: serial@11004000 {
+			compatible = "mediatek,mt6577-uart";
+			reg = <0 0x11004000 0 0x1000>;
+			interrupts = <GIC_SPI 525 IRQ_TYPE_LEVEL_HIGH 0>;
+			// clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAOP_UART3_UART>;
+			// clock-names = "baud", "bus";
+			dmas = <&apdma 6 &apdma 7>;
+			dma-names = "tx", "rx";
+			uart-line = <3>;
+		};
+
+		topckgen@10000000 {
+			compatible = "mediatek,topckgen";
+			reg = <0 0x10000000 0 0x1000>;
+		};
+
+		infracfg-ao@10001000 {
+			compatible = "mediatek,infracfg_ao";
+			reg = <0 0x10001000 0 0x1000>;
+		};
+
+		infracfg-ao-mem@10002000 {
+			compatible = "mediatek,infracfg_ao_mem";
+			reg = <0 0x10002000 0 0x1000>;
+		};
+
+		iocfg-0@10002000 {
+			compatible = "mediatek,iocfg_0";
+			reg = <0 0x10002000 0 0x200>;
+		};
+
+		iocfg-1@10002200 {
+			compatible = "mediatek,iocfg_1";
+			reg = <0 0x10002200 0 0x200>;
+		};
+
+		iocfg-2@10002400 {
+			compatible = "mediatek,iocfg_2";
+			reg = <0 0x10002400 0 0x200>;
+		};
+
+		iocfg-3@10002600 {
+			compatible = "mediatek,iocfg_3";
+			reg = <0 0x10002600 0 0x200>;
+		};
+
+		iocfg-4@10002800 {
+			compatible = "mediatek,iocfg_4";
+			reg = <0 0x10002800 0 0x200>;
+		};
+
+		iocfg-5@10002a00 {
+			compatible = "mediatek,iocfg_5";
+			reg = <0 0x10002a00 0 0x200>;
+		};
+
+		iocfg-6@10002c00 {
+			compatible = "mediatek,iocfg_6";
+			reg = <0 0x10002c00 0 0x200>;
+		};
+
+		pericfg@10003000 {
+			compatible = "mediatek,pericfg";
+			reg = <0 0x10003000 0 0x1000>;
+		};
+
+		gpio@10005000 {
+			compatible = "mediatek,gpio";
+			reg = <0 0x10005000 0 0x1000>;
+		};
+
+		sleep@10006000 {
+			compatible = "mediatek,sleep";
+			reg = <0 0x10006000 0 0x1000>;
+			interrupts = <GIC_SPI 626 IRQ_TYPE_NONE 0>;
+		};
+
+		sleep@10006a00 {
+			compatible = "mediatek,sleep";
+			reg = <0 0x10006a00 0 0x400>;
+			interrupts = <GIC_SPI 628 IRQ_TYPE_NONE 0>;
+		};
+
+		sleep@10006e00 {
+			compatible = "mediatek,sleep";
+			reg = <0 0x10006e00 0 0x200>;
+			interrupts = <GIC_SPI 629 IRQ_TYPE_NONE 0>;
+		};
+
+		toprgu@10007000 {
+			compatible = "mediatek,toprgu";
+			reg = <0 0x10007000 0 0x1000>;
+		};
+
+		apxgpt@10008000 {
+			compatible = "mediatek,apxgpt";
+			reg = <0 0x10008000 0 0x1000>;
+			interrupts = <GIC_SPI 664 IRQ_TYPE_NONE 0>;
+		};
+
+		sej@1000a000 {
+			compatible = "mediatek,sej";
+			reg = <0 0x1000a000 0 0x1000>;
+		};
+
+		apirq@1000b000 {
+			compatible = "mediatek,apirq";
+			reg = <0 0x1000b000 0 0x1000>;
+		};
+
+		apmixed@1000c000 {
+			compatible = "mediatek,apmixed";
+			reg = <0 0x1000c000 0 0xe00>;
+		};
+
+		fhctl@1000ce00 {
+			compatible = "mediatek,fhctl";
+			reg = <0 0x1000ce00 0 0x200>;
+		};
+
+		pwrap@1000d000 {
+			compatible = "mediatek,pwrap";
+			reg = <0 0x1000d000 0 0x1000>;
+		};
+
+		devapc-ao-infra-peri@1000e000 {
+			compatible = "mediatek,devapc_ao_infra_peri";
+			reg = <0 0x1000e000 0 0x1000>;
+		};
+
+		sleep-reg-md@1000f000 {
+			compatible = "mediatek,sleep_reg_md";
+			reg = <0 0x1000f000 0 0x1000>;
+		};
+
+		kp@10010000 {
+			compatible = "mediatek,kp";
+			reg = <0 0x10010000 0 0x1000>;
+			interrupts = <GIC_SPI 142 IRQ_TYPE_NONE 0>;
+		};
+
+		topmisc@10011000 {
+			compatible = "mediatek,topmisc";
+			reg = <0 0x10011000 0 0x1000>;
+		};
+
+		dvfsrc-top@10012000 {
+			compatible = "mediatek,dvfsrc_top";
+			reg = <0 0x10012000 0 0x1000>;
+			interrupts = <GIC_SPI 385 IRQ_TYPE_NONE 0>;
+		};
+
+		mbist-ao@10013000 {
+			compatible = "mediatek,mbist_ao";
+			reg = <0 0x10013000 0 0x1000>;
+		};
+
+		apcldmain-ao@10014000 {
+			compatible = "mediatek,apcldmain_ao";
+			reg = <0 0x10014000 0 0x400>;
+		};
+
+		apcldmaout-ao@10014400 {
+			compatible = "mediatek,apcldmaout_ao";
+			reg = <0 0x10014400 0 0x400>;
+		};
+
+		apcldmamisc-ao@10014800 {
+			compatible = "mediatek,apcldmamisc_ao";
+			reg = <0 0x10014800 0 0x400>;
+		};
+
+		apcldmamisc-ao@10014c00 {
+			compatible = "mediatek,apcldmamisc_ao";
+			reg = <0 0x10014c00 0 0x400>;
+		};
+
+		devapc-mpu-ao@10015000 {
+			compatible = "mediatek,devapc_mpu_ao";
+			reg = <0 0x10015000 0 0x1000>;
+		};
+
+		mdcldmaout-ao@10015400 {
+			compatible = "mediatek,mdcldmaout_ao";
+			reg = <0 0x10015400 0 0x400>;
+		};
+
+		mdcldmamisc-ao@10015800 {
+			compatible = "mediatek,mdcldmamisc_ao";
+			reg = <0 0x10015800 0 0x400>;
+		};
+
+		aes-top0@10016000 {
+			compatible = "mediatek,aes_top0";
+			reg = <0 0x10016000 0 0x1000>;
+		};
+
+		systimer: systimer@1cd00000 {
+			compatible = "mediatek,legacy-timer";
+			reg = <0 0x1cd00000 0 0x1000>;
+			interrupts = <GIC_SPI 377 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI 378 IRQ_TYPE_LEVEL_HIGH 0>,
+				     <GIC_SPI 379 IRQ_TYPE_LEVEL_HIGH 0>;
+			// clocks = <&clk13m>;
+		};
+
+		mem_mapped_timer: mem-mapped-timer@1cd30000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+			compatible = "arm,armv7-timer-mem";
+			reg = <0 0x1cd30000 0 0x1000>; //CNT_CTL_BSE
+			clock-frequency = <1000000000>;
+			frame@1cd40000 {
+				frame-number = <0>;
+				interrupts = <GIC_SPI 377 IRQ_TYPE_LEVEL_HIGH 0>, // phys irq
+					     <GIC_SPI 777 IRQ_TYPE_LEVEL_HIGH 0>; // virt irq
+				reg = <0 0x1cd40000 0 0x1000>; //CNT_BSE_0
+			};
+		};
+
+		watchdog: watchdog@1c00a000 {
+			compatible = "mediatek,mt6881-wdt",
+				     "mediatek,mt6589-wdt",
+				     "syscon", "simple-mfd";
+			reg = <0 0x1c00a000 0 0x1000>;
+			/* Temp disable WDT for SB */
+			apwdten = <0>;
+			reboot-mode {
+				compatible = "syscon-reboot-mode";
+				offset = <0x24>;
+				mask = <0xf>;
+				mode-charger = <BOOT_CHARGER>;
+				mode-recovery = <BOOT_RECOVERY>;
+				mode-bootloader = <BOOT_BOOTLOADER>;
+				mode-dm-verity-dev-corrupt = <BOOT_DM_VERITY>;
+				mode-kpoc = <BOOT_KPOC>;
+				mode-ddr-reserve = <BOOT_DDR_RSVD>;
+				mode-meta = <BOOT_META>;
+				mode-rpmbpk = <BOOT_RPMBPK>;
+			};
+		};
+
+		modem-temp-share@10018000 {
+			compatible = "mediatek,modem_temp_share";
+			reg = <0 0x10018000 0 0x1000>;
+		};
+
+		devapc-ao-md@10019000 {
+			compatible = "mediatek,devapc_ao_md";
+			reg = <0 0x10019000 0 0x1000>;
+		};
+
+		security-ao@1001a000 {
+			compatible = "mediatek,security_ao";
+			reg = <0 0x1001a000 0 0x1000>;
+		};
+
+		topckgen-ao@1001b000 {
+			compatible = "mediatek,topckgen_ao";
+			reg = <0 0x1001b000 0 0x1000>;
+		};
+
+		devapc-ao-mm@1001c000 {
+			compatible = "mediatek,devapc_ao_mm";
+			reg = <0 0x1001c000 0 0x1000>;
+		};
+
+		sleep-sram@1001e000 {
+			compatible = "mediatek,sleep_sram";
+			reg = <0 0x1001e000 0 0x4000>;
+		};
+
+		sleep-sram@1001f000 {
+			compatible = "mediatek,sleep_sram";
+			reg = <0 0x1001f000 0 0x1000>;
+		};
+
+		sleep-sram@10020000 {
+			compatible = "mediatek,sleep_sram";
+			reg = <0 0x10020000 0 0x1000>;
+		};
+
+		sleep-sram@10021000 {
+			compatible = "mediatek,sleep_sram";
+			reg = <0 0x10021000 0 0x1000>;
+		};
+
+		devapc-ao-infra-peri@10022000 {
+			compatible = "mediatek,devapc_ao_infra_peri";
+			reg = <0 0x10022000 0 0x1000>;
+		};
+
+		devapc-ao-infra-peri@10023000 {
+			compatible = "mediatek,devapc_ao_infra_peri";
+			reg = <0 0x10023000 0 0x1000>;
+		};
+
+		devapc-ao-infra-peri@10024000 {
+			compatible = "mediatek,devapc_ao_infra_peri";
+			reg = <0 0x10024000 0 0x1000>;
+		};
+
+		devapc-ao-infra-peri@10025000 {
+			compatible = "mediatek,devapc_ao_infra_peri";
+			reg = <0 0x10025000 0 0x1000>;
+		};
+
+		sys-cirq@10204000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10204000 0 0x1000>;
+			interrupts = <GIC_SPI 822 IRQ_TYPE_NONE 0>;
+		};
+
+		mcucfg@10200000 {
+			compatible = "mediatek,mcucfg";
+			reg = <0 0x10200000 0 0x1000>;
+			interrupts = <GIC_SPI 0 IRQ_TYPE_NONE 0>;
+		};
+
+		mcucfg@10201000 {
+			compatible = "mediatek,mcucfg";
+			reg = <0 0x10201000 0 0x1000>;
+			interrupts = <GIC_SPI 1 IRQ_TYPE_NONE 0>;
+		};
+
+		mcucfg@10202000 {
+			compatible = "mediatek,mcucfg";
+			reg = <0 0x10202000 0 0x1000>;
+			interrupts = <GIC_SPI 2 IRQ_TYPE_NONE 0>;
+		};
+
+		mcucfg@10203000 {
+			compatible = "mediatek,mcucfg";
+			reg = <0 0x10203000 0 0x1000>;
+			interrupts = <GIC_SPI 3 IRQ_TYPE_NONE 0>;
+		};
+
+		devapc@10207000 {
+			compatible = "mediatek,devapc";
+			reg = <0 0x10207000 0 0x1000>;
+		};
+
+		bus-dbg@10208000 {
+			compatible = "mediatek,bus_dbg";
+			reg = <0 0x10208000 0 0x1000>;
+		};
+
+		ap-ccif0@10209000 {
+			compatible = "mediatek,ap_ccif0";
+			reg = <0 0x10209000 0 0x1000>;
+		};
+
+		md-ccif0@1020a000 {
+			compatible = "mediatek,md_ccif0";
+			reg = <0 0x1020a000 0 0x1000>;
+		};
+
+		ap-ccif1@1020b000 {
+			compatible = "mediatek,ap_ccif1";
+			reg = <0 0x1020b000 0 0x1000>;
+		};
+
+		md-ccif1@1020c000 {
+			compatible = "mediatek,md_ccif1";
+			reg = <0 0x1020c000 0 0x1000>;
+		};
+
+		infra-mbist@1020d000 {
+			compatible = "mediatek,infra_mbist";
+			reg = <0 0x1020d000 0 0x1000>;
+		};
+
+		infracfg@1020e000 {
+			compatible = "mediatek,infracfg";
+			reg = <0 0x1020e000 0 0x1000>;
+		};
+
+		trng@1020f000 {
+			compatible = "mediatek,trng";
+			reg = <0 0x1020f000 0 0x1000>;
+		};
+
+		dxcc-sec@10210000 {
+			compatible = "mediatek,dxcc_sec";
+			reg = <0 0x10210000 0 0x1000>;
+		};
+
+		md2md-md1-ccif0@10211000 {
+			compatible = "mediatek,md2md_md1_ccif0";
+			reg = <0 0x10211000 0 0x1000>;
+		};
+
+		cq-dma@10212000 {
+			compatible = "mediatek,cq_dma";
+			reg = <0 0x10212000 0 0x1000>;
+			interrupts = <GIC_SPI 388 IRQ_TYPE_NONE 0>;
+		};
+
+		md2md-md2-ccif0@10213000 {
+			compatible = "mediatek,md2md_md2_ccif0";
+			reg = <0 0x10213000 0 0x1000>;
+		};
+
+		sramrom@10214000 {
+			compatible = "mediatek,sramrom";
+			reg = <0 0x10214000 0 0x1000>;
+		};
+
+		infra-bcrm@10215000 {
+			compatible = "mediatek,infra_bcrm";
+			reg = <0 0x10215000 0 0x1000>;
+		};
+
+		dbg-tracker2@10218000 {
+			compatible = "mediatek,dbg_tracker2";
+			reg = <0 0x10218000 0 0x1000>;
+		};
+
+		emi@10219000 {
+			compatible = "mediatek,emi";
+			reg = <0 0x10219000 0 0x1000>;
+			interrupts = <GIC_SPI 341 IRQ_TYPE_NONE 0>;
+		};
+
+		infra-device-mpu@1021a000 {
+			compatible = "mediatek,infra_device_mpu";
+			reg = <0 0x1021a000 0 0x1000>;
+		};
+
+		infracfg-mem@1021c000 {
+			compatible = "mediatek,infracfg_mem";
+			reg = <0 0x1021c000 0 0x1000>;
+		};
+
+		apcldmain@1021f000 {
+			compatible = "mediatek,apcldmain";
+			reg = <0 0x1021f000 0 0x1000>;
+		};
+
+		apcldmaout@1021b400 {
+			compatible = "mediatek,apcldmaout";
+			reg = <0 0x1021b400 0 0x400>;
+		};
+
+		apcldmamisc@1021b800 {
+			compatible = "mediatek,apcldmamisc";
+			reg = <0 0x1021b800 0 0x400>;
+		};
+
+		apcldmamisc@1021bc00 {
+			compatible = "mediatek,apcldmamisc";
+			reg = <0 0x1021bc00 0 0x400>;
+		};
+
+		mdcldmain@1021c000 {
+			compatible = "mediatek,mdcldmain";
+			reg = <0 0x1021c000 0 0x400>;
+		};
+
+		mdcldmaout@1021c400 {
+			compatible = "mediatek,mdcldmaout";
+			reg = <0 0x1021c400 0 0x400>;
+		};
+
+		mdcldmamisc@1021c800 {
+			compatible = "mediatek,mdcldmamisc";
+			reg = <0 0x1021c800 0 0x400>;
+		};
+
+		mdcldmamisc@1021cc00 {
+			compatible = "mediatek,mdcldmamisc";
+			reg = <0 0x1021cc00 0 0x400>;
+		};
+
+		infra-md@1021d000 {
+			compatible = "mediatek,infra_md";
+			reg = <0 0x1021d000 0 0x1000>;
+		};
+
+		bpi-bsi-slv0@1021e000 {
+			compatible = "mediatek,bpi_bsi_slv0";
+			reg = <0 0x1021e000 0 0x1000>;
+		};
+
+		bpi-bsi-slv1@1021f000 {
+			compatible = "mediatek,bpi_bsi_slv1";
+			reg = <0 0x1021f000 0 0x1000>;
+		};
+
+		bpi-bsi-slv2@10225000 {
+			compatible = "mediatek,bpi_bsi_slv2";
+			reg = <0 0x10225000 0 0x1000>;
+		};
+
+		m4u@10220000 {
+			compatible = "mediatek,m4u";
+			reg = <0 0x10220000 0 0x1000>;
+		};
+
+		m4u@10221000 {
+			compatible = "mediatek,m4u";
+			reg = <0 0x10221000 0 0x1000>;
+		};
+
+		m4u@10222000 {
+			compatible = "mediatek,m4u";
+			reg = <0 0x10222000 0 0x1000>;
+		};
+
+		m4u@10223000 {
+			compatible = "mediatek,m4u";
+			reg = <0 0x10223000 0 0x1000>;
+		};
+
+		apdma@10220000 {
+			compatible = "mediatek,apdma";
+			reg = <0 0x10220000 0 0x4000>;
+		};
+
+		m4u@10224000 {
+			compatible = "mediatek,m4u";
+			reg = <0 0x10224000 0 0x1000>;
+		};
+
+		emi-mpu@10226000 {
+			compatible = "mediatek,emi_mpu";
+			reg = <0 0x10226000 0 0x1000>;
+			interrupts = <GIC_SPI 345 IRQ_TYPE_NONE 0>;
+		};
+
+		vcp: vcp@1ea00000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,vcp";
+			vcp-support = <0>;
+			status = "okay";
+			reg = <0 0x1ea00000 0 0x40000>, /* tcm */
+				<0 0x1ec24000 0 0x1000>, /* cfg */
+				<0 0x1ec30000 0 0x1000>, /* cfg core0 */
+				<0 0x1ec32000 0 0x1000>, /* intc core0 */
+				<0 0x1ec37000 0 0x1000>, /* pwr ctrl */
+				<0 0x1ec40000 0 0x1000>, /* cfg core1 */
+				<0 0x1ec51000 0 0x1000>, /* bus dbg */
+				<0 0x1ec52000 0 0x1000>, /* bus tracker dbg */
+				<0 0x1ec60000 0 0x40000>, /* llc dbg */
+				<0 0x1eca5000 0 0x4>, /* cfg_sec dbg */
+				<0 0x1e820000 0 0x4>, /* mmu dbg */
+				<0 0x1ecfb000 0 0x100>, /* mbox0 base */
+				<0 0x1ecfb100 0 0x4>, /* mbox0 set */
+				<0 0x1ecfb10c 0 0x4>, /* mbox0 clr */
+				<0 0x1eca5020 0 0x4>, /* mbox0 init */
+				<0 0x1ecfc000 0 0x100>, /* mbox1 base */
+				<0 0x1ecfc100 0 0x4>, /* mbox1 set */
+				<0 0x1ecfc10c 0 0x4>, /* mbox1 clr */
+				<0 0x1eca5024 0 0x4>, /* mbox1 init */
+				<0 0x1ecfd000 0 0x100>, /* mbox2 base */
+				<0 0x1ecfd100 0 0x4>, /* mbox2 set */
+				<0 0x1ecfd10c 0 0x4>, /* mbox2 clr */
+				<0 0x1eca5028 0 0x4>, /* mbox2 init */
+				<0 0x1ecfe000 0 0x100>, /* mbox3 base */
+				<0 0x1ecfe100 0 0x4>, /* mbox3 set */
+				<0 0x1ecfe10c 0 0x4>, /* mbox3 clr */
+				<0 0x1eca502c 0 0x4>, /* mbox3 init */
+				<0 0x1ecff000 0 0x100>, /* mbox4 base */
+				<0 0x1ecff100 0 0x4>, /* mbox4 set */
+				<0 0x1ecff10c 0 0x4>, /* mbox4 clr */
+				<0 0x1eca5030 0 0x4>; /* mbox4 init */
+
+			reg-names = "vcp_sram_base",
+				"vcp_cfgreg",
+				"vcp_cfgreg_core0",
+				"vcp_intc_core0",
+				"vcp_pwr_ctl",
+				"vcp_cfgreg_core1",
+				"vcp_bus_debug",
+				"vcp_bus_tracker",
+				"vcp_l1creg",
+				"vcp_cfgreg_sec",
+				"vcp_cfgreg_mmu",
+				"mbox0_base",
+				"mbox0_set",
+				"mbox0_clr",
+				"mbox0_init",
+				"mbox1_base",
+				"mbox1_set",
+				"mbox1_clr",
+				"mbox1_init",
+				"mbox2_base",
+				"mbox2_set",
+				"mbox2_clr",
+				"mbox2_init",
+				"mbox3_base",
+				"mbox3_set",
+				"mbox3_clr",
+				"mbox3_init",
+				"mbox4_base",
+				"mbox4_set",
+				"mbox4_clr",
+				"mbox4_init";
+
+			interrupts = <GIC_SPI 328 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 329 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 330 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 331 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 332 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 333 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 334 IRQ_TYPE_LEVEL_HIGH 0>;
+
+			interrupt-names = "wdt",
+				"reserved",
+				"mbox0",
+				"mbox1",
+				"mbox2",
+				"mbox3",
+				"mbox4";
+
+			mbox-attr = <0x0>, /* mbox0 */
+				<0x0>, /* mbox1 */
+				<0x0>, /* mbox2 */
+				<0x0>, /* mbox3 */
+				<0x0>; /* mbox4 */
+
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&disp_iommu M4U_PORT_L49_P3_VIDEO_UP1>;
+			vcp-iommu-vdec-supply = <&vcp_io2>;
+			vcp-iommu-venc-supply = <&vcp_io3>;
+			vcp-iommu-work-supply = <&vcp_io4>;
+			vcp-iommu-sec-supply = <&vcp_io5>;
+			//mediatek,smi = <&smi_mdp_sub_comm0>;
+
+			core-0 = "enable";
+			vcp-hwvoter = "enable";
+			vcp-sram-size = <0x00040000>;
+			vcp-dram-size = <0x00800000>;
+			core-nums = <1>;	/* core number */
+			twohart = <1>;		/* two hart arch */
+			fmeter-ck = <7>;	/* clk table fmeter f_fmmup_ck */
+			fmeter-type = <3>;	/* fmeter type */
+			mbox-count = <5>;
+			vcp-excep-mode = <2>;
+			bus-debug-num-ports = <13>;
+			/* id, mbox, send_size*/
+			send-table =
+				< 0 0 18>,/* IPI_OUT_VDEC_1 */
+				< 2 1  2>,/* IPI_OUT_C_SLEEP_0 */
+				< 3 1  3>,/* IPI_OUT_TEST_0 */
+				< 9 1  2>,/* IPI_OUT_MMDVFS */
+				<11 1  2>,/* IPI_OUT_MMQOS */
+				<13 1  2>,/* IPI_OUT_MMDEBUG */
+				<15 1  8>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
+				<16 2 18>,/* IPI_OUT_VENC_0 */
+				<18 2  4>,/* IPI_OUT_VCP_MPOOL_0 */
+				<20 3  2>,/* IPI_OUT_C_SLEEP_1 */
+				<21 3  3>,/* IPI_OUT_TEST_1 */
+				<22 3  6>,/* IPI_OUT_LOGGER_CTRL */
+				<23 3  2>,/* IPI_OUT_VCPCTL_1 */
+				<28 4  4>;/* IPI_OUT_VCP_MPOOL_1 */
+
+			/* id, mbox, recv_size, recv_opt */
+			recv-table =
+				< 1 0 18 0>,/* IPI_IN_VDEC_1 */
+				< 2 1  1 1>,/* IPI_OUT_C_SLEEP_0 */
+				< 4 1 10 0>,/* IPI_IN_VCP_ERROR_INFO_0 */
+				< 5 1  1 0>,/* IPI_IN_VCP_READY_0 */
+				< 6 1  2 0>,/* IPI_IN_VCP_RAM_DUMP_0 */
+				<10 1  2 0>,/* IPI_IN_MMDVFS */
+				<12 1  2 0>,/* IPI_IN_MMQOS */
+				<14 1  2 0>,/* IPI_IN_MMDEBUG */
+				<15 1  8 1>,/* IPI_OUT_C_VCP_HWVOTER_DEBUG */
+				<17 2 18 0>,/* IPI_IN_VENC_0 */
+				<19 2  4 0>,/* IPI_IN_VCP_MPOOL_0 */
+				<20 3  1 1>,/* IPI_OUT_C_SLEEP_1 */
+				<24 3 10 0>,/* IPI_IN_VCP_ERROR_INFO_1 */
+				<25 3  6 0>,/* IPI_IN_LOGGER_CTRL */
+				<26 3  1 0>,/* IPI_IN_VCP_READY_1 */
+				<27 3  2 0>,/* IPI_IN_VCP_RAM_DUMP_1 */
+				<29 4  4 0>;/* IPI_IN_VCP_MPOOL_1 */
+
+			vcp-secure-dump = <1>;   /* enable dump via secure world*/
+			vcp-secure-dump-size = <0x200000>;
+			vcp-secure-dump-offset = <0x600000>;
+			vcp-sec-dump-key = "mediatek,me_vcp_reserved";
+
+			memorydump = <0x40000>, /* l2tcm */
+				<0x020000>, /* l1c */
+				<0x003f00>, /* regdump */
+				<0x000400>, /* trace buffer */
+				<0x160000>; /* dram */
+
+			vcp-mem-tbl = <0 0x78000>, /* VDEC_MEM_ID 480KB */
+				<1 0x12000>, /* VENC_MEM_ID 72KB */
+				<2 0x180000>, /* LOGGER 1MB 512KB*/
+				<3 0x400>, /* VDEC_SET_PROP_MEM_ID 1KB */
+				<4 0x400>, /* VENC_SET_PROP_MEM_ID 1KB */
+				<5 0x400>, /* VDEC_VCP_LOG_INFO_ID 1KB */
+				<6 0x400>, /* VENC_VCP_LOG_INFO_ID 1KB */
+				<7 0x100000>, /* GCE_MEM_ID 256*4KB */
+				<8 0x1000>, /* MMDVFS_MEM_ID 4KB */
+				<9 0x1000>, /* MMQOS_MEM_ID 4KB */
+				<10 0x0>; /* secure dump, its size is in secure_dump_size */
+
+			//power-domains = <&scpsys MT6858_POWER_DOMAIN_MM_PROC_DORMANT>;
+			//clocks = <&cksys_reg_clk CLK_TOP_MMUP_SEL>,
+			//	<&cksys_reg_clk CLK_TOP_MAINPLL_D3>,
+			//	<&cksys_reg_clk CLK_TOP_TCK_26M_MX9>;
+			//clock-names = "mmup-sel", "mmup-clk", "mmup-26m";
+		};
+
+		vcp_io2: vcp-iommu-vdec@1ec24000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible =  "mediatek,vcp-io-vdec";
+			vcp-support = <0>;
+			reg = <0 0x1ec24000 0 0x1000>;
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&disp_iommu M4U_PORT_L49_P3_VIDEO_UP1>;
+			iommus-supply = <&disp_iommu>;
+		};
+
+		vcp_io3: vcp-iommu-venc@1ec30000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible =  "mediatek,vcp-io-venc";
+			vcp-support = <0>;
+			reg = <0 0x1ec30000 0 0x1000>;
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&disp_iommu M4U_PORT_L49_P3_VIDEO_UP1>;
+			iommus-supply = <&disp_iommu>;
+		};
+
+		vcp_io4: vcp-iommu-work@1ec32000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,vcp-io-work";
+			vcp-support = <0>;
+			reg = <0 0x1ec32000 0 0x1000>;
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&disp_iommu M4U_PORT_L49_P3_VIDEO_UP1>;
+			iommus-supply = <&disp_iommu>;
+		};
+
+		vcp_io5: vcp-iommu-sec@1ec37000 {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible =  "mediatek,vcp-io-sec";
+			vcp-support = <0>;
+			reg = <0 0x1ec37000 0 0x1000>;
+			dma-ranges = <0x1 0x0 0x1 0x0 0x1 0x0>;
+			iommus = <&disp_iommu M4U_PORT_L49_P3_VIDEO_UP0>;
+			iommus-supply = <&disp_iommu>;
+		};
+
+		gce: gce@1e980000 {
+			compatible = "mediatek,mt6881-gce";
+			reg = <0 0x1e980000 0 0x4000>;
+			interrupts = <GIC_SPI 422 IRQ_TYPE_LEVEL_HIGH 0>;
+			#mbox-cells = <3>;
+			#gce-event-cells = <1>;
+			#gce-subsys-cells = <2>;
+			default-tokens = /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_0>,
+					 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_1>,
+					 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_2>,
+					 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_3>,
+					 /bits/ 16 <CMDQ_SYNC_TOKEN_GPR_SET_4>,
+					 /bits/ 16 <CMDQ_SYNC_RESOURCE_WROT0>,
+					 /bits/ 16 <CMDQ_SYNC_RESOURCE_WROT1>,
+					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MDP_LOCK>,
+					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>,
+					 /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>;
+#if 0
+			mboxes = <&gce 13 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			mediatek,smi = <&mminfra_smi_3x1_sub_comm>;
+			prebuilt-enable;
+			power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
+			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_D>,
+				<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
+			clock-names = "gce","gce-timer";
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&disp_iommu M4U_L41_GCE_DM>;
+			dma-mask-bit = <35>;
+			cmdq-dump-buf-size = <1>;
+			cmdq-tfa-read-dbg;
+#endif
+		};
+
+		gce_m: gce@1e990000 {
+			compatible = "mediatek,mt6881-gce";
+			reg = <0 0x1e990000 0 0x4000>;
+			interrupts = <GIC_SPI 414 IRQ_TYPE_LEVEL_HIGH 0>;
+			#mbox-cells = <3>;
+			#gce-event-cells = <1>;
+			#gce-subsys-cells = <2>;
+#if 0
+			mboxes = <&gce_m 13 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			mediatek,smi = <&mminfra_smi_3x1_sub_comm>;
+			prebuilt-enable;
+			power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
+			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_M>,
+				<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
+			clock-names = "gce","gce-timer";
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&disp_iommu M4U_L41_GCE_MM>;
+			dma-mask-bit = <35>;
+			cmdq-dump-buf-size = <1>;
+			cmdq-tfa-read-dbg;
+#endif
+		};
+
+		gce_m_2: gce@1e99a000 {
+			compatible = "mediatek,mt6881-gce";
+			reg = <0 0x1e99a000 0 0x4000>;
+			interrupts = <GIC_SPI 418 IRQ_TYPE_LEVEL_HIGH 0>;
+			#mbox-cells = <3>;
+			#gce-event-cells = <1>;
+			#gce-subsys-cells = <2>;
+#if 0
+			mboxes = <&gce_m 13 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
+			mediatek,smi = <&mminfra_smi_3x1_sub_comm>;
+			prebuilt-enable;
+			power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
+			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_M>,
+				<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
+			clock-names = "gce","gce-timer";
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&disp_iommu M4U_L41_GCE_MM>;
+			dma-mask-bit = <35>;
+			cmdq-dump-buf-size = <1>;
+			cmdq-tfa-read-dbg;
+#endif
+		};
+
+		cmdq_test: cmdq-test@0 {
+			compatible = "mediatek,cmdq-test";
+			mediatek,gce = <&gce>;
+			mboxes = <&gce 8 3000 CMDQ_THR_PRIO_1>,
+				<&gce 9 3000 CMDQ_THR_PRIO_1>,
+				<&gce 28 3000 CMDQ_THR_PRIO_1>;
+			gce-event-names = "token_user_0";
+			gce-events = <&gce CMDQ_SYNC_TOKEN_USER_0>;
+			token-user0 = /bits/ 16 <CMDQ_SYNC_TOKEN_USER_0>;
+			token-for-ut = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MDP_LOCK>;
+			token-timeout = /bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_MML_LOCK>;
+		};
+
+		cmdq_config: cmdq-config@0 {
+			gce-core-num = <3>;
+			sec-cmdq-enable = <0 0 0>;
+			cmdq-first-err-disable = <0 0 0>;
+		};
+
+		infra-dpmaif@1022c000 {
+			compatible = "mediatek,infra_dpmaif";
+			reg = <0 0x1022c000 0 0x1000>;
+		};
+
+		infra-dpmaif@1022d000 {
+			compatible = "mediatek,infra_dpmaif";
+			reg = <0 0x1022d000 0 0x1000>;
+		};
+
+		infra-dpmaif@1022e000 {
+			compatible = "mediatek,infra_dpmaif";
+			reg = <0 0x1022e000 0 0x1000>;
+		};
+
+		infra-dpmaif@1022f000 {
+			compatible = "mediatek,infra_dpmaif";
+			reg = <0 0x1022f000 0 0x1000>;
+		};
+
+		dramc-ch0-top0@10230000 {
+			compatible = "mediatek,dramc_ch0_top0";
+			reg = <0 0x10230000 0 0x2000>;
+		};
+
+		dramc-ch0-top1@10232000 {
+			compatible = "mediatek,dramc_ch0_top1";
+			reg = <0 0x10232000 0 0x2000>;
+		};
+
+		dramc-ch0-top2@10234000 {
+			compatible = "mediatek,dramc_ch0_top2";
+			reg = <0 0x10234000 0 0x1000>;
+		};
+
+		dramc-ch0-top3@10235000 {
+			compatible = "mediatek,dramc_ch0_top3";
+			reg = <0 0x10235000 0 0x1000>;
+		};
+
+		dramc-ch0-top4@10236000 {
+			compatible = "mediatek,dramc_ch0_top4";
+			reg = <0 0x10236000 0 0x2000>;
+		};
+
+		dramc-ch0-top5@10238000 {
+			compatible = "mediatek,dramc_ch0_top5";
+			reg = <0 0x10238000 0 0x2000>;
+			interrupts = <GIC_SPI 316 IRQ_TYPE_NONE 0>;
+		};
+
+		dramc-ch0-top6@1023a000 {
+			compatible = "mediatek,dramc_ch0_top6";
+			reg = <0 0x1023a000 0 0x2000>;
+		};
+
+		ap-ccif2@1023c000 {
+			compatible = "mediatek,ap_ccif2";
+			reg = <0 0x1023c000 0 0x1000>;
+		};
+
+		md-ccif2@1023d000 {
+			compatible = "mediatek,md_ccif2";
+			reg = <0 0x1023d000 0 0x1000>;
+		};
+
+		ap-ccif3@1023e000 {
+			compatible = "mediatek,ap_ccif3";
+			reg = <0 0x1023e000 0 0x1000>;
+		};
+
+		md-ccif3@1023f000 {
+			compatible = "mediatek,md_ccif3";
+			reg = <0 0x1023f000 0 0x1000>;
+		};
+
+		dramc-ch1-top0@10240000 {
+			compatible = "mediatek,dramc_ch1_top0";
+			reg = <0 0x10240000 0 0x2000>;
+		};
+
+		dramc-ch1-top1@10242000 {
+			compatible = "mediatek,dramc_ch1_top1";
+			reg = <0 0x10242000 0 0x2000>;
+		};
+
+		dramc-ch1-top2@10244000 {
+			compatible = "mediatek,dramc_ch1_top2";
+			reg = <0 0x10244000 0 0x1000>;
+		};
+
+		dramc-ch1-top3@10245000 {
+			compatible = "mediatek,dramc_ch1_top3";
+			reg = <0 0x10245000 0 0x1000>;
+		};
+
+		dramc-ch1-top4@10246000 {
+			compatible = "mediatek,dramc_ch1_top4";
+			reg = <0 0x10246000 0 0x2000>;
+		};
+
+		dramc-ch1-top5@10248000 {
+			compatible = "mediatek,dramc_ch1_top5";
+			reg = <0 0x10248000 0 0x2000>;
+			interrupts = <GIC_SPI 317 IRQ_TYPE_NONE 0>;
+		};
+
+		dramc-ch1-top6@1024a000 {
+			compatible = "mediatek,dramc_ch1_top6";
+			reg = <0 0x1024a000 0 0x2000>;
+		};
+
+		ap-ccif4@1024c000 {
+			compatible = "mediatek,ap_ccif4";
+			reg = <0 0x1024c000 0 0x1000>;
+		};
+
+		md-ccif4@1024d000 {
+			compatible = "mediatek,md_ccif4";
+			reg = <0 0x1024d000 0 0x1000>;
+		};
+
+		md-ccif4@1024e000 {
+			compatible = "mediatek,md_ccif4";
+			reg = <0 0x1024e000 0 0x1000>;
+		};
+
+		dramc-ch1-top0@10250000 {
+			compatible = "mediatek,dramc_ch1_top0";
+			reg = <0 0x10250000 0 0x2000>;
+		};
+
+		dramc-ch1-top1@10252000 {
+			compatible = "mediatek,dramc_ch1_top1";
+			reg = <0 0x10252000 0 0x2000>;
+		};
+
+		dramc-ch1-top2@10254000 {
+			compatible = "mediatek,dramc_ch1_top2";
+			reg = <0 0x10254000 0 0x1000>;
+		};
+
+		dramc-ch1-top3@10255000 {
+			compatible = "mediatek,dramc_ch1_top3";
+			reg = <0 0x10255000 0 0x1000>;
+		};
+
+		dramc-ch1-rsv@10256000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x10256000 0 0x2000>;
+		};
+
+		dramc-ch1-rsv@10258000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x10258000 0 0x2000>;
+		};
+
+		dramc-ch1-rsv@1025a000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x1025a000 0 0x2000>;
+		};
+
+		ap-ccif5@1025c000 {
+			compatible = "mediatek,ap_ccif5";
+			reg = <0 0x1025c000 0 0x1000>;
+		};
+
+		md-ccif5@1025d000 {
+			compatible = "mediatek,md_ccif5";
+			reg = <0 0x1025d000 0 0x1000>;
+		};
+
+		mm-vpu-m0-sub-common@1025e000 {
+			compatible = "mediatek,mm_vpu_m0_sub_common";
+			reg = <0 0x1025e000 0 0x1000>;
+		};
+
+		mm-vpu-m1-sub-common@1025f000 {
+			compatible = "mediatek,mm_vpu_m1_sub_common";
+			reg = <0 0x1025f000 0 0x1000>;
+		};
+
+		dramc-ch1-top0@10260000 {
+			compatible = "mediatek,dramc_ch1_top0";
+			reg = <0 0x10260000 0 0x2000>;
+		};
+
+		dramc-ch1-top1@10262000 {
+			compatible = "mediatek,dramc_ch1_top1";
+			reg = <0 0x10262000 0 0x2000>;
+		};
+
+		dramc-ch1-top2@10264000 {
+			compatible = "mediatek,dramc_ch1_top2";
+			reg = <0 0x10264000 0 0x1000>;
+		};
+
+		dramc-ch1-top3@10265000 {
+			compatible = "mediatek,dramc_ch1_top3";
+			reg = <0 0x10265000 0 0x1000>;
+		};
+
+		dramc-ch1-rsv@10266000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x10266000 0 0x2000>;
+		};
+
+		dramc-ch1-rsv@10268000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x10268000 0 0x2000>;
+		};
+
+		dramc-ch1-rsv@1026a000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x1026a000 0 0x2000>;
+		};
+
+		infracfg-ao-mem@10270000 {
+			compatible = "mediatek,infracfg_ao_mem";
+			reg = <0 0x10270000 0 0x1000>;
+		};
+
+		mm-vpu-m1-sub-common@1030c000 {
+			compatible = "mediatek,mm_vpu_m1_sub_common";
+			reg = <0 0x1030c000 0 0x1000>;
+		};
+
+		mm-vpu-m1-sub-common@1030d000 {
+			compatible = "mediatek,mm_vpu_m1_sub_common";
+			reg = <0 0x1030d000 0 0x1000>;
+		};
+
+		sys-cirq@10312000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10312000 0 0x1000>;
+		};
+
+		sys-cirq@10313000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10313000 0 0x1000>;
+		};
+
+		sys-cirq@10314000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10314000 0 0x1000>;
+		};
+
+		sys-cirq@10350000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10350000 0 0x1000>;
+		};
+
+		sys-cirq@10351000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10351000 0 0x1000>;
+		};
+
+		sys-cirq@10352000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10352000 0 0x1000>;
+		};
+
+		sys-cirq@10354000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10354000 0 0x1000>;
+		};
+
+		sys-cirq@10355000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10355000 0 0x1000>;
+		};
+
+		sys-cirq@10356000 {
+			compatible = "mediatek,sys_cirq";
+			reg = <0 0x10356000 0 0x1000>;
+		};
+
+		gce@10318000 {
+			compatible = "mediatek,gce";
+			reg = <0 0x10318000 0 0x1000>;
+		};
+
+		gce@10319000 {
+			compatible = "mediatek,gce";
+			reg = <0 0x10319000 0 0x1000>;
+		};
+
+		gce@1031a000 {
+			compatible = "mediatek,gce";
+			reg = <0 0x1031a000 0 0x1000>;
+		};
+
+		gce@1031b000 {
+			compatible = "mediatek,gce";
+			reg = <0 0x1031b000 0 0x1000>;
+		};
+
+		pwrmcu-partition-0@10400000 {
+			compatible = "mediatek,pwrmcu_partition_0";
+			reg = <0 0x10400000 0 0x100000>;
+		};
+
+		pwrmcu-partition-1@10400000 {
+			compatible = "mediatek,pwrmcu_partition_1";
+			reg = <0 0x10400000 0 0x10000>;
+		};
+
+		pwrmcu-partition-2@10410000 {
+			compatible = "mediatek,pwrmcu_partition_2";
+			reg = <0 0x10410000 0 0x10000>;
+		};
+
+		pwrmcu-partition-3@10420000 {
+			compatible = "mediatek,pwrmcu_partition_3";
+			reg = <0 0x10420000 0 0x20000>;
+		};
+
+		pwrmcu-partition-4@10440000 {
+			compatible = "mediatek,pwrmcu_partition_4";
+			reg = <0 0x10440000 0 0x10000>;
+		};
+
+		pwrmcu-partition-5@10450000 {
+			compatible = "mediatek,pwrmcu_partition_5";
+			reg = <0 0x10450000 0 0x10000>;
+		};
+
+		pwrmcu-partition-6@10460000 {
+			compatible = "mediatek,pwrmcu_partition_6";
+			reg = <0 0x10460000 0 0x10000>;
+		};
+
+		pwrmcu-partition-7@10470000 {
+			compatible = "mediatek,pwrmcu_partition_7";
+			reg = <0 0x10470000 0 0x10000>;
+		};
+
+		pwrmcu-partition-8@10480000 {
+			compatible = "mediatek,pwrmcu_partition_8";
+			reg = <0 0x10480000 0 0x10000>;
+		};
+
+		pwrmcu-partition-9@10490000 {
+			compatible = "mediatek,pwrmcu_partition_9";
+			reg = <0 0x10490000 0 0x10000>;
+		};
+
+		pwrmcu-partition-10@104a0000 {
+			compatible = "mediatek,pwrmcu_partition_10";
+			reg = <0 0x104a0000 0 0x20000>;
+		};
+
+		pwrmcu-partition-11@104c0000 {
+			compatible = "mediatek,pwrmcu_partition_11";
+			reg = <0 0x104c0000 0 0x40000>;
+		};
+
+		pwrmcu-partition-2@10401000 {
+			compatible = "mediatek,pwrmcu_partition_2";
+			reg = <0 0x10401000 0 0x1000>;
+		};
+
+		pwrmcu-partition-3@10402000 {
+			compatible = "mediatek,pwrmcu_partition_3";
+			reg = <0 0x10402000 0 0x1000>;
+		};
+
+		pwrmcu-partition-4@10403000 {
+			compatible = "mediatek,pwrmcu_partition_4";
+			reg = <0 0x10403000 0 0x1000>;
+		};
+
+		pwrmcu-partition-5@10404000 {
+			compatible = "mediatek,pwrmcu_partition_5";
+			reg = <0 0x10404000 0 0x1000>;
+		};
+
+		pwrmcu-partition-6@10405000 {
+			compatible = "mediatek,pwrmcu_partition_6";
+			reg = <0 0x10405000 0 0x1000>;
+		};
+
+		pwrmcu-partition-7@10406000 {
+			compatible = "mediatek,pwrmcu_partition_7";
+			reg = <0 0x10406000 0 0x1000>;
+		};
+
+		dramc-md32-s0-apb@10900000 {
+			compatible = "mediatek,dramc_md32_s0_apb";
+			reg = <0 0x10900000 0 0x40000>;
+		};
+
+		dramc-md32-s0-apb@10940000 {
+			compatible = "mediatek,dramc_md32_s0_apb";
+			reg = <0 0x10940000 0 0xc0000>;
+		};
+
+		dramc-md32-s1-apb@10a00000 {
+			compatible = "mediatek,dramc_md32_s1_apb";
+			reg = <0 0x10a00000 0 0x40000>;
+		};
+
+		dramc-md32-s1-apb@10a40000 {
+			compatible = "mediatek,dramc_md32_s1_apb";
+			reg = <0 0x10a40000 0 0xc0000>;
+		};
+
+		dramc-ch1-rsv@10b00000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x10b00000 0 0x40000>;
+		};
+
+		dramc-ch1-rsv@10b40000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x10b40000 0 0xc0000>;
+		};
+
+		dramc-ch1-rsv@10c00000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x10c00000 0 0x40000>;
+		};
+
+		dramc-ch1-rsv@10c40000 {
+			compatible = "mediatek,dramc_ch1_rsv";
+			reg = <0 0x10c40000 0 0xc0000>;
+		};
+
+		ufsphy: ufsphy@112a0000 {
+			compatible = "mediatek,mt8183-ufsphy";
+			#phy-cells = <0>;
+			mphy-ver = <1>;
+			ranges;
+			reg = <0 0x112a0000 0 0x10000>;
+			bootmode = <&chosen>;
+		};
+
+		ufshci: ufshci@112b0000 {
+			compatible = "mediatek,mt8183-ufshci";
+			reg = <0 0x112b0000 0 0x2300>;
+			phys = <&ufsphy>;
+			interrupts = <GIC_SPI 786 IRQ_TYPE_LEVEL_HIGH 0>;
+
+#if 0
+			clocks =
+				<&topckgen_clk CLK_TOP_UFS_SEL>,
+				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
+				<&topckgen_clk CLK_TOP_UFS_MBIST_SEL>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SAP_CFG>,
+				<&ufscfg_ao_clk CLK_UFSAO_PHY_TOP_AHB_S_BUS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AHB>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AXI>;
+
+			clock-names =
+				"ufs_sel",
+				"ufs_fde",
+				"ufs_mbist",
+				"unipro_tx_sym",
+				"unipro_rx_sym0",
+				"unipro_rx_sym1",
+				"unipro_sys",
+				"unipro_phy_sap",
+				"phy_top_ahb_s_bus",
+				"ufshci_ufs",
+				"ufshci_aes",
+				"ufshci_ufs_ahb",
+				"ufshci_aes_axi";
+
+			freq-table-hz =
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>,
+				<0 0>;
+
+			vcc-supply  = <&mt6363_vemc>;
+			vccq-supply = <&mt6363_vufs12>;
+
+			resets =      <&ufscfgpdn_rst 0>,
+				      <&ufscfgpdn_rst 1>,
+				      <&ufscfgpdn_rst 2>;
+			reset-names = "unipro_rst",
+				      "crypto_rst",
+				      "hci_rst";
+#endif
+			mediatek,ufs-mphy-debug;
+			mediatek,ufs-disable-mcq;
+			/* Should be removed after SB */
+			mediatek,ufs-disable-ah8;
+			bootmode = <&chosen>;
+		};
+
+		gic500@c000000 {
+			compatible = "mediatek,gic500";
+			reg = <0 0x0c000000 0 0x400000>;
+		};
+
+		gic-cpu@c400000 {
+			compatible = "mediatek,gic_cpu";
+			reg = <0 0x0c400000 0 0x40000>;
+		};
+
+		dfd@c600000 {
+			compatible = "mediatek,dfd";
+			reg = <0 0x0c600000 0 0x100000>;
+		};
+
+		dbg-cti@d020000 {
+			compatible = "mediatek,dbg_cti";
+			reg = <0 0x0d020000 0 0x10000>;
+		};
+
+		dbg-etr@d030000 {
+			compatible = "mediatek,dbg_etr";
+			reg = <0 0x0d030000 0 0x1000>;
+		};
+
+		dbg-dem@d0a0000 {
+			compatible = "mediatek,dbg_dem";
+			reg = <0 0x0d0a0000 0 0x10000>;
+		};
+
+		dbg-mdsys1@d100000 {
+			compatible = "mediatek,dbg_mdsys1";
+			reg = <0 0x0d100000 0 0x100000>;
+		};
+
+		g3d-config@3a500000 {
+			compatible = "mediatek,g3d_config";
+			reg = <0 0x3a500000 0 0x10000>;
+		};
+
+		g3d-config@3a510000 {
+			compatible = "mediatek,g3d_config";
+			reg = <0 0x3a510000 0 0x10000>;
+		};
+
+		g3d-dvfs@3a530000 {
+			compatible = "mediatek,g3d_dvfs";
+			reg = <0 0x3a530000 0 0x1000>;
+		};
+
+		g3d-mpu@3a590000 {
+			compatible = "mediatek,g3d_mpu";
+			reg = <0 0x3a590000 0 0x1000>;
+		};
+
+		g3d-gpueb@3d000000 {
+			compatible = "mediatek,g3d_gpueb";
+			reg = <0 0x3d000000 0 0xa0000>;
+		};
+
+		g3d-config@3d400000 {
+			compatible = "mediatek,g3d_config";
+			reg = <0 0x3d400000 0 0x1000>;
+		};
+
+		g3d-config@3d800000 {
+			compatible = "mediatek,g3d_config";
+			reg = <0 0x3d800000 0 0x10000>;
+		};
+
+		g3d-config@3d810000 {
+			compatible = "mediatek,g3d_config";
+			reg = <0 0x3d810000 0 0x400>;
+		};
+
+		g3d-config@3d810400 {
+			compatible = "mediatek,g3d_config";
+			reg = <0 0x3d810400 0 0x400>;
+		};
+
+		dfd@3d820000 {
+			compatible = "mediatek,dfd";
+			reg = <0 0x3d820000 0 0x4000>;
+		};
+
+		dispsys_config: dispsys-config@14000000 {
+			compatible = "mediatek,mt6881-disp";
+			reg = <0 0x14000000 0 0x1000>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			// dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			// iommus = <&disp_iommu M4U_L0_P2_DISP_OVL1_2L_RDMA1>;
+			// fake-engine = <&smi_larb0 M4U_PORT_L0_DISP_FAKE0>,
+				      // <&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
+#if 0
+			#clock-cells = <1>;
+			power-domains = <&scpsys MT6897_POWER_DOMAIN_DIS0_SHUTDOWN>;
+			clocks = <&dispsys_config_clk CLK_DISPSYS0_DISPSYS_CONFIG>,
+			<&dispsys_config_clk CLK_DISPSYS0_DISP_MUTEX0>,
+			<&dispsys_config_clk CLK_DISPSYS0_DISP_RELAY0>,
+			<&dispsys_config_clk CLK_DISPSYS0_26M_CLK>,
+			clock-num = <4>;
+#endif
+#if 0
+			operating-points-v2 = <&opp_table_disp>;
+			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+			interconnects = <&mmqos SLAVE_LARB(41) &mmqos SLAVE_COMMON(0)>,
+					<&mmqos SLAVE_LARB(42) &mmqos SLAVE_COMMON(1)>,
+					<&mmqos SLAVE_LARB(43) &mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "disp_hrt_qos",
+					"disp_hrt_by_larb",
+					"disp_dp_hrt_by_larb";
+#endif
+			// pre-define-bw = <0xffffffff>, <4200>, <0>;
+			// crtc-ovl-usage = <7>, <4>, <8>;
+#if 0
+			nvmem-cells = <&efuse_segment>;
+			nvmem-cell-names = "efuse_seg_disp_cell";
+#endif
+			/* define threads, see mt6881-gce.h */
+			mediatek,mailbox-gce = <&gce>;
+			mboxes = <&gce 0 0 CMDQ_THR_PRIO_4>,
+				<&gce 1 0 CMDQ_THR_PRIO_4>,
+				<&gce 2 0 CMDQ_THR_PRIO_4>,
+				<&gce 24 0 CMDQ_THR_PRIO_4>,
+				<&gce 3 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+				<&gce 5 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+				<&gce 25 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+				<&gce 7 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+				<&gce 4 0 CMDQ_THR_PRIO_4>,
+				<&gce 6 0 CMDQ_THR_PRIO_3>,
+				<&gce 22 0 CMDQ_THR_PRIO_1>;
+				// <&gce_sec 8 0 CMDQ_THR_PRIO_3>,
+				// <&gce_sec 9 0 CMDQ_THR_PRIO_3>,
+				// <&gce_sec 9 0 CMDQ_THR_PRIO_3>;
+
+			gce-client-names = "CLIENT_CFG0",
+				"CLIENT_CFG1",
+				"CLIENT_CFG2",
+				"CLIENT_CFG3",
+				"CLIENT_TRIG_LOOP0",
+				"CLIENT_TRIG_LOOP1",
+				"CLIENT_TRIG_LOOP3",
+				"CLIENT_EVENT_LOOP0",
+				"CLIENT_SUB_CFG0",
+				"CLIENT_DSI_CFG0",
+				"CLIENT_PQ0";
+				// "CLIENT_SEC_CFG0",
+				// "CLIENT_SEC_CFG1",
+				// "CLIENT_SEC_CFG2";
+
+			/* define subsys, see mt6881-gce.h */
+			gce-event-names =
+				"disp_mutex0_eof",
+				// "disp_mutex1_eof",
+				"disp_token_stream_dirty0",
+				// "disp_token_stream_dirty1",
+				// "disp_token_stream_dirty3",
+				"disp_wait_dsi0_te",
+				// "disp_wait_dsi1_te",
+				"disp_token_stream_eof0",
+				// "disp_token_stream_eof1",
+				// "disp_token_stream_eof3",
+				"disp_dsi0_eof",
+				// "disp_dsi1_eof",
+				"disp_token_esd_eof0",
+				// "disp_token_esd_eof1",
+				// "disp_token_esd_eof3",
+				// "disp_rdma0_eof0",
+				"disp_wdma0_eof0",
+				"disp_token_stream_block0",
+				// "disp_token_stream_block1",
+				// "disp_token_stream_block3",
+				"disp_token_cabc_eof0",
+				// "disp_token_cabc_eof1",
+				// "disp_token_cabc_eof3",
+				"disp_wdma0_eof2",
+				// "disp_wait_dp_intf0_te",
+				// "disp_dp_intf0_eof",
+				// "disp_mutex2_eof",
+				"disp_dsi0_sof0",
+				"disp_token_vfp_period0",
+				"disp_token_disp_va_start0",
+				"disp_token_disp_va_end0",
+				"disp_token_disp_va_start2",
+				"disp_token_disp_va_end2",
+				"disp_token_disp_te0",
+				"disp_token_disp_prefetch_te0",
+				// "disp_dsi0_targetline0",
+				// "disp_dsi1_targetline0",
+				"disp_token_disp_v_idle_power_on0",
+				"disp_token_disp_check_trigger_merge0";
+
+			gce-events =
+				<&gce CMDQ_EVENT_DISPSYS_STREAM_DONE_ENG_EVENT_0>,
+				// <&gce CMDQ_EVENT_DISPSYS_DP_INTF_FRAME_DONE>,
+				<&gce CMDQ_SYNC_TOKEN_CONFIG_DIRTY>,
+				// <&gce CMDQ_SYNC_TOKEN_CONFIG_DIRTY_1>,
+				// <&gce CMDQ_SYNC_TOKEN_CONFIG_DIRTY_3>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_TE_ENG_EVENT>,
+				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_TE_ENG_EVENT>,
+				<&gce CMDQ_SYNC_TOKEN_STREAM_EOF>,
+				// <&gce CMDQ_SYNC_TOKEN_STREAM_EOF_1>,
+				// <&gce CMDQ_SYNC_TOKEN_STREAM_EOF_3>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_FRAME_DONE>,
+				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_FRAME_DONE>,
+				<&gce CMDQ_SYNC_TOKEN_ESD_EOF>,
+				// <&gce CMDQ_SYNC_TOKEN_ESD_EOF_1>,
+				// <&gce CMDQ_SYNC_TOKEN_ESD_EOF_3>,
+				// <&gce CMDQ_EVENT_DISPSYS_DISP_MDP_RDMA0_FRAME_DONE>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_WDMA1_FRAME_DONE>,
+				<&gce CMDQ_SYNC_TOKEN_STREAM_BLOCK>,
+				// <&gce CMDQ_SYNC_TOKEN_STREAM_BLOCK_1>,
+				// <&gce CMDQ_SYNC_TOKEN_STREAM_BLOCK_3>,
+				<&gce CMDQ_SYNC_TOKEN_CABC_EOF>,
+				// <&gce CMDQ_SYNC_TOKEN_CABC_EOF_1>,
+				// <&gce CMDQ_SYNC_TOKEN_CABC_EOF_3>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_WDMA1_FRAME_DONE>,
+				// <&gce CMDQ_EVENT_DISPSYS_DISP_DP_INTF0_SOF>,
+				// <&gce CMDQ_EVENT_DISPSYS1_DP_INTF_FRAME_DONE>,
+				// <&gce CMDQ_EVENT_DISPSYS1_DP_INTF_FRAME_DONE>,
+				<&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_SOF>,
+				<&gce CMDQ_SYNC_TOKEN_VFP_PERIOD>,
+				<&gce CMDQ_SYNC_TOKEN_DISP_VA_START>,
+				<&gce CMDQ_SYNC_TOKEN_DISP_VA_END>,
+				<&gce CMDQ_SYNC_TOKEN_DISP_VA_START>,
+				<&gce CMDQ_SYNC_TOKEN_DISP_VA_END>,
+				<&gce CMDQ_SYNC_TOKEN_TE_0>,
+				<&gce CMDQ_SYNC_TOKEN_PREFETCH_TE_0>,
+				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI0_TARGET_LINE_ENG_EVENT>,
+				// <&gce CMDQ_EVENT_DISPSYS_DISP_DSI1_TARGET_LINE_ENG_EVENT>,
+				<&gce CMDQ_SYNC_TOKEN_VIDLE_POWER_ON>,
+				<&gce CMDQ_SYNC_TOKEN_CHECK_TRIGGER_MERGE>;
+
+			helper-name = "MTK_DRM_OPT_STAGE",
+				"MTK_DRM_OPT_USE_CMDQ",
+				"MTK_DRM_OPT_USE_M4U",
+				"MTK_DRM_OPT_MMQOS_SUPPORT",
+				"MTK_DRM_OPT_MMDVFS_SUPPORT",
+				"MTK_DRM_OPT_SODI_SUPPORT",
+				"MTK_DRM_OPT_IDLE_MGR",
+				"MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE",
+				"MTK_DRM_OPT_IDLEMGR_BY_REPAINT",
+				"MTK_DRM_OPT_IDLEMGR_ENTER_ULPS",
+				"MTK_DRM_OPT_IDLEMGR_KEEP_LP11",
+				"MTK_DRM_OPT_DYNAMIC_RDMA_GOLDEN_SETTING",
+				"MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ",
+				"MTK_DRM_OPT_IDLEMGR_ASYNC",
+				"MTK_DRM_OPT_MET_LOG",
+				"MTK_DRM_OPT_USE_PQ",
+				"MTK_DRM_OPT_ESD_CHECK_RECOVERY",
+				"MTK_DRM_OPT_ESD_CHECK_SWITCH",
+				"MTK_DRM_OPT_PRESENT_FENCE",
+				"MTK_DRM_OPT_RDMA_UNDERFLOW_AEE",
+				"MTK_DRM_OPT_DSI_UNDERRUN_AEE",
+				"MTK_DRM_OPT_ODDMR_OD_AEE",
+				"MTK_DRM_OPT_ODDMR_DMR_AEE",
+				"MTK_DRM_OPT_HRT",
+				"MTK_DRM_OPT_HRT_MODE",
+				"MTK_DRM_OPT_DELAYED_TRIGGER",
+				"MTK_DRM_OPT_OVL_EXT_LAYER",
+				"MTK_DRM_OPT_AOD",
+				"MTK_DRM_OPT_RPO",
+				"MTK_DRM_OPT_DUAL_PIPE",
+				"MTK_DRM_OPT_DC_BY_HRT",
+				"MTK_DRM_OPT_OVL_WCG",
+				"MTK_DRM_OPT_OVL_SBCH",
+				"MTK_DRM_OPT_COMMIT_NO_WAIT_VBLANK",
+				"MTK_DRM_OPT_MET",
+				"MTK_DRM_OPT_REG_PARSER_RAW_DUMP",
+				"MTK_DRM_OPT_VP_PQ",
+				"MTK_DRM_OPT_GAME_PQ",
+				"MTK_DRM_OPT_MMPATH",
+				"MTK_DRM_OPT_HBM",
+				"MTK_DRM_OPT_VDS_PATH_SWITCH",
+				"MTK_DRM_OPT_LAYER_REC",
+				"MTK_DRM_OPT_CLEAR_LAYER",
+				"MTK_DRM_OPT_LFR",
+				"MTK_DRM_OPT_SF_PF",
+				"MTK_DRM_OPT_DYN_MIPI_CHANGE",
+				"MTK_DRM_OPT_PRIM_DUAL_PIPE",
+				"MTK_DRM_OPT_MSYNC2_0",
+				"MTK_DRM_OPT_MML_PRIMARY",
+				"MTK_DRM_OPT_MML_SUPPORT_CMD_MODE",
+				"MTK_DRM_OPT_MML_PQ",
+				"MTK_DRM_OPT_MML_IR",
+				"MTK_DRM_OPT_DUAL_TE",
+				"MTK_DRM_OPT_RES_SWITCH",
+				"MTK_DRM_OPT_PREFETCH_TE",
+				"MTK_DRM_OPT_VIDLE_APSRC_OFF",
+				"MTK_DRM_OPT_VIDLE_DSI_PLL_OFF",
+				"MTK_DRM_OPT_CHECK_TRIGGER_MERGE",
+				"MTK_DRM_OPT_VIRTUAL_DISP",
+				"MTK_DRM_OPT_OVL_BW_MONITOR",
+				"MTK_DRM_OPT_GPU_CACHE",
+				"MTK_DRM_OPT_SPHRT",
+				"MTK_DRM_OPT_SDPA_OVL_SWITCH",
+				"MTK_DRM_OPT_HRT_BY_LARB",
+				"MTK_DRM_OPT_RES_SWITCH_ON_AP",
+				"MTK_DRM_OPT_TILE_OVERHEAD";
+
+			helper-value = <1>, /*MTK_DRM_OPT_STAGE*/
+				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
+				<0>, /*MTK_DRM_OPT_USE_M4U*/
+				<0>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
+				<0>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
+				<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
+				<0>, /*MTK_DRM_OPT_IDLE_MGR*/
+				<0>, /*MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE*/
+				<0>, /*MTK_DRM_OPT_IDLEMGR_BY_REPAINT*/
+				<0>, /*MTK_DRM_OPT_IDLEMGR_ENTER_ULPS*/
+				<0>, /*MTK_DRM_OPT_IDLEMGR_KEEP_LP11*/
+				<0>, /*MTK_DRM_OPT_DYNAMIC_RDMA_GOLDEN_SETTING*/
+				<0>, /*MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ*/
+				<0>, /*MTK_DRM_OPT_IDLEMGR_ASYNC*/
+				<0>, /*MTK_DRM_OPT_MET_LOG*/
+				<0>, /*MTK_DRM_OPT_USE_PQ*/
+				<0>, /*MTK_DRM_OPT_ESD_CHECK_RECOVERY*/
+				<0>, /*MTK_DRM_OPT_ESD_CHECK_SWITCH*/
+				<1>, /*MTK_DRM_OPT_PRESENT_FENCE*/
+				<0>, /*MTK_DRM_OPT_RDMA_UNDERFLOW_AEE*/
+				<0>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
+				<0>, /*MTK_DRM_OPT_ODDMR_OD_AEE*/
+				<0>, /*MTK_DRM_OPT_ODDMR_DMR_AEE*/
+				<0>, /*MTK_DRM_OPT_HRT*/
+				<0>, /*MTK_DRM_OPT_HRT_MODE*/
+				<0>, /*MTK_DRM_OPT_DELAYED_TRIGGER*/
+				<0>, /*MTK_DRM_OPT_OVL_EXT_LAYER*/
+				<0>, /*MTK_DRM_OPT_AOD*/
+				<0>, /*MTK_DRM_OPT_RPO*/
+				<0>, /*MTK_DRM_OPT_DUAL_PIPE*/
+				<0>, /*MTK_DRM_OPT_DC_BY_HRT*/
+				<0>, /*MTK_DRM_OPT_OVL_WCG*/
+				<0>, /*MTK_DRM_OPT_OVL_SBCH*/
+				<1>, /*MTK_DRM_OPT_COMMIT_NO_WAIT_VBLANK*/
+				<0>, /*MTK_DRM_OPT_MET*/
+				<0>, /*MTK_DRM_OPT_REG_PARSER_RAW_DUMP*/
+				<0>, /*MTK_DRM_OPT_VP_PQ*/
+				<0>, /*MTK_DRM_OPT_GAME_PQ*/
+				<0>, /*MTK_DRM_OPT_MMPATH*/
+				<0>, /*MTK_DRM_OPT_HBM*/
+				<0>, /*MTK_DRM_OPT_VDS_PATH_SWITCH*/
+				<0>, /*MTK_DRM_OPT_LAYER_REC*/
+				<0>, /*MTK_DRM_OPT_CLEAR_LAYER*/
+				<0>, /*MTK_DRM_OPT_LFR*/
+				<0>, /*MTK_DRM_OPT_SF_PF*/
+				<0>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
+				<0>, /*MTK_DRM_OPT_PRIM_DUAL_PIPE*/
+				<0>, /*MTK_DRM_OPT_MSYNC2_0*/
+				<0>, /*MTK_DRM_OPT_MML_PRIMARY*/
+				<0>, /*MTK_DRM_OPT_MML_SUPPORT_CMD_MODE*/
+				<0>, /*MTK_DRM_OPT_MML_PQ*/
+				<0>, /*MTK_DRM_OPT_MML_IR*/
+				<0>, /*MTK_DRM_OPT_DUAL_TE*/
+				<0>, /*MTK_DRM_OPT_RES_SWITCH*/
+				<0>, /*MTK_DRM_OPT_PREFETCH_TE*/
+				<0>, /*MTK_DRM_OPT_VIDLE_APSRC_OFF*/
+				<0>, /*MTK_DRM_OPT_VIDLE_DSI_PLL_OFF*/
+				<0>, /*MTK_DRM_OPT_CHECK_TRIGGER_MERGE*/
+				<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
+				<0>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
+				<0>, /*MTK_DRM_OPT_GPU_CACHE*/
+				<0>, /*MTK_DRM_OPT_SPHRT*/
+				<0>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
+				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
+				<0>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
+				<0>; /*MTK_DRM_OPT_TILE_OVERHEAD*/
+		};
+
+		disp_mutex0: disp-mutex0@14001000 {
+			compatible = "mediatek,disp_mutex0",
+					"mediatek,mt6881-disp-mutex";
+			// mediatek,mml = <&mmlsys_config>;
+			reg = <0 0x14001000 0 0x1000>;
+			interrupts = <GIC_SPI 431 IRQ_TYPE_LEVEL_HIGH 0>;
+			// clocks = <&dispsys_config_clk CLK_MM_DISP_MUTEX0>;
+		};
+
+		disp_ovl0_2l: disp-ovl0-2l@14002000 {
+			compatible = "mediatek,disp_ovl0_2l",
+					"mediatek,mt6881-disp-ovl";
+			reg = <0 0x14002000 0 0x1000>;
+			interrupts = <GIC_SPI 430 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL0_2L>;
+			mediatek,larb = <&smi_larb0 M4U_L0_P1_DISP_OVL0_2L_RDMA0>,
+					<&smi_larb1 M4U_L1_P0_DISP_OVL0_2L_RDMA1>;
+			iommus = <&disp_iommu M4U_L0_P1_DISP_OVL0_2L_RDMA0>,
+				<&disp_iommu M4U_L0_P0_DISP_OVL0_2L_HDR>;
+
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P1_DISP_OVL0_2L_RDMA0)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P1_DISP_OVL0_2L_RDMA0)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P1_DISP_OVL0_2L_RDMA0)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_OVL0_2L_qos",
+						"DDP_COMPONENT_OVL0_2L_fbdc_qos",
+						"DDP_COMPONENT_OVL0_2L_hrt_qos";
+#endif
+		};
+
+		disp_ovl1_2l: disp-ovl1-2l@14003000 {
+			compatible = "mediatek,disp_ovl1_2l",
+					"mediatek,mt6881-disp-ovl";
+			reg = <0 0x14003000 0 0x1000>;
+			interrupts = <GIC_SPI 432 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL1_2L>;
+			mediatek,larb = <&smi_larb1 M4U_L1_P2_DISP_OVL1_2L_RDMA0>,
+					<&smi_larb0 M4U_L0_P2_DISP_OVL1_2L_RDMA1>;
+			iommus = <&disp_iommu M4U_L1_P2_DISP_OVL1_2L_RDMA0>,
+				<&disp_iommu M4U_L1_P1_DISP_OVL1_2L_HDR>;
+
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P2_DISP_OVL1_2L_RDMA0)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P2_DISP_OVL1_2L_RDMA0)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P2_DISP_OVL1_2L_RDMA0)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "DDP_COMPONENT_OVL1_2L_qos",
+						"DDP_COMPONENT_OVL1_2L_fbdc_qos",
+						"DDP_COMPONENT_OVL1_2L_hrt_qos";
+#endif
+		};
+
+		disp_ovl2_2l: disp-ovl2-2l@14004000 {
+			compatible = "mediatek,disp_ovl2_2l",
+					"mediatek,mt6881-disp-ovl";
+			reg = <0 0x14004000 0 0x1000>;
+			interrupts = <GIC_SPI 433 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL2_2L>;
+			mediatek,larb = <&smi_larb0 M4U_L0_P4_DISP_OVL2_2L_RDMA0>,
+					<&smi_larb1 M4U_L1_P3_DISP_OVL2_2L_RDMA1>;
+			iommus = <&disp_iommu M4U_L0_P4_DISP_OVL2_2L_RDMA0>,
+				<&disp_iommu M4U_L0_P3_DISP_OVL2_2L_HDR>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P4_DISP_OVL2_2L_RDMA0)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P4_DISP_OVL2_2L_RDMA0)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P4_DISP_OVL2_2L_RDMA0)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_OVL2_2L_qos",
+						"DDP_COMPONENT_OVL2_2L_fbdc_qos",
+						"DDP_COMPONENT_OVL2_2L_hrt_qos";
+#endif
+		};
+
+		disp_ovl3_2l: disp-ovl3-2l@14005000 {
+			compatible = "mediatek,disp_ovl3_2l",
+					"mediatek,mt6881-disp-ovl";
+			reg = <0 0x14005000 0 0x1000>;
+			interrupts = <GIC_SPI 434 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL3_2L>;
+			mediatek,larb = <&smi_larb1 M4U_L1_P5_DISP_OVL3_2L_RDMA0>,
+					<&smi_larb0 M4U_L0_P5_DISP_OVL3_2L_RDMA1>;
+			iommus = <&disp_iommu M4U_L1_P5_DISP_OVL3_2L_RDMA0>,
+				<&disp_iommu M4U_L1_P4_DISP_OVL3_2L_HDR>;
+			interconnects =
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P5_DISP_OVL3_2L_RDMA0)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P5_DISP_OVL3_2L_RDMA0)
+						&mmqos SLAVE_COMMON(1)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P5_DISP_OVL3_2L_RDMA0)
+						&mmqos SLAVE_COMMON(1)>;
+			interconnect-names = "DDP_COMPONENT_OVL3_2L_qos",
+						"DDP_COMPONENT_OVL3_2L_fbdc_qos",
+						"DDP_COMPONENT_OVL3_2L_hrt_qos";
+#endif
+		};
+
+#if 0
+		disp-rsz1@14007000 {
+			compatible = "mediatek,disp_rsz1";
+			reg = <0 0x14007000 0 0x1000>;
+			interrupts = <GIC_SPI 436 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-rsz0@14008000 {
+			compatible = "mediatek,disp_rsz0";
+			reg = <0 0x14008000 0 0x1000>;
+			interrupts = <GIC_SPI 437 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-tdshp0@14009000 {
+			compatible = "mediatek,disp_tdshp0";
+			reg = <0 0x14009000 0 0x1000>;
+			interrupts = <GIC_SPI 438 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-c3d0@1400a000 {
+			compatible = "mediatek,disp_c3d0";
+			reg = <0 0x1400a000 0 0x1000>;
+			interrupts = <GIC_SPI 439 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-color0@1400b000 {
+			compatible = "mediatek,disp_color0";
+			reg = <0 0x1400b000 0 0x1000>;
+			interrupts = <GIC_SPI 440 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-ccorr0@1400c000 {
+			compatible = "mediatek,disp_ccorr0";
+			reg = <0 0x1400c000 0 0x1000>;
+			interrupts = <GIC_SPI 441 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-ccorr1@1400d000 {
+			compatible = "mediatek,disp_ccorr1";
+			reg = <0 0x1400d000 0 0x1000>;
+			interrupts = <GIC_SPI 442 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-aal0@1400e000 {
+			compatible = "mediatek,disp_aal0";
+			reg = <0 0x1400e000 0 0x1000>;
+			interrupts = <GIC_SPI 443 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-gamma0@1400f000 {
+			compatible = "mediatek,disp_gamma0";
+			reg = <0 0x1400f000 0 0x1000>;
+			interrupts = <GIC_SPI 444 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-postmask0@14010000 {
+			compatible = "mediatek,disp_postmask0";
+			reg = <0 0x14010000 0 0x1000>;
+			interrupts = <GIC_SPI 445 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-dither0@14011000 {
+			compatible = "mediatek,disp_dither0";
+			reg = <0 0x14011000 0 0x1000>;
+			interrupts = <GIC_SPI 446 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-tdshp1@14012000 {
+			compatible = "mediatek,disp_tdshp1";
+			reg = <0 0x14012000 0 0x1000>;
+			interrupts = <GIC_SPI 447 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-c3d1@14013000 {
+			compatible = "mediatek,disp_c3d1";
+			reg = <0 0x14013000 0 0x1000>;
+			interrupts = <GIC_SPI 448 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-ccorr2@14014000 {
+			compatible = "mediatek,disp_ccorr2";
+			reg = <0 0x14014000 0 0x1000>;
+			interrupts = <GIC_SPI 449 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-ccorr3@14015000 {
+			compatible = "mediatek,disp_ccorr3";
+			reg = <0 0x14015000 0 0x1000>;
+			interrupts = <GIC_SPI 450 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-gamma1@14016000 {
+			compatible = "mediatek,disp_gamma1";
+			reg = <0 0x14016000 0 0x1000>;
+			interrupts = <GIC_SPI 451 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-dither1@14017000 {
+			compatible = "mediatek,disp_dither1";
+			reg = <0 0x14017000 0 0x1000>;
+			interrupts = <GIC_SPI 452 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-splitter0@14018000 {
+			compatible = "mediatek,disp_splitter0";
+			reg = <0 0x14018000 0 0x1000>;
+			interrupts = <GIC_SPI 453 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-dsc-wrap0@14019000 {
+			compatible = "mediatek,disp_dsc_wrap0";
+			reg = <0 0x14019000 0 0x1000>;
+			interrupts = <GIC_SPI 454 IRQ_TYPE_NONE 0>;
+		};
+#endif
+
+		dsi0: dsi@1401a000 {
+			compatible = "mediatek,dsi0",
+					"mediatek,mt6881-dsi";
+			reg = <0 0x1401a000 0 0x1000>;
+			interrupts = <GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>;
+#if 0
+			phys = <&mipi_tx_config0>;
+			phy-names = "dphy";
+			clocks = <&dispsys0_config_clk CLK_DISPSYS0_DISP_DSI0>,
+			<&dispsys0_config_clk CLK_DISPSYS0_DSI_CLK>,
+			<&mipi_tx_config0>;
+			clock-names = "engine", "digital", "hs";
+#endif
+		};
+
+#if 0
+		dsi_te: dsi-te {
+			compatible = "mediatek, dsi_te-eint";
+			status = "disabled";
+		};
+
+		disp-dsi1@1401b000 {
+			compatible = "mediatek,disp_dsi1";
+			reg = <0 0x1401b000 0 0x1000>;
+			interrupts = <GIC_SPI 457 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-wdma1@1401c000 {
+			compatible = "mediatek,disp_wdma1";
+			reg = <0 0x1401c000 0 0x1000>;
+			interrupts = <GIC_SPI 458 IRQ_TYPE_NONE 0>;
+		};
+#endif
+
+		i2c@1401d000 {
+			compatible = "mediatek,i2c";
+			reg = <0 0x1401d000 0 0x1000>;
+		};
+
+		smi-larb0@1401e000 {
+			compatible = "mediatek,smi_larb0";
+			reg = <0 0x1401e000 0 0x1000>;
+			interrupts = <GIC_SPI 469 IRQ_TYPE_NONE 0>;
+		};
+
+		smi-larb1@1401f000 {
+			compatible = "mediatek,smi_larb1";
+			reg = <0 0x1401f000 0 0x1000>;
+			interrupts = <GIC_SPI 470 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-ovl0-1l@14020000 {
+			compatible = "mediatek,disp_ovl0_1l";
+			reg = <0 0x14020000 0 0x1000>;
+			interrupts = <GIC_SPI 460 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-ovl1-1l@14021000 {
+			compatible = "mediatek,disp_ovl1_1l";
+			reg = <0 0x14021000 0 0x1000>;
+			interrupts = <GIC_SPI 461 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-dsc-wrap1@14022000 {
+			compatible = "mediatek,disp_dsc_wrap1";
+			reg = <0 0x14022000 0 0x1000>;
+			interrupts = <GIC_SPI 462 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-ttc0@14023000 {
+			compatible = "mediatek,disp_ttc0";
+			reg = <0 0x14023000 0 0x1000>;
+			interrupts = <GIC_SPI 465 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-ttc1@14024000 {
+			compatible = "mediatek,disp_ttc1";
+			reg = <0 0x14024000 0 0x1000>;
+			interrupts = <GIC_SPI 466 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-aal1@14025000 {
+			compatible = "mediatek,disp_aal1";
+			reg = <0 0x14025000 0 0x1000>;
+			interrupts = <GIC_SPI 464 IRQ_TYPE_NONE 0>;
+		};
+
+		disp-dpc@14026000 {
+			compatible = "mediatek,disp_dpc";
+			reg = <0 0x14026000 0 0x1000>;
+			interrupts = <GIC_SPI 471 IRQ_TYPE_NONE 0>;
+		};
+
+		reserved@14027000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x14027000 0 0x1000>;
+		};
+
+		reserved@14028000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x14028000 0 0x1000>;
+		};
+
+		reserved@14029000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x14029000 0 0x1000>;
+		};
+
+		reserved@1402a000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1402a000 0 0x1000>;
+		};
+
+		mdpsys-config@1f000000 {
+			compatible = "mediatek,mdpsys_config";
+			reg = <0 0x1f000000 0 0x1000>;
+		};
+
+		mdp-mutex0@1f001000 {
+			compatible = "mediatek,mdp_mutex0";
+			reg = <0 0x1f001000 0 0x1000>;
+		};
+
+		smi-larb0@1f002000 {
+			compatible = "mediatek,smi_larb0";
+			reg = <0 0x1f002000 0 0x1000>;
+		};
+
+		mdp-rdma0@1f003000 {
+			compatible = "mediatek,mdp_rdma0";
+			reg = <0 0x1f003000 0 0x1000>;
+		};
+
+		mdp-rdma1@1f004000 {
+			compatible = "mediatek,mdp_rdma1";
+			reg = <0 0x1f004000 0 0x1000>;
+		};
+
+		mdp-hdr0@1f005000 {
+			compatible = "mediatek,mdp_hdr0";
+			reg = <0 0x1f005000 0 0x1000>;
+		};
+
+		reserved@1f006000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f006000 0 0x1000>;
+		};
+
+		mdp-aal0@1f007000 {
+			compatible = "mediatek,mdp_aal0";
+			reg = <0 0x1f007000 0 0x1000>;
+		};
+
+		reserved@1f008000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f008000 0 0x1000>;
+		};
+
+		mdp-rsz0@1f009000 {
+			compatible = "mediatek,mdp_rsz0";
+			reg = <0 0x1f009000 0 0x1000>;
+		};
+
+		mdp-rsz1@1f00a000 {
+			compatible = "mediatek,mdp_rsz1";
+			reg = <0 0x1f00a000 0 0x1000>;
+		};
+
+		mdp-tdshp0@1f00b000 {
+			compatible = "mediatek,mdp_tdshp0";
+			reg = <0 0x1f00b000 0 0x1000>;
+		};
+
+		reserved@1f00c000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f00c000 0 0x1000>;
+		};
+
+		mdp-color0@1f00d000 {
+			compatible = "mediatek,mdp_color0";
+			reg = <0 0x1f00d000 0 0x1000>;
+		};
+
+		reserved@1f00e000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f00e000 0 0x1000>;
+		};
+
+		mdp-wrot0@1f00f000 {
+			compatible = "mediatek,mdp_wrot0";
+			reg = <0 0x1f00f000 0 0x1000>;
+		};
+
+		mdp-wrot1@1f010000 {
+			compatible = "mediatek,mdp_wrot1";
+			reg = <0 0x1f010000 0 0x1000>;
+		};
+
+		reserved@1f011000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f011000 0 0x1000>;
+		};
+
+		mdp-fg1@1f012000 {
+			compatible = "mediatek,mdp_fg1";
+			reg = <0 0x1f012000 0 0x1000>;
+		};
+
+		reserved@1f013000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f013000 0 0x1000>;
+		};
+
+		reserved@1f014000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f014000 0 0x1000>;
+		};
+
+		reserved@1f015000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f015000 0 0x1000>;
+		};
+
+		reserved@1f016000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f016000 0 0x1000>;
+		};
+
+		reserved@1f017000 {
+			compatible = "mediatek,reserved";
+			reg = <0 0x1f017000 0 0x1000>;
+		};
+
+		vdec-gcon@16000000 {
+			compatible = "mediatek,vdec_gcon";
+			reg = <0 0x16000000 0 0xd000>;
+		};
+
+		vdec@1600d000 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x1600d000 0 0x1000>;
+		};
+
+		vdec@1600f000 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x1600f000 0 0x800>;
+		};
+
+		vdec@1600f800 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x1600f800 0 0x400>;
+		};
+
+		vdec-gcon@16010000 {
+			compatible = "mediatek,vdec_gcon";
+			reg = <0 0x16010000 0 0x8000>;
+		};
+
+		vdec@16018000 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x16018000 0 0x8000>;
+		};
+
+		vdec@16020000 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x16020000 0 0xd000>;
+		};
+
+		vdec@1602d000 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x1602d000 0 0x1000>;
+		};
+
+		vdec@1602e000 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x1602e000 0 0x1000>;
+		};
+
+		vdec@1602f000 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x1602f000 0 0x800>;
+		};
+
+		vdec@1602f800 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x1602f800 0 0x400>;
+		};
+
+		vdec@1602fc00 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x1602fc00 0 0x400>;
+		};
+
+		vdec@16080000 {
+			compatible = "mediatek,vdec";
+			reg = <0 0x16080000 0 0x10000>;
+		};
+
+		venc-gcon@17000000 {
+			compatible = "mediatek,venc_gcon";
+			reg = <0 0x17000000 0 0x10000>;
+		};
+
+		smi-larb7@17010000 {
+			compatible = "mediatek,smi_larb7";
+			reg = <0 0x17010000 0 0x10000>;
+		};
+
+		venc@17020000 {
+			compatible = "mediatek,venc";
+			reg = <0 0x17020000 0 0x10000>;
+		};
+
+		jpgenc@17030000 {
+			compatible = "mediatek,jpgenc";
+			reg = <0 0x17030000 0 0x10000>;
+		};
+
+		mbist@17060000 {
+			compatible = "mediatek,mbist";
+			reg = <0 0x17060000 0 0x10000>;
+		};
+
+		mtk-iommu-debug {
+			compatible = "mediatek,mt6881-iommu-debug";
+		};
+
+		apu_iommu0_bank1: iommu@19011000 {
+			compatible = "mediatek,common-apu-iommu0-bank1";
+			mediatek,bank-id = <1>;
+			reg = <0 0x19011000 0 0x1000>;
+			interrupts = <GIC_SPI 726 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		apu_iommu0_bank2: iommu@19012000 {
+			compatible = "mediatek,common-apu-iommu0-bank2";
+			mediatek,bank-id = <2>;
+			reg = <0 0x19012000 0 0x1000>;
+			interrupts = <GIC_SPI 727 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		apu_iommu0_bank3: iommu@19013000 {
+			compatible = "mediatek,common-apu-iommu0-bank3";
+			mediatek,bank-id = <3>;
+			reg = <0 0x19013000 0 0x1000>;
+			interrupts = <GIC_SPI 728 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		apu_iommu0_bank4: iommu@19014000 {
+			compatible = "mediatek,common-apu-iommu0-bank4";
+			mediatek,bank-id = <4>;
+			reg = <0 0x19014000 0 0x1000>;
+			interrupts = <GIC_SPI 729 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		apu_iommu0: iommu@19010000 {
+			compatible = "mediatek,mt6881-apu-iommu0";
+			reg = <0 0x19010000 0 0x1000>;
+			table-id = <1>;
+			mediatek,iommu-banks = <&apu_iommu0_bank1 &apu_iommu0_bank2
+						&apu_iommu0_bank3 &apu_iommu0_bank4>;
+			interrupts = <GIC_SPI 725 IRQ_TYPE_LEVEL_HIGH 0>;
+			#iommu-cells = <1>;
+		};
+
+		disp_iommu_bank1: iommu@1e803000 {
+			compatible = "mediatek,common-disp-iommu-bank1";
+			mediatek,bank-id = <1>;
+			reg = <0 0x1e803000 0 0x1000>;
+			interrupts = <GIC_SPI 407 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		disp_iommu_bank2: iommu@1e804000 {
+			compatible = "mediatek,common-disp-iommu-bank2";
+			mediatek,bank-id = <2>;
+			reg = <0 0x1e804000 0 0x1000>;
+			interrupts = <GIC_SPI 408 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		disp_iommu_bank3: iommu@1e805000 {
+			compatible = "mediatek,common-disp-iommu-bank3";
+			mediatek,bank-id = <3>;
+			reg = <0 0x1e805000 0 0x1000>;
+			interrupts = <GIC_SPI 409 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		disp_iommu_bank4: iommu@1e806000 {
+			compatible = "mediatek,common-disp-iommu-bank4";
+			mediatek,bank-id = <4>;
+			reg = <0 0x1e806000 0 0x1000>;
+			interrupts = <GIC_SPI 410 IRQ_TYPE_LEVEL_HIGH 0>;
+		};
+
+		disp_iommu: iommu@1e802000 {
+			compatible = "mediatek,mt6881-disp-iommu";
+			reg = <0 0x1e802000 0 0x1000>;
+			table-id = <0>;
+			mediatek,iommu-banks = <&disp_iommu_bank1 &disp_iommu_bank2
+						&disp_iommu_bank3 &disp_iommu_bank4>;
+			interrupts = <GIC_SPI 406 IRQ_TYPE_LEVEL_HIGH 0>;
+			#iommu-cells = <1>;
+		};
+
+		ssusb: usb0@11201000 {
+			compatible = "mediatek,mtu3";
+			reg = <0 0x11201000 0 0x2e00>,
+				<0 0x11203e00 0 0x0100>;
+			reg-names = "mac", "ippc";
+			interrupts = <GIC_SPI 512 IRQ_TYPE_LEVEL_HIGH 0>;
+			phy-cells = <1>;
+			phys = <&u2port0 PHY_TYPE_USB2>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+			dr_mode = "otg";
+			maximum-speed = "high-speed";
+			mediatek,force-vbus;
+			mediatek,clk-mgr;
+			mediatek,usb3-drd;
+			usb-role-switch;
+			cdp-block;
+		};
+
+		u2phy: usb-phy0@11f40000 {
+			compatible = "mediatek,xsphy";
+			reg = <0 0x11f40000 0 0x400>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			ranges;
+
+			u2port0: usb2-phy0@11f40000 {
+				reg = <0 0x11f40000 0 0x400>;
+				#phy-cells = <1>;
+			};
+		};
+
+		u3fpgaphy: u3fpgaphy {
+			compatible = "mediatek,fpga-u3phy";
+			mediatek,ippc = <0x11203e00>;
+			#address-cells = <2>;
+			#size-cells = <2>;
+			fpga-i2c-physical-base = <0x11d70000>;
+			fpga-i2c-clock = <0x11d78e00 0x1>;
+			status = "disabled";
+
+			u3fpgaport0: u3fpgaport0 {
+				chip-id = <0xa60931a>;
+				port = <0>;
+				pclk_phase = <23>;
+				#phy-cells = <1>;
+			};
+		};
+	};
+
+	pkvm: pkvm {
+		status = "okay";
+	};
+};
