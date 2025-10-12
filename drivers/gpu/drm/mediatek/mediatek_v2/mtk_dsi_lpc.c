@@ -833,8 +833,8 @@ static int mtk_dsi_lpc_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 		struct mtk_dsi_lpc *lpc = comp_to_dsi_lpc(comp);
 		int index = mtk_dsi_lpc_unit(comp->mtk_crtc);
 
-		if (index != 0) {
-			DDPDBG("%s: only support dsi0\n", __func__);
+		if (index != 0 || !mtk_crtc->is_frame_trigger_mode) {
+			DDPDBG("%s: only support dsi0/cmd\n", __func__);
 			*lpc_en = false;
 		} else
 			*lpc_en = lpc->dsi_lpc_en;
