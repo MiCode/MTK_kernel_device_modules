@@ -654,16 +654,20 @@ EXPORT_SYMBOL(mtk_uart_set_apdma_status);
 static int mtk_uart_op_dma_clk_cnt(int op)
 {
 	unsigned long flags;
+	bool clk_cnt_err = false;
 
 	spin_lock_irqsave(&g_dma_clk_lock, flags);
 	if (op == 1) {
 		if (atomic_read(&dma_clk_count) < 0)
-			pr_info("[%s] dma_clk_count < 0\n", __func__);
+			clk_cnt_err = true;
 		atomic_inc(&dma_clk_count);
 	} else if (op == -1)
 		atomic_dec(&dma_clk_count);
 
 	spin_unlock_irqrestore(&g_dma_clk_lock, flags);
+
+	if (clk_cnt_err)
+		pr_info("[%s] dma_clk_count < 0\n", __func__);
 
 	return atomic_read(&dma_clk_count);
 }
