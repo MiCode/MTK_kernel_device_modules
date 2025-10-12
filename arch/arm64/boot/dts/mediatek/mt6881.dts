@@ -3475,6 +3475,81 @@
 			iommus-supply = <&disp_iommu>;
 		};
 
+		scp_clk_ctrl_vlp: scp-clk-ctrl-vlp@1c00c92c {
+			compatible = "mediatek,scp-clk-ctrl-vlp", "syscon";
+			reg = <0 0x1c00c92c 0 0x14>;
+		};
+
+		scp_clk_ctrl: scp-clk-ctrl@1cb21000 {
+			compatible = "mediatek,scp-clk-ctrl", "syscon";
+			reg = <0 0x1cb21000 0 0x1000>;
+		};
+
+		scp_dvfs: scp-dvfs {
+			compatible = "mediatek,scp-dvfs";
+			/* scp_dvfs driver enable(0)/disable(1) */
+			scp-dvfs-disable = <1>; // bringup disable
+			/* dvfs function enable/disable */
+			scp-dvfs-flag = "disable";
+
+			// clocks = <&vlp_cksys_top_clk CLK_VLP_CKSYS_TOP_SCP_SEL>,
+			// <&cksys_reg_clk CLK_CKSYS_REG_TCK_26M_MX9>, /* 26M */
+			// <&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D4>,  /* 624M */
+			// <&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D3>,  /* 832M */
+			// <&cksys_reg_clk CLK_CKSYS_REG_MAINPLL_D3>,  /* 728M */
+			// <&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D6>,  /* 426M */
+			// <&cksys_reg_clk CLK_CKSYS_REG_APLL1>,       /* 180M */
+			// <&cksys_reg_clk CLK_CKSYS_REG_MAINPLL_D4>,  /* 546M */
+			// <&cksys_reg_clk CLK_CKSYS_REG_MAINPLL_D7>,  /* 312M */
+			// <&cksys_reg_clk CLK_CKSYS_REG_MAINPLL_D2>,  /* 1092M */
+			// <&cksys_reg_clk CLK_CKSYS_REG_OSC_D10>;     /* 26M */
+
+			// clock-names = "clk_mux",
+			// "clk_pll_0",
+			// "clk_pll_1",
+			// "clk_pll_2",
+			// "clk_pll_3",
+			// "clk_pll_4",
+			// "clk_pll_5",
+			// "clk_pll_6",
+			// "clk_pll_7",
+			// "clk_pll_8",
+			// "clk_pll_9";
+
+			scp-core-online-mask = <0x3>;
+			smp-support;
+			vlp-support;
+
+			dvfs-opp =
+			/* vscp		vsram	dvfsrc_opp	spm_vcore	freq mux resource */
+			< 750000	750000	0xff		0xfff		200  0	0x0>,
+			< 750000	750000	0xff		0xfff		400  0	0x0>,
+			< 750000	750000	0xff		0xfff		800  0	0x0>,
+			< 800000	750000	0xff		0xfff		1092 0	0x0>;
+
+			do-ulposc-cali;
+			// fmeter-clksys = <&cksys_reg_clk>; // bringup disable
+			// ulposc-clksys = <&vlp_cksys_top_clk>; // bringup disable
+			scp-clk-ctrl = <&scp_clk_ctrl>;
+			scp-clk-ctrl-vlp = <&scp_clk_ctrl_vlp>;
+			scp-clk-hw-ver = "v1";
+			ulposc-cali-ver = "v2";
+			ulposc-cali-alg-ver = <1>;
+			ulposc-cali-ext-phase;
+			ulposc-cali-num = <1>;
+			ulposc-cali-target = <800>;
+			ulposc-cali-config =
+				/* con0		con1		con2 */
+				<0x041692c0	0x00002400	0x0000000c>;
+			// ccf-fmeter-support; // bringup disable
+			fmeter-args-u2-cali =
+			/* fm_id	fm_type */
+			< 36		1>; /* ad_ulposc2_mon_vcore_ck */
+			fmeter-args-u2-result =
+			/* fm_id	fm_type */
+			< 36		1>; /* ad_ulposc2_mon_vcore_ck */
+		};
+
 		gce: gce@1e980000 {
 			compatible = "mediatek,mt6881-gce";
 			reg = <0 0x1e980000 0 0x4000>;
