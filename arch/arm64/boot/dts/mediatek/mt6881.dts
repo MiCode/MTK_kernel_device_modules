@@ -2434,6 +2434,20 @@
 		ranges;
 		dma-ranges = <0x0 0x0 0x0 0x0 0x10 0x0>;
 
+		dcm: dcm@c000000 {
+			compatible = "mediatek,mt6881-dcm";
+			reg = <0 0xc000000 0 0x1f0220>,
+				<0 0x10001000 0 0xa40>,
+				<0 0x10022000 0 0x40>,
+				<0 0x11035000 0 0x30>,
+				<0 0x1c017000 0 0xb0>;
+			reg-names = "mcusys_par_wrap",
+				"infracfg_ao",
+				"infra_ao_bcrm",
+				"peri_ao_bcrm",
+				"vlp_ao_bcrm";
+		};
+
 		i2c0: i2c@11e00000 {
 			compatible = "mediatek,mt6991-i2c";
 			reg = <0 0x11e00000 0 0x1000>,
