@@ -228,6 +228,7 @@ struct mtk_dsi {
 	struct mutex modes_lock;
 	int modes_cnt;
 	bool modes_filled;
+	int dsi_te_idx;
 };
 
 enum dsi_porch_type;

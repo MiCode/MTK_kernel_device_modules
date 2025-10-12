@@ -483,6 +483,8 @@ static struct timer_list hrt_issue_timer;
 
 #define NOT_TRIGGER_AEE 101
 
+#define DSI_TE_NO_CHANGE 0xffffffff
+
 struct phy;
 unsigned int line_back_to_LP = 1;
 
@@ -3103,12 +3105,19 @@ static void mtk_dsi_ps_control_vact(struct mtk_dsi *dsi)
 	if (priv && (priv->data->mmsys_id == MMSYS_MT6991 ||
 		priv->data->mmsys_id == MMSYS_MT6993) &&
 		mtk_dsi_is_cmd_mode(comp)) {
-		if (comp->id == DDP_COMPONENT_DSI0)
-			value = DSI0_TE;
-		else if (comp->id == DDP_COMPONENT_DSI1)
-			value = DSI1_TE;
-		else if (comp->id == DDP_COMPONENT_DSI2)
-			value = DSI2_TE;
+		if (dsi->dsi_te_idx == DSI_TE_NO_CHANGE) {
+			if (comp->id == DDP_COMPONENT_DSI0)
+				value = DSI0_TE;
+			else if (comp->id == DDP_COMPONENT_DSI1)
+				value = DSI1_TE;
+			else if (comp->id == DDP_COMPONENT_DSI2)
+				value = DSI2_TE;
+		} else {
+			value = dsi->dsi_te_idx;
+			DDPMSG("%s, dsi_te need change, dsi_te_idx=0x%x, %s\n",
+				__func__, dsi->dsi_te_idx,
+				mtk_dump_comp_str(comp));
+		}
 
 		mtk_dsi_mask(dsi, DSI_EXT_SOURCE, EXT_TE_SEL, value);
 	}
@@ -19045,6 +19054,12 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to initialize component: %d\n", ret);
 		goto error;
 	}
+
+	ret = of_property_read_u32(dev->of_node, "dsi-te-idx", &dsi->dsi_te_idx);
+	if (ret < 0)
+		dsi->dsi_te_idx = DSI_TE_NO_CHANGE;
+
+	DDPMSG("%s ret=%d, dsi_te_idx=0x%x, %s\n", __func__, ret, dsi->dsi_te_idx, mtk_dump_comp_str(&dsi->ddp_comp));
 
 	/* init dsi cmdq page */
 	spin_lock_init(&dsi->cmdq_pg_lock);
