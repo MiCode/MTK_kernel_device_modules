@@ -1389,8 +1389,7 @@ static void mtk_iommu_tlb_flush_sync_all(void)
 }
 #endif
 
-static void mtk_iommu_dump_iova(struct mtk_iommu_data *data,
-		enum iommu_bank bank, u64 fault_iova)
+static void mtk_iommu_dump_iova(struct mtk_iommu_data *data, u64 fault_iova)
 {
 	u64 iova_tmp = { 0 };
 #if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
@@ -1415,9 +1414,11 @@ static void mtk_iommu_dump_iova(struct mtk_iommu_data *data,
 			hw_pa[NS_TAB] = mtee_iova_to_phys(iova_tmp,
 						data->plat_data->tab_id,
 						sr_info, hw_pa, pg_type, lvl);
-		pr_err("error, type2_en:%d, index:%d, lvl:%u, pg_type:0x%x, falut_iova:0x%llx, fault_pa:0x%llx ~ 0x%llx\n",
-			hypmmu_type2_en, i, lvl[NS_TAB], pg_type[NS_TAB], iova_tmp,
-			(u64)fake_pa, hw_pa[NS_TAB]);
+		pr_err("error, type2_en:%d, index:%d, lvl:[%u,%u], pg_type:[0x%x,0x%x], sr_info:[%u,%u], iova:0x%llx, pa:0x%llx,[0x%llx,0x%llx]\n",
+			hypmmu_type2_en, i, lvl[NS_TAB], lvl[PROT_TAB],
+			pg_type[NS_TAB], pg_type[PROT_TAB],
+			sr_info[NS_TAB], sr_info[PROT_TAB], iova_tmp,
+			(u64)fake_pa, hw_pa[NS_TAB], hw_pa[PROT_TAB]);
 #endif
 		if (!fake_pa && i > 0)
 			break;
@@ -1474,7 +1475,7 @@ static irqreturn_t mtk_iommu_dump_sec_bank(struct mtk_iommu_data *data,
 	pr_info("%s fault iova=0x%llx pa=0x%llx layer=%d %s\n",
 		dev_name(dev), fault_iova, fault_pa, layer,
 		write ? "write" : "read");
-	mtk_iommu_dump_iova(data, bank, fault_iova);
+	mtk_iommu_dump_iova(data, fault_iova);
 	report_custom_iommu_fault(fault_iova, fault_pa, regval, type, id);
 
 	mtk_iommu_tlb_flush_all(data);
@@ -1590,6 +1591,7 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 	u32 int_state0, int_state1, regval, va34_32, pa34_32, table_base;
 	u64 fault_iova, fault_pa;
 	bool layer, write;
+	int pm_sta = 0;
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	int ret;
 #endif
@@ -1600,10 +1602,17 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 	unsigned int fault_larb, fault_port, sub_comm = 0;
 #endif
 
+	if (!mtk_iommu_power_get(data, &pm_sta)) {
+		pr_notice("%s, iommu:(%d,%d) power off dev:%s\n",
+			  __func__, type, id, dev_name(data->dev));
+		return IRQ_HANDLED;
+	}
 #if IS_ENABLED(CONFIG_MTK_IOMMU_MISC_SECURE)
 	if (MTK_IOMMU_HAS_FLAG(data->plat_data, IOMMU_SEC_EN)) {
-		if (mtk_iommu_isr_sec(irq, data) == IRQ_HANDLED)
+		if (mtk_iommu_isr_sec(irq, data) == IRQ_HANDLED) {
+			mtk_iommu_power_put(data, pm_sta);
 			return IRQ_HANDLED;
+		}
 
 		/* switch to secure debug */
 		ret = ao_secure_dbg_switch_by_atf(type, id, 1);
@@ -1648,14 +1657,14 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 			dev_name(dev), table_base, int_state1, fault_iova, fault_pa,
 			layer, (write ? "write" : "read"), dom->cfg.arm_v7s_cfg.ttbr,
 			data->protect_base, readl_relaxed(base + REG_MMU_IVRP_PADDR));
-		mtk_iommu_dump_iova(data, IOMMU_BK0, fault_iova);
+		mtk_iommu_dump_iova(data, fault_iova);
 		report_custom_iommu_fault(fault_iova, fault_pa, regval, type, id);
 #else
 		pr_info("%s base:0x%x fault type=0x%x iova=0x%llx pa=0x%llx layer=%d %s, pgtable=0x%x, tfrp_pa=0x%zx, 0x114=0x%x\n",
 			dev_name(dev), table_base, int_state1, fault_iova, fault_pa,
 			layer, (write ? "write" : "read"), dom->cfg.arm_v7s_cfg.ttbr,
 			data->protect_base, readl_relaxed(base + REG_MMU_IVRP_PADDR));
-		mtk_iommu_dump_iova(data, IOMMU_BK0, fault_iova);
+		mtk_iommu_dump_iova(data, fault_iova);
 		report_custom_iommu_fault(fault_iova, fault_pa, regval, type, id);
 #endif
 #else
@@ -1698,6 +1707,8 @@ static irqreturn_t mtk_iommu_isr(int irq, void *dev_id)
 				  __func__, type, id, ret);
 	}
 #endif
+	mtk_iommu_power_put(data, pm_sta);
+
 	return IRQ_HANDLED;
 }
 
@@ -2066,7 +2077,7 @@ static int mtk_iommu_map(struct iommu_domain *domain, unsigned long iova,
 			dom->data->plat_data->iommu_id, dom->tab_id, iova,
 			(iova + pgsize * pgcount - 1), &paddr, pgsize * pgcount, prot, gfp);
 		if (ret != -ENOMEM)
-			mtk_iommu_dump_iova(dom->data, IOMMU_BK0, iova);
+			mtk_iommu_dump_iova(dom->data, iova);
 	}
 	return ret;
 }
@@ -2085,7 +2096,7 @@ static size_t mtk_iommu_unmap(struct iommu_domain *domain,
 			__func__, ret, dom->data->plat_data->iommu_type,
 			dom->data->plat_data->iommu_id, dom->tab_id, iova,
 			(iova + pgsize * pgcount - 1), pgsize * pgcount);
-		mtk_iommu_dump_iova(dom->data, IOMMU_BK0, iova);
+		mtk_iommu_dump_iova(dom->data, iova);
 	}
 	return ret;
 }
@@ -3324,10 +3335,11 @@ skip_smi:
 	/* register the notifier for power domain just for mm_iommu */
 	if (data->plat_data->iommu_type == MM_IOMMU &&
 	    !MTK_IOMMU_HAS_FLAG(data->plat_data, CHECK_MMINFRA_POWER)) {
-		int r, iommu_id = data->plat_data->iommu_id;
+		u32 iommu_id = data->plat_data->iommu_id;
+		int r;
 
 		mtk_pd_notifiers[iommu_id].notifier_call = mtk_iommu_pd_callback;
-		mtk_pd_notifiers[iommu_id].priority = iommu_id;
+		mtk_pd_notifiers[iommu_id].priority = (int)iommu_id;
 
 		/* defaut power on,if larbs has the node "init-power-on" */
 		if (disp_power_on) {
