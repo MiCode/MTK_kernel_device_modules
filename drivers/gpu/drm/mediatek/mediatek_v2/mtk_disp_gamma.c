@@ -512,6 +512,7 @@ static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 				DDPMSG("%s, failed of async flush, %d\n", __func__, ret);
 			}
 		}
+		primary_data->need_refinalize = false;
 		mtk_drm_trace_end();
 		break;
 	default:
@@ -1027,16 +1028,19 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 						disp_gamma_write_sram(comp, 0, GAMMA_RESUME);
 					if (gamma->is_right_pipe ||!comp->mtk_crtc->is_dual_pipe)
 						disp_gamma_flush_sram(comp, GAMMA_RESUME);
-					primary_data->need_refinalize = false;
 				}
-				disp_gamma_flip_sram(comp, handle);
+				if (!comp->mtk_crtc->is_dual_pipe) {
+					disp_gamma_flip_sram(comp, handle);
+				} else if (gamma->is_right_pipe) {
+					disp_gamma_flip_sram(gamma->companion, handle);
+					disp_gamma_flip_sram(comp, handle);
+				}
 			} else if (gamma->auto_flip == 1) {
 				if (primary_data->need_refinalize) {
 					if (gamma->lut_updated)
 						disp_gamma_write_sram_v2(comp, 0, GAMMA_RESUME);
 					if (gamma->is_right_pipe ||!comp->mtk_crtc->is_dual_pipe){
 						disp_gamma_flush_sram(comp, GAMMA_RESUME);
-						primary_data->need_refinalize = false;
 					}
 				}
 			}

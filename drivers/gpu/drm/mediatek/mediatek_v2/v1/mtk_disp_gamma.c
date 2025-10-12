@@ -495,6 +495,7 @@ static bool disp_gamma_flush_sram(struct mtk_ddp_comp *comp, int cmd_type)
 			primary_data->table_out_sel = primary_data->table_config_sel;
 		cmdq_pkt_refinalize(cmdq_handle);
 		cmdq_pkt_flush(cmdq_handle);
+		primary_data->need_refinalize = false;
 		break;
 	default:
 		PQ_ERR("%s, invalid cmd_type:%d\n", __func__, cmd_type);
@@ -1009,16 +1010,19 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 						disp_gamma_write_sram(comp, 0, GAMMA_RESUME);
 					if (gamma->is_right_pipe ||!comp->mtk_crtc->is_dual_pipe)
 						disp_gamma_flush_sram(comp, GAMMA_RESUME);
-					primary_data->need_refinalize = false;
 				}
-				disp_gamma_flip_sram(comp, handle);
+				if (!comp->mtk_crtc->is_dual_pipe) {
+					disp_gamma_flip_sram(comp, handle);
+				} else if (gamma->is_right_pipe) {
+					disp_gamma_flip_sram(gamma->companion, handle);
+					disp_gamma_flip_sram(comp, handle);
+				}
 			} else if (gamma->auto_flip == 1) {
 				if (primary_data->need_refinalize) {
 					if (gamma->lut_updated)
 						disp_gamma_write_sram_v2(comp, 0, GAMMA_RESUME);
 					if (gamma->is_right_pipe ||!comp->mtk_crtc->is_dual_pipe){
 						disp_gamma_flush_sram(comp, GAMMA_RESUME);
-						primary_data->need_refinalize = false;
 					}
 				}
 			}
