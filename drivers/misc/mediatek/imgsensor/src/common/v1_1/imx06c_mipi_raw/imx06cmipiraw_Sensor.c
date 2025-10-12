@@ -886,20 +886,27 @@ static void check_stream_is_on(void)
  *************************************************************************/
 static kal_uint32 streaming_control(kal_bool enable)
 {
-	LOG_INF("streaming_enable(0=Sw Standby,1=streaming): %d\n",
-		enable);
-	if (enable) {
-		if (read_cmos_sensor_8(0x0350) != 0x01) {
-			LOG_INF("single cam scenario enable auto-extend");
-			write_cmos_sensor_8(0x0350, 0x01);
-		}
-		write_cmos_sensor_8(0x3020, 0x00);/*Mode transition mode change*/
-		//write_cmos_sensor_8(0x3021, 0x01);/*complete mode*/
-		write_cmos_sensor_8(0x0100, 0X01);
-		check_stream_is_on();
+	static kal_bool last_enable;
+
+	LOG_INF("last enable: %d, enable now: %d\n",
+		last_enable, enable);
+	if(last_enable == enable) {
+		LOG_INF("streaming control: no change\n");
 	} else {
-		check_stream_is_on();
-		write_cmos_sensor_8(0x0100, 0x00);
+		if (enable) {
+			if (read_cmos_sensor_8(0x0350) != 0x01) {
+				LOG_INF("single cam scenario enable auto-extend");
+				write_cmos_sensor_8(0x0350, 0x01);
+			}
+			write_cmos_sensor_8(0x3020, 0x00);/*Mode transition mode change*/
+			//write_cmos_sensor_8(0x3021, 0x01);/*complete mode*/
+			write_cmos_sensor_8(0x0100, 0X01);
+			check_stream_is_on();
+		} else {
+			check_stream_is_on();
+			write_cmos_sensor_8(0x0100, 0x00);
+		}
+		last_enable = enable;
 	}
 	return ERROR_NONE;
 }
