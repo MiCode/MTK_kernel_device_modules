@@ -40,6 +40,14 @@ enum mml_sys_id {
 	mml_max_sys
 };
 
+enum mml_kt {
+	mml_kt_hwdone,
+	mml_kt_taskdone,
+	mml_kt_config0,
+	mml_kt_config1,
+	mml_kt_total
+};
+
 struct platform_device *mml_get_plat_device(struct platform_device *pdev);
 
 static inline int of_mml_count_comps(const struct device_node *np)
@@ -318,7 +326,7 @@ void mml_dev_put_dle_ctx(struct mml_dev *mml,
 	void (*ctx_release)(struct mml_dle_ctx *ctx));
 struct mml_m2m_ctx *mml_dev_create_m2m_ctx(struct mml_dev *mml,
 	struct mml_m2m_ctx *(*ctx_create)(struct mml_dev *mml));
-struct kthread_worker *mml_dev_get_config_worker(struct mml_dev *mml);
+struct kthread_worker *mml_dev_get_kt_worker(struct mml_dev *mml, enum mml_kt kt_id);
 
 struct mml_v4l2_dev *mml_get_v4l2_dev(struct mml_dev *mml);
 

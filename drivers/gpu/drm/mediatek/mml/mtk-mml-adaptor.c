@@ -545,7 +545,7 @@ struct mml_tile_cache *task_get_tile_cache(struct mml_task *task, u32 pipe)
 
 void ctx_kt_setsched(struct mml_ctx *ctx)
 {
-	struct sched_param kt_param = { .sched_priority = MAX_RT_PRIO - 1 };
+	struct sched_param kt_param = { .sched_priority = 1 };
 	int ret[4] = {0};
 
 	if (ctx->kt_priority)
@@ -581,21 +581,25 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 	const char * const threads[])
 {
 	/* create taskdone kthread first cause it is more easy for fail case */
-	ctx->kt_hwdone = kthread_create_worker(0, "%s", threads[0]);
-	if (IS_ERR(ctx->kt_hwdone)) {
-		mml_err("[adpt]fail to create kthread worker %d %s",
-			(s32)PTR_ERR(ctx->kt_hwdone), threads[0]);
-		ctx->kt_hwdone = NULL;
-		goto err;
+	if (threads[0]) {
+		ctx->kt_hwdone = kthread_create_worker(0, "%s", threads[0]);
+		if (IS_ERR(ctx->kt_hwdone)) {
+			mml_err("[adpt]fail to create kthread worker %d %s",
+				(s32)PTR_ERR(ctx->kt_hwdone), threads[0]);
+			ctx->kt_hwdone = NULL;
+			goto err;
 
+		}
 	}
-	ctx->kt_taskdone = kthread_create_worker(0, "%s", threads[1]);
-	if (IS_ERR(ctx->kt_taskdone)) {
-		mml_err("[adpt]fail to create kthread worker2 %d %s",
-			(s32)PTR_ERR(ctx->kt_taskdone), threads[1]);
-		ctx->kt_taskdone = NULL;
-		goto err;
+	if (threads[1]) {
+		ctx->kt_taskdone = kthread_create_worker(0, "%s", threads[1]);
+		if (IS_ERR(ctx->kt_taskdone)) {
+			mml_err("[adpt]fail to create kthread worker2 %d %s",
+				(s32)PTR_ERR(ctx->kt_taskdone), threads[1]);
+			ctx->kt_taskdone = NULL;
+			goto err;
 
+		}
 	}
 	ctx->wq_destroy = alloc_ordered_workqueue("%s", 0, threads[2]);
 	if (!ctx->wq_destroy) {
@@ -627,11 +631,11 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 	return 0;
 
 err:
-	if (ctx->kt_hwdone) {
+	if (threads[0] && ctx->kt_hwdone) {
 		kthread_destroy_worker(ctx->kt_hwdone);
 		ctx->kt_hwdone = NULL;
 	}
-	if (ctx->kt_taskdone) {
+	if (threads[1] && ctx->kt_taskdone) {
 		kthread_destroy_worker(ctx->kt_taskdone);
 		ctx->kt_taskdone = NULL;
 	}
@@ -639,11 +643,11 @@ err:
 		destroy_workqueue(ctx->wq_destroy);
 		ctx->wq_destroy = NULL;
 	}
-	if (ctx->kt_config[0]) {
+	if (threads[3] && ctx->kt_config[0]) {
 		kthread_destroy_worker(ctx->kt_config[0]);
 		ctx->kt_config[0] = NULL;
 	}
-	if (ctx->kt_config[1]) {
+	if (threads[4] && ctx->kt_config[1]) {
 		kthread_destroy_worker(ctx->kt_config[1]);
 		ctx->kt_config[1] = NULL;
 	}
