@@ -1,16 +1,15 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2024 MediaTek Inc.
+ * Copyright (C) 2025 MediaTek Inc.
  */
 
-#ifndef __GPUFREQ_MT6993_H__
-#define __GPUFREQ_MT6993_H__
+#ifndef __GPUFREQ_MT6881_H__
+#define __GPUFREQ_MT6881_H__
 
 /**************************************************
  * GPUFREQ Config
  **************************************************/
-#define GPUFREQ_KDEBUG_VERSION              (0x20250826)
-#define GPUFREQ_SLAVE_BUS_RECOVERY_ENABLE   (1)
+#define GPUFREQ_KDEBUG_VERSION              (0x20250910)
 
 /**************************************************
  * Clock Setting
@@ -33,61 +32,20 @@
 /**************************************************
  * MTCMOS Setting
  **************************************************/
-#define MFG_0_22_37_PWR_STATUS \
-	(((DRV_Reg32(MFG_RPC_PWR_CON_STATUS) & GENMASK(22, 0)) & ~(BIT(8) | BIT(21))) | \
-	(((DRV_Reg32(MFG_RPC_MFG37_PWR_CON) & BIT(30)) >> 30) << 23))
-
+#define MFG_PWR_STATUS \
+	(((DRV_Reg32(SPM_MFG0_PWR_CON) & BIT(30)) >> 30) | \
+	((DRV_Reg32(MFG_RPC_PWR_CON_STATUS) & GENMASK(10, 1)) & ~(BIT(4) | GENMASK(8, 6))))
 /**************************************************
  * Shader Core Setting
  **************************************************/
-#define MFG3_SHADER_STACK0                  (T0C0 | T0C1)   /* MFG9,  MFG13 */
-#define MFG4_SHADER_STACK1                  (T1C0 | T1C1)   /* MFG10, MFG14 */
-#define MFG5_SHADER_STACK2                  (T2C0 | T2C1)   /* MFG11, MFG15 */
-#define MFG22_SHADER_STACK3                 (T3C0 | T3C1)   /* MFG12, MFG16 */
-#define MFG6_SHADER_STACK4                  (T4C0 | T4C1)   /* MFG17, MFG19 */
-#define MFG7_SHADER_STACK5                  (T5C0 | T5C1)   /* MFG18, MFG20 */
+#define MFG3_SHADER_STACK0                  (T0C0)    /* MFG9 */
+#define MFG5_SHADER_STACK2                  (T2C0)    /* MFG10 */
 #define GPU_SHADER_PRESENT_1 \
-	(T0C0)
-#define GPU_SHADER_PRESENT_2 \
 	(MFG3_SHADER_STACK0)
-#define GPU_SHADER_PRESENT_3 \
-	(MFG3_SHADER_STACK0 | T1C0)
-#define GPU_SHADER_PRESENT_4 \
-	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1)
-#define GPU_SHADER_PRESENT_5 \
-	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1 | T2C0)
-#define GPU_SHADER_PRESENT_6 \
-	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1 | MFG5_SHADER_STACK2)
-#define GPU_SHADER_PRESENT_7 \
-	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1 | MFG5_SHADER_STACK2 | \
-	 T3C0)
-#define GPU_SHADER_PRESENT_8 \
-	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1 | MFG5_SHADER_STACK2 | \
-	 MFG22_SHADER_STACK3)
-#define GPU_SHADER_PRESENT_9 \
-	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1 | MFG5_SHADER_STACK2 | \
-	 MFG22_SHADER_STACK3 | T4C0)
-#define GPU_SHADER_PRESENT_10 \
-	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1 | MFG5_SHADER_STACK2 | \
-	 MFG22_SHADER_STACK3 | MFG6_SHADER_STACK4)
-#define GPU_SHADER_PRESENT_11 \
-	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1 | MFG5_SHADER_STACK2 | \
-	 MFG22_SHADER_STACK3 | MFG6_SHADER_STACK4 | T5C0)
-#define GPU_SHADER_PRESENT_12 \
-	(MFG3_SHADER_STACK0 | MFG4_SHADER_STACK1 | MFG5_SHADER_STACK2 | \
-	 MFG22_SHADER_STACK3 | MFG6_SHADER_STACK4 | MFG7_SHADER_STACK5)
-#define SHADER_CORE_NUM                 (12)
+#define GPU_SHADER_PRESENT_2 \
+	(MFG3_SHADER_STACK0 | MFG5_SHADER_STACK2)
+#define SHADER_CORE_NUM                 (2)
 struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
-	{12, GPU_SHADER_PRESENT_12},
-	{11, GPU_SHADER_PRESENT_11},
-	{10, GPU_SHADER_PRESENT_10},
-	{9, GPU_SHADER_PRESENT_9},
-	{8, GPU_SHADER_PRESENT_8},
-	{7, GPU_SHADER_PRESENT_7},
-	{6, GPU_SHADER_PRESENT_6},
-	{5, GPU_SHADER_PRESENT_5},
-	{4, GPU_SHADER_PRESENT_4},
-	{3, GPU_SHADER_PRESENT_3},
 	{2, GPU_SHADER_PRESENT_2},
 	{1, GPU_SHADER_PRESENT_1},
 };
@@ -116,30 +74,6 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
 	}
 
 /**************************************************
- * FREQ/VOLT Tracker Setting
- **************************************************/
-#define FTRACKER_FREQ_CONVERT(freq)         ((freq) / 1000 * 8 / 26)
-#define FTRACKER_FREQ_REVERT(freq)          ((freq) * 1000 / 8 * 26)
-#define VTRACKER_VOLT_CONVERT(volt)         ((volt) / 100)
-#define VTRACKER_VOLT_REVERT(volt)          ((volt) * 100)
-#define FTRACKER_FGPU                       \
-	(FTRACKER_FREQ_REVERT(DRV_Reg32(MFG_TOP_TOP_FREQ_TRACKER_CON_3) & GENMASK(10, 0)))
-#define FTRACKER_FSTACK                     \
-	(FTRACKER_FREQ_REVERT(DRV_Reg32(MFG_TOP_STACK_FREQ_TRACKER_CON_3) & GENMASK(10, 0)))
-#define FTRACKER_TGPU                       \
-	(DRV_Reg32(MFG_TOP_TOP_FREQ_TRACKER_CON_2))
-#define FTRACKER_TSTACK                     \
-	(DRV_Reg32(MFG_TOP_STACK_FREQ_TRACKER_CON_2))
-#define VTRACKER_VGPU                       \
-	(VTRACKER_VOLT_REVERT(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_7) & GENMASK(10, 0)))
-#define VTRACKER_VSTACK                     \
-	(VTRACKER_VOLT_REVERT(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_3) & GENMASK(10, 0)))
-#define VTRACKER_TGPU                       \
-	(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_6))
-#define VTRACKER_TSTACK                     \
-	(DRV_Reg32(MFG_TOP_VOLT_TRACKER_CON_2))
-
-/**************************************************
  * VCORE Level Setting
  **************************************************/
 #define VCORE_LEVEL_MASK                    (0x000000FF)
@@ -153,4 +87,4 @@ struct gpufreq_core_mask_info g_core_mask_table[SHADER_CORE_NUM] = {
  * Enumeration
  **************************************************/
 
-#endif /* __GPUFREQ_MT6993_H__ */
+#endif /* __GPUFREQ_MT6881_H__ */
