@@ -121,9 +121,4 @@
  **/
 #define TEEC_TT_ERROR_SYSTEM_BUSY	  ((uint32_t)0xFFFFF001)
 
-/**
- * System has detected a fault injection error
- **/
-#define TEEC_TT_ERROR_FAULT_MITIGATION    ((uint32_t)0xFFFFF002U)
-
 #endif /* TEE_CLIENT_ERROR_H */

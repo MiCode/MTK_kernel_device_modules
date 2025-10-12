@@ -23,7 +23,6 @@ struct tee_object;
 int mc_admin_init(struct cdev *cdev, int (*tee_start_cb)(void),
 		  void (*tee_stop_cb)(void));
 void mc_admin_exit(void);
-int mc_admin_wait_for_daemon(void);
 
 struct tee_object *tee_object_select(const struct mc_uuid_t *uuid);
 struct tee_object *tee_object_copy(uintptr_t address, size_t length);

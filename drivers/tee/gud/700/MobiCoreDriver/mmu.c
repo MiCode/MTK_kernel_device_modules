@@ -576,7 +576,7 @@ static struct tee_mmu *mmu_create_instance(struct mm_struct *mm,
 		}
 	}
 	/* Get an array to store page pointers */
-	all_pages = kmalloc_array(mmu->nr_pages, sizeof(struct page *),
+	all_pages = kvmalloc_array(mmu->nr_pages, sizeof(struct page *),
 				  GFP_KERNEL);
 	if (!all_pages) {
 		ret = -ENOMEM;
@@ -805,7 +805,7 @@ end:
 #else
 			release_pages(all_pages, mmu->pages_locked);
 #endif
-			kfree(all_pages);
+			kvfree(all_pages);
 		}
 
 		mmu->pages_locked = 0;
@@ -833,7 +833,7 @@ static inline int tee_mmu_register_buffer(struct tee_mmu	*mmu,
 	all_pages = mmu->all_pages;
 	if (all_pages) {
 		ret = fc_register_buffer(all_pages, mmu, buf->tag);
-		kfree(all_pages);
+		kvfree(all_pages);
 		mmu->all_pages = NULL;
 		if (ret) {
 			tee_mmu_free(mmu);
@@ -1188,7 +1188,7 @@ static void mmu_workqueue_handle(struct work_struct *work)
 		if (ret == 0) {
 			tee_mmu_free(mmu);
 			list_del(&mmu_zombie->list);
-			kfree(mmu_zombie);
+			kvfree(mmu_zombie);
 		}
 		mc_dev_devel("zombie delete mmu %p, handle %llx in %p return %d",
 			     mmu, mmu->handle, mmu_zombie, ret);

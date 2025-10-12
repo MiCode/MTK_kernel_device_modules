@@ -226,7 +226,7 @@ static inline bool server_state_is(enum server_state state)
 
 static void request_cancel(void);
 
-int mc_admin_wait_for_daemon(void)
+static int mc_admin_wait_for_daemon(void)
 {
 	int counter_ms = 0;
 	int wait_tens = 0;
