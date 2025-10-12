@@ -11,6 +11,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
+#include <linux/delay.h>
 
 #include "mtk_vcodec_dec_pm.h"
 #include "mtk_vcodec_dec_pm_plat.h"
@@ -348,7 +349,8 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 
 	struct timespec64 tv_start;
 	struct timespec64 tv_end;
-	s32 usec, timeout = 20000;
+	s32 usec, timeout = 20 * USEC_PER_MSEC; // 20 ms
+	unsigned long sleep_time = 0;
 	u32 fourcc;
 	u32 is_ufo = 0;
 
@@ -379,19 +381,24 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 		cg_status = readl(vdec_misc_addr + 0x0104);
 		if (is_ufo)
 			ufo_cg_status = readl(vdec_ufo_addr + 0x08C);
-		while (((cg_status & 0x11) != 0x11) ||
-			(is_ufo && ((ufo_cg_status & 0x11000) != 0x11000))) {
+		while (((cg_status & 0x11) != 0x11) || (is_ufo && ((ufo_cg_status & 0x11000) != 0x11000))) {
 			mtk_vdec_do_gettimeofday(&tv_end);
-			usec = (tv_end.tv_sec - tv_start.tv_sec) * 1000000 +
-				(tv_end.tv_nsec - tv_start.tv_nsec);
+			usec = (s32)((long)(tv_end.tv_sec - tv_start.tv_sec) * USEC_PER_SEC +
+				(tv_end.tv_nsec - tv_start.tv_nsec) / NSEC_PER_USEC);
+			if (sleep_time == 0 && usec > 200) {
+				// not busy polling after 200us
+				sleep_time = 200; // 0.2 ms
+			}
 			if (usec > timeout) {
 				mtk_v4l2_err("VDEC HW break timeout. codec:0x%08x(%c%c%c%c) ufo %d",
 					fourcc, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
 					(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF, is_ufo);
 
-				if (timeout == 20000)
-					timeout = 1000000;
-				else if (timeout == 1000000) {
+				if (timeout < 100 * USEC_PER_MSEC) {
+					// timeout for dump
+					timeout = 1 * USEC_PER_SEC; // 1s
+					sleep_time = 10 * USEC_PER_MSEC; // 10ms
+				} else {
 					mtk_vdec_hw_break_dump(
 						vdec_gcon_addr, "GCON", 0, 0);
 					mtk_vdec_hw_break_dump(
@@ -423,6 +430,8 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 				mtk_vdec_do_gettimeofday(&tv_start);
 				//smi_debug_bus_hang_detect(0, "VCODEC");
 			}
+			if (sleep_time > 0)
+				usleep_range(sleep_time, sleep_time * 2);
 			cg_status = readl(vdec_misc_addr + 0x0104);
 			if (is_ufo)
 				ufo_cg_status = readl(vdec_ufo_addr + 0x08C);
@@ -455,16 +464,22 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 		cg_status = readl(vdec_lat_misc_addr + 0x0104);
 		while (!((cg_status & 0x1) && (cg_status & 0x10))) {
 			mtk_vdec_do_gettimeofday(&tv_end);
-			usec = (tv_end.tv_sec - tv_start.tv_sec) * 1000000 +
-				(tv_end.tv_nsec - tv_start.tv_nsec);
+			usec = (s32)((long)(tv_end.tv_sec - tv_start.tv_sec) * USEC_PER_SEC +
+				(tv_end.tv_nsec - tv_start.tv_nsec) / NSEC_PER_USEC);
+			if (sleep_time == 0 && usec > 200) {
+				// not busy polling after 200us
+				sleep_time = 200; // 0.2 ms
+			}
 			if (usec > timeout) {
 				mtk_v4l2_err("VDEC HW %d break timeout. codec:0x%08x(%c%c%c%c)",
 					hw_id, fourcc, fourcc & 0xFF, (fourcc >> 8) & 0xFF,
 					(fourcc >> 16) & 0xFF, (fourcc >> 24) & 0xFF);
 
-				if (timeout == 20000)
-					timeout = 1000000;
-				else if (timeout == 1000000) {
+				if (timeout < 100 * USEC_PER_MSEC) {
+					// timeout for dump
+					timeout = 1 * USEC_PER_SEC; // 1s
+					sleep_time = 10 * USEC_PER_MSEC; // 10ms
+				} else {
 					mtk_vdec_hw_break_dump(
 						vdec_lat_misc_addr, "LAT_MISC", 64, 79);
 					mtk_vdec_hw_break_vld_top_dump(
@@ -491,6 +506,8 @@ static void mtk_vdec_hw_break(struct mtk_vcodec_dev *dev, int hw_id)
 				mtk_vdec_do_gettimeofday(&tv_start);
 				//smi_debug_bus_hang_detect(0, "VCODEC");
 			}
+			if (sleep_time > 0)
+				usleep_range(sleep_time, sleep_time * 2);
 			cg_status = readl(vdec_lat_misc_addr + 0x0104);
 		}
 

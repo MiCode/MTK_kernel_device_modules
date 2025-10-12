@@ -561,7 +561,9 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 	bool timeout_fg, need_break = false;
 	struct timespec64 tv_start;
 	struct timespec64 tv_end;
-	s32 usec, timeout = 100000;
+	s32 usec, timeout = 100 * USEC_PER_MSEC; // 100ms
+	bool need_sleep = false;
+	unsigned int reg_offset, check_val;
 	unsigned int reg_val, i;
 	unsigned long flags;
 	void __iomem *reg_base = NULL;
@@ -622,31 +624,26 @@ static void mtk_venc_hw_break(struct mtk_vcodec_dev *dev)
 			spin_unlock_irqrestore(&dev->power_check_lock[i], flags);
 
 			if (break_mode == MTK_VENC_HW_BREAK_SMI_LOCK_MODE) {
-				mtk_venc_do_gettimeofday(&tv_start);
-				while ((readl(reg_base + 0x13B8) & 0x80000000) != 0) {
-					mtk_v4l2_err("wait core %d stop value 0x%x\n"
-						, i, readl(reg_base + 0x13B8));
-					mtk_venc_do_gettimeofday(&tv_end);
-					usec = (tv_end.tv_sec - tv_start.tv_sec) * 1000000
-							+ (tv_end.tv_nsec - tv_start.tv_nsec);
-					if (usec > timeout) {
-						timeout_fg = true;
-						break;
-					}
-				}
+				reg_offset = 0x13B8;
+				check_val = 0x80000000;
 			} else {
-				mtk_venc_do_gettimeofday(&tv_start);
-				while ((readl(reg_base + 0x1228) & 0x7FFFFDFC) != 0) {
-					mtk_v4l2_err("wait core %d stop value 0x%x\n"
-						, i, readl(reg_base + 0x1228));
-					mtk_venc_do_gettimeofday(&tv_end);
-					usec = (tv_end.tv_sec - tv_start.tv_sec) * 1000000
-							+ (tv_end.tv_nsec - tv_start.tv_nsec);
-					if (usec > timeout) {
-						timeout_fg = true;
-						break;
-					}
+				reg_offset = 0x1228;
+				check_val = 0x7FFFFDFC;
+			}
+			mtk_venc_do_gettimeofday(&tv_start);
+			while ((readl(reg_base + reg_offset) & check_val) != 0) {
+				mtk_v4l2_err("wait core %d stop value 0x%x", i, readl(reg_base + reg_offset));
+				mtk_venc_do_gettimeofday(&tv_end);
+				usec = (s32)((long)(tv_end.tv_sec - tv_start.tv_sec) * USEC_PER_SEC +
+					(tv_end.tv_nsec - tv_start.tv_nsec) / NSEC_PER_USEC);
+				if (!need_sleep && usec > 200) // busy polling for 200us
+					need_sleep = true;
+				if (usec > timeout) {
+					timeout_fg = true;
+					break;
 				}
+				if (need_sleep)
+					usleep_range(USEC_PER_MSEC, 2 * USEC_PER_MSEC); // sleep 1~2 ms
 			}
 
 			if (!timeout_fg)
