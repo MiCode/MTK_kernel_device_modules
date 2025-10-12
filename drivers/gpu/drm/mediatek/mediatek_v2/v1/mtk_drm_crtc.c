@@ -3326,49 +3326,29 @@ int _mtk_drm_dsi_cmd_test(struct drm_crtc *crtc, unsigned int level,
 int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	unsigned int panel_ext_param, unsigned int cfg_flag, unsigned int lock)
 {
-	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct pq_common_data *pq_data = NULL;
-	struct cmdq_pkt *cmdq_handle;
+	struct cmdq_pkt *cmdq_handle = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *oddmr_comp;
 	struct mtk_cmdq_cb_data *cb_data;
 	struct mtk_bl_ext_config bl_ext_config;
 	static unsigned int bl_cnt;
 	bool is_frame_mode;
-	int index = 0;
+	int index = drm_crtc_index(crtc);
 	int ret = 0;
-	struct mtk_drm_private *priv = NULL;
-	struct mtk_panel_params *panel_ext = NULL;
-
-	if (!crtc || !crtc->dev) {
-		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-	index = drm_crtc_index(crtc);
-	priv = crtc->dev->dev_private;
-	if (!priv) {
-		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-	panel_ext = mtk_drm_get_lcm_ext_params(crtc);
-
-	mtk_crtc = to_mtk_crtc(crtc);
-	if (!mtk_crtc) {
-		DDPPR_ERR("%s:%d NULL Pointer\n", __func__, __LINE__);
-		return -EINVAL;
-	}
-	pq_data = mtk_crtc->pq_data;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_panel_params *panel_ext = mtk_drm_get_lcm_ext_params(crtc);
 
 	CRTC_MMP_EVENT_START(index, backlight, (unsigned long)crtc,
 			level);
 
 	if (lock)
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
-	if (pq_data->new_persist_property[DISP_PQ_CCORR_SILKY_BRIGHTNESS])
-		sb_backlight = level;
 
-	if (crtc->state == NULL){
-		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
+
+	if(mtk_crtc == NULL || crtc->state == NULL){
+		DDPMSG("%s mtk_crtc or crtc->state is NULL\n", __func__);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
 		if (lock)
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -3380,7 +3360,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		sb_backlight = level;
 
 	if (!(mtk_crtc->enabled)) {
-		DDPINFO("Sleep State set backlight stop --crtc not ebable\n");
+		DDPMSG("%s Sleep State set backlight stop --crtc%d not enable\n", __func__, index);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 0);
 		if (lock)
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -3388,7 +3368,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	}
 
 	if (!comp) {
-		DDPINFO("%s no output comp\n", __func__);
+		DDPMSG("%s no output comp\n", __func__);
 		CRTC_MMP_EVENT_END(index, backlight, 0, 1);
 		if (lock)
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
@@ -3449,12 +3429,12 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 	cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 	mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 
-	/* Record Vblank start timestamp */
-	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
-
 	if ((panel_ext) && (panel_ext->SilkyBrightnessDelay)
 		&& (drm_mode_vrefresh(&crtc->state->adjusted_mode) == 60))
 		cmdq_pkt_sleep(cmdq_handle, CMDQ_US_TO_TICK(panel_ext->SilkyBrightnessDelay), CMDQ_GPR_R06);
+
+	/* Record Vblank start timestamp */
+	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, SET_BL);
 
 	/* set backlight */
 	oddmr_comp = priv->ddp_comp[DDP_COMPONENT_ODDMR0];
@@ -3496,7 +3476,7 @@ int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, SET_BL);
 	}
 
-	CRTC_MMP_MARK(index, backlight, bl_cnt, (unsigned long)cmdq_handle);
+	CRTC_MMP_MARK(index, backlight, bl_cnt, 0);
 	drm_trace_tag_mark("backlight");
 	bl_cnt++;
 
@@ -9575,7 +9555,7 @@ static void mtk_crtc_update_hrt_qos(struct drm_crtc *crtc,
 	int i, j;
 
 	crtc_idx = drm_crtc_index(crtc);
-	if (crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_ENABLE) {
+	if (crtc_idx < MAX_CRTC && mtk_crtc->cur_usage == DISP_ENABLE) {
 		unsigned int cmp_id = 0;
 
 		cmp_id = mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA);
@@ -10928,8 +10908,11 @@ void mtk_crtc_enable_iommu_runtime(struct mtk_drm_crtc *mtk_crtc,
 			priv->data->mmsys_id == MMSYS_MT6855 ||
 			priv->data->mmsys_id == MMSYS_MT6886 ||
 			priv->data->mmsys_id == MMSYS_MT6858 ||
-			priv->data->mmsys_id == MMSYS_MT6878) {
+			(priv->data->mmsys_id == MMSYS_MT6878 &&
+			/* dual disp tmp change pa to va in crtc3 */
+			(!priv->is_dual_disp || drm_crtc_index(&mtk_crtc->base) == 3))) {
 			/*set smi_larb_sec_con reg as 1*/
+			DDPMSG("%s %d crtc%d\n", __func__, __LINE__, drm_crtc_index(&mtk_crtc->base));
 			mtk_crtc_exec_atf_prebuilt_instr(mtk_crtc, handle);
 		}
 	}
@@ -11159,7 +11142,6 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	CRTC_MMP_MARK(id, mml_job_status, mtk_crtc->is_mml,
 		atomic_read(&mtk_crtc->wait_mml_last_job_is_flushed));
 
-	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
 	mtk_crtc_dbi_count_release_fence(mtk_crtc);
@@ -11219,6 +11201,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	CRTC_MMP_MARK(id, frame_cfg, ovl_status, 0);
 	drm_trace_tag_mark("frame_cfg");
 
+	mutex_lock(&priv->res_usage_lock);
 	if (old_mtk_state->pending_usage_update) {
 		unsigned int i;
 
@@ -11232,7 +11215,7 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 			DDPDBG("%s priv->usage[%d] = %d\n", __func__, i, priv->usage[i]);
 		}
 	}
-
+	mutex_unlock(&priv->res_usage_lock);
 	mtk_crtc_release_input_layer_fence(crtc, session_id);
 
 	// release present fence
@@ -11319,7 +11302,6 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		mtk_drm_idlemgr_wb_leave_post(mtk_crtc);
 
 	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-	DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 #ifdef MTK_DRM_ASYNC_HANDLE
 	cmdq_pkt_wait_complete(cb_data->cmdq_handle);
 	mtk_drm_del_cb_data(data, id);
@@ -12891,7 +12873,7 @@ int mtk_crtc_attach_ddp_comp(struct drm_crtc *crtc, int ddp_mode,
 	if (ddp_mode < 0 || ddp_mode >= DDP_MODE_NR)
 		return -EINVAL;
 
-	only_output = (priv && priv->usage[drm_crtc_index(crtc)] == DISP_OPENING);
+	only_output = (mtk_crtc->cur_usage == DISP_OPENING);
 	for_each_comp_in_crtc_target_mode(comp, mtk_crtc, i, j, ddp_mode) {
 		if (only_output && !mtk_ddp_comp_is_output(comp))
 			continue;
@@ -13304,7 +13286,7 @@ void mtk_crtc_connect_default_path(struct mtk_drm_crtc *mtk_crtc)
 
 	mutex_lock(&priv->path_modify_lock);
 
-	only_output = (priv->usage[drm_crtc_index(crtc)] == DISP_OPENING);
+	only_output = (mtk_crtc->cur_usage == DISP_OPENING);
 	/* connect path */
 	for_each_comp_in_crtc_path_bound(comp, mtk_crtc, i, j, 1) {
 		struct mtk_ddp_comp *tmp_comp;
@@ -14488,7 +14470,7 @@ void mtk_crtc_config_default_path(struct mtk_drm_crtc *mtk_crtc)
 			cfg.tile_overhead = scaling_cfg.tile_overhead;
 	}
 
-	only_output = (priv->usage[drm_crtc_index(crtc)] == DISP_OPENING);
+	only_output = (mtk_crtc->cur_usage == DISP_OPENING);
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (only_output && !mtk_ddp_comp_is_output(comp))
 			continue;
@@ -14641,12 +14623,12 @@ void mtk_crtc_stop_ddp(struct mtk_drm_crtc *mtk_crtc,
 {
 	int i = 0, j = 0;
 	struct mtk_ddp_comp *comp = NULL;
+	bool only_output = false;
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_private *priv = NULL;
-	unsigned int crtc_idx = 0;
-	bool only_output = false;
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
 	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
+	unsigned int crtc_idx = 0;
 
 	if (mtk_crtc == NULL) {
 		DDPPR_ERR("%s: mtk_crtc is null\n", __func__);
@@ -14655,15 +14637,14 @@ void mtk_crtc_stop_ddp(struct mtk_drm_crtc *mtk_crtc,
 	crtc = &mtk_crtc->base;
 	if (crtc && crtc->dev) {
 		crtc_idx = drm_crtc_index(crtc);
+		mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 		priv = crtc->dev->dev_private;
-		if (priv && crtc_idx < MAX_CRTC)
-			only_output = (priv->usage[crtc_idx] == DISP_OPENING);
+		if (crtc_idx < MAX_CRTC)
+			only_output = (mtk_crtc->cur_usage == DISP_OPENING);
 	} else {
 		DDPPR_ERR("%s: crtc is null\n", __func__);
 		return;
 	}
-
-	mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 
 	/* If VDO mode, stop DSI mode first */
 	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
@@ -15095,6 +15076,7 @@ int mtk_drm_crtc_usage_enable(struct mtk_drm_private *priv,
 		return DISP_ENABLE;
 	}
 
+	mutex_lock(&priv->res_usage_lock);
 	/*  find main display index */
 	for (i = 0; i < MAX_CRTC ; ++i) {
 		if (priv->pre_defined_bw[i] == 0xFFFFFFFF) {
@@ -15107,30 +15089,48 @@ int mtk_drm_crtc_usage_enable(struct mtk_drm_private *priv,
 	}
 
 	/* can't find main display, free run sage state control */
-	if (unlikely(main_disp_idx == 0xFFFFFFFF))
+	if (unlikely(main_disp_idx == 0xFFFFFFFF)) {
+		priv->usage[crtc_id] = DISP_ENABLE;
+		mutex_unlock(&priv->res_usage_lock);
 		return DISP_ENABLE;
+	}
 
 	/* main display could enable imediately */
 	if (crtc_id == main_disp_idx) {
 		if (priv->ovl_usage[main_disp_idx] != 0 &&
 				(priv->ovl_usage[main_disp_idx] & ~occupied_ovl) == 0) {
 			DDPPR_ERR("main display ovl drained, occupied_ovl %x\n", occupied_ovl);
+			priv->usage[crtc_id] = DISP_OPENING;
+			mutex_unlock(&priv->res_usage_lock);
 			return DISP_OPENING;
 		}
+		priv->usage[crtc_id] = DISP_ENABLE;
+		mutex_unlock(&priv->res_usage_lock);
 		return DISP_ENABLE;
 	}
 
 	/* other display could also enable imediately when main display disable */
-	if (priv->usage[main_disp_idx] == DISP_DISABLE)
+	if (priv->usage[main_disp_idx] == DISP_DISABLE) {
+		priv->usage[crtc_id] = DISP_ENABLE;
+		mutex_unlock(&priv->res_usage_lock);
 		return DISP_ENABLE;
+	}
 
 	/* this crtc OVL usage conflict with main display, pending */
-	if ((priv->ovl_usage[main_disp_idx] & priv->ovl_usage[crtc_id]) != 0)
+	if ((priv->ovl_usage[main_disp_idx] & priv->ovl_usage[crtc_id]) != 0) {
+		priv->usage[crtc_id] = DISP_OPENING;
+		mutex_unlock(&priv->res_usage_lock);
 		return DISP_OPENING;
-
+	}
 	/* enable non HRT display imediateky */
-	if (priv->pre_defined_bw[crtc_id] == 0)
+	if (priv->pre_defined_bw[crtc_id] == 0) {
+		priv->usage[crtc_id] = DISP_ENABLE;
+		mutex_unlock(&priv->res_usage_lock);
 		return DISP_ENABLE;
+	}
+
+	priv->usage[crtc_id] = DISP_OPENING;
+	mutex_unlock(&priv->res_usage_lock);
 
 	return DISP_OPENING;
 }
@@ -15147,6 +15147,7 @@ static void mtk_drm_crtc_path_adjust(struct mtk_drm_private *priv, struct drm_cr
 	if (mtk_crtc->ddp_ctx[ddp_mode].ovl_comp_nr[DDP_FIRST_PATH] == 0)
 		return;
 
+	mutex_lock(&priv->res_usage_lock);
 	/*  find main display index and count occupied_ovl */
 	for (i = 0; i < MAX_CRTC ; ++i) {
 		if (priv->pre_defined_bw[i] == 0xFFFFFFFF) {
@@ -15157,6 +15158,7 @@ static void mtk_drm_crtc_path_adjust(struct mtk_drm_private *priv, struct drm_cr
 		if (priv->usage[i] == DISP_ENABLE)
 			occupied_ovl |= priv->ovlsys_usage[i];
 	}
+	mutex_unlock(&priv->res_usage_lock);
 
 	/* can't find main display, free run sage state control */
 	if (unlikely(main_disp_idx == 0xFFFFFFFF))
@@ -15359,7 +15361,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	if (mtk_crtc->avail_modes_num == 0 && mtk_crtc->avail_modes)
 		drm_mode_copy(mtk_crtc->avail_modes, &crtc->state->adjusted_mode);
 
-	only_output = (priv->usage[crtc_id] == DISP_OPENING);
+	only_output = (mtk_crtc->cur_usage == DISP_OPENING);
 	/* adjust path for ovl switch if necessary */
 	mtk_drm_crtc_path_adjust(priv, crtc, mtk_crtc->ddp_mode);
 
@@ -15899,24 +15901,26 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) && index < MAX_CRTC) {
-		if (priv->usage[index] == DISP_ENABLE || priv->usage[index] == DISP_OPENING) {
+		if (mtk_crtc->cur_usage == DISP_ENABLE || mtk_crtc->cur_usage == DISP_OPENING) {
 			DDPPR_ERR("%s usage control exception crtc%d cur usage %u\n",
-				__func__, index, priv->usage[index]);
+				__func__, index, mtk_crtc->cur_usage);
 			CRTC_MMP_EVENT_END((int) index, resume,
 				mtk_crtc->enabled, 1);
+
 			return;
 		}
 
-		priv->usage[index] = mtk_drm_crtc_usage_enable(priv, index);
-		CRTC_MMP_MARK(index, crtc_usage, priv->usage[index], 0);
+		mtk_crtc->cur_usage = mtk_drm_crtc_usage_enable(priv, index);
+		CRTC_MMP_MARK(index, crtc_usage, mtk_crtc->cur_usage, 0);
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 		if (mtk_crtc->is_virtio_path)
 			priv->usage[index] = DISP_ENABLE;
 #endif
 
-		if (priv->usage[index] == DISP_OPENING) {
-			DDPMSG("%s %d wait for opening\n", __func__, index);
+		if (mtk_crtc->cur_usage == DISP_OPENING) {
+			DDPINFO("%s %d wait for opening\n", __func__, index);
+
 			if (!(output_comp &&
 				mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_WDMA)) {
 				CRTC_MMP_EVENT_END((int) index, resume,
@@ -16782,7 +16786,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_MMCLK_BY_DATARATE,
 				&en);
 
-	if (priv && priv->usage[crtc_id] == DISP_OPENING &&
+	if (mtk_crtc->cur_usage == DISP_OPENING &&
 		output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_WDMA) {
 		only_output = true; /* no goto end when display WDMA output in OPENING state */
 	} else if (!mtk_crtc->enabled) {
@@ -16986,10 +16990,13 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 #endif
 	atomic_set(&mtk_crtc->already_config, 0);
 
+	mtk_crtc->cur_usage = DISP_DISABLE;
+	mutex_lock(&priv->res_usage_lock);
 	if (index >= 0 && index < MAX_CRTC) {
 		priv->usage[index] = DISP_DISABLE;
 		CRTC_MMP_MARK(index, crtc_usage, priv->usage[index], 3);
 	}
+	mutex_unlock(&priv->res_usage_lock);
 
 	if (index != 0) {
 		if (vdisp_func.vlp_disp_vote)
@@ -18222,7 +18229,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)) {
-		if (priv->usage[crtc_idx] == DISP_OPENING) {
+		if (mtk_crtc->cur_usage == DISP_OPENING) {
 			if (!(comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)) {
 				DDPMSG("%s %d skip due to still opening\n", __func__, crtc_idx);
 				CRTC_MMP_MARK(index, atomic_begin, 0, 0xF);
@@ -18235,7 +18242,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				drm_trace_tag_mark("atomic_begin");
 			}
 			goto end;
-		} else if (mtk_crtc->enabled == 0 && priv->usage[crtc_idx] == DISP_ENABLE) {
+		} else if (mtk_crtc->enabled == 0 && mtk_crtc->cur_usage == DISP_ENABLE) {
 			CRTC_MMP_MARK(index, atomic_begin, 0, __LINE__);
 			mtk_drm_crtc_enable(crtc, false);
 			if (comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA) {
@@ -18329,6 +18336,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		priv->data->mmsys_id == MMSYS_MT6895 ||
 		priv->data->mmsys_id == MMSYS_MT6761)
 		DDPINFO("skip reset ovl for legacy chip\n");
+	else if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) &&
+			mtk_crtc->cur_usage == DISP_OPENING)
+		DDPINFO("%s %d skip reset ovl due to still opening\n", __func__, crtc_idx);
 	else
 		cmdq_pkt_reset_ovl(mtk_crtc_state->cmdq_handle, mtk_crtc);
 
@@ -18478,7 +18488,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	}
 #endif
 
-	if ((priv->usage[crtc_idx] == DISP_OPENING) &&
+	if ((mtk_crtc->cur_usage == DISP_OPENING) &&
 		comp && mtk_ddp_comp_get_type(comp->id) == MTK_DISP_WDMA)
 		goto end;
 
@@ -18794,9 +18804,9 @@ void mtk_drm_crtc_plane_disable(struct drm_crtc *crtc, struct drm_plane *plane,
 						return;
 					}
 
-					mtk_ddp_comp_layer_off(comp_r, plane->index,
+					mtk_ddp_comp_layer_off(comp_r, plane_index,
 							0, cmdq_handle);
-					mtk_ddp_comp_layer_off(comp, plane->index, 0, cmdq_handle);
+					mtk_ddp_comp_layer_off(comp, plane_index, 0, cmdq_handle);
 				} else {
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 					mtk_ddp_comp_layer_off(comp, plane->index, 0, cmdq_handle);
@@ -21033,7 +21043,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) &&
-			index < MAX_CRTC && priv->usage[index] == DISP_OPENING) {
+			mtk_crtc->cur_usage == DISP_OPENING) {
 		struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 
 		if (!(output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DISP_WDMA)) {
@@ -25582,7 +25592,6 @@ int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock)
 		return -EINVAL;
 
 	if (need_lock) {
-		DDP_COMMIT_LOCK(&private->commit.lock, __func__, __LINE__);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 
@@ -25597,7 +25606,6 @@ int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock)
 		DDPPR_ERR("%s:%d NULL handle\n", __func__, __LINE__);
 		if (need_lock) {
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-			DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 		}
 		return -EINVAL;
 	}
@@ -25631,7 +25639,6 @@ int mtk_drm_switch_te(struct drm_crtc *crtc, int te_num, bool need_lock)
 
 	if (need_lock) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 	}
 	return 0;
 }
@@ -26340,7 +26347,6 @@ void mtk_crtc_default_path_rst(struct drm_crtc *crtc)
 {
 	int i, j;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_ddp_comp *comp;
 	struct cmdq_pkt *cmdq_handle;
 	bool only_output;
@@ -26355,7 +26361,7 @@ void mtk_crtc_default_path_rst(struct drm_crtc *crtc)
 	}
 
 	async = mtk_drm_idlemgr_get_async_status(crtc);
-	only_output = (priv->usage[drm_crtc_index(crtc)] == DISP_OPENING);
+	only_output = (mtk_crtc->cur_usage == DISP_OPENING);
 	for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
 		if (only_output && !mtk_ddp_comp_is_output(comp))
 			continue;

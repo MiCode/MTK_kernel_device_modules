@@ -794,7 +794,6 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 
 		private = crtc->dev->dev_private;
 		if (need_lock) {
-			DDP_COMMIT_LOCK(&private->commit.lock, __func__, __LINE__);
 			DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 			CRTC_MMP_MARK(crtc_idx, esd_check, 0x10CF, 0);
 		}
@@ -825,7 +824,6 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 
 			if (need_lock) {
 				DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-				DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 			}
 			return 0;
 		} else if (recovery_flg && ret == 0) {
@@ -837,7 +835,6 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 
 		if (need_lock) {
 			DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-			DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
 		}
 
 		return 0;
@@ -1027,14 +1024,11 @@ void mtk_disp_chk_recover_init(struct drm_crtc *crtc)
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *output_comp;
-	bool mode = true;
 
 	output_comp = (mtk_crtc) ? mtk_ddp_comp_request_output(mtk_crtc) : NULL;
-	if (priv->data->mmsys_id == MMSYS_MT6991 && output_comp)
-		mode = mtk_dsi_is_cmd_mode(output_comp);
 
 	/* only support ESD check for DSI output interface */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_ESD_CHECK_RECOVERY) &&
-			output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI && mode)
+			output_comp && mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
 		mtk_disp_esd_chk_init(crtc);
 }

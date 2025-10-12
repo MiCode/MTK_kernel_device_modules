@@ -670,7 +670,7 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 static struct mtk_panel_params ext_params = {
 	.pll_clk = 525,
 	.vfp_low_power = 750,
-	.cust_esd_check = 0,
+	.cust_esd_check = 1,
 	.esd_check_enable = 1,
 	.lcm_esd_check_table[0] = {
 		.cmd = 0x0a,
@@ -827,31 +827,33 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	ctx->prepared = true;
 	ctx->enabled = true;
 
-	if (of_property_read_bool(dsi_node, "init-panel-off")) {
-		ctx->prepared = false;
-		ctx->enabled = false;
-		pr_info("td4330 dsi_node:%s set prepared = enabled = false\n",
-					dsi_node->full_name);
-	}
-
-	if (of_property_read_bool(dev->of_node, "swap-from-dts")) {
-		ret = of_property_read_u32_array(dev->of_node, "lane-swap-setting", lane_swap, 6);
-		if (ret == 0) {
-			pr_info("td4330 dsi node:%s set Lane Swap from dts\n",
+	if (dsi_node) {
+		if (of_property_read_bool(dsi_node, "init-panel-off")) {
+			ctx->prepared = false;
+			ctx->enabled = false;
+			pr_info("td4330 dsi_node:%s set prepared = enabled = false\n",
 						dsi_node->full_name);
-			ext_params.lane_swap_en = 1;
-			for (i = 0; i < 6; i++) {
-				ext_params.lane_swap[0][i] = lane_swap[i];
-				ext_params.lane_swap[1][i] = lane_swap[i];
-			}
 		}
-		ret = of_property_read_u32_array(dev->of_node, "pn-swap-setting", pn_swap, 6);
-		if (ret == 0) {
-			pr_info("td4330 dsi node:%s set PN Swap from dts\n",
-						dsi_node->full_name);
-			for (i = 0; i < 6; i++) {
-				ext_params.pn_swap[0][i] = pn_swap[i];
-				ext_params.pn_swap[1][i] = pn_swap[i];
+
+		if (of_property_read_bool(dev->of_node, "swap-from-dts")) {
+			ret = of_property_read_u32_array(dev->of_node, "lane-swap-setting", lane_swap, 6);
+			if (ret == 0) {
+				pr_info("td4330 dsi node:%s set Lane Swap from dts\n",
+							dsi_node->full_name);
+				ext_params.lane_swap_en = 1;
+				for (i = 0; i < 6; i++) {
+					ext_params.lane_swap[0][i] = lane_swap[i];
+					ext_params.lane_swap[1][i] = lane_swap[i];
+				}
+			}
+			ret = of_property_read_u32_array(dev->of_node, "pn-swap-setting", pn_swap, 6);
+			if (ret == 0) {
+				pr_info("td4330 dsi node:%s set PN Swap from dts\n",
+							dsi_node->full_name);
+				for (i = 0; i < 6; i++) {
+					ext_params.pn_swap[0][i] = pn_swap[i];
+					ext_params.pn_swap[1][i] = pn_swap[i];
+				}
 			}
 		}
 	}

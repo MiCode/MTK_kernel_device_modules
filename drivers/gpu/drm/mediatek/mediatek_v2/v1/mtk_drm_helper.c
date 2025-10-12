@@ -123,6 +123,8 @@ static struct mtk_drm_helper help_info[] = {
 	{MTK_DRM_OPT_LTPO_VM, 0, "MTK_DRM_OPT_LTPO_VM"},
 	{MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE, 0, "MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE"},
 	{MTK_DRM_OPT_MMDVFS_MODE_SWITCH, 0, "MTK_DRM_OPT_MMDVFS_MODE_SWITCH"},
+	/* Let CRTC's atomic commit perform while another CRTC enable/disable connector */
+	{MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL, 0, "MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL"},
 };
 
 enum DISP_HELPER_STAGE disp_helper_get_stage(void)

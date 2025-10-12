@@ -6080,8 +6080,8 @@ static void mtk_output_dsi_enable(struct mtk_dsi *dsi,
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)) {
 		crtc_idx = drm_crtc_index(crtc);
-		if (priv && crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING) {
-			DDPMSG("%s %d skip due to still opening\n", __func__, crtc_idx);
+		if (mtk_crtc->cur_usage == DISP_OPENING) {
+			DDPINFO("%s %d skip due to still opening\n", __func__, crtc_idx);
 			CRTC_MMP_EVENT_END(crtc_idx, dsi_enable,
 				(unsigned long)dsi->output_en, 1);
 			return;
@@ -6449,7 +6449,8 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 	unsigned int tmp1 = 0, tmp2 = 0;
 	bool skip_panel_switch = mtk_dsi_skip_panel_switch(dsi);
 
-	DDPINFO("%s+ doze_enabled:%d\n", __func__, new_doze_state);
+	DDPINFO("%s+ doze_enabled:%d crtc%u %s\n",
+		__func__, new_doze_state, drm_crtc_index(crtc), mtk_dump_comp_str(&dsi->ddp_comp));
 
 	CRTC_MMP_EVENT_START(crtc_idx, dsi_disable,
 				(unsigned long)crtc, crtc_idx);
@@ -6474,8 +6475,8 @@ static void mtk_output_dsi_disable(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 	dsi->pending_switch = skip_panel_switch;
 
 	if (priv && mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT)
-			&& crtc_idx < MAX_CRTC && priv->usage[crtc_idx] == DISP_OPENING) {
-		DDPMSG("%s %d wait for opening\n", __func__, crtc_idx);
+			&& mtk_crtc->cur_usage == DISP_OPENING) {
+		DDPMSG("%s %d wait for opening\n", __func__, drm_crtc_index(crtc));
 		if (cmdq_handle)
 			cmdq_pkt_destroy(cmdq_handle);
 		goto SKIP_WAIT_FRAME_DONE;
@@ -6671,11 +6672,20 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 	int index = drm_crtc_index(crtc);
 	int data = MTK_DISP_BLANK_POWERDOWN;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int async_ctrl_flag = 0;
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_BRING_UP) {
 		DDPMSG("%s force return for bringup\n", __func__);
 		return;
 	}
+
+	if (unlikely(index < 0 && index >= MAX_CRTC)) {
+		DDPPR_ERR("%s fail, invalid CRTC idx %d\n", __func__, index);
+		return;
+	}
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL))
+		async_ctrl_flag = 1;
 
 	CRTC_MMP_EVENT_START(index, dsi_suspend,
 			(unsigned long)crtc, index);
@@ -6684,6 +6694,12 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	CRTC_MMP_MARK(index, dsi_suspend, 1, 0);
+
+	if (async_ctrl_flag) {
+		/* release commit lock during DSI connector disable */
+		atomic_set(&priv->need_wound_crtc[index], 1);
+		DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, __LINE__);
+	}
 
 	/* TODO: assume DSI0 would use for primary display so far */
 	if (comp->id == DDP_COMPONENT_DSI0)
@@ -6713,6 +6729,12 @@ static void mtk_dsi_encoder_disable(struct drm_encoder *encoder)
 	else if (comp->id == DDP_COMPONENT_DSI2)
 		mtk_disp_3rd_notifier_call_chain(MTK_DISP_EVENT_BLANK,
 					&data);
+	if (async_ctrl_flag) {
+		/* regain commit lock after disable done and wake up wound wait queue */
+		DDP_MUTEX_LOCK(&priv->commit.lock, __func__, __LINE__);
+		atomic_set(&priv->need_wound_crtc[index], 0);
+		wake_up(&priv->wound_wq[index]);
+	}
 
 	CRTC_MMP_EVENT_END(index, dsi_suspend,
 			(unsigned long)dsi->output_en, 0);
@@ -6737,14 +6759,30 @@ static void mtk_dsi_encoder_enable(struct drm_encoder *encoder)
 {
 	struct mtk_dsi *dsi = encoder_to_dsi(encoder);
 	struct drm_crtc *crtc = encoder->crtc;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	int index = drm_crtc_index(crtc);
 	int data = MTK_DISP_BLANK_UNBLANK;
+	unsigned int async_ctrl_flag = 0;
 
 	CRTC_MMP_EVENT_START(index, dsi_resume,
 			(unsigned long)crtc, index);
 
 	DDPINFO("%s\n", __func__);
+
+	if (unlikely(index < 0 && index >= MAX_CRTC)) {
+		DDPPR_ERR("%s fail, invalid CRTC idx %d\n", __func__, index);
+		return;
+	}
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL))
+		async_ctrl_flag = 1;
+
+	if (async_ctrl_flag) {
+		/* release commit lock during DSI connector enable */
+		atomic_set(&priv->need_wound_crtc[index], 1);
+		DDP_MUTEX_UNLOCK(&priv->commit.lock, __func__, __LINE__);
+	}
 
 	/* TODO: assume DSI0 would use for primary display so far */
 	if (comp->id == DDP_COMPONENT_DSI0) {
@@ -6788,6 +6826,12 @@ static void mtk_dsi_encoder_enable(struct drm_encoder *encoder)
 		mtk_disp_3rd_notifier_call_chain(MTK_DISP_EVENT_BLANK,
 					&data);
 		DDP_PROFILE("[PROFILE] %s after notify end\n", __func__);
+	}
+	if (async_ctrl_flag) {
+		/* regain commit lock after enable done and wake up wound wait queue */
+		DDP_MUTEX_LOCK(&priv->commit.lock, __func__, __LINE__);
+		atomic_set(&priv->need_wound_crtc[index], 0);
+		wake_up(&priv->wound_wq[index]);
 	}
 
 	CRTC_MMP_EVENT_END(index, dsi_resume,
@@ -7887,6 +7931,7 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 	void __iomem *baddr = comp->regs;
 	unsigned int reg_val;
 	struct mtk_dsi *dsi = container_of(comp, struct mtk_dsi, ddp_comp);
+	const char *mode_state = NULL;
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -7899,6 +7944,16 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 		DDPDUMP("MIPITX Clock:%d\n", mtk_mipi_tx_pll_get_rate(dsi->phy));
 	}
 
+	if (DISP_REG_GET_FIELD(MODE_FLD_REG_MODE_CON,
+				baddr + DSI_MODE_CTRL(dsi->driver_data))) {
+		/* VDO mode */
+		reg_val = (readl(baddr + 0x164)) & 0xff;
+		mode_state = mtk_dsi_vdo_mode_parse_state(reg_val);
+	} else {
+		reg_val = (readl(baddr + 0x160)) & 0xffff;
+		mode_state = mtk_dsi_cmd_mode_parse_state(reg_val);
+	}
+
 	DDPDUMP("start:%x,busy:%d,DSI_DUAL_EN:%d\n",
 		DISP_REG_GET_FIELD(START_FLD_REG_START, baddr + DSI_START),
 		DISP_REG_GET_FIELD(INTSTA_FLD_REG_BUSY, baddr + DSI_INTSTA),
@@ -7909,9 +7964,7 @@ int mtk_dsi_analysis(struct mtk_ddp_comp *comp)
 						    baddr + DSI_MODE_CTRL(dsi->driver_data))),
 		DISP_REG_GET_FIELD(PHY_FLD_REG_LC_HSTX_EN,
 				   baddr + DSI_PHY_LCCON(dsi->driver_data)),
-		mtk_dsi_cmd_mode_parse_state(
-			DISP_REG_GET_FIELD(STATE_DBG6_FLD_REG_CMCTL_STATE,
-					   baddr + DSI_STATE_DBG6(dsi->driver_data))));
+		mode_state);
 
 	reg_val = readl(DSI_INTEN + baddr);
 	DDPDUMP("IRQ_EN,RD_RDY:%d,CMD_DONE:%d,SLEEPOUT_DONE:%d\n",
@@ -12493,7 +12546,6 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev, struct cmdq_pkt *h
 
 	CRTC_MMP_EVENT_START(index, ddic_send_cmd, 0xffffffff, prop);
 	if ((prop & MTK_LCM_DSI_CMD_PROP_LOCK) != 0) {
-		DDP_COMMIT_LOCK(&priv->commit.lock, __func__, __LINE__);
 		DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 	}
 
@@ -12511,7 +12563,6 @@ int mtk_lcm_dsi_ddic_handler(struct mipi_dsi_device *dsi_dev, struct cmdq_pkt *h
 
 	if ((prop & MTK_LCM_DSI_CMD_PROP_LOCK) != 0) {
 		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
-		DDP_COMMIT_UNLOCK(&priv->commit.lock, __func__, __LINE__);
 	}
 	CRTC_MMP_EVENT_END(index, ddic_send_cmd, mask, ret);
 

@@ -1074,6 +1074,8 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 #ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 #endif
+	unsigned int index = drm_crtc_index(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	DDPINFO("%s+: new crtc state = %d, old crtc state = %d, stage = %d\n", __func__,
 		crtc->state->active, old_state, stage);
@@ -1103,9 +1105,31 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 				return;
 			bypass = 1;
 		}
+	} else if ((index == 3) && (mtk_crtc->pending_update_pq == true)
+		&& (stage == 1) && (mtk_crtc->cur_usage == DISP_ENABLE)
+		&& (index < MAX_CRTC)) {
+		mtk_crtc->pending_update_pq = false;
+		bypass = mtk_crtc->backup_bypass_pq;
+		DDPINFO("%s %d execute pending update, bypass:%d\n",
+			__func__, index, bypass);
 	} else {
 		DDPINFO("%s: doze not change, skip update pq\n", __func__);
 		return;
+	}
+
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT) && index < MAX_CRTC) {
+		if ((index == 3) && ((mtk_crtc->cur_usage == DISP_OPENING) || (!mtk_crtc->enabled))) {
+			mtk_crtc->pending_update_pq = true;
+			mtk_crtc->backup_bypass_pq = bypass;
+			DDPINFO("%s %d wait for opening or enabled, disp_state:%d, crtc_enabled:%d, backup bypass:%d\n",
+				__func__, index, mtk_crtc->cur_usage, mtk_crtc->enabled,
+				mtk_crtc->backup_bypass_pq);
+			return;
+		}
+	}
+	if (index == 3) {
+		mtk_crtc->backup_bypass_pq = bypass;
+		DDPINFO("%s %d backup bypass:%d\n",	__func__, index, mtk_crtc->backup_bypass_pq);
 	}
 
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
@@ -2207,6 +2231,7 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	unsigned int pf = 0;
 	struct drm_crtc_state *new_crtc_state = NULL;
 	struct mtk_crtc_state *mtk_crtc_state = NULL;
+	unsigned int async_ctrl_flag = 0;
 
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	cpu_hotplug_disable();
@@ -2221,7 +2246,7 @@ static int mtk_atomic_commit(struct drm_device *drm,
 
 	for_each_new_crtc_in_state(state, crtc, new_crtc_state, j) {
 		/* check only crtc 0 for mml and update pf */
-		if (!(crtc_mask & 0x1))
+		if (!(crtc_mask & 0x9))
 			break;
 
 		mtk_crtc = to_mtk_crtc(crtc);
@@ -2278,6 +2303,10 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		}
 	}
 
+	if (mtk_drm_helper_get_opt(private->helper_opt,
+					   MTK_DRM_OPT_ASYNC_CONN_PWR_CTRL))
+		async_ctrl_flag = 1;
+
 	flush_work(&private->commit.work);
 	DDPINFO("%s step3,pm_status :%d\n", __func__,
 		atomic_read(&private->kernel_pm.status));
@@ -2285,6 +2314,9 @@ static int mtk_atomic_commit(struct drm_device *drm,
 	for (i = 0; i < MAX_CRTC; i++) {
 		if (!(crtc_mask >> i & 0x1))
 			continue;
+		/* light weight wound wait make sure crtc_lock & commit_lock not dead lock */
+		if (async_ctrl_flag)
+			check_and_try_commit_lock(private, i);
 		crtc = private->crtc[i];
 		mtk_crtc = to_mtk_crtc(crtc);
 
@@ -2293,6 +2325,10 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		DDP_MUTEX_LOCK_NESTED(&mtk_crtc->lock, i, __func__, __LINE__);
 		CRTC_MMP_EVENT_START((int)drm_crtc_index(crtc), atomic_commit, 0, 0);
 		drm_trace_tag_mark_bycrtc("atomic_commit", drm_crtc_index(crtc));
+		/* configure this crtc's cur_usage at once */
+		mutex_lock(&private->res_usage_lock);
+		mtk_crtc->cur_usage = private->usage[i];
+		mutex_unlock(&private->res_usage_lock);
 	}
 	mutex_nested_time_start = sched_clock();
 	DDPINFO("%s step4,pm_status :%d\n", __func__,
@@ -10266,6 +10302,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	mutex_init(&private->cmdq_prepare_instr_lock);
 	mutex_init(&private->path_modify_lock);
 	mutex_init(&private->set_mmclk_lock);
+	mutex_init(&private->res_usage_lock);
 
 	init_waitqueue_head(&private->repaint_data.wq);
 	INIT_LIST_HEAD(&private->repaint_data.job_queue);
@@ -10273,7 +10310,8 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	for (i = 0; i < MAX_CRTC ; ++i) {
 		atomic_set(&private->crtc_present[i], 0);
 		atomic_set(&private->crtc_rel_present[i], 0);
-		atomic_set(&private->crtc_dbi_count[i], 0);
+		init_waitqueue_head(&private->wound_wq[i]);
+		atomic_set(&private->need_wound_crtc[i], 0);
 	}
 	atomic_set(&private->rollback_all, 0);
 	mtk_drm_svp_init(drm);

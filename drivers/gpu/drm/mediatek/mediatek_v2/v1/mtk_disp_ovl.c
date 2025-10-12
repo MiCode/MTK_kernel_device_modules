@@ -5934,6 +5934,8 @@ int mtk_ovl_analysis(struct mtk_ddp_comp *comp)
 	unsigned int addcon;
 	unsigned int path_con;
 	unsigned int pq_out_size;
+	unsigned int lc_con, lc_src_size, lc_offset;
+	static const char * const lc_pixel_src[] = { "color", "color", "ufod", "pq" };
 
 	if (!baddr) {
 		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
@@ -5950,10 +5952,10 @@ int mtk_ovl_analysis(struct mtk_ddp_comp *comp)
 	pq_out_size = readl(DISP_REG_OVL_PQ_OUT_SIZE + baddr);
 
 	DDPDUMP("== %s ANALYSIS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
-	DDPDUMP("ovl_en=%d,layer_en(%d,%d,%d,%d),bg(%dx%d)\n",
+	DDPDUMP("ovl_en=%d,layer_en(%d,%d,%d,%d),lc_en=%d,bg(%dx%d)\n",
 		readl(DISP_REG_OVL_EN + baddr) & 0x1, src_con & 0x1,
 		(src_con >> 1) & 0x1, (src_con >> 2) & 0x1,
-		(src_con >> 3) & 0x1,
+		(src_con >> 3) & 0x1, (src_con >> 4) & 0x1,
 		readl(DISP_REG_OVL_ROI_SIZE + baddr) & 0xfff,
 		(readl(DISP_REG_OVL_ROI_SIZE + baddr) >> 16) & 0xfff);
 	DDPDUMP("ext_layer:layer_en(%d,%d,%d),attach_layer(%d,%d,%d)\n",
@@ -6005,6 +6007,20 @@ int mtk_ovl_analysis(struct mtk_ddp_comp *comp)
 		else
 			DDPDUMP("ext_L%d:disabled\n", i);
 	}
+
+	/* constant layer */
+	lc_con = readl(DISP_REG_OVL_LC_CON + baddr);
+	lc_offset = readl(DISP_REG_OVL_LC_OFFSET + baddr);
+	lc_src_size = readl(DISP_REG_OVL_LC_SRC_SIZE + baddr);
+
+	DDPDUMP("constant layer:source=%s,aen=%u,alpha=%u\n",
+		lc_pixel_src[REG_FLD_VAL_GET(L_CON_FLD_LSRC, lc_con)],
+		REG_FLD_VAL_GET(L_CON_FLD_AEN, lc_con),
+		REG_FLD_VAL_GET(L_CON_FLD_APHA, lc_con));
+	DDPDUMP("constant layer:(%u,%u,%ux%u)\n",
+		lc_offset & 0xfff, (lc_offset >> 16) & 0xfff,
+		lc_src_size & 0xfff, (lc_src_size >> 16) & 0xfff);
+
 	ovl_printf_status(readl(DISP_REG_OVL_FLOW_CTRL_DBG + baddr));
 
 	return 0;

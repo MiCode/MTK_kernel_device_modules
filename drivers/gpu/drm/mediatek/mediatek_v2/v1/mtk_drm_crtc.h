@@ -580,6 +580,13 @@ enum MTK_CRTC_PROP {
 #define USER_SCEN_SKIP_PANEL_SWITCH (BIT(1))
 #define USER_SCEN_SAME_POWER_MODE (BIT(2))
 
+
+enum disp_hrt_usage {
+	DISP_DISABLE,
+	DISP_ENABLE,
+	DISP_OPENING,
+};
+
 enum MTK_CRTC_COLOR_FMT {
 	CRTC_COLOR_FMT_UNKNOWN = 0,
 	CRTC_COLOR_FMT_Y8 = MAKE_CRTC_COLOR_FMT(0, 8, 0, 0, 7, 0, 0, 1),
@@ -1149,6 +1156,7 @@ struct mtk_drm_crtc {
 	unsigned int layer_nr;
 	bool pending_planes;
 	unsigned int ovl_usage_status;
+	enum disp_hrt_usage cur_usage;
 	void __iomem *ovlsys0_regs;
 	resource_size_t ovlsys0_regs_pa;
 	void __iomem *ovlsys1_regs;
@@ -1417,6 +1425,8 @@ struct mtk_drm_crtc {
 	bool is_virtio_path;
 	bool is_shared_device;
 #endif
+	bool pending_update_pq;
+	unsigned int backup_bypass_pq;
 };
 
 enum BL_GAMMA_GAIN {
