@@ -127,6 +127,7 @@ static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
 	struct xhci_ring *ring, dma_addr_t phys, void *vir);
 
 /* usb offload device helper */
+static void usb_offload_self_recycle(void);
 static void usb_offload_start_offloading(struct usb_audio_dev *dev);
 static void usb_offload_end_offloading(struct usb_audio_dev *dev);
 
@@ -200,8 +201,7 @@ static void adsp_ee_recovery(void)
 static int usb_offload_event_receive(struct notifier_block *this, unsigned long event,
 			    void *ptr)
 {
-	struct usb_audio_dev *dev;
-	int i;
+	USB_OFFLOAD_INFO("++\n");
 
 	switch (event) {
 	case ADSP_EVENT_STOP:
@@ -224,24 +224,12 @@ static int usb_offload_event_receive(struct notifier_block *this, unsigned long 
 		if (stage_occupy(DRV_STAGE_ADSP_STOP) < 0)
 			goto error;
 
-		/* shutdown every active audio devices */
-		for (i = 0; i < SNDRV_CARDS; i++) {
-			dev = &uadev[i];
-			if (!dev->chip)
-				continue;
-			USB_OFFLOAD_INFO("self-cleanup card%d on slot%d\n",
-				dev->card_num, dev->slot_id);
-			uaudio_dev_cleanup(dev);
-		}
-
-		/* recycle resource if we inited dsp before */
-		if (uodev->adsp_inited && send_deinit_adsp() < 0)
-			USB_OFFLOAD_ERR("self-deinit failed\n,");
-
+		usb_offload_self_recycle();
 		stage_vacate(DRV_STAGE_ADSP_STOP);
 	}
 error:
 	usb_offload_status();
+	USB_OFFLOAD_INFO("--\n");
 	return 0;
 }
 
@@ -422,6 +410,7 @@ static void sound_usb_disconnect(struct snd_usb_audio *chip)
 	}
 
 	uaudio_dev_shutdown(dev);
+	dev->chip = NULL;
 	atomic_set(&uadev[card_num].connected, 0);
 	uodev->total_connected--;
 err:
@@ -820,7 +809,6 @@ static void uaudio_dev_shutdown(struct usb_audio_dev *dev)
 
 skip_disable:
 	uaudio_dev_cleanup(dev);
-	dev->chip = NULL;
 }
 
 static struct usb_audio_dev *uaudio_dev_match(struct xhci_virt_device *vdev)
@@ -837,6 +825,26 @@ static struct usb_audio_dev *uaudio_dev_match(struct xhci_virt_device *vdev)
 
 done:
 	return NULL;
+}
+
+static void usb_offload_self_recycle(void)
+{
+	struct usb_audio_dev *dev;
+	int i;
+
+	/* shutdown every active audio devices */
+	for (i = 0; i < SNDRV_CARDS; i++) {
+		dev = &uadev[i];
+		if (!dev->chip)
+			continue;
+		USB_OFFLOAD_INFO("self-cleanup card%d on slot%d\n",
+			dev->card_num, dev->slot_id);
+		uaudio_dev_shutdown(dev);
+	}
+
+	/* recycle resource if we inited dsp before */
+	if (uodev->adsp_inited && send_deinit_adsp() < 0)
+		USB_OFFLOAD_ERR("self-deinit failed\n,");
 }
 
 static void usb_offload_start_offloading(struct usb_audio_dev *dev)
@@ -2697,7 +2705,7 @@ busy:
 
 static int usb_offload_release(struct inode *ip, struct file *fp)
 {
-	int ret = 0, idx;
+	int ret = 0;
 
 	USB_OFFLOAD_INFO("++\n");
 	if (stage_occupy(DRV_STAGE_FILE_OPS) < 0) {
@@ -2705,16 +2713,8 @@ static int usb_offload_release(struct inode *ip, struct file *fp)
 		goto busy;
 	}
 
-	for (idx = 0; idx < SNDRV_CARDS; idx++) {
-		if (!uadev[idx].chip)
-			continue;
-
-		/* just cleanup audio device, do not shut it down */
-		uaudio_dev_cleanup(&uadev[idx]);
-	}
-
+	usb_offload_self_recycle();
 	usb_offload_status();
-
 	stage_vacate(DRV_STAGE_FILE_OPS);
 busy:
 	USB_OFFLOAD_INFO("--\n");
