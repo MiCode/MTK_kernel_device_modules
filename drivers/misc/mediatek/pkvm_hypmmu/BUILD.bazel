@@ -34,6 +34,8 @@ define_mgk_ddk_ko(
         "pkvm_hypmmu_host.h",
         "mtk_iommu-cmapool.c",
         "mtk_iommu-cmapool.h",
+        "mtk_iommu-pagepool.c",
+        "mtk_iommu-pagepool.h",
         "hal-mtk-iommu.c",
         "hal-gpu-mpu.c",
         "hal-infra-mpu.c",
