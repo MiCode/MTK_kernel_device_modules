@@ -83,6 +83,10 @@ struct mtk_disp_c3d_primary {
 	struct cmdq_pkt *sram_pkt[C3D_CMDQ_MAX];
 	atomic_t c3d_sram_hw_init;
 	unsigned int relay_state;
+	unsigned int c3d_sram_cfg_r_g[DISP_C3D_SRAM_SIZE_17BIN];
+	unsigned int c3d_sram_cfg_b[DISP_C3D_SRAM_SIZE_17BIN];
+	struct mtk_cmdq_cb_data *cb_data;
+	atomic_t pkt_async_flush;
 };
 
 struct mtk_disp_c3d {
@@ -97,8 +101,8 @@ struct mtk_disp_c3d {
 	struct mtk_disp_c3d_tile_overhead_v tile_overhead_v;
 	bool c3dlut_updated;
 	bool pkt_reused[C3D_CMDQ_MAX];
-	struct cmdq_reuse reuse_c3d[C3D_CMDQ_MAX][DISP_C3D_SRAM_SIZE_17BIN + 1];
-	atomic_t c3d_is_clock_on;
+	struct cmdq_reuse reuse_c3d[C3D_CMDQ_MAX][DISP_C3D_SRAM_SIZE_17BIN * 2 + 5];
+	atomic_t c3d_clock_ref;
 	atomic_t c3d_force_sram_apb;
 	bool has_set_1dlut;
 	unsigned int set_partial_update;
@@ -108,6 +112,7 @@ struct mtk_disp_c3d {
 	int sram_end_addr;
 	int c3dlut_size;
 	int lut_bit;
+	unsigned int auto_flip;
 };
 
 inline struct mtk_disp_c3d *comp_to_c3d(struct mtk_ddp_comp *comp);

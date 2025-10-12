@@ -1478,6 +1478,7 @@ struct mtk_cmdq_cb_data {
 	ktime_t signal_ts;
 	struct cb_data_store *store_cb_data;
 	uint64_t pts;
+	struct mtk_ddp_comp *comp;
 };
 #define TIGGER_INTERVAL_S(x) ((unsigned long long)x*1000*1000*1000)
 extern unsigned int disp_spr_bypass;

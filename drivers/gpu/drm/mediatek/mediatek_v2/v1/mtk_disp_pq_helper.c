@@ -897,19 +897,48 @@ err:
 	return ret;
 }
 
-bool is_pq_frame_cfg_need_wait_done(struct mtk_drm_pq_param *requests, unsigned int cmds_len)
+bool is_pq_frame_cfg_need_wait_done(struct mtk_drm_crtc *mtk_crtc,
+			struct mtk_drm_pq_param *requests, unsigned int cmds_len)
 {
 	bool ret = false;
+	bool found = false;
+	bool is_gamma_frame_cfg = false, is_c3d_frame_cfg = false;
 	int index;
+	unsigned int i,j;
+	struct mtk_ddp_comp *comp;
 
 	for (index = 0; index < cmds_len; index++) {
 		unsigned int cmd = requests[index].cmd & 0xffff;
 
 		if (cmd == PQ_C3D_SET_LUT || cmd == PQ_GAMMA_SET_12BIT_GAMMALUT) {
-			ret = true;
+			found = true;
+			if (cmd == PQ_GAMMA_SET_12BIT_GAMMALUT)
+				is_gamma_frame_cfg = true;
+			if (cmd == PQ_C3D_SET_LUT)
+				is_c3d_frame_cfg = true;
 			break;
 		}
 	}
+
+	if (found) {
+		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j) {
+			if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_GAMMA) {
+				struct mtk_disp_gamma *gamma_data = comp_to_gamma(comp);
+
+				if ((gamma_data->auto_flip == 0) && is_gamma_frame_cfg)
+					ret = true;
+				break;
+			}
+			if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_C3D) {
+				struct mtk_disp_c3d *c3d_data = comp_to_c3d(comp);
+
+				if ((c3d_data->auto_flip == 0) && is_c3d_frame_cfg)
+					ret = true;
+				break;
+			}
+		}
+	}
+
 	return ret;
 }
 
@@ -994,7 +1023,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, pq_cmdq_handle, PQ_HELPER_CONFIG);
 
-	if (is_pq_frame_cfg_need_wait_done(requests, cmds_len) && pq_data) {
+	if (is_pq_frame_cfg_need_wait_done(mtk_crtc, requests, cmds_len) && pq_data) {
 		int ret;
 
 		need_wait_done = true;

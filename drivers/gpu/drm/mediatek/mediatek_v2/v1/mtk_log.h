@@ -451,6 +451,18 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 extern bool g_dsi_cmd_v2_log;
 extern bool g_dsi_cmd_v2_r_log;
 
+#define PQ_ERR(fmt, arg...)                                    \
+	do {                                                            \
+		mtk_dprec_logger_pr(DPREC_LOGGER_ERROR, fmt, ##arg);           \
+		pr_err("[DISP][E][PQ]" pr_fmt(fmt), ##arg);                       \
+	} while (0)
+
+#define PC_ERR(fmt, arg...)                                    \
+	do {                                                            \
+		mtk_dprec_logger_pr(DPREC_LOGGER_ERROR, fmt, ##arg);           \
+		pr_err("[DISP][E][PC]" pr_fmt(fmt), ##arg);                       \
+	} while (0)
+
 extern bool g_mobile_log;
 extern bool g_msync_debug;
 extern bool g_fence_log;

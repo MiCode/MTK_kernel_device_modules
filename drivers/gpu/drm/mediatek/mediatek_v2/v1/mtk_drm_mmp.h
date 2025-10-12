@@ -199,6 +199,8 @@ struct CRTC_MMP_Events {
 	mmp_event enter_vidle;
 	mmp_event pause_vidle;
 	mmp_event set_dirty;
+	/* c3d frame config */
+	mmp_event c3d_frame_config;
 };
 
 struct DRM_MMP_Events *get_drm_mmp_events(void);

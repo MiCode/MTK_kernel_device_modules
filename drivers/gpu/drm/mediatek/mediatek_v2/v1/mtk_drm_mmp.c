@@ -424,6 +424,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "pause_V_idle");
 		g_CRTC_MMP_Events[i].set_dirty = mmprofile_register_event(
 			crtc_mmp_root, "set_dirty");
+		g_CRTC_MMP_Events[i].c3d_frame_config= mmprofile_register_event(
+			crtc_mmp_root, "c3d_frame_config");
 	}
 }
 void drm_mmp_init(void)
