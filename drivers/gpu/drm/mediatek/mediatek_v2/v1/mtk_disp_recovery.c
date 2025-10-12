@@ -300,7 +300,7 @@ static void esd_check_done_cb(struct cmdq_cb_data data)
 			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 4) * 0x4));
 		dsi_data[5] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
 			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 5) * 0x4));
-		DDPINFO(_ESD_CHECK_MSG_FMT,	__func__, i,
+		DDPMSG(_ESD_CHECK_MSG_FMT,	__func__, i,
 		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM) * 0x4), dsi_data[0],
 		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 1) * 0x4), dsi_data[1],
 		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 2) * 0x4), dsi_data[2],

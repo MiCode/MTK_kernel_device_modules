@@ -282,12 +282,6 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "ddic_cmd_v2_msg");
 		g_CRTC_MMP_Events[i].ddic_cmd_v2_pg_chg = mmprofile_register_event(
 			crtc_mmp_root, "ddic_cmd_v2_pg_chg");
-		g_CRTC_MMP_Events[i].dsi_mode_change =
-			mmprofile_register_event(crtc_mmp_root, "dsi_mode_change");
-		g_CRTC_MMP_Events[i].cabc_event =
-			mmprofile_register_event(crtc_mmp_root, "cabc_event");
-		g_CRTC_MMP_Events[i].dsi_cmd_test = mmprofile_register_event(
-			crtc_mmp_root, "dsi_cmd_test");
 		g_CRTC_MMP_Events[i].ddic_read_cmd = mmprofile_register_event(
 			crtc_mmp_root, "ddic_read_cmd");
 		g_CRTC_MMP_Events[i].path_switch = mmprofile_register_event(
