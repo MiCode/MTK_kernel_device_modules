@@ -553,17 +553,17 @@
 			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_EIS_CQ_THR_DONE_P2_4>;
 		wpe-eis-cq-thread5-frame-done =
 			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_EIS_CQ_THR_DONE_P2_5>;
-		wpe-tnr-cq-thread0-frame-done =
+		omc-tnr-cq-thread0-frame-done =
 			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_0>;
-		wpe-tnr-cq-thread1-frame-done =
+		omc-tnr-cq-thread1-frame-done =
 			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_1>;
-		wpe-tnr-cq-thread2-frame-done =
+		omc-tnr-cq-thread2-frame-done =
 			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_2>;
-		wpe-tnr-cq-thread3-frame-done =
+		omc-tnr-cq-thread3-frame-done =
 			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_3>;
-		wpe-tnr-cq-thread4-frame-done =
+		omc-tnr-cq-thread4-frame-done =
 			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_4>;
-		wpe-tnr-cq-thread5-frame-done =
+		omc-tnr-cq-thread5-frame-done =
 			/bits/ 16 <CMDQ_EVENT_IMGSYS1_WPE_TNR_CQ_THR_DONE_P2_5>;
 #if 0
 		wpe-lite-cq-thread0-frame-done =
