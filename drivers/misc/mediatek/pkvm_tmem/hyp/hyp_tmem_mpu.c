@@ -141,6 +141,9 @@ static int PKVM_MPU_ShareMemProtRequest(enum MPU_REQ_ORIGIN_ZONE_ID zone_id,
 		tmem_ops->puts("pkvm_tmem: platform_mpu_clr");
 		rc = platform_mpu_clr(zone_id, rec->addr, rec->size, tmem_ops);
 		if (rc) {
+			/* PMM: unsecure range */
+			hyp_pmm_unsecure_range(rec->addr, rec->size, 0);
+
 			tmem_ops->puts("failed to Disable MPU protection\n");
 			return TZ_RESULT_ERROR_GENERIC;
 		}
