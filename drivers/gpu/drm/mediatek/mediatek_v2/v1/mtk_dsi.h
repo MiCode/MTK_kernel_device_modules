@@ -76,8 +76,10 @@ struct mtk_dsi_driver_data {
 	bool calc_golden_by_pct;
 	const u32 ultra_lo_fifo_pct;
 	const u32 ultra_hi_fifo_pct;
-	const u32 urgent_lo_fifo_pct;
-	const u32 urgent_hi_fifo_pct;
+	const u32 urgent_lo_fifo_pct_cmd;
+	const u32 urgent_hi_fifo_pct_cmd;
+	const u32 urgent_lo_fifo_pct_vdo;
+	const u32 urgent_hi_fifo_pct_vdo;
 	const u32 output_valid_fifo_us;
 	bool dsi_buffer;
 	bool smi_dbg_disable;

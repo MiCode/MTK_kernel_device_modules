@@ -3092,17 +3092,24 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 
 	if (dsi->driver_data->calc_golden_by_pct) {
 		u32 image_time, line_time, consume_rate;
-		u32 ultra_lo_fifo_pct = dsi->driver_data->ultra_lo_fifo_pct;
-		u32 ultra_hi_fifo_pct = dsi->driver_data->ultra_hi_fifo_pct;
-		u32 urgent_lo_fifo_pct = dsi->driver_data->urgent_lo_fifo_pct;
-		u32 urgent_hi_fifo_pct = dsi->driver_data->urgent_hi_fifo_pct;
+		u32 ultra_lo_fifo_pct = 0;
+		u32 ultra_hi_fifo_pct = 0;
+		u32 urgent_lo_fifo_pct = 0;
+		u32 urgent_hi_fifo_pct = 0;
 
 		unsigned int compress_rate = mtk_dsi_get_dsc_compress_rate(dsi);
 
-		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+		ultra_lo_fifo_pct = dsi->driver_data->ultra_lo_fifo_pct;
+		ultra_hi_fifo_pct = dsi->driver_data->ultra_hi_fifo_pct;
+		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 			line_time = mtk_dsi_get_line_time(mtk_crtc, dsi, ps_wc, -1);
-		else
+			urgent_lo_fifo_pct = dsi->driver_data->urgent_lo_fifo_pct_cmd;
+			urgent_hi_fifo_pct = dsi->driver_data->urgent_hi_fifo_pct_cmd;
+		} else {
 			line_time = mtk_dsi_get_line_time_vdo(mtk_crtc, dsi, ps_wc);
+			urgent_lo_fifo_pct = dsi->driver_data->urgent_lo_fifo_pct_vdo;
+			urgent_hi_fifo_pct = dsi->driver_data->urgent_hi_fifo_pct_vdo;
+		}
 		if (line_time == 0) {
 			DDPPR_ERR("%s line_time calc error\n", __func__);
 			return;
@@ -16665,8 +16672,10 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.calc_golden_by_pct = true,
 	.ultra_lo_fifo_pct = 80 * 1000,
 	.ultra_hi_fifo_pct = 0,
-	.urgent_lo_fifo_pct = 60 * 1000,
-	.urgent_hi_fifo_pct = 80 * 1000,
+	.urgent_lo_fifo_pct_cmd = 60 * 1000,
+	.urgent_hi_fifo_pct_cmd = 80 * 1000,
+	.urgent_lo_fifo_pct_vdo = 60 * 1000,
+	.urgent_hi_fifo_pct_vdo = 80 * 1000,
 	.output_valid_fifo_us = 35,
 	.max_vfp = 0xffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
@@ -16957,8 +16966,10 @@ static const struct mtk_dsi_driver_data mt6858_dsi_driver_data = {
 	.calc_golden_by_pct = true,
 	.ultra_lo_fifo_pct = 18000 * 80 / 32,
 	.ultra_hi_fifo_pct = 18000 * 90 / 32,
-	.urgent_lo_fifo_pct = 18000 * 50 / 32,
-	.urgent_hi_fifo_pct = 18000 * 80 / 32,
+	.urgent_lo_fifo_pct_cmd = 18000 * 60 / 32,
+	.urgent_hi_fifo_pct_cmd = 18000 * 80 / 32,
+	.urgent_lo_fifo_pct_vdo = 18000 * 45 / 32,
+	.urgent_hi_fifo_pct_vdo = 18000 * 75 / 32,
 	.max_vfp = 0x7ffe,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.n_verion = VER_N6,
