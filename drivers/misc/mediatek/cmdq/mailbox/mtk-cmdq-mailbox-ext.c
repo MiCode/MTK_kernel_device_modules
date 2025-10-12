@@ -153,9 +153,13 @@ EXPORT_SYMBOL(gce_in_vcp);
 bool cpr_not_support_cookie;
 EXPORT_SYMBOL(cpr_not_support_cookie);
 
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 /* CMDQ log flag */
 int mtk_cmdq_log;
 EXPORT_SYMBOL(mtk_cmdq_log);
+#else
+extern int mtk_cmdq_log;
+#endif
 
 int cmdq_pwr_log;
 EXPORT_SYMBOL(cmdq_pwr_log);
@@ -564,6 +568,10 @@ EXPORT_SYMBOL(cmdq_mbox_get_tpr);
 
 u8 cmdq_get_irq_long_times(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return 0;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	return cmdq->irq_long_times;
@@ -573,6 +581,9 @@ EXPORT_SYMBOL(cmdq_get_irq_long_times);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 u32 cmdq_get_tf_high_addr(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	return 0;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	return cmdq->tf_high_addr;
@@ -597,6 +608,10 @@ EXPORT_SYMBOL(cmdq_get_tf_high_addr_by_dev);
 
 void cmdq_event_dump_and_clr(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	u32 i;
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
@@ -639,6 +654,10 @@ EXPORT_SYMBOL(cmdq_event_timeout_dump_and_clr);
 
 void cmdq_get_usage_cb(struct mbox_chan *chan, cmdq_usage_cb usage_cb)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	u32 i;
@@ -776,6 +795,7 @@ static inline void cmdq_mmp_init(void)
 #endif
 }
 
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 static void cmdq_mtcmos_mminfra_ao(struct cmdq *cmdq, bool on)
 {
 	u32 onoff = on ? 1 : 0;
@@ -808,9 +828,11 @@ static void cmdq_mtcmos_mminfra_ao(struct cmdq *cmdq, bool on)
 			0, 0, 0, 0, 0, &res);
 	}
 }
+#endif
 
 static void cmdq_mtcmos_by_fast(struct cmdq *cmdq, bool on)
 {
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	unsigned long flags;
 	s32 usage;
 
@@ -862,6 +884,7 @@ static void cmdq_mtcmos_by_fast(struct cmdq *cmdq, bool on)
 				cmdq->hwid, usage);
 	}
 	spin_unlock_irqrestore(&cmdq->fast_mtcmos_lock, flags);
+#endif
 }
 
 void cmdq_mbox_mtcmos_by_fast_chan(struct mbox_chan *chan, bool on)
@@ -900,6 +923,10 @@ EXPORT_SYMBOL(cmdq_mbox_dump_fast_mtcmos);
 
 void cmdq_mbox_dump_gce_req(struct mbox_chan *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 
 	cmdq_mtcmos_by_fast(cmdq, true);
@@ -944,6 +971,10 @@ EXPORT_SYMBOL(cmdq_get_thread);
 
 dma_addr_t cmdq_thread_get_pc(struct cmdq_thread *thread)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return 0;
+#endif
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
 
 	if (atomic_read(&cmdq->usage) <= 0)
@@ -974,6 +1005,10 @@ static inline void cmdq_thread_set_end(struct cmdq_thread *thread, dma_addr_t en
 
 void cmdq_thread_set_spr(struct mbox_chan *chan, u8 id, u32 val)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 
 	if(id < CMDQ_GPR_CNT_ID)
@@ -1043,6 +1078,10 @@ static int cmdq_thread_suspend(struct cmdq *cmdq, struct cmdq_thread *thread)
 
 static void cmdq_thread_resume(struct cmdq_thread *thread)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(
 		thread->chan->mbox, typeof(*cmdq), mbox);
 
@@ -1636,6 +1675,16 @@ static void cmdq_task_exec_done(struct cmdq_task *task, s32 err)
 {
 	u32 *perf, hw_time = 0, exec_begin = 0, exec_end = 0;
 	unsigned long hw_time_rem = 0;
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	struct cmdq_flush_item *item = task->pkt->flush_item;
+#endif
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (item)
+		kref_get(&item->refcnt);
+	else
+		cmdq_err("%s item is invalid!", __func__);
+#endif
 
 	task->pkt->done = true;
 	perf = cmdq_pkt_get_perf_ret(task->pkt);
@@ -1664,6 +1713,10 @@ static void cmdq_task_exec_done(struct cmdq_task *task, s32 err)
 	task->end_time = sched_clock();
 	list_del_init(&task->list_entry);
 	cmdq_trace_end("%s pkt:%p", __func__, task->pkt);
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (item)
+		kref_put(&item->refcnt, cmdq_pkt_ref_destroy);
+#endif
 }
 
 static void cmdq_buf_dump_schedule(struct cmdq_task *task, bool timeout,
@@ -2260,6 +2313,10 @@ static void cmdq_irq_handler_work(struct work_struct *work_item)
 
 static bool cmdq_thread_timeout_excceed(struct cmdq_thread *thread)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return false;
+#endif
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
 	u64 duration;
 
@@ -2284,6 +2341,10 @@ static bool cmdq_thread_timeout_excceed(struct cmdq_thread *thread)
 
 static bool cmdq_thread_skip_timeout(struct cmdq_thread *thread)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return false;
+#endif
 	u32 cookie;
 	struct cmdq_task *task;
 	struct cmdq *cmdq = container_of(thread->chan->mbox, typeof(*cmdq), mbox);
@@ -2350,6 +2411,10 @@ EXPORT_SYMBOL(cmdq_thread_check_list_empty);
 
 static void cmdq_thread_handle_timeout_work(struct work_struct *work_item)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq_thread *thread = container_of(work_item,
 		struct cmdq_thread, timeout_work);
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
@@ -2490,6 +2555,10 @@ unlock_free_done:
 }
 static void cmdq_thread_handle_timeout(struct timer_list *t)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq_thread *thread = from_timer(thread, t, timeout);
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
 	unsigned long flags;
@@ -2547,6 +2616,10 @@ EXPORT_SYMBOL(cmdq_dump_core);
 
 void cmdq_thread_dump_spr(struct cmdq_thread *thread)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
 	u32 i, spr[4] = {0}, dbg[2] = {0}, gpr[16] = {0};
 
@@ -2573,6 +2646,10 @@ EXPORT_SYMBOL(cmdq_thread_dump_spr);
 void cmdq_thread_dump(struct mbox_chan *chan, struct cmdq_pkt *cl_pkt,
 	u64 **inst_out, dma_addr_t *pc_out)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq_thread *thread = (struct cmdq_thread *)chan->con_priv;
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
 	unsigned long flags;
@@ -2654,9 +2731,16 @@ void cmdq_thread_dump(struct mbox_chan *chan, struct cmdq_pkt *cl_pkt,
 	cmdq_thread_dump_spr(thread);
 
 	if (pkt) {
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+		cmdq_util_user_msg(chan,
+			"cur pkt:0x%p pkt from %s size:%zu va:0x%p pa:%pa priority:%u",
+			pkt, pkt->guest_task ? "guest" : "host", size, va_base, &pa_base, pri);
+#else
+
 		cmdq_util_user_msg(chan,
 			"cur pkt:0x%p size:%zu va:0x%p pa:%pa priority:%u",
 			pkt, size, va_base, &pa_base, pri);
+#endif
 		cmdq_util_user_msg(chan, "last inst %#018llx", last_inst);
 
 		if (cl_pkt && cl_pkt != pkt) {
@@ -2793,6 +2877,10 @@ EXPORT_SYMBOL(cmdq_mbox_dump_dbg);
 
 void cmdq_chan_dump_dbg(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 
@@ -2888,6 +2976,10 @@ EXPORT_SYMBOL(cmdq_thread_dump_all_seq);
 void cmdq_mbox_thread_remove_task(struct mbox_chan *chan,
 	struct cmdq_pkt *pkt)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq_thread *thread = (struct cmdq_thread *)chan->con_priv;
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
 	struct cmdq_task *task, *tmp, *next_task, *prev_task;
@@ -2998,6 +3090,10 @@ EXPORT_SYMBOL(cmdq_mbox_thread_remove_task);
 
 void cmdq_check_thread_complete(struct mbox_chan *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	struct cmdq_thread *thread = (struct cmdq_thread *)chan->con_priv;
 	unsigned long flags;
@@ -3016,6 +3112,10 @@ EXPORT_SYMBOL(cmdq_check_thread_complete);
 
 static void cmdq_mbox_thread_stop(struct cmdq_thread *thread)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
 	struct cmdq_task *task, *tmp;
 	unsigned long flags;
@@ -3760,9 +3860,14 @@ static int cmdq_probe(struct platform_device *pdev)
 #endif
 
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 	cmdq->smmu_v3_enabled = smmu_v3_enabled();
 #endif
+#else
+	cmdq->smmu_v3_enabled = false;
+#endif
+
 	if (!of_parse_phandle_with_args(
 		cmdq->share_dev->of_node, "iommus", "#iommu-cells", 0, &args))
 		cmdq->sid = args.args[0];
@@ -4077,14 +4182,13 @@ EXPORT_SYMBOL(cmdq_mbox_enable);
 
 void cmdq_mbox_disable(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	virtio_cmdq_mbox_disable(chan);
+#else
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	struct cmdq_thread *thread;
 	s32 usage, i, thd_usage;
-
-#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
-	return;
-#endif
 
 	mutex_lock(&cmdq->mbox_mutex);
 
@@ -4220,11 +4324,16 @@ void cmdq_mbox_disable(void *chan)
 	}
 	atomic_dec(&cmdq->usage);
 	mutex_unlock(&cmdq->mbox_mutex);
+#endif
 }
 EXPORT_SYMBOL(cmdq_mbox_disable);
 
 s32 cmdq_mbox_get_usage(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return 0;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 
@@ -4234,6 +4343,10 @@ EXPORT_SYMBOL(cmdq_mbox_get_usage);
 
 void *cmdq_mbox_get_base(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return NULL;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 
@@ -4267,6 +4380,10 @@ EXPORT_SYMBOL(cmdq_dev_get_base_pa);
 
 phys_addr_t cmdq_mbox_get_dummy_reg(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return 0;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 
@@ -4288,6 +4405,10 @@ EXPORT_SYMBOL(cmdq_mbox_get_spr_pa);
 
 struct device *cmdq_mbox_get_dev(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return NULL;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 
@@ -4323,6 +4444,10 @@ s32 cmdq_mbox_reset_hw_id(void *cmdq_mbox)
 
 s32 cmdq_mbox_thread_reset(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return 0;
+#endif
 	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq,
 		mbox);
@@ -4333,6 +4458,10 @@ EXPORT_SYMBOL(cmdq_mbox_thread_reset);
 
 s32 cmdq_mbox_thread_suspend(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return 0;
+#endif
 	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq,
 		mbox);
@@ -4348,6 +4477,10 @@ EXPORT_SYMBOL(cmdq_mbox_thread_suspend);
 
 void cmdq_mbox_thread_disable(void *chan)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq_thread *thread = ((struct mbox_chan *)chan)->con_priv;
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq,
 		mbox);
@@ -4393,6 +4526,10 @@ EXPORT_SYMBOL(cmdq_mbox_chan_id);
 void cmdq_mbox_check_buffer(struct mbox_chan *chan,
 	struct cmdq_pkt_buffer *buffer)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 	bool err = false;
 	s32 i;
@@ -4438,6 +4575,7 @@ EXPORT_SYMBOL(cmdq_mbox_check_buffer);
 
 s32 cmdq_task_get_thread_pc(struct mbox_chan *chan, dma_addr_t *pc_out)
 {
+#if !IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	struct cmdq *cmdq;
 	struct cmdq_thread *thread;
 	dma_addr_t pc = 0;
@@ -4451,7 +4589,7 @@ s32 cmdq_task_get_thread_pc(struct mbox_chan *chan, dma_addr_t *pc_out)
 	pc = cmdq_thread_get_pc(thread);
 	cmdq_mtcmos_by_fast(cmdq, false);
 	*pc_out = pc;
-
+#endif
 	return 0;
 }
 EXPORT_SYMBOL(cmdq_task_get_thread_pc);
@@ -4590,6 +4728,10 @@ EXPORT_SYMBOL(cmdq_task_get_pkt_from_thread);
 
 void cmdq_set_event(void *chan, u16 event_id)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	unsigned long flags;
@@ -4604,6 +4746,10 @@ EXPORT_SYMBOL(cmdq_set_event);
 
 void cmdq_clear_event(void *chan, u16 event_id)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	unsigned long flags;
@@ -4618,6 +4764,10 @@ EXPORT_SYMBOL(cmdq_clear_event);
 
 u32 cmdq_get_event(void *chan, u16 event_id)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return 0;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	u32 event_val = 0;
@@ -4645,6 +4795,10 @@ EXPORT_SYMBOL(cmdq_dump_event);
 
 void cmdq_event_verify(void *chan, u16 event_id)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(((struct mbox_chan *)chan)->mbox,
 		typeof(*cmdq), mbox);
 	/* should be CMDQ_SYNC_TOKEN_USER_0 */
@@ -4778,6 +4932,10 @@ EXPORT_SYMBOL(cmdq_pkt_set_capability);
 #if IS_ENABLED(CONFIG_CMDQ_MMPROFILE_SUPPORT)
 void cmdq_mmp_wait(struct mbox_chan *chan, void *pkt)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq_thread *thread = chan->con_priv;
 	struct cmdq *cmdq = container_of(chan->mbox, typeof(*cmdq), mbox);
 
@@ -4798,6 +4956,10 @@ EXPORT_SYMBOL(cmdq_controller_set_fp);
 
 void cmdq_set_outpin_event(struct cmdq_client *cl, bool ena)
 {
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	cmdq_err("%s is not supported with guest cmdq", __func__);
+	return;
+#endif
 	struct cmdq *cmdq = container_of(cl->chan->mbox, struct cmdq, mbox);
 
 	cmdq->outpin_en = ena;

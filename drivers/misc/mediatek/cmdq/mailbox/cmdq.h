@@ -1,4 +1,4 @@
-/* SPDX-License-Identifier: GPL-2.0 */
+/* SPDX-License-Identifier: GPL-2.0-only */
 /*
  * Copyright (c) 2019 MediaTek Inc.
  */
@@ -16,9 +16,10 @@ void release_pending_cmdq_pkt(void);
 
 struct vhost_virtqueue;
 void handle_cmdq_request(struct vhost_virtqueue *vq, struct cmdq_request *req,
-			 struct cmdq_response *resp);
+			 struct cmdq_response *resp, struct virtio_cmdq_mem_entry *ents);
 
-void cmdq_request_done(struct vhost_virtqueue *vq, uint64_t key, s32 result);
+void cmdq_request_done(struct vhost_virtqueue *vq, uint64_t key, s32 result,
+		u64 exec_time, u16 event, bool wfe, size_t off);
 
 void set_cmdq_client(void *client, uint32_t hwid);
 

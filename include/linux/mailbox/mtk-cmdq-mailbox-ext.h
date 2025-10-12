@@ -237,6 +237,10 @@ struct cmdq_pkt {
 #endif	/* end of CONFIG_MTK_CMDQ_MBOX_EXT */
 	bool			task_alloc;
 	bool			task_alive;
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	bool			guest_task;
+	bool			pkt_cmplted;
+#endif
 	size_t			pause_offset;
 	struct cmdq_pkt_err	err_data;
 	cmdq_aee_cb		aee_cb;

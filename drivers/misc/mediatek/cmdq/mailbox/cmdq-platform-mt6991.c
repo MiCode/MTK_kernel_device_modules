@@ -352,6 +352,9 @@ static int __init cmdq_platform_init(void)
 {
 	cmdq_util_set_fp(&platform_fp);
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	gce_shift_bit = 3;
+	gce_mminfra = BIT(31);
+	cmdq_util_log_feature_set(NULL, CMDQ_LOG_FEAT_PERF);
 	virtio_cmdq_util_set_fp(&platform_fp);
 #endif
 	return 0;

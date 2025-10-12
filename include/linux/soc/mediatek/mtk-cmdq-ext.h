@@ -273,6 +273,7 @@ struct cmdq_client {
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
 	bool is_virtio;
 	bool guest_only;
+	int thread_enable_cnt;
 #endif
 };
 
@@ -356,11 +357,23 @@ s32 virtio_cmdq_pkt_flush_async(struct cmdq_pkt *pkt, cmdq_async_flush_cb cb, vo
 int virtio_cmdq_pkt_wait_complete(struct cmdq_pkt *pkt);
 void virtio_cmdq_pkt_destroy(struct cmdq_pkt *pkt);
 void virtio_cmdq_mbox_channel_stop(struct mbox_chan *chan);
-void virtio_cmdq_mbox_enable_clk(void *chan);
+void virtio_cmdq_mbox_disable(void *chan);
 void virtio_cmdq_mbox_enable(void *chan);
 #endif
 
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
+struct cmdq_flush_item {
+	struct work_struct work;
+	struct cmdq_pkt *pkt;
+	struct kref refcnt;
+	cmdq_async_flush_cb cb;
+	void *data;
+	cmdq_async_flush_cb err_cb;
+	void *err_data;
+	s32 err;
+	bool done;
+};
+
 struct vhost_cmdq_platform_fp;
 void vhost_cmdq_util_set_fp(struct vhost_cmdq_platform_fp *cust_cmdq_platform);
 void vhost_cmdq_set_client(void *client, uint32_t hwid);
@@ -369,6 +382,7 @@ s32 virtio_cmdq_pkt_flush_async(struct cmdq_pkt *pkt, cmdq_async_flush_cb cb, vo
 int virtio_cmdq_pkt_wait_complete(struct cmdq_pkt *pkt);
 void virtio_cmdq_pkt_destroy(struct cmdq_pkt *pkt);
 void virtio_cmdq_mbox_channel_stop(struct mbox_chan *chan);
+void cmdq_pkt_ref_destroy(struct kref *ref);
 #endif
 
 u32 cmdq_subsys_id_to_base(struct cmdq_base *cmdq_base, int id);

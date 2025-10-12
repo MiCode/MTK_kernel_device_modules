@@ -183,6 +183,7 @@ struct cmdq_vcp_inst {
 	uint8_t error : 1;
 };
 
+#if !IS_ENABLED(CONFIG_VHOST_CMDQ)
 struct cmdq_flush_item {
 	struct work_struct work;
 	struct cmdq_pkt *pkt;
@@ -193,6 +194,7 @@ struct cmdq_flush_item {
 	s32 err;
 	bool done;
 };
+#endif
 
 bool cmdq_get_gce_in_vcp(void)
 {
@@ -533,7 +535,9 @@ struct cmdq_client *cmdq_mbox_create(struct device *dev, int index)
 	if (IS_ERR(client->chan)) {
 		cmdq_err("channel request fail:%ld idx:%d",
 			PTR_ERR(client->chan), index);
+#if !IS_ENABLED(CONFIG_VHOST_CMDQ)
 		dump_stack();
+#endif
 		kfree(client);
 		return NULL;
 	}
@@ -1525,6 +1529,17 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 #endif
 	struct cmdq_client *cl = pkt->cl;
 	s32 hwid, thd;
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	struct cmdq_pkt_buffer *buf, *tmp;
+#endif
+
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+	if (cl && is_virtio_client(cl))
+		virtio_cmdq_pkt_destroy(pkt);
+#elif IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (cl && cl->is_virtio)
+		virtio_cmdq_pkt_destroy(pkt);
+#endif
 
 	if (cl) {
 		hwid = (s32)cmdq_util_get_hw_id((u32)cmdq_mbox_get_base_pa(cl->chan));
@@ -1537,7 +1552,18 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
-	cmdq_pkt_free_buf(pkt);
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (pkt->guest_task) {
+		list_for_each_entry_safe(buf, tmp, &pkt->buf, list_entry) {
+			list_del(&buf->list_entry);
+			kfree(buf);
+		}
+		pkt->task_alive = false;
+	} else
+		cmdq_pkt_free_buf(pkt);
+#else
+		cmdq_pkt_free_buf(pkt);
+#endif
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
@@ -1559,6 +1585,21 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 	cmdq_trace_end();
 }
 
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+void cmdq_pkt_ref_destroy(struct kref *ref)
+{
+	struct cmdq_flush_item *item = container_of(ref, struct cmdq_flush_item, refcnt);
+	struct cmdq_pkt *pkt = item->pkt;
+
+	if (pkt) {
+		INIT_WORK(&pkt->destroy_work, cmdq_pkt_destroy_work);
+		queue_work(cmdq_pkt_destroy_wq, &pkt->destroy_work);
+	} else
+		cmdq_err("%s pkt is null", __func__);
+}
+EXPORT_SYMBOL(cmdq_pkt_ref_destroy);
+#endif
+
 void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 {
 	struct cmdq_client *client = pkt->cl;
@@ -1567,6 +1608,9 @@ void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 	u32 end_cnt = 0;
 #endif
 	s32 hwid, thd;
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	struct cmdq_flush_item *item = pkt->flush_item;
+#endif
 
 	cmdq_log("%s pkt:%p ", __func__, pkt);
 	if (client) {
@@ -1593,6 +1637,12 @@ void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 
 	pkt->task_alive = false;
 	cmdq_set_thrd_pkt_id(pkt, false);
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (item)
+		kref_put(&item->refcnt, cmdq_pkt_ref_destroy);
+	else
+		cmdq_msg("%s pkt flush item is invalid", __func__);
+#else
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	end[end_cnt++] = sched_clock();
 #endif
@@ -1608,6 +1658,7 @@ void cmdq_pkt_destroy_no_wq(struct cmdq_pkt *pkt)
 #endif
 #endif
 	kfree(pkt);
+#endif
 	cmdq_set_pkt_size(client, false);
 #if IS_ENABLED(CONFIG_MTK_CMDQ_DEBUG)
 	end[end_cnt] = sched_clock();
@@ -1625,6 +1676,10 @@ void cmdq_pkt_destroy(struct cmdq_pkt *pkt)
 {
 	struct cmdq_client *client = pkt->cl;
 	u64 start = sched_clock(), diff;
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	struct cmdq_flush_item *item = pkt->flush_item;
+	s32 thd = (s32)cmdq_mbox_chan_id(client->chan);
+#endif
 
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 	if (client && is_virtio_client(client))
@@ -1654,8 +1709,17 @@ void cmdq_pkt_destroy(struct cmdq_pkt *pkt)
 	pkt->task_alive = false;
 	cmdq_set_thrd_pkt_id(pkt, false);
 
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (item)
+		kref_put(&item->refcnt, cmdq_pkt_ref_destroy);
+	else {
+		INIT_WORK(&pkt->destroy_work, cmdq_pkt_destroy_work);
+		queue_work(cmdq_pkt_destroy_wq, &pkt->destroy_work);
+	}
+#else
 	INIT_WORK(&pkt->destroy_work, cmdq_pkt_destroy_work);
 	queue_work(cmdq_pkt_destroy_wq, &pkt->destroy_work);
+#endif
 
 	diff = sched_clock() - start;
 	if (diff >= 4000000) /* 4 ms*/
@@ -3632,6 +3696,10 @@ static struct cmdq_flush_item *cmdq_prepare_flush_tiem(struct cmdq_pkt *pkt)
 		return ERR_PTR(-ENOMEM);
 
 	pkt->flush_item = item;
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	item->pkt = pkt;
+	kref_init(&item->refcnt);
+#endif
 
 	return item;
 }
@@ -3730,6 +3798,14 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 	struct cmdq_flush_item *item = pkt->flush_item;
 	struct cmdq_cb_data user_data = {
 		.data = item->data, .err = data.err };
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (item)
+		kref_get(&item->refcnt);
+	else
+		cmdq_err("%s item is null!", __func__);
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
 #ifdef CMDQ_SECURE_SUPPORT
 	u64 debug_end[2] = {0};
@@ -3776,6 +3852,11 @@ static void cmdq_flush_async_cb(struct cmdq_cb_data data)
 			thread->user_cb_cost = debug_end[1] - debug_end[0];
 	}
 #endif
+#endif
+
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+	if (item)
+		kref_put(&item->refcnt, cmdq_pkt_ref_destroy);
 #endif
 }
 #endif
@@ -3847,6 +3928,45 @@ static void cmdq_pkt_call_item_cb(struct cmdq_flush_item *item)
 }
 #endif
 
+#if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
+void virtio_cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
+{
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
+	static u32 err_num;
+	struct cmdq_pkt *pkt = (struct cmdq_pkt *)data.data;
+	struct cmdq_client *client = NULL;
+	s32 thread_id;
+	const char *mod = "CMDQ";
+	struct cmdq_flush_item *item = NULL;
+	static DEFINE_RATELIMIT_STATE(timeout_rate_aee, 100 * HZ, 1);
+
+	if (IS_ERR_OR_NULL(pkt)) {
+		cmdq_err("%s pkt is invalid", __func__);
+		return;
+	}
+
+	client = pkt->cl;
+	thread_id = cmdq_mbox_chan_id(client->chan);
+	item = (struct cmdq_flush_item *)pkt->flush_item;
+	item->err = data.err;
+
+	if (__ratelimit(&timeout_rate_aee)) {
+		cmdq_err("%s Begin of Error %u", __func__, err_num);
+		cmdq_pkt_call_item_cb(item);
+
+		cmdq_util_aee_ex(CMDQ_AEE_EXCEPTION, mod,
+			"DISPATCH:%s timeout thread:%d",
+			mod, thread_id);
+
+		cmdq_dump_pkt(pkt, 0, true);
+		cmdq_err("%s End of Error %u", __func__, err_num);
+		err_num++;
+	}
+#else
+	cmdq_err("cmdq error:%d", data.err);
+#endif	/* CONFIG_MTK_CMDQ_MBOX_EXT */
+}
+#else
 void cmdq_pkt_err_dump_cb(struct cmdq_cb_data data)
 {
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
@@ -4004,6 +4124,7 @@ done:
 	cmdq_err("cmdq error:%d", data.err);
 #endif	/* CONFIG_MTK_CMDQ_MBOX_EXT */
 }
+#endif
 
 s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 	cmdq_async_flush_cb cb, void *data)
@@ -4034,6 +4155,22 @@ s32 cmdq_pkt_flush_async(struct cmdq_pkt *pkt,
 		item = cmdq_prepare_flush_tiem(pkt);
 		if (IS_ERR(item))
 			return -ENOMEM;
+#if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
+		item->cb = cb;
+		item->data = data;
+		pkt->cb.cb = cmdq_flush_async_cb;
+		pkt->cb.data = pkt;
+		item->err_cb = pkt->err_cb.cb;
+		item->err_data = pkt->err_cb.data;
+		pkt->err_cb.cb = virtio_cmdq_pkt_err_dump_cb;
+		pkt->err_cb.data = pkt;
+		pkt->rec_irq = 0;
+		pkt->rec_submit = sched_clock();
+#else
+		pkt->cb.cb = cb;
+		pkt->cb.data = data;
+#endif
+
 		return virtio_cmdq_pkt_flush_async(pkt, cb, data);
 	}
 #endif
@@ -4893,11 +5030,20 @@ int cmdq_dump_pkt(struct cmdq_pkt *pkt, dma_addr_t pc, bool dump_ist)
 	if (client) {
 		struct cmdq_thread *thread = (struct cmdq_thread *)client->chan->con_priv;
 
+#if IS_ENABLED(CONFIG_VHOST_CMDQ)
+		cmdq_util_user_msg(client->chan,
+			"pkt:0x%p(%#x) pkt from %s size:%zu/%zu avail size:%zu priority:%u%s",
+			pkt, (u32)(unsigned long)pkt, pkt->guest_task ? "guest" : "host",
+			pkt->cmd_buf_size,
+			pkt->buf_size, pkt->avail_buf_size,
+			pkt->priority, pkt->loop ? " loop" : "");
+#else
 		cmdq_util_user_msg(client->chan,
 			"pkt:0x%p(%#x) size:%zu/%zu avail size:%zu priority:%u%s",
 			pkt, (u32)(unsigned long)pkt, pkt->cmd_buf_size,
 			pkt->buf_size, pkt->avail_buf_size,
 			pkt->priority, pkt->loop ? " loop" : "");
+#endif
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
 		cmdq_util_user_msg(client->chan,
 			"mbox_enable:%llu mbox_disable:%llu submit:%llu trigger:%llu wait:%llu irq:%llu",
