@@ -1179,39 +1179,6 @@ void cmdq_mdp_add_consume_item(void)
 	}
 }
 
-static s32 cmdq_mdp_copy_cmd_to_task(struct cmdqRecStruct *handle,
-	void *src, u32 size, bool user_space)
-{
-	return cmdq_pkt_copy_cmd(handle, src, size, user_space);
-}
-
-static void cmdq_mdp_store_debug(struct cmdqCommandStruct *desc,
-	struct cmdqRecStruct *handle)
-{
-	s32 len;
-
-	if (!desc->userDebugStr || !desc->userDebugStrLen)
-		return;
-
-	handle->user_debug_str = kzalloc(desc->userDebugStrLen + 1, GFP_KERNEL);
-	if (!handle->user_debug_str) {
-		CMDQ_ERR("allocate user debug memory failed, size:%d\n",
-			desc->userDebugStrLen);
-		return;
-	}
-
-	len = strncpy_from_user(handle->user_debug_str,
-		(const char *)(unsigned long)desc->userDebugStr,
-		desc->userDebugStrLen);
-	if (len < 0) {
-		CMDQ_ERR("copy user debug memory failed, size:%d\n",
-			desc->userDebugStrLen);
-		return;
-	}
-
-	CMDQ_MSG("user debug string:%s\n", handle->user_debug_str);
-}
-
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 #define CMDQ_ISP_MSG2(name) \
 { \
@@ -1283,92 +1250,6 @@ static void cmdq_mdp_fill_isp_meta(struct cmdqSecIspMeta *meta,
 	}
 }
 #endif
-
-static s32 cmdq_mdp_setup_sec(struct cmdqCommandStruct *desc,
-	struct cmdqRecStruct *handle)
-{
-#ifdef CMDQ_SECURE_PATH_SUPPORT
-	u64 dapc, port;
-	enum cmdq_sec_meta_type meta_type = CMDQ_METAEX_NONE;
-	struct cmdq_client *cl;
-
-	if (!desc->secData.is_secure)
-		return 0;
-
-	dapc = cmdq_mdp_get_func()->mdpGetSecEngine(
-		desc->secData.enginesNeedDAPC);
-	port = cmdq_mdp_get_func()->mdpGetSecEngine(
-		desc->secData.enginesNeedPortSecurity);
-
-	cmdq_task_set_secure(handle, desc->secData.is_secure);
-
-	/* force assign client, since backup cookie must call before flush,
-	 * and it is necessary to know client first before append backup code.
-	 */
-	cl = cmdq_helper_mbox_client(handle->thread);
-	if (unlikely(!cl)) {
-		CMDQ_ERR("%s: secure client is invalid, thread:%d\n", __func__, handle->thread);
-		return -EINVAL;
-	}
-	handle->pkt->cl = (void *)cl;
-	handle->pkt->dev = cl->chan->mbox->dev;
-
-	if (desc->secData.ispMeta.ispBufs[0].size) {
-		handle->sec_isp_msg1 = vzalloc(sizeof(struct iwc_cq_meta));
-		handle->sec_isp_msg2 = vzalloc(sizeof(struct iwc_cq_meta2));
-		if (!handle->sec_isp_msg1 || !handle->sec_isp_msg2) {
-			CMDQ_ERR("fail to alloc isp msg\n");
-			vfree(handle->sec_isp_msg1);
-			vfree(handle->sec_isp_msg2);
-			return -ENOMEM;
-		}
-		cmdq_mdp_fill_isp_meta(&desc->secData.ispMeta,
-			handle->sec_isp_msg1, handle->sec_isp_msg2, false);
-		meta_type = CMDQ_METAEX_CQ;
-		cmdq_sec_pkt_set_payload(handle->pkt, 1,
-			sizeof(struct iwc_cq_meta), handle->sec_isp_msg1);
-		cmdq_sec_pkt_set_payload(handle->pkt, 2,
-			sizeof(struct iwc_cq_meta2), handle->sec_isp_msg2);
-	}
-
-	cmdq_sec_pkt_set_data(handle->pkt, dapc, port,
-		CMDQ_SEC_USER_MDP, meta_type);
-
-	if (desc->secData.addrMetadataCount >=
-		CMDQ_IWC_MAX_ADDR_LIST_LENGTH) {
-		CMDQ_ERR("addrMetadataCount %u reach the max %u\n",
-			 desc->secData.addrMetadataCount,
-			 CMDQ_IWC_MAX_ADDR_LIST_LENGTH);
-		return -EFAULT;
-	}
-
-	cmdq_sec_pkt_assign_metadata(handle->pkt,
-		desc->secData.addrMetadataCount,
-		CMDQ_U32_PTR(desc->secData.addrMetadatas));
-
-	if (handle->pkt->cmd_buf_size) {
-		u32 cnt = handle->pkt->cmd_buf_size / CMDQ_INST_SIZE;
-		struct cmdq_sec_data *data = handle->pkt->sec_data;
-		struct iwcCmdqAddrMetadata_t *addr =
-			(struct iwcCmdqAddrMetadata_t *)
-			(unsigned long)data->addrMetadatas;
-		const u32 max_inst = CMDQ_CMD_BUFFER_SIZE / CMDQ_INST_SIZE - 1;
-		u32 i;
-
-		for (i = 0; i < data->addrMetadataCount; i++) {
-			u32 idx = addr[i].instrIndex;
-
-			addr[i].instrIndex += cnt;
-			/* adjumst for buffer jump */
-			addr[i].instrIndex += addr[i].instrIndex / max_inst;
-
-			CMDQ_MSG("meta index change from:%u to:%u\n",
-				idx, addr[i].instrIndex);
-		}
-	}
-#endif
-	return 0;
-}
 
 s32 cmdq_mdp_handle_create(struct cmdqRecStruct **handle_out)
 {
@@ -1761,118 +1642,6 @@ void cmdq_mdp_op_readback(struct cmdqRecStruct *handle, u16 engine,
 	mdp_funcs.mdpComposeReadback(handle, engine, addr, param);
 }
 
-s32 cmdq_mdp_flush_async(struct cmdqCommandStruct *desc, bool user_space,
-	struct cmdqRecStruct **handle_out)
-{
-	struct cmdqRecStruct *handle;
-	struct task_private *private;
-	s32 err;
-	u32 copy_size;
-
-	CMDQ_TRACE_FORCE_BEGIN("%s %llx\n",
-		__func__, desc->engineFlag);
-
-	cmdq_task_create(desc->scenario, &handle);
-	/* force assign buffer pool since mdp task assign clients later
-	 * but allocate instruction buffer before do it.
-	 */
-	handle->pkt->cur_pool.pool = mdp_pool.pool;
-	handle->pkt->cur_pool.cnt = mdp_pool.cnt;
-	handle->pkt->cur_pool.limit = mdp_pool.limit;
-
-	/* set secure data */
-	handle->secStatus = NULL;
-	cmdq_mdp_setup_sec(desc, handle);
-
-	handle->pkt->priority = desc->priority;
-	cmdq_mdp_store_debug(desc, handle);
-
-	private = (struct task_private *)CMDQ_U32_PTR(desc->privateData);
-	if (private)
-		handle->node_private = private->node_private_data;
-
-	if (desc->prop_size && desc->prop_addr &&
-		desc->prop_size < CMDQ_MAX_USER_PROP_SIZE) {
-		handle->prop_addr = kzalloc(desc->prop_size, GFP_KERNEL);
-		if (handle->prop_addr) {
-			memcpy(handle->prop_addr, (void *)CMDQ_U32_PTR(desc->prop_addr),
-				desc->prop_size);
-			handle->prop_size = desc->prop_size;
-		}
-	} else {
-		handle->prop_addr = NULL;
-		handle->prop_size = 0;
-	}
-
-	CMDQ_SYSTRACE_BEGIN("%s copy command\n", __func__);
-	copy_size = desc->blockSize - 2 * CMDQ_INST_SIZE;
-	if (copy_size > 0) {
-		err = cmdq_mdp_copy_cmd_to_task(handle,
-			(void *)(unsigned long)desc->pVABase,
-			copy_size, user_space);
-		if (err < 0)
-			goto flush_err_end;
-	}
-	CMDQ_SYSTRACE_END();
-
-	CMDQ_SYSTRACE_BEGIN("%s check valid %u\n", __func__, copy_size);
-	if (user_space && !cmdq_core_check_user_valid(
-		(void *)(unsigned long)desc->pVABase, copy_size)) {
-		CMDQ_SYSTRACE_END();
-		err = -EFAULT;
-		goto flush_err_end;
-	}
-	CMDQ_SYSTRACE_END();
-
-	if (desc->regRequest.count &&
-			desc->regRequest.count <= CMDQ_MAX_DUMP_REG_COUNT &&
-			desc->regRequest.regAddresses) {
-		err = cmdq_task_append_backup_reg(handle,
-			desc->regRequest.count,
-			(u32 *)(unsigned long)desc->regRequest.regAddresses);
-		if (err < 0)
-			goto flush_err_end;
-	}
-
-#ifdef CMDQ_SECURE_PATH_SUPPORT
-	if (handle->secData.is_secure) {
-		/* insert backup cookie cmd */
-		cmdq_sec_insert_backup_cookie(handle->pkt);
-		handle->thread = CMDQ_INVALID_THREAD;
-	}
-#endif
-
-	CMDQ_SYSTRACE_BEGIN("%s copy cmd\n", __func__);
-	err = cmdq_mdp_copy_cmd_to_task(handle,
-		(void *)(unsigned long)desc->pVABase + copy_size,
-		2 * CMDQ_INST_SIZE, user_space);
-	if (err < 0) {
-		CMDQ_SYSTRACE_END();
-		goto flush_err_end;
-	}
-	CMDQ_SYSTRACE_END();
-
-	/* mark finalized since we copy it */
-	handle->finalized = true;
-
-	/* assign handle for mdp */
-	*handle_out = handle;
-
-	/* Dispatch handle to get correct thread or wait in list.
-	 * Task may flush directly if no engine conflict and no waiting task
-	 * holds same engines.
-	 */
-	err = cmdq_mdp_flush_async_impl(handle);
-	CMDQ_TRACE_FORCE_END();
-	return err;
-
-flush_err_end:
-	CMDQ_TRACE_FORCE_END();
-	cmdq_task_destroy(handle);
-
-	return err;
-}
-
 s32 cmdq_mdp_flush_async_impl(struct cmdqRecStruct *handle)
 {
 	struct list_head *insert_pos = &mdp_ctx.tasks_wait;
@@ -2016,26 +1785,6 @@ s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 	cmdq_mdp_add_consume_item();
 
 	CMDQ_TRACE_FORCE_END();
-
-	return status;
-}
-
-s32 cmdq_mdp_flush(struct cmdqCommandStruct *desc, bool user_space)
-{
-	struct cmdqRecStruct *handle = NULL;
-	s32 status;
-
-	status = cmdq_mdp_flush_async(desc, user_space, &handle);
-	if (!handle || status < 0) {
-		CMDQ_ERR("mdp flush async failed:%d\n", status);
-		return status;
-	}
-
-	status = cmdq_mdp_wait(handle, &desc->regValue);
-	if (status < 0)
-		CMDQ_ERR("mdp flush wait failed:%d handle:0x%p thread:%d\n",
-			status, handle, handle->thread);
-	cmdq_task_destroy(handle);
 
 	return status;
 }

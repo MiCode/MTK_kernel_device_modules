@@ -369,7 +369,6 @@ endif # !CONFIG_MTK_GMO_RAM_OPTIMIZE
 # 	mdp_dpc.o
 
 #obj-y += cmdq_prof.o
-#obj-y += cmdq_test.o
 
 #ifeq ($(strip $(CONFIG_MMPROFILE)),y)
 #obj-y += cmdq_mmp.o

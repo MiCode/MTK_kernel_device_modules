@@ -308,13 +308,10 @@ void cmdq_mdp_set_resource_callback(enum cmdq_event res_event,
 void cmdq_mdp_unlock_thread(struct cmdqRecStruct *handle);
 void cmdq_mdp_op_readback(struct cmdqRecStruct *handle, u16 engine,
 	dma_addr_t dma, u32 param);
-s32 cmdq_mdp_flush_async(struct cmdqCommandStruct *desc, bool user_space,
-	struct cmdqRecStruct **handle_out);
 s32 cmdq_mdp_flush_async_impl(struct cmdqRecStruct *handle);
 struct cmdqRecStruct *cmdq_mdp_get_valid_handle(unsigned long job);
 s32 cmdq_mdp_wait(struct cmdqRecStruct *handle,
 	struct cmdqRegValueStruct *results);
-s32 cmdq_mdp_flush(struct cmdqCommandStruct *desc, bool user_space);
 void cmdq_mdp_suspend(void);
 void cmdq_mdp_resume(void);
 void cmdq_mdp_release_task_by_file_node(void *file_node);
