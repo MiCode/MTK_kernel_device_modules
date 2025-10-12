@@ -2451,7 +2451,13 @@ EXPORT_SYMBOL(cmdq_pkt_copy);
 
 s32 cmdq_pkt_reset(struct cmdq_pkt *pkt)
 {
+	unsigned long ret;
+
 	struct cmdq_client *client = pkt->cl;
+
+	ret = wait_for_completion_timeout(&pkt->cmplt, msecs_to_jiffies(2));
+	if (!ret)
+		cmdq_err("wait pkt %#lx timed out", (unsigned long)pkt);
 
 	cmdq_pkt_free_buf(pkt);
 	INIT_LIST_HEAD(&pkt->buf);
