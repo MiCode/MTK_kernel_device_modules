@@ -67,6 +67,9 @@ struct mmdvfs_debug {
 	u32 vote_step;
 	u32 force_step;
 
+	u32 force_vcore_ver;
+	u32 force_vcore_step;
+
 	spinlock_t lock;
 	u8 rec_cnt;
 	struct mmdvfs_record rec[MEM_REC_CNT_MAX];
@@ -651,6 +654,24 @@ static const struct proc_ops mmdvfs_mbrain_test_fops = {
 
 int mmdvfs_debug_v3_force_vcore(const u32 val)
 {
+	int ret = 0;
+	s8 opp;
+
+	if (!mmdvfs_is_init_done())
+		return -ENODEV;
+
+	if (g_mmdvfs->force_vcore_ver) {
+		opp = (val == 0xFF) ? -1 : (s8)g_mmdvfs->force_vcore_step;
+
+		if (g_mmdvfs->force_vcore_ver & MMDVFS_DBG_VER1)
+			ret = mmdvfs_set_force_step(opp);
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+		if (g_mmdvfs->force_vcore_ver & MMDVFS_DBG_VER3)
+			ret = mtk_mmdvfs_v3_set_force_step(PWR_MMDVFS_VCORE, opp, true);
+#endif
+		return ret;
+	}
+
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 	return mtk_mmdvfs_force_vcore_notify(val);
 #else
@@ -1250,6 +1271,9 @@ static int mmdvfs_debug_probe(struct platform_device *pdev)
 		MMDVFS_DBG("debug_version:%u failed:%d", g_mmdvfs->debug_version, ret);
 
 	mmdvfs_met_freerun = of_property_read_bool(g_mmdvfs->dev->of_node, "mediatek,met-freerun");
+
+	of_property_read_u32(g_mmdvfs->dev->of_node, "force-vcore-ver", &g_mmdvfs->force_vcore_ver);
+	of_property_read_u32(g_mmdvfs->dev->of_node, "force-vcore-step", &g_mmdvfs->force_vcore_step);
 
 	/* MMDVFS_DBG_VER1 */
 	spin_lock_init(&g_mmdvfs->lock);
