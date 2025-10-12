@@ -2455,7 +2455,7 @@ s32 cmdq_pkt_reset(struct cmdq_pkt *pkt)
 
 	cmdq_pkt_free_buf(pkt);
 	INIT_LIST_HEAD(&pkt->buf);
-	init_completion(&pkt->cmplt);
+	reinit_completion(&pkt->cmplt);
 	pkt->avail_buf_size = 0;
 	pkt->cmd_buf_size = 0;
 	pkt->buf_size = 0;
