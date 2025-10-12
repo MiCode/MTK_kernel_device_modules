@@ -14117,6 +14117,7 @@ void mtk_crtc_start_trig_loop(struct drm_crtc *crtc)
 		if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 			mtk_set_trig_stage(crtc, cmdq_handle, WFE_CABC_START);
 			GCE_DO(wfe, EVENT_CABC_EOF);
+			GCE_DO(clear_event, EVENT_STREAM_EOF);
 			if (profile_trig && (crtc_id == 0))
 				mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(1));
 			mtk_set_trig_stage(crtc, cmdq_handle, WFE_CABC_END);
