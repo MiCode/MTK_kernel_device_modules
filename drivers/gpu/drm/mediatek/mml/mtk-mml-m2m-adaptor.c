@@ -1483,7 +1483,7 @@ static const struct v4l2_ioctl_ops mml_m2m_ioctl_ops __maybe_unused = {
 static struct mml_m2m_ctx *m2m_ctx_create(struct mml_dev *mml)
 {
 	static const char * const threads[] = {
-		"mml_m2m_done", "mml_m2m_taskdone", "mml_destroy_m2m",
+		"mml_m2m_done", NULL, "mml_destroy_m2m",
 		NULL, NULL,
 	};
 	struct mml_m2m_ctx *ctx;
@@ -1502,6 +1502,7 @@ static struct mml_m2m_ctx *m2m_ctx_create(struct mml_dev *mml)
 		return ERR_PTR(ret);
 	}
 
+	ctx->ctx.kt_taskdone = mml_dev_get_kt_worker(mml, mml_kt_m2m_taskdone);
 	ctx->ctx.task_ops = &m2m_task_ops;
 	ctx->ctx.cfg_ops = &m2m_config_ops;
 	ctx->limit = &mml_m2m_def_limit;
@@ -1639,6 +1640,7 @@ static void m2m_ctx_destroy(struct mml_m2m_ctx *mctx)
 	}
 	mutex_unlock(&mctx->param_mutex);
 
+	ctx->kt_taskdone = NULL;
 	mml_ctx_deinit(ctx);
 	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++)
 		if (ctx->tile_cache[i].tiles)

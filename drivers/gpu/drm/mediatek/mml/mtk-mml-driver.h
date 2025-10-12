@@ -43,6 +43,7 @@ enum mml_sys_id {
 enum mml_kt {
 	mml_kt_hwdone,
 	mml_kt_taskdone,
+	mml_kt_m2m_taskdone,
 	mml_kt_config0,
 	mml_kt_config1,
 	mml_kt_total
