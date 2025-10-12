@@ -25,8 +25,9 @@
 #define TOTAL_OVL_LAYER_NUM (4 + 3 + 2 + 3)
 
 #define PRIMARY_SESSION_INPUT_LAYER_COUNT (15) /* phy(12) + ext(3) in MT6989 */
-#define EXTERNAL_SESSION_INPUT_LAYER_COUNT                                     \
-	(2 /*2+3*/) /* 2 is enough, no need ext layer */
+#define EXTERNAL_SESSION_INPUT_LAYER_COUNT (10) /* phy(4) + ext(6) */
+//#define EXTERNAL_SESSION_INPUT_LAYER_COUNT                                     \
+//	(2 /*2+3*/) /* 2 is enough, no need ext layer */
 /* ***************************************** */
 
 #define PRIMARY_OVL_LAYER_NUM PRIMARY_SESSION_INPUT_LAYER_COUNT

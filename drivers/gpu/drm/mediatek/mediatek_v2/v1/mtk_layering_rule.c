@@ -206,7 +206,7 @@ static void filter_2nd_display(struct drm_mtk_layering_info *disp_info)
 	unsigned int i = 0, j = 0;
 
 	for (i = HRT_SECONDARY; i < HRT_DISP_TYPE_NUM; i++) {
-		unsigned int max_layer_cnt = SECONDARY_OVL_LAYER_NUM;
+		unsigned int max_layer_cnt = secondary_ovl_lye_num;
 		unsigned int layer_cnt = 0;
 
 		if (is_triple_disp(disp_info) && i == HRT_SECONDARY)

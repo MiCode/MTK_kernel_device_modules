@@ -948,6 +948,7 @@
 #define MT6878_MUTEX_EOF_DSI0 (MT6878_MUTEX_SOF_DSI0 << 6)
 #define MT6878_MUTEX_EOF_DSI1 (MT6878_MUTEX_SOF_DSI1 << 6)
 
+#define MT6878_DISP_REG_CONFIG_MMSYS_MISC 0xF0
 #define MT6878_DISP_REG_CONFIG_MMSYS_CG_CON0 0x100
 
 #define MT6878_DISP_REG_CONFIG_SMI_LARB0_GREQ 0x8DC
@@ -24501,6 +24502,30 @@ static char *ddp_clock_1_mt6855(int bit)
 	}
 }
 
+static const char *ddp_mmsys_misc_mt6878(int bit)
+{
+	switch (bit) {
+	case 6:
+		return "ovl0_2l_ultra, ";
+	case 8:
+		return "ovl0_2l_preultra, ";
+	case 10:
+		return "ovl1_2l_ultra, ";
+	case 12:
+		return "ovl1_2l_preultra, ";
+	case 14:
+		return "ovl2_2l_ultra, ";
+	case 16:
+		return "ovl2_2l_preultra, ";
+	case 18:
+		return "ovl3_2l_ultra, ";
+	case 20:
+		return "ovl3_2l_preultra, ";
+	default:
+		return NULL;
+	}
+}
+
 char *mtk_ddp_get_mutex_sof_name(unsigned int regval)
 {
 	switch (regval) {
@@ -47757,6 +47782,11 @@ void mmsys_config_dump_analysis_mt6878(struct drm_crtc *crtc)
 	unsigned int greq1 =
 		readl_relaxed(config_regs +
 				MT6878_DISP_REG_CONFIG_SMI_LARB1_GREQ);
+	char ovl_source0[512] = {'\0'};
+	char ovl_source1[512] = {'\0'};
+	unsigned int misc =
+		readl_relaxed(config_regs +
+			MT6878_DISP_REG_CONFIG_MMSYS_MISC);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	enum mtk_ddp_comp_id comp_id;
 	struct mtk_ddp_comp *comp;
@@ -47770,9 +47800,23 @@ void mmsys_config_dump_analysis_mt6878(struct drm_crtc *crtc)
 				strncat(clock_on, name, (sizeof(clock_on) -
 							 strlen(clock_on) - 1));
 		}
+
+		if (((misc >> bit) & 1) == 0) {
+			name = ddp_mmsys_misc_mt6878(bit);
+			if (name)
+				strncat(ovl_source0, name, (sizeof(ovl_source0) -
+						strlen(ovl_source0) - 1));
+		} else if (((misc >> bit) & 1) == 1) {
+			name = ddp_mmsys_misc_mt6878(bit);
+			if (name)
+				strncat(ovl_source1, name, (sizeof(ovl_source1) -
+						strlen(ovl_source1) - 1));
+		}
 	}
 
 	DDPDUMP("clock on modules:%s\n", clock_on);
+	DDPDUMP("OVL SODI DSI0 Source modules:%s\n", ovl_source0);
+	DDPDUMP("OVL SODI DSI1 Source modules:%s\n", ovl_source1);
 
 	DDPDUMP("greq0=0x%x greq1=0x%x\n", greq0, greq1);
 	for (idx = 0; idx < ARRAY_SIZE(mt6878_valid_signal_tb); idx++) {

@@ -1000,6 +1000,8 @@ static unsigned int mtk_ovl_phy_mapping_MT6858(struct mtk_ddp_comp *comp)
 
 static unsigned int mtk_ovl_phy_mapping_MT6878(struct mtk_ddp_comp *comp)
 {
+	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
+
 	switch (comp->id) {
 	case DDP_COMPONENT_OVL0_2L:
 		return 0;
@@ -1012,9 +1014,21 @@ static unsigned int mtk_ovl_phy_mapping_MT6878(struct mtk_ddp_comp *comp)
 		return 4;
 #else
 	case DDP_COMPONENT_OVL2_2L:
-		return 4;
+		if (priv->enable_dual_disp_dynamic_ovl) {
+			if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
+				return 4;
+			else
+				return 0;
+		} else
+			return 4;
 	case DDP_COMPONENT_OVL3_2L:
-		return 0;
+		if (priv->enable_dual_disp_dynamic_ovl) {
+			if (drm_crtc_index(&comp->mtk_crtc->base) == 0)
+				return 6;
+			else
+				return 2;
+		} else
+			return 0;
 #endif
 	default:
 		DDPPR_ERR("%s error, invalid ovl module=%d\n", __func__, comp->id);

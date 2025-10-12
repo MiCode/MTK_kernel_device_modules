@@ -64,7 +64,7 @@ typedef void (*mtk_virt_hotplug_cb)(unsigned int evt);
 #define RDMA_LAYER_NR 1UL
 #define EXTERNAL_INPUT_LAYER_NR 2UL
 #define MEMORY_INPUT_LAYER_NR 2UL
-#define SP_INPUT_LAYER_NR 2UL
+#define SP_INPUT_LAYER_NR 10UL
 #define MAX_PLANE_NR                                                           \
 	((OVL_LAYER_NR) + (EXTERNAL_INPUT_LAYER_NR) + (MEMORY_INPUT_LAYER_NR) + (SP_INPUT_LAYER_NR))
 #define MTK_PLANE_INPUT_LAYER_COUNT (OVL_LAYER_NR)
@@ -78,6 +78,8 @@ typedef void (*mtk_virt_hotplug_cb)(unsigned int evt);
 #define PRIMARY_OVL_PHY_LAYER_NR 6L
 
 #define PRIMARY_OVL_EXT_LAYER_NR 6L
+
+#define EXTERNAL_OVL_EXT_LAYER_NR 6L
 
 #define SPR_TYPE_FENCE_MAX 5
 

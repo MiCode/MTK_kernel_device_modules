@@ -113,6 +113,7 @@
 
 #define MT6858_SODI_REQ_VAL 0x1B6C0
 #define MT6985_SODI_REQ_VAL 0x13F6C0
+#define MT6878_SODI_REQ_VAL 0x6C0
 
 #define MT6989_DISP0_SODI_REQ_VAL 0x00000FC0
 #define MT6989_DISP1_SODI_REQ_VAL 0xf00f00f
@@ -2876,6 +2877,7 @@ void mt6878_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data)
 {
 	struct mtk_drm_private *priv = drm->dev_private;
+	struct mtk_drm_crtc *mtk_crtc = NULL;/* crtc0*/
 	unsigned int sodi_req_val = 0, sodi_req_mask = 0;
 	unsigned int emi_req_val = 0, emi_req_mask = 0;
 	bool en = *((bool *)data);
@@ -2941,6 +2943,11 @@ void mt6878_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 					DVFS_HALT_MASK_SEL_WDMA1);
 	} else
 		return;
+	mtk_crtc = to_mtk_crtc(priv->crtc[0]);/*ctrc0*/
+	if (!mtk_crtc) {
+		DDPMSG("%s:crtc0 is null\n", __func__);
+		return;
+	}
 
 	if (handle == NULL) {
 		unsigned int v;
@@ -2948,29 +2955,145 @@ void mt6878_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 		/* 0xF4/0xF8: only config on DISPSYS(HARD CODE) */
 		v = (readl(priv->config_regs + MMSYS_SODI_REQ_MASK) | MT6858_SODI_REQ_VAL);
 		writel_relaxed(v, priv->config_regs + MMSYS_SODI_REQ_MASK);
-
 		writel_relaxed(0, priv->config_regs +  MMSYS_EMI_REQ_CTL);
-
-		/* 0xF0 */
-		v = (readl(priv->config_regs + MMSYS_MISC) & (~0x3FFC0));
-		writel_relaxed(v, priv->config_regs + MMSYS_MISC);
-		/* 0xF0 secondary display */
-		v = (readl(priv->config_regs + MMSYS_MISC) | (0x140000));
-		writel_relaxed(v, priv->config_regs + MMSYS_MISC);
-
+		if (priv->enable_dual_disp_dynamic_ovl) {
+			DDPINFO("%s:CRTC0 enable=%d, ovl_usage=0x%x, crtc3_usage=%d\n",
+				__func__, mtk_crtc->enabled,
+				mtk_crtc->ovl_usage_status, priv->usage[3]);
+			/* Dynamic ovl: 8+0/4+4
+			 * need check second display CRTC3 active or not to config primary display
+			 */
+			/* 0xF0 */
+			if (priv->usage[3] != DISP_ENABLE &&
+					mtk_crtc->ovl_usage_status == 0xF) {
+				v = (readl(priv->config_regs + MMSYS_MISC) & (~0x3FFFC0));
+				writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+			} else if (priv->usage[3] != DISP_ENABLE &&
+					mtk_crtc->ovl_usage_status == 0x7) {
+				v = (readl(priv->config_regs + MMSYS_MISC) & (~0x3FFC0));
+				writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+			} else {
+				v = (readl(priv->config_regs + MMSYS_MISC) & (~0x3FC0));
+				writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+				/* 0xF0 secondary display */
+				DDPINFO("%s: config second display ovl sodi\n", __func__);
+				v = (readl(priv->config_regs + MMSYS_MISC) | (0x154000));
+				writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+			}
+		} else {
+			/* default 6+2 */
+			/* 0xF0 */
+			v = (readl(priv->config_regs + MMSYS_MISC) & (~0x3FFC0));
+			writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+			/* 0xF0 secondary display */
+			v = (readl(priv->config_regs + MMSYS_MISC) | (0x140000));
+			writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+		}
 	} else {
 		/* 0xF4/0xF8: only config on DISPSYS(HARD CODE) */
 		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
-			MMSYS_SODI_REQ_MASK, MT6858_SODI_REQ_VAL, ~0);
+			MMSYS_SODI_REQ_MASK, MT6878_SODI_REQ_VAL, ~0);
+		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+			MMSYS_EMI_REQ_CTL, 0, ~0);
+		if (priv->enable_dual_disp_dynamic_ovl) {
+			/* 0xF0: only config on OVLSYS(HARD CODE) */
+			if (priv->usage[3] != DISP_ENABLE &&
+					mtk_crtc->ovl_usage_status == 0xF)
+				cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+					MMSYS_MISC, 0x0, 0x3FFFC0);
+			else if (priv->usage[3] != DISP_ENABLE &&
+					mtk_crtc->ovl_usage_status == 0x7)
+				cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+					MMSYS_MISC, 0x0, 0x3FFC0);
+			else {
+				cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+					MMSYS_MISC, 0x0, 0x3FC0);
+				/* 0xF0 secondary display */
+				DDPINFO("%s: config second display ovl sodi\n", __func__);
+				cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+						MMSYS_MISC, 0x154000, 0x154000);
+			}
+		} else {
+			/*default 6+2*/
+			/* 0xF0: only config on OVLSYS(HARD CODE) */
+			cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+					MMSYS_MISC, 0x0, 0x3FFC0);
+			/* 0xF0 secondary display */
+			cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+					MMSYS_MISC, 0x140000, 0x140000);
+		}
+	}
+}
+
+void mt6878_mtk_dynamic_ovl_sodi_config(struct drm_crtc *crtc,
+			struct cmdq_pkt *handle)
+{
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+
+	if (!crtc)
+		return;
+	mtk_crtc = to_mtk_crtc(crtc);
+	priv = crtc->dev->dev_private;
+
+	if (!mtk_crtc) {
+		DDPMSG("%s:crtc0 is null\n", __func__);
+		return;
+	}
+
+	DDPINFO("%s:CRTC0 enable=%d, ovl_usage=0x%x, crtc3_usage=%d\n",
+		__func__, mtk_crtc->enabled, mtk_crtc->ovl_usage_status, priv->usage[3]);
+	if (handle == NULL) {
+		unsigned int v;
+
+		/* 0xF4/0xF8: only config on DISPSYS(HARD CODE) */
+		v = (readl(priv->config_regs + MMSYS_SODI_REQ_MASK) | MT6878_SODI_REQ_VAL);
+		writel_relaxed(v, priv->config_regs + MMSYS_SODI_REQ_MASK);
+		writel_relaxed(0, priv->config_regs +  MMSYS_EMI_REQ_CTL);
+
+		/* 0xF0 */
+		/* for sub only to dual on case*/
+		if (priv->usage[3] != DISP_ENABLE &&
+				mtk_crtc->ovl_usage_status == 0xF) {
+			v = (readl(priv->config_regs + MMSYS_MISC) & (~0x3FFFC0));
+			writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+		} else if (priv->usage[3] != DISP_ENABLE &&
+				mtk_crtc->ovl_usage_status == 0x7) {
+			v = (readl(priv->config_regs + MMSYS_MISC) & (~0x3FFC0));
+			writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+		} else {
+			v = (readl(priv->config_regs + MMSYS_MISC) & (~0x3FC0));
+			writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+			/* 0xF0 secondary display */
+			DDPMSG("%s: config second display ovl sodi\n", __func__);
+			v = (readl(priv->config_regs + MMSYS_MISC) | (0x154000));
+			writel_relaxed(v, priv->config_regs + MMSYS_MISC);
+		}
+	} else {
+		/* 0xF4/0xF8: only config on DISPSYS(HARD CODE) */
+		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+			MMSYS_SODI_REQ_MASK, MT6878_SODI_REQ_VAL, ~0);
 		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
 			MMSYS_EMI_REQ_CTL, 0, ~0);
 
 		/* 0xF0: only config on OVLSYS(HARD CODE) */
-		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+		/* for sub only to dual on case*/
+		if (priv->usage[3] != DISP_ENABLE &&
+				mtk_crtc->ovl_usage_status == 0xF)
+			cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+				MMSYS_MISC, 0x0, 0x3FFFC0);
+		else if (priv->usage[3] != DISP_ENABLE &&
+				mtk_crtc->ovl_usage_status == 0x7)
+			cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
 				MMSYS_MISC, 0x0, 0x3FFC0);
-		/* 0xF0 secondary display */
-		cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
-				MMSYS_MISC, 0x140000, 0x140000);
+		else {
+			cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+				MMSYS_MISC, 0x0, 0x3FC0);
+			/* 0xF0 secondary display */
+			DDPMSG("%s: config second display ovl sodi\n", __func__);
+			cmdq_pkt_write(handle, NULL, priv->config_regs_pa +
+					MMSYS_MISC, 0x154000, 0x154000);
+		}
 	}
 }
 
