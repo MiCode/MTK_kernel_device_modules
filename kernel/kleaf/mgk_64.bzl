@@ -764,6 +764,7 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_isp:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_cmdq:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:ddk_kconfigs".format(kernel_version),
 ]
 
@@ -1281,6 +1282,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_isp:pkvm_isp_6881".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_isp:pkvm_isp_6993".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_cmdq:pkvm_cmdq".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm:pkvm_p1_6858".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:mtk_core_ctl".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:mtk-ssc".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc/debug/v1:mtk-ssc-dbg-v1".format(kernel_version),

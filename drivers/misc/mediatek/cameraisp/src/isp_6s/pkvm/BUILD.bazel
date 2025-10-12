@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig"
+    ])
+)
+ddk_headers(
+    name = "export_headers",
+    hdrs = glob(
+        ["*.h"]
+    ),
+)
+define_mgk_ddk_ko(
+    name = "pkvm_p1_6858",
+    srcs = [
+        "pkvm_p1_host.c",
+        "pkvm_p1_host.h",
+        "pkvm_p1_ioctl.h",
+    ],
+    out = "pkvm_p1_6858.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm/hyp:hyp_p1_6858".format(kernel_version),
+    ],
+)
+define_mgk_ddk_ko(
+    name = "pkvm_seninf_6858",
+    srcs = [
+        "isp6/pkvm_seninf_host.c",
+        "isp6/pkvm_seninf_host.h",
+        "isp6/pkvm_seninf_ioctl.h",
+    ],
+    out = "pkvm_seninf_6858.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf/isp6/hyp:hyp_6858".format(kernel_version),
+    ],
+)

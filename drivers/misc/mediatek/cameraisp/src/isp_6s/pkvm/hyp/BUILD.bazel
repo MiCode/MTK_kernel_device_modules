@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_library.bzl", "define_mgk_ddk_library")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_library(
+    name = "hyp_p1_6858",
+    srcs = glob([
+        "**/*.c",
+        "**/*.h",
+    ]),
+    pkvm_el2 = True,
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm:export_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/arch/arm64/kvm/hyp/include/nvhe",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/isp_6s",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm/hyp",
+    ],
+)
