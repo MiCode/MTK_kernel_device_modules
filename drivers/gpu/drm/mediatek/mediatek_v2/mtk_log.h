@@ -512,6 +512,7 @@ extern bool g_dump_prop_log;
 extern unsigned int g_pq_test_flag;
 extern bool g_dsi_chksum_start;
 extern bool g_dsi_chksum_stop;
+extern bool g_dsi_chksum_rst_cnt_done;
 extern bool g_dsc_chksum_start;
 extern bool g_dsc_chksum_stop;
 extern bool g_dsc_mute_enable;

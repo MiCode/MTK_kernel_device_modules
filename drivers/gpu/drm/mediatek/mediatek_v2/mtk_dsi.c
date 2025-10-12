@@ -8854,8 +8854,6 @@ static void mtk_dsi_config_trigger(struct mtk_ddp_comp *comp,
 		} else {
 			dma_addr_t dsi_chksum_slot = 0x0;
 
-			cmdq_pkt_wfe(handle,
-				mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
 			mtk_use_cabc_event(handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 			mtk_dsi_stop_vdo_mode(dsi, handle, __LINE__);
 			mtk_dsi_poll_for_idle(dsi, handle);

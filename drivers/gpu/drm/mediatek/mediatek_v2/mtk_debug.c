@@ -131,6 +131,8 @@ bool g_dsi_chksum_start;
 EXPORT_SYMBOL(g_dsi_chksum_start);
 bool g_dsi_chksum_stop;
 EXPORT_SYMBOL(g_dsi_chksum_stop);
+bool g_dsi_chksum_rst_cnt_done;
+EXPORT_SYMBOL(g_dsi_chksum_rst_cnt_done);
 bool g_dsi_self_pat_en;
 EXPORT_SYMBOL(g_dsi_self_pat_en);
 bool g_dsi_self_pat_dis;
@@ -6306,6 +6308,7 @@ test_2c_done:
 		}
 		g_dsi_chksum_start = true;
 		g_dsi_chksum_stop = false;
+		g_dsi_chksum_rst_cnt_done = false;
 	} else if (strncmp(opt, "dsi_chksum_stop", 15) == 0) {
 		struct drm_crtc *crtc;
 

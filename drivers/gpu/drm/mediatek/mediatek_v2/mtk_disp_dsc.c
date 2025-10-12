@@ -1634,45 +1634,37 @@ static void mtk_dsc_config_trigger(struct mtk_ddp_comp *comp, struct cmdq_pkt *h
 		dma_addr_t dsc_slot0 = 0x0;
 		dma_addr_t dsc_slot1 = 0x0;
 
-		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			dsc_slot0 = mtk_get_gce_backup_slot_pa(mtk_crtc,
-				DISP_SLOT_DSC_CHKSUM0);
-			dsc_slot1 = mtk_get_gce_backup_slot_pa(mtk_crtc,
-				DISP_SLOT_DSC_CHKSUM1);
-			cmdq_pkt_read(handle, mtk_crtc->gce_obj.base,
-				comp->regs_pa + DISP_REG_DSC_CKSM_MON0, CMDQ_THR_SPR_IDX1);
-			cmdq_pkt_write_indriect(handle, mtk_crtc->gce_obj.base,
-				dsc_slot0, CMDQ_THR_SPR_IDX1, ~0);
-			cmdq_pkt_read(handle, mtk_crtc->gce_obj.base,
-				comp->regs_pa + DISP_REG_DSC_CKSM_MON1, CMDQ_THR_SPR_IDX1);
-			cmdq_pkt_write_indriect(handle, mtk_crtc->gce_obj.base,
-				dsc_slot1, CMDQ_THR_SPR_IDX1, ~0);
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				comp->regs_pa + DISP_REG_DSC_DBG_CON, 0x200, 0x200);
+		dsc_slot0 = mtk_get_gce_backup_slot_pa(mtk_crtc,
+			DISP_SLOT_DSC_CHKSUM0);
+		dsc_slot1 = mtk_get_gce_backup_slot_pa(mtk_crtc,
+			DISP_SLOT_DSC_CHKSUM1);
+		cmdq_pkt_read(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + DISP_REG_DSC_CKSM_MON0, CMDQ_THR_SPR_IDX1);
+		cmdq_pkt_write_indriect(handle, mtk_crtc->gce_obj.base,
+			dsc_slot0, CMDQ_THR_SPR_IDX1, ~0);
+		cmdq_pkt_read(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + DISP_REG_DSC_CKSM_MON1, CMDQ_THR_SPR_IDX1);
+		cmdq_pkt_write_indriect(handle, mtk_crtc->gce_obj.base,
+			dsc_slot1, CMDQ_THR_SPR_IDX1, ~0);
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + DISP_REG_DSC_DBG_CON, 0x200, 0x200);
 
-			DDPMSG("%s trigger check start\n", __func__);
-		}
+		DDPMSG("%s trigger check start\n", __func__);
 		break;
 	case MTK_TRIG_FLAG_CKSM_STOP:
-		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				comp->regs_pa + DISP_REG_DSC_DBG_CON, 0x0, 0x200);
-			DDPMSG("%s trigger check stop\n", __func__);
-		}
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + DISP_REG_DSC_DBG_CON, 0x0, 0x200);
+		DDPMSG("%s trigger check stop\n", __func__);
 		break;
 	case MTK_TRIG_FLAG_PATGEN_EN:
-		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				comp->regs_pa + DISP_REG_DSC_MUTE_CON, 0x400000ff, ~0);
-			DDPMSG("%s trigger mute mode enable\n", __func__);
-		}
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + DISP_REG_DSC_MUTE_CON, 0x400000ff, ~0);
+		DDPMSG("%s trigger mute mode enable\n", __func__);
 		break;
 	case MTK_TRIG_FLAG_PATGEN_DIS:
-		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
-				comp->regs_pa + DISP_REG_DSC_MUTE_CON, 0x0, ~0);
-			DDPMSG("%s trigger mute mode disable\n", __func__);
-		}
+		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
+			comp->regs_pa + DISP_REG_DSC_MUTE_CON, 0x0, ~0);
+		DDPMSG("%s trigger mute mode disable\n", __func__);
 		break;
 	default:
 		break;

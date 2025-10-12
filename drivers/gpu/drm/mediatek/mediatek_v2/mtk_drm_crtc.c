@@ -12511,6 +12511,7 @@ struct disp_module_cksm_info {
 	bool en; // if cksm check enabled
 	bool *start; // control to start cksm check
 	bool *stop; // control to stop cksm check
+	bool *rst_cnt_done; // check if need reset loop_cnt
 	const char *name; // name of the module
 	const enum mtk_ddp_comp_id comp_id; // comp_id of the module
 	int crtc_idx; // which crtc should this module follow and check
@@ -12523,6 +12524,7 @@ static struct disp_module_cksm_info dsi_cksm_info = {
 	.name = "dsi0",
 	.start = &g_dsi_chksum_start,
 	.stop = &g_dsi_chksum_stop,
+	.rst_cnt_done = &g_dsi_chksum_rst_cnt_done, // vdo mode need restart trig loop to enable chksum
 	.instances = {
 		{.name = "cksm_out",
 		 .cmp_result = &dsi_chksum_result,
@@ -12670,6 +12672,9 @@ static void mtk_disp_cksm_update(struct mtk_drm_crtc *mtk_crtc, struct disp_modu
 	if (!info || !info->en)
 		return;
 
+	if (!*info->start || *info->stop)
+		return;
+
 	/* only trigger check at assigned crtc_idx */
 	if (drm_crtc_index(&mtk_crtc->base) != info->crtc_idx)
 		return;
@@ -12682,7 +12687,11 @@ static void mtk_disp_cksm_update(struct mtk_drm_crtc *mtk_crtc, struct disp_modu
 
 		*inst->curr_cksm = *(unsigned int *)(mtk_get_gce_backup_slot_va(mtk_crtc,
 			inst->disp_slot_num));
-		if (info->loop_cnt == 1) {
+		if (info->rst_cnt_done && !*info->rst_cnt_done) {
+			info->loop_cnt = 0;
+			*info->rst_cnt_done = true;
+		}
+		if (info->loop_cnt <= 1) {
 			inst->first_cksm = *inst->curr_cksm;
 			*inst->cmp_result = true;
 		} else if ((info->loop_cnt > 1) && (inst->first_cksm != *inst->curr_cksm)) {
@@ -12695,7 +12704,9 @@ static void mtk_disp_cksm_update(struct mtk_drm_crtc *mtk_crtc, struct disp_modu
 	}
 
 	info->loop_cnt++;
-	info->en = false;
+
+	if (!info->rst_cnt_done)
+		info->en = false;
 }
 
 static void ddp_cmdq_cb(struct cmdq_cb_data data)
@@ -12767,11 +12778,8 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 		return;
 	}
 
-	if (g_dsi_chksum_start && !g_dsi_chksum_stop)
-		mtk_disp_cksm_update(mtk_crtc, &dsi_cksm_info);
-
-	if (g_dsc_chksum_start && !g_dsc_chksum_stop)
-		mtk_disp_cksm_update(mtk_crtc, &dsc_cksm_info);
+	mtk_disp_cksm_update(mtk_crtc, &dsi_cksm_info);
+	mtk_disp_cksm_update(mtk_crtc, &dsc_cksm_info);
 
 	id = drm_crtc_index(crtc);
 
@@ -14130,6 +14138,73 @@ static void cmdq_pkt_reset_ovl(struct cmdq_pkt *cmdq_handle,
 
 #endif
 
+static void mtk_disp_cksm_start(struct cmdq_pkt *cmdq_handle,
+	struct drm_crtc *crtc, struct disp_module_cksm_info *info)
+{
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (!priv)
+		return;
+
+	if (info->rst_cnt_done && !*info->rst_cnt_done) {
+		info->loop_cnt = 0;
+		*info->rst_cnt_done = true;
+	}
+
+	comp = priv->ddp_comp[info->comp_id];
+	mtk_ddp_comp_config_trigger(comp, cmdq_handle, MTK_TRIG_FLAG_CKSM_START);
+
+	info->en = true;
+	DDPMSG("%s chksum done\n", info->name);
+}
+
+static void mtk_disp_cksm_stop(struct cmdq_pkt *cmdq_handle,
+	struct drm_crtc *crtc, struct disp_module_cksm_info *info)
+{
+	unsigned int i;
+	struct disp_instance_cksm_info *inst = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+
+	if (!priv)
+		return;
+
+	info->en = false;
+
+	for (i = 0; i < DISP_CKSM_INST_MAX; i++) {
+		inst = &info->instances[i];
+		if(!inst->curr_cksm || !inst->cmp_result)
+			break;
+		DDPMSG("%s %s stop, check %s\n",
+			info->name, inst->name, !!*inst->cmp_result ? "pass" : "fail");
+	}
+
+	comp = priv->ddp_comp[info->comp_id];
+	mtk_ddp_comp_config_trigger(comp, cmdq_handle, MTK_TRIG_FLAG_CKSM_STOP);
+
+	info->loop_cnt = 0;
+}
+
+static void mtk_disp_cksm_trigger(struct cmdq_pkt *cmdq_handle,
+	struct drm_crtc *crtc, struct disp_module_cksm_info *info)
+{
+	if (!info || !crtc)
+		return;
+
+	/* only trigger check at assigned crtc_idx */
+	if (drm_crtc_index(crtc) != info->crtc_idx)
+		return;
+
+	if (*info->start == true)
+		mtk_disp_cksm_start(cmdq_handle, crtc, info);
+	if (*info->stop == true) {
+		*info->start = false;
+		*info->stop = false;
+		mtk_disp_cksm_stop(cmdq_handle, crtc, info);
+	}
+}
+
 static void mtk_set_trig_stage(struct drm_crtc *crtc,
 	struct cmdq_pkt *handle, enum EVENT_TRIGGER_PT event)
 {
@@ -14665,6 +14740,7 @@ skip_prete:
 				GCE_DO(set_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			} else {
 				GCE_DO(wfe, EVENT_CMD_EOF);
+				mtk_disp_cksm_trigger(cmdq_handle, crtc, &dsi_cksm_info);
 				/* For dbgtp fifo mon WA */
 				if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 					(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
@@ -19384,68 +19460,6 @@ static void mtk_crtc_partial_update_wait_cabc(struct drm_crtc *crtc,
 	GCE_FI;
 }
 
-void mtk_disp_cksm_start(struct cmdq_pkt *cmdq_handle,
-	struct drm_crtc *crtc, struct disp_module_cksm_info *info)
-{
-	struct mtk_ddp_comp *comp = NULL;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-
-	if (!priv)
-		return;
-
-	comp = priv->ddp_comp[info->comp_id];
-	mtk_ddp_comp_config_trigger(comp, cmdq_handle, MTK_TRIG_FLAG_CKSM_START);
-
-	info->en = true;
-	DDPMSG("%s chksum done\n", info->name);
-}
-
-void mtk_disp_cksm_stop(struct cmdq_pkt *cmdq_handle,
-	struct drm_crtc *crtc, struct disp_module_cksm_info *info)
-{
-	unsigned int i;
-	struct disp_instance_cksm_info *inst = NULL;
-	struct mtk_ddp_comp *comp = NULL;
-	struct mtk_drm_private *priv = crtc->dev->dev_private;
-
-	if (!priv)
-		return;
-
-	info->en = false;
-
-	for (i = 0; i < DISP_CKSM_INST_MAX; i++) {
-		inst = &info->instances[i];
-		if(!inst->curr_cksm || !inst->cmp_result)
-			break;
-		DDPMSG("%s %s stop, check %s\n",
-			info->name, inst->name, !!inst->cmp_result ? "pass" : "fail");
-	}
-
-	comp = priv->ddp_comp[info->comp_id];
-	mtk_ddp_comp_config_trigger(comp, cmdq_handle, MTK_TRIG_FLAG_CKSM_STOP);
-
-	info->loop_cnt = 0;
-}
-
-void mtk_disp_cksm_trigger(struct cmdq_pkt *cmdq_handle,
-	struct drm_crtc *crtc, struct disp_module_cksm_info *info)
-{
-	if (!info || !crtc)
-		return;
-
-	/* only trigger check at assigned crtc_idx */
-	if (drm_crtc_index(crtc) != info->crtc_idx)
-		return;
-
-	if (*info->start == true)
-		mtk_disp_cksm_start(cmdq_handle, crtc, info);
-	if (*info->stop == true) {
-		*info->start = false;
-		*info->stop = false;
-		mtk_disp_cksm_stop(cmdq_handle, crtc, info);
-	}
-}
-
 void mtk_disp_patgen_trigger(struct cmdq_pkt *cmdq_handle,
 	struct drm_crtc *crtc, struct disp_module_patgen_info *info)
 {
@@ -22555,8 +22569,6 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		if (ret)
 			DDPMSG("Wait event result ret %d\n", ret);
 	}
-	if (!mtk_crtc_is_frame_trigger_mode(crtc))
-		mtk_disp_cksm_trigger(cmdq_handle, crtc, &dsi_cksm_info);
 
 	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle);
 
