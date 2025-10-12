@@ -44,6 +44,7 @@ struct mtk_slb_violation_cb slb_violation_cb_array[SLB_VIOLATION_CB_MAX];
 /* global pointer for exported functions */
 static struct emi_slb *global_emi_slb;
 unsigned int mpu_base_clear;
+unsigned int emi_req;
 
 int mtk_slb_violation_register_callback(mtk_slb_violation_callback_t fn, void *cb_data)
 {
@@ -129,6 +130,16 @@ static irqreturn_t emislb_violation_irq(int irq, void *dev_id)
 	ssize_t msg_len;
 	int n, nr_vio;
 	bool violation;
+	struct arm_smccc_res smc_res;
+
+	if(emi_req) {
+		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_EMI_REQ,
+			1, 0, 0, 0, 0, 0, &smc_res);
+		if (smc_res.a0) {
+			pr_info("%s:%d MTK_SLC_EMI_REQ ON FAIL, ret=0x%lx\n",
+					__func__, __LINE__, smc_res.a0);
+		}
+	}
 
 	nr_vio = 0;
 	msg_len = 0;
@@ -169,6 +180,15 @@ static irqreturn_t emislb_violation_irq(int irq, void *dev_id)
 	}
 
 	mtk_slb_violation_execute_callback();
+
+	if(emi_req) {
+		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_EMI_REQ,
+					0, 0, 0, 0, 0, 0, &smc_res);
+		if (smc_res.a0) {
+			pr_info("%s:%d MTK_SLC_EMI_REQ OFF FAIL, ret=0x%lx\n",
+					__func__, __LINE__, smc_res.a0);
+		}
+	}
 
 	return IRQ_HANDLED;
 }
@@ -224,6 +244,13 @@ static int emislb_probe(struct platform_device *pdev)
 	if (!ret)
 		dev_info(&pdev->dev, "Use smc to clear vio\n");
 
+	emi_req = 0;
+	ret = of_property_read_u32(emislb_node,
+		"emi-req", &emi_req);
+	if (!ret)
+		dev_info(&pdev->dev, "emi_req no need\n");
+
+
 //dump
 	size = of_property_count_elems_of_size(emislb_node,
 		"dump", sizeof(char));
@@ -274,6 +301,7 @@ static int emislb_probe(struct platform_device *pdev)
 	}
 
 //clear end
+
 	slb->vio_msg = devm_kmalloc(&pdev->dev,
 		MTK_EMI_MAX_CMD_LEN, GFP_KERNEL);
 	if (!(slb->vio_msg))

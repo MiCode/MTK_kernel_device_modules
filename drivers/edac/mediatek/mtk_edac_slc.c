@@ -39,6 +39,7 @@ struct slc_drvdata {
 	unsigned int cs_num;
 	unsigned int chn_num;
 	unsigned int assert;
+	unsigned int emi_req;
 	unsigned int error_flags_enable;
 	struct error_flags_data *error_flags;
 };
@@ -163,6 +164,15 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 	unsigned int emi_idx;
 	struct arm_smccc_res smc_res;
 
+	if(drvdata->emi_req) {
+		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_EMI_REQ,
+				1, 0, 0, 0, 0, 0, &smc_res);
+		if (smc_res.a0) {
+			pr_info("%s:%d MTK_SLC_EMI_REQ ON FAIL, ret=0x%lx\n",
+					__func__, __LINE__, smc_res.a0);
+		}
+	}
+
 	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
 		parity_err_value = readl(drvdata->base[emi_idx] + drvdata->parity_err_offset);
 		parity_err_ext_value = readl(drvdata->base[emi_idx] + drvdata->parity_err_ext_offset);
@@ -173,6 +183,7 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 					sizeof(slc_err_mesg) - slc_err_mesg_idx, "emi: %d, overall: %llx\n",
 					emi_idx, parity_err_tol);
 	}
+
 	for (emi_idx = 0; emi_idx < drvdata->slc_parity_cnt; emi_idx++) {
 		partial_error_type = read_parity_status(dci, emi_idx);
 		if (total_error_type == NO_ERROR) {
@@ -229,6 +240,15 @@ static irqreturn_t slc_err_handler(int irq, void *dev_id)
 				pr_info("%s:%d MTK_SLC_ERROR_FLAGS_CLEAR failed, ret=0x%lx\n",
 					__func__, __LINE__, smc_res.a0);
 			}
+		}
+	}
+
+	if(drvdata->emi_req) {
+		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_SLC_EMI_REQ,
+					0, 0, 0, 0, 0, 0, &smc_res);
+		if (smc_res.a0) {
+			pr_info("%s:%d MTK_SLC_EMI_REQ OFF FAIL, ret=0x%lx\n",
+					__func__, __LINE__, smc_res.a0);
 		}
 	}
 
@@ -530,6 +550,12 @@ static int slc_err_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev, "Unable to get assert\n");
 		res = -ENXIO;
 		goto err2;
+	}
+
+	ret = of_property_read_u32(pdev->dev.of_node, "emi-req", &(drvdata->emi_req));
+	if (ret) {
+		dev_info(&pdev->dev, "Unable to get emi_req para, default no need\n");
+		drvdata->emi_req = 0;
 	}
 
 	error_flags_node = of_get_child_by_name(pdev->dev.of_node, "error-flags");
