@@ -201,6 +201,7 @@ struct cmdq_instruction {
 #define CT_MIN_FPS 60
 #define CT_PRETE_DUR 1000
 
+#define DSI0_URGENT (0x801)
 /* Overlay bw monitor define */
 struct layer_compress_ratio_data
 display_compress_ratio_table[MAX_LAYER_RATIO_NUMBER];
@@ -19494,6 +19495,11 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_panel_params *params =
 			mtk_drm_get_lcm_ext_params(crtc);
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	struct mtk_crtc_state *state;
+	struct drm_display_mode *mode;
+	unsigned int fps, mode_idx;
+#endif
 
 	if (old_crtc_state != NULL)
 		old_mtk_state = to_mtk_crtc_state(old_crtc_state);
@@ -19558,6 +19564,19 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 	mtk_disp_cksm_trigger(cmdq_handle, crtc, &dsc_cksm_info);
 	mtk_disp_patgen_trigger(cmdq_handle, crtc, &dsc_mute_mode_info);
 	mtk_disp_patgen_trigger(cmdq_handle, crtc, &dsi_self_pat_info);
+
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	if (crtc_id == 0) {
+		state = to_mtk_crtc_state(mtk_crtc->base.state);
+		mode_idx = state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+		mode = &(mtk_crtc->avail_modes[mode_idx]);
+		fps = drm_mode_vrefresh(mode);
+
+		if (fps == 120 || fps == 144 || mtk_crtc->mode_chg)
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				mtk_crtc->side_config_regs_pa + MMSYS_EMI_REQ_CTL, DSI0_URGENT, DSI0_URGENT);
+	}
+#endif
 
 	/* Record Vblank start timestamp */
 	mtk_vblank_config_rec_start(mtk_crtc, cmdq_handle, FRAME_CONFIG);
@@ -23857,6 +23876,10 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	bool need_disable = false;
 	bool only_output = false;
 	unsigned int comp_idx;
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	struct drm_display_mode *mode;
+	unsigned int fps, mode_idx;
+#endif
 
 	CRTC_MMP_EVENT_START((int) index, atomic_flush, (unsigned long)crtc_state,
 			(unsigned long)old_crtc_state);
@@ -24120,6 +24143,18 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				g_wr_reg.reg[k].addr, g_wr_reg.reg[k].val, g_wr_reg.reg[k].mask);
 		}
+	}
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	if (index == 0) {
+		mode_idx = mtk_crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+		mode = &(mtk_crtc->avail_modes[mode_idx]);
+		fps = drm_mode_vrefresh(mode);
+
+		if (fps == 120 || fps == 144 || mtk_crtc->mode_chg)
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				mtk_crtc->side_config_regs_pa + MMSYS_EMI_REQ_CTL, 0x0, DSI0_URGENT);
 	}
 #endif
 
