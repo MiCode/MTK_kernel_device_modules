@@ -1055,6 +1055,8 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 	}
 
 	if (bif_enabled(crtc)== BIF_HS_IDLE) {
+		unsigned int *addr = NULL;
+
 		mtk_crtc_bif_backup_path_mutex(mtk_crtc);
 
 		if (!mtk_crtc->bif_info->sram_en)
@@ -1068,6 +1070,9 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 			cmdq_pkt_wfe(handle, mtk_crtc->bif_info->wb_frame_done_event);
 			mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
 			mtk_crtc_bif_keep_read_path(crtc, handle);
+
+			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_BIF_EN);
+			*addr = 1;
 		} else {
 			mtk_crtc->bif_info->bif_enable = BIF_DISABLE;
 			CRTC_MMP_MARK(0, bif_src_ctrl, 0xFFFFFFFF, 0xFFFFFFFF);
@@ -1132,9 +1137,14 @@ static void vdo_leave_idle_cb(struct cmdq_cb_data data)
 {
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(cb_data->crtc);
+	unsigned int *addr = NULL;
 
-	if (mtk_crtc->bif_info->sram_en)
+	if (mtk_crtc->bif_info->sram_en) {
 		mtk_crtc_bif_slbc_request(mtk_crtc, false);
+
+		addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_BIF_EN);
+		*addr = 0;
+	}
 
 	CRTC_MMP_MARK(0, leave_idle, 0xFFFFFFFF, (unsigned long)cb_data->cmdq_handle);
 

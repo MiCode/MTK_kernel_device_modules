@@ -13577,6 +13577,22 @@ VDO_MODE:
 		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
 		mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
 		GCE_FI;
+
+		/* If BIF enable, disable dbgtp and fifo mon */
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.idx = 1;
+		slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_BIF_EN);
+		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
+		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
+		if (!priv->mtk_dbgtp_sta.is_validation_mode)
+			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
+		/* Disable trace top funnel */
+		cmdq_pkt_write(cmdq_handle, NULL, 0x0d070000,
+				0x0, BIT(7) | BIT(5) | BIT(3) | BIT(2));
+		GCE_FI;
 	}
 
 	cmdq_pkt_finalize_loop(cmdq_handle);
@@ -14509,9 +14525,6 @@ skip_prete:
 				GCE_DO(set_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			} else {
 				GCE_DO(wait_no_clear, EVENT_CMD_EOF);
-				GCE_DO(wfe, EVENT_VDO_CABC_EOF);
-				GCE_DO(clear_event, EVENT_CMD_EOF);
-				GCE_DO(set_event, EVENT_VDO_CABC_EOF);
 				/* For dbgtp fifo mon WA */
 				if ((priv->data->mmsys_id == MMSYS_MT6993) &&
 					(priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
@@ -14563,6 +14576,10 @@ skip_prete:
 					cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, 0, ~0);
 					GCE_FI;
 				}
+
+				GCE_DO(wfe, EVENT_VDO_CABC_EOF);
+				GCE_DO(clear_event, EVENT_CMD_EOF);
+				GCE_DO(set_event, EVENT_VDO_CABC_EOF);
 			}
 
 		} else if (crtc_id == 1) {
