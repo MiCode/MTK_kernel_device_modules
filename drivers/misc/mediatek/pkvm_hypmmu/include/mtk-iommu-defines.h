@@ -68,6 +68,8 @@
 #define ARM_V7S_PTE_IS_TABLE(pte, lvl) \
 	((lvl) == 1 && (((pte) & 0x3) == ARM_V7S_PTE_TYPE_TABLE))
 
+#define ARM_V7S_PTE_VALID_CMP(pte1, pte2)   (((pte1) & 0x3) != ((pte2) & 0x3))
+
 #define ARM_V7S_TABLE_SHIFT		10
 #define ARM_V7S_TABLE_MASK		((u32)(~0U << ARM_V7S_TABLE_SHIFT))
 

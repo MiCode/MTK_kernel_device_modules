@@ -50,6 +50,18 @@ static void handle_iova_to_phys(struct user_pt_regs *regs)
 	u64 h_pgd_pa, p_pgd_pa;
 	u32 *h_pgd, *p_pgd;
 	u32 lvl, hw_pte, prot_pte, hw_ret, prot_ret;
+	struct iova_info *info;
+
+	if (regs->regs[1] == IOVA_MATCH_NUM) {
+		info = query_iova_debug_info(iova, regs->regs[2]);
+		if (info) {
+			MOD_PUTS4("TF: iova_start, iova_end, cur_sec, cur_nsec",
+				info->iova_start, info->iova_end, info->cur_sec, info->cur_nsec);
+			ret = (u64)info->cur_sec | ((u64)info->cur_nsec << 32);
+		}
+		regs->regs[0] = ret;
+		return;
+	}
 
 	MOD_PUTS2("tf: io_get_pte: iova table_id", iova, table_id);
 
@@ -93,6 +105,8 @@ static void handle_inv(struct user_pt_regs *regs)
 	u32 reg_sa = (u32)regs->regs[1];
 	u32 reg_ea = (u32)regs->regs[2];
 	u64 table_id = (u32)regs->regs[3];
+	u32 cur_sec = (u32)regs->regs[4];
+	u32 cur_nsec = (u32)regs->regs[5];
 	u64 iova_start, iova_end, iova_size;
 	int ret = 0;
 
@@ -103,7 +117,7 @@ static void handle_inv(struct user_pt_regs *regs)
 	MOD_PUTS6("handle-inv: reg_sa reg_ea iova_s iova_e iova_sz tid",
 		reg_sa, reg_ea, iova_start, iova_end, iova_size, table_id);
 #endif
-	ret = io_pgtable_handler(iova_start, iova_size, table_id);
+	ret = io_pgtable_handler(iova_start, iova_size, table_id, cur_sec, cur_nsec);
 
 	//regs->regs[0] = (ret) ? (u64)-1 : 0UL;
 	regs->regs[0] = 0UL;
@@ -125,6 +139,7 @@ bool mtk_iommu_smc_handler(struct user_pt_regs *regs)
 
 	switch(smc_id) {
 	case HYP_PMM_GET_HYPMMU_TYPE2_EN:
+		register_iova_debug_info(regs);
 		mod_ops->puts("hypmmu enabled");
 		regs->regs[0] = 0x1;	/* hypmmu enabled */
 		handled = true;

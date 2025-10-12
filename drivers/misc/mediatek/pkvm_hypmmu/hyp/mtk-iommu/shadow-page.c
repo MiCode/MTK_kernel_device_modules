@@ -13,12 +13,16 @@
 #include "include/mtk-iommu.h"
 
 #define DEBUG_SHADOW_PAGE 0
+#define DEBUG_IOVA 0
 
 #define MAX_PAGE_POOL_SZ_MB (64UL)
 #define MAX_PAGE_NODES ((MAX_PAGE_POOL_SZ_MB << 20) >> V7S_PAGE_TABLE_SHIFT)
 
 #define TOTAL_PAGES() (SZ_32M >> V7S_PAGE_TABLE_SHIFT)
 #define MPOOL_ALLOC_CONTIG(sz) mpool_alloc_contiguous(&iommu_mpool, sz, 1)
+
+#define ONE_PAGE_OFFSET 12
+#define ONE_PAGE_SIZE (1 << ONE_PAGE_OFFSET)
 
 static u64 total_pages;
 static u64 avail_pages;
@@ -38,6 +42,11 @@ static struct list_head inuse_page_list;
 
 static hyp_spinlock_t hw_table_access_lock[MAX_TABLE_NUM];
 static hyp_spinlock_t prot_table_access_lock[MAX_TABLE_NUM];
+
+#if (DEBUG_IOVA)
+static struct iommu_info iommu_info_rb;
+static DEFINE_HYP_SPINLOCK(iova_info_rb_lock);
+#endif
 
 #if IS_ENABLED(CONFIG_LIST_HARDENED)
 bool __list_add_valid_or_report(struct list_head *new,
@@ -120,6 +129,149 @@ static void create_lv2_pgtbl_info(void)
 		v7s_page_nodes[i].lv2_pa_start = mod_ops->hyp_pa(v7s_page_nodes[i].lv2_va_start);
 	}
 }
+
+#if (DEBUG_IOVA)
+static bool share_memory_to_hyp(uint64_t region_start, uint64_t region_size)
+{
+	int ret = 0;
+	uint64_t share_idx, share_abort_idx, region_pfn = region_start >> PAGE_SHIFT,
+	  pfn_total = region_size >> PAGE_SHIFT;
+
+	for (share_idx = 0; share_idx < pfn_total; share_idx++) {
+		/* host_share_hyp's input parameter is pfn no matter kernel pa or hyp pa */
+		ret = mod_ops->host_share_hyp(region_pfn + share_idx);
+
+		if (ret) {
+			MOD_PUTS1("host_share_hyp fail", ret);
+			goto share_abort_handle;
+		}
+	}
+	/* Pin those shared memory pages to hyp */
+	ret = mod_ops->pin_shared_mem(
+		(void *)(mod_ops->hyp_va((phys_addr_t)region_start)),
+		(((void *)mod_ops->hyp_va((phys_addr_t)region_start)) +
+		 region_size));
+
+	if (ret) {
+		MOD_PUTS1("pin_shared_mem fail", ret);
+		goto share_abort_handle;
+	}
+
+	return true;
+
+share_abort_handle:
+	/* Abort this memory share operation */
+	for (share_abort_idx = 0; share_abort_idx < share_idx;
+		 share_abort_idx++) {
+		ret = mod_ops->host_unshare_hyp(region_pfn + share_abort_idx);
+		if (ret) {
+			MOD_PUTS1("host_unshare_hyp fail", ret);
+			break;
+		}
+	}
+	return false;
+}
+
+static struct iova_info *iommu_tag_at(int idx)
+{
+	return (struct iova_info *)(iommu_info_rb.tags + (iommu_info_rb.ent_sz * idx));
+}
+
+static void save_iova_debug_info(u32 sec, u32 nsec, u64 iova_start, u64 iova_end,
+		bool iova_map)
+{
+	struct iova_info *info;
+
+	if (iommu_info_rb.cnt == 0)
+		return;
+
+	hyp_spin_lock(&iova_info_rb_lock);
+	info = iommu_tag_at(iommu_info_rb.idx);
+	if (info) {
+		info->iova_start = iova_start;
+		info->iova_end = iova_end;
+		info->cur_sec = sec;
+		info->cur_nsec = nsec;
+		if (iova_map)
+			info->iova_map = true;
+		else
+			info->iova_map = false;
+		iommu_info_rb.idx++;
+		if (iommu_info_rb.idx >= iommu_info_rb.cnt)
+			iommu_info_rb.idx = 0;
+	}
+	hyp_spin_unlock(&iova_info_rb_lock);
+}
+
+struct iova_info *query_iova_debug_info(u64 iova, bool iova_map)
+{
+	struct iova_info *info;
+	int i, end;
+
+	if (iommu_info_rb.cnt == 0)
+		return NULL;
+
+	hyp_spin_lock(&iova_info_rb_lock);
+	end = (iommu_info_rb.idx > 0) ? iommu_info_rb.idx - 1 : iommu_info_rb.cnt - 1;
+	for (i = iommu_info_rb.idx;; ) {
+		info = iommu_tag_at(i);
+		if (!info->cur_sec)
+			goto next;
+
+		if (iova >= info->iova_start && iova <= info->iova_end
+				&& info->iova_map == iova_map) {
+			hyp_spin_unlock(&iova_info_rb_lock);
+			return info;
+		}
+next:
+		if (i == end)
+			break;
+		i = (i >=  iommu_info_rb.cnt - 1) ? 0 : i + 1;
+	}
+	hyp_spin_unlock(&iova_info_rb_lock);
+	return NULL;
+}
+
+void register_iova_debug_info(struct user_pt_regs *regs)
+{
+	uint64_t info_pfn, total_page;
+	void *info_pa;
+
+	/*
+	 * reg[1]: IOVA_MATCH_NUM
+	 * reg[2]: pfn
+	 * reg[3]: order
+	 */
+	if (regs->regs[1] != IOVA_MATCH_NUM || regs->regs[2] == 0) {
+		iommu_info_rb.cnt = 0;
+		return;
+	}
+
+	iommu_info_rb.ent_sz = sizeof(struct iova_info);
+	iommu_info_rb.idx = 0;
+	iommu_info_rb.cnt = 1024;
+
+	info_pfn = regs->regs[2];
+	total_page = (1 << regs->regs[3]) * ONE_PAGE_SIZE;
+	if (!share_memory_to_hyp(info_pfn << ONE_PAGE_OFFSET, total_page)) {
+		iommu_info_rb.cnt = 0;
+		return;
+	}
+	info_pa = (void *)(info_pfn << ONE_PAGE_OFFSET);
+	iommu_info_rb.tags = (void *)mod_ops->hyp_va((phys_addr_t)info_pa);
+
+	mod_ops->memset(iommu_info_rb.tags, 0, iommu_info_rb.ent_sz * iommu_info_rb.cnt);
+}
+#else
+struct iova_info *query_iova_debug_info(u64 iova, bool iova_map)
+{
+	return NULL;
+}
+
+void register_iova_debug_info(struct user_pt_regs *regs)
+{
+}
+#endif
 
 static struct v7s_page *v7s_phys_to_page(phys_addr_t pa)
 {
@@ -719,15 +871,15 @@ int io_pgtable_map(u64 iova, u64 tid, u32 guest_pte, u32 *h_pte, u32 *p_pte)
  * Syn guest page table into HW(IO) page table.
  * Base on range of iova.
  */
-int io_pgtable_handler(u64 iova_start, u64 iova_size, u64 tid)
+int io_pgtable_handler(u64 iova_start, u64 iova_size, u64 tid, u32 sec, u32 nsec)
 {
-	u64 cur_iova = iova_start;
+	u64 cur_iova = iova_start, pre_iova = iova_start;
 	u64 iova_end = iova_start + iova_size;
 	u64 g_pgd_pa = query_guest_pgd(tid);
 	u64 h_pgd_pa = query_hw_pgd(tid);
 	u64 p_pgd_pa = query_prot_pgd(tid);
 	u32 *g_pgd, *h_pgd, *p_pgd;
-	u32 guest_pte, i;
+	u32 guest_pte, pre_pte, i;
 	int ret = 0;
 
 	if (!g_pgd_pa || !h_pgd_pa) {
@@ -738,6 +890,8 @@ int io_pgtable_handler(u64 iova_start, u64 iova_size, u64 tid)
 	h_pgd = (u32 *)hyp_phys_to_virt(h_pgd_pa);
 	g_pgd = (u32 *)hyp_phys_to_virt(g_pgd_pa);
 	p_pgd = (u32 *)hyp_phys_to_virt(p_pgd_pa);
+
+	pre_pte = g_pgd[v7s_pgd_index(pre_iova)];
 
 	do {
 		i = v7s_pgd_index(cur_iova);
@@ -753,6 +907,13 @@ int io_pgtable_handler(u64 iova_start, u64 iova_size, u64 tid)
 			break;
 
 		cur_iova += SZ_1M;
+#if (DEBUG_IOVA)
+		if (ARM_V7S_PTE_VALID_CMP(guest_pte, pre_pte) || cur_iova >= iova_end) {
+			save_iova_debug_info(sec, nsec, pre_iova, cur_iova, ARM_V7S_PTE_IS_VALID(pre_pte));
+			pre_pte = guest_pte;
+			pre_iova = cur_iova;
+		}
+#endif
 	} while(cur_iova < iova_end);
 
 	/* flush pgd */

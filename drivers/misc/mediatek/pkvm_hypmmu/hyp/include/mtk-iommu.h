@@ -8,12 +8,29 @@
 
 #include <asm/kvm_pkvm_module.h>
 
+#define IOVA_MATCH_NUM 0xBBFD
+
 extern u64 page_pool_base;
 extern u64 page_pool_size;
 
+struct iommu_info {
+	int ent_sz; /* size of tag entry (including tag info) */
+	int cnt;    /* total count of tags */
+	int idx;    /* current tag index */
+	char *tags; /* container of tags, size = ent_sz * cnt */
+};
+
+struct iova_info {
+	u32 cur_sec;
+	u32 cur_nsec;
+	u64 iova_start;
+	u64 iova_end;
+	bool iova_map;
+};
+
 bool mtkiommu_dabt_handler(struct user_pt_regs *regs, u64 esr, u64 addr);
 bool mtk_iommu_smc_handler(struct user_pt_regs *regs);
-int io_pgtable_handler(u64 iova_start, u64 iova_end, u64 tid);
+int io_pgtable_handler(u64 iova_start, u64 iova_end, u64 tid, u32 sec, u32 nsec);
 u64 get_page_pool_base(void);
 u64 get_page_pool_size(void);
 void create_v7s_pages(u64 rmem_pa, u64 rmem_size);
@@ -28,5 +45,7 @@ u32 debug_io_get_pte(u32 *pgd, u64 iova, u32 *out_pte, u64 table_id);
 u32 debug_make_result(u64 iova, u32 pte, u32 lvl);
 u32 query_ac_srinfo(u64 pa);
 void set_ac_attr(u64 pa, u64 size, u8 attr);
+void register_iova_debug_info(struct user_pt_regs *regs);
+struct iova_info *query_iova_debug_info(u64 iova, bool iova_map);
 
 #endif
