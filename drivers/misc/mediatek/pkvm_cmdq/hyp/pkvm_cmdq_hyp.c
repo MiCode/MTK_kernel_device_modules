@@ -210,7 +210,7 @@ static void cmdq_pkvm_release_task(struct TaskStruct *pTask)
 
 		// be carefully that list parameter order is not same as linux version
 		// secure world's list: list_add_tail(list, list_node)
-		list_add_tail_new(&gCmdqFreeTask[hwid][pTask->thread - CMDQ_MIN_SECURE_THREAD_ID],
+		list_add_head(&gCmdqFreeTask[hwid][pTask->thread - CMDQ_MIN_SECURE_THREAD_ID],
 			&(pTask->listEntry));
 
 		if (!is_mdp_thread(pTask->hwid, pTask->thread)) {
