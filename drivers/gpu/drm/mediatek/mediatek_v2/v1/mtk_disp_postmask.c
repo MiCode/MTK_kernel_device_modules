@@ -442,6 +442,7 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 			DDPMSG("postmask force relay\n");
 			force_relay = 1;
 		}
+		postmask->postmask_force_relay = force_relay;
 
 		value = (REG_FLD_VAL((CFG_FLD_RELAY_MODE), force_relay) |
 			 REG_FLD_VAL((CFG_FLD_DRAM_MODE), 1) |
@@ -762,6 +763,10 @@ static int mtk_postmask_io_cmd(struct mtk_ddp_comp *comp,
 	{
 		u32 bw_val = *(unsigned int *)params;
 		unsigned int bpp = 1;
+		struct mtk_disp_postmask *postmask = comp_to_postmask(comp);
+
+		if (postmask && postmask->postmask_force_relay)
+			break;
 
 		if (!mtk_drm_helper_get_opt(priv->helper_opt,
 				MTK_DRM_OPT_MMQOS_SUPPORT))
