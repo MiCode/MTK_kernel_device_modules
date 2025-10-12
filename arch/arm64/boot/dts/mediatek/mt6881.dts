@@ -184,6 +184,26 @@
 		};
 	};
 
+	logstore: logstore {
+		enabled = <1>;
+		pmic-register = <0xa0d>;
+
+		/*
+		 * If not specified, the default size is 3M:
+		 * - 2M for logstore
+		 * - 1M for mrdump
+		 *
+		 * Version is calculated as:
+		 *   C_LOG_STORE_EXPDB_SIZE(preloader) + 1M(bootprof) + 1M(mrdump)
+		 *
+		 * Ensure that the version value is less than MRDUMP_CONFIG_EXPDB_OFFSET_LIMIT.
+		 *
+		 * To modify the version value, make sure to update
+		 * C_LOG_STORE_EXPDB_SIZE in mt6881/print.h accordingly.
+		 */
+		version = "12582912"; // Equivalent to 12MB
+	};
+
 	gic: interrupt-controller@c400000 {
 		/*TODO: please check interrupt controller again*/
 		compatible = "arm,gic-v3";
