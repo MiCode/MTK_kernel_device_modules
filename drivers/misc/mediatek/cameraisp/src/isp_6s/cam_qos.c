@@ -885,10 +885,11 @@ int ISP_SetPMQOS(
 		for (; i < _cam_max_; i++) {
 			ptr = (struct ISP_BW *)pvalue;
 			mtk_pmqos_set(module, i, ptr[i]);
+
+			LOG_DBG(
+				"PM_QoS: module[%d] port[%d]-bw_update, bw(peak avg)(%d %d) MB/s\n",
+				module, i, ptr[i].peak, ptr[i].avg);
 		}
-		LOG_DBG(
-			"PM_QoS: module[%d]-bw_update, bw(peak avg)(%d %d) MB/s\n",
-			module, ptr[_rrzo_].peak, ptr[_rrzo_].avg);
 	}
 		break;
 	case E_BW_CLR:
