@@ -22,6 +22,7 @@
 #endif
 
 #ifdef CMDQ_SECURE_PATH_SUPPORT
+#include <asm/kvm_pkvm_module.h>
 #include <cmdq-sec-iwc-common.h>
 #endif
 
@@ -1420,7 +1421,11 @@ static s32 mdp_dump_engine_usage(struct EngineStruct *engine_list)
 static bool mdp_is_mtee(struct cmdqRecStruct *handle)
 {
 #ifdef CMDQ_ENG_MTEE_GROUP_BITS
-	return (handle->engineFlag & CMDQ_ENG_MTEE_GROUP_BITS);
+	return
+#ifdef CMDQ_SECURE_PKVM
+		!is_protected_kvm_enabled() &&
+#endif
+		(handle->engineFlag & CMDQ_ENG_MTEE_GROUP_BITS);
 #else
 	return false;
 #endif
@@ -1699,6 +1704,138 @@ u64 cmdq_mdp_get_secure_engine(u64 engine_flags)
 	CMDQ_ENGINE_TRANS(engine_flags, sec_eng_flag, WPEO2);
 
 	return sec_eng_flag;
+}
+#endif
+
+#ifdef CMDQ_SECURE_PKVM
+enum mdp_mt6858_topology {
+	PATH_UNKNOWN = 0,
+	PATH_MDP_NOPQ,
+	PATH_MDP_PQ,
+	PATH_MDP_2OUT,
+	PATH_ISP_RSZ2,
+	PATH_ISP_PQ2,	/* 5 */
+	PATH_ISP_PQ,
+	PATH_ISP_2OUT,
+	PATH_ISP2_RSZ2,
+	PATH_ISP2_PQ2,
+	PATH_ISP2_PQ,	/* 10 */
+	PATH_ISP2_2OUT,
+	PATH_ISP_ONLY,
+	PATH_MDP_MAX	/* 13 */
+};
+
+static const u64 mdp_mt6858_path_map[PATH_MDP_MAX] = {
+	[PATH_UNKNOWN] = 0,
+	[PATH_MDP_NOPQ] = (
+		(1LL << CMDQ_ENG_MDP_RDMA0) |
+		(1LL << CMDQ_ENG_MDP_WROT0)),
+	[PATH_MDP_PQ] = (
+		(1LL << CMDQ_ENG_MDP_RDMA0) |
+		(1LL << CMDQ_ENG_MDP_DLI0_SEL) |
+		(1LL << CMDQ_ENG_MDP_HDR0) |
+		(1LL << CMDQ_ENG_MDP_AAL0) |
+		(1LL << CMDQ_ENG_MDP_RSZ0) |
+		(1LL << CMDQ_ENG_MDP_TDSHP0) |
+		(1LL << CMDQ_ENG_MDP_DLO0_SOUT) |
+		(1LL << CMDQ_ENG_MDP_WROT0)),
+	[PATH_MDP_2OUT] = (
+		(1LL << CMDQ_ENG_MDP_RDMA0) |
+		(1LL << CMDQ_ENG_MDP_DLI0_SEL) |
+		(1LL << CMDQ_ENG_MDP_HDR0) |
+		(1LL << CMDQ_ENG_MDP_AAL0) |
+		(1LL << CMDQ_ENG_MDP_RSZ0) |
+		(1LL << CMDQ_ENG_MDP_RSZ2) |
+		(1LL << CMDQ_ENG_MDP_TDSHP0) |
+		(1LL << CMDQ_ENG_MDP_DLO0_SOUT) |
+		(1LL << CMDQ_ENG_MDP_WROT0) |
+		(1LL << CMDQ_ENG_MDP_WROT2)),
+	[PATH_ISP_RSZ2] = (
+		(1LL << CMDQ_ENG_ISP_IMGI) |
+		(1LL << CMDQ_ENG_MDP_CAMIN) |
+		(1LL << CMDQ_ENG_MDP_RSZ2) |
+		(1LL << CMDQ_ENG_MDP_WROT2)),
+	[PATH_ISP_PQ2] = (
+		(1LL << CMDQ_ENG_ISP_IMGI) |
+		(1LL << CMDQ_ENG_MDP_CAMIN) |
+		(1LL << CMDQ_ENG_MDP_DLI0_SEL) |
+		(1LL << CMDQ_ENG_MDP_HDR0) |
+		(1LL << CMDQ_ENG_MDP_AAL0) |
+		(1LL << CMDQ_ENG_MDP_RSZ2) |
+		(1LL << CMDQ_ENG_MDP_WROT2)),
+	[PATH_ISP_PQ] = (
+		(1LL << CMDQ_ENG_ISP_IMGI) |
+		(1LL << CMDQ_ENG_MDP_CAMIN) |
+		(1LL << CMDQ_ENG_MDP_DLI0_SEL) |
+		(1LL << CMDQ_ENG_MDP_HDR0) |
+		(1LL << CMDQ_ENG_MDP_AAL0) |
+		(1LL << CMDQ_ENG_MDP_RSZ0) |
+		(1LL << CMDQ_ENG_MDP_TDSHP0) |
+		(1LL << CMDQ_ENG_MDP_DLO0_SOUT) |
+		(1LL << CMDQ_ENG_MDP_WROT0)),
+	[PATH_ISP_2OUT] = (
+		(1LL << CMDQ_ENG_ISP_IMGI) |
+		(1LL << CMDQ_ENG_MDP_CAMIN) |
+		(1LL << CMDQ_ENG_MDP_DLI0_SEL) |
+		(1LL << CMDQ_ENG_MDP_HDR0) |
+		(1LL << CMDQ_ENG_MDP_AAL0) |
+		(1LL << CMDQ_ENG_MDP_RSZ0) |
+		(1LL << CMDQ_ENG_MDP_RSZ2) |
+		(1LL << CMDQ_ENG_MDP_TDSHP0) |
+		(1LL << CMDQ_ENG_MDP_DLO0_SOUT) |
+		(1LL << CMDQ_ENG_MDP_WROT0) |
+		(1LL << CMDQ_ENG_MDP_WROT2)),
+	[PATH_ISP2_RSZ2] = (
+		(1LL << CMDQ_ENG_ISP_IMGI) |
+		(1LL << CMDQ_ENG_MDP_CAMIN2) |
+		(1LL << CMDQ_ENG_MDP_RSZ2) |
+		(1LL << CMDQ_ENG_MDP_WROT2)),
+	[PATH_ISP2_PQ2] = (
+		(1LL << CMDQ_ENG_ISP_IMGI) |
+		(1LL << CMDQ_ENG_MDP_CAMIN2) |
+		(1LL << CMDQ_ENG_MDP_DLI0_SEL) |
+		(1LL << CMDQ_ENG_MDP_HDR0) |
+		(1LL << CMDQ_ENG_MDP_AAL0) |
+		(1LL << CMDQ_ENG_MDP_RSZ2) |
+		(1LL << CMDQ_ENG_MDP_WROT2)),
+	[PATH_ISP2_PQ] = (
+		(1LL << CMDQ_ENG_ISP_IMGI) |
+		(1LL << CMDQ_ENG_MDP_CAMIN2) |
+		(1LL << CMDQ_ENG_MDP_DLI0_SEL) |
+		(1LL << CMDQ_ENG_MDP_HDR0) |
+		(1LL << CMDQ_ENG_MDP_AAL0) |
+		(1LL << CMDQ_ENG_MDP_RSZ0) |
+		(1LL << CMDQ_ENG_MDP_TDSHP0) |
+		(1LL << CMDQ_ENG_MDP_DLO0_SOUT) |
+		(1LL << CMDQ_ENG_MDP_WROT0)),
+	[PATH_ISP2_2OUT] = (
+		(1LL << CMDQ_ENG_ISP_IMGI) |
+		(1LL << CMDQ_ENG_MDP_CAMIN2) |
+		(1LL << CMDQ_ENG_MDP_DLI0_SEL) |
+		(1LL << CMDQ_ENG_MDP_HDR0) |
+		(1LL << CMDQ_ENG_MDP_AAL0) |
+		(1LL << CMDQ_ENG_MDP_RSZ0) |
+		(1LL << CMDQ_ENG_MDP_RSZ2) |
+		(1LL << CMDQ_ENG_MDP_TDSHP0) |
+		(1LL << CMDQ_ENG_MDP_DLO0_SOUT) |
+		(1LL << CMDQ_ENG_MDP_WROT0) |
+		(1LL << CMDQ_ENG_MDP_WROT2)),
+	[PATH_ISP_ONLY] = (
+		(1LL << CMDQ_ENG_ISP_IMGI) |
+		(1LL << CMDQ_ENG_ISP_IMG2O)),
+};
+
+static u16 cmdq_mdp_get_secure_path(u64 engine_flags)
+{
+	u16 idx;
+
+	engine_flags &= ~(1LL << CMDQ_ENG_INORDER);
+	for (idx = 1; idx < PATH_MDP_MAX; idx++)
+		if (mdp_mt6858_path_map[idx] == engine_flags)
+			return idx;
+
+	CMDQ_ERR("%s: MDP(0x%llx) is invalid secure path\n", __func__, engine_flags);
+	return 0; // PATH_MDP_MAX
 }
 #endif
 
@@ -2183,6 +2320,9 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->CheckHwStatus = cmdq_mdp_check_hw_status;
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	pFunc->mdpGetSecEngine = cmdq_mdp_get_secure_engine;
+#endif
+#ifdef CMDQ_SECURE_PKVM
+	pFunc->mdpGetSecPath = cmdq_mdp_get_secure_path;
 #endif
 	pFunc->qosTransPort = cmdq_mdp_qos_translate_port;
 	pFunc->qosInit = mdp_qos_init;

@@ -118,7 +118,9 @@ typedef struct device *(*CmdqMdpGetMdpDev) (void);
 
 typedef void (*CmdqCheckHwStatus) (struct cmdqRecStruct *handle);
 
-typedef u64(*CmdqMdpGetSecEngine) (u64 engine_flag);
+typedef u64 (*CmdqMdpGetSecEngine) (u64 engine_flag);
+
+typedef u16 (*CmdqMdpGetSecPath) (u64 engine_flag);
 
 typedef void (*CmdqMdpResolveToken) (u64 engine_flag,
 	const struct cmdqRecStruct *task);
@@ -221,6 +223,7 @@ struct cmdqMDPFuncStruct {
 	CmdqEndTaskCB endISPTask;
 	CmdqCheckHwStatus CheckHwStatus;
 	CmdqMdpGetSecEngine mdpGetSecEngine;
+	CmdqMdpGetSecPath mdpGetSecPath;
 	CmdqMdpResolveToken resolve_token;
 	MdpParseModule mdpParseMod;
 

@@ -589,6 +589,8 @@ struct cmdqSecSharedMemoryStruct {
 struct ContextStruct {
 	/* handle information */
 	struct list_head handle_active;
+	struct cmdq_pkt *pkt_sec;
+	atomic_t secure_cnt;
 
 	/* Write Address management */
 	struct list_head writeAddrList;
@@ -657,15 +659,6 @@ enum CMDQ_SPM_MODE {
 	CMDQ_PD_MODE,
 };
 
-/* secure world wsm metadata type in message ex,
- * must sync with cmdq_sec_meta_type in cmdq_sec_iwc_common.h
- */
-enum cmdq_sec_rec_meta_type {
-	CMDQ_SEC_METAEX_NONE,
-	CMDQ_SEC_METAEX_FD,
-	CMDQ_SEC_METAEX_CQ,
-};
-
 struct mdp_readback_engine {
 	u32 engine;
 	u32 start;
@@ -677,6 +670,7 @@ struct cmdqRecStruct {
 	struct list_head list_entry;
 	struct cmdq_pkt *pkt;
 	struct cmdq_pkt *pkt_rb; /* pkt for readback command */
+	struct cmdq_pkt *pkt_sec; /* pkt for secure routines */
 	u32 *cmd_end;
 	u64 engineFlag;
 	s32 scenario;
@@ -765,13 +759,6 @@ struct cmdqRecStruct {
 	/* PMQoS information */
 	void *prop_addr;
 	u32 prop_size;
-
-	/* secure world */
-	struct iwcCmdqSecStatus_t *secStatus;
-	u32 irq;
-	void *sec_client_meta;
-	enum cmdq_sec_rec_meta_type sec_meta_type;
-	u32 sec_meta_size;
 };
 
 /* TODO: add controller support */
@@ -946,6 +933,8 @@ s32 cmdq_core_suspend_hw_thread(s32 thread);
 
 u64 cmdq_core_get_gpr64(const enum cmdq_gpr_reg regID);
 void cmdq_core_set_gpr64(const enum cmdq_gpr_reg regID, const u64 value);
+
+s32 cmdq_config_secure_routine(struct cmdqRecStruct *handle);
 
 void cmdq_remove_handle_from_handle_active(struct cmdqRecStruct *handle);
 void cmdq_core_release_handle_by_file_node(void *file_node);

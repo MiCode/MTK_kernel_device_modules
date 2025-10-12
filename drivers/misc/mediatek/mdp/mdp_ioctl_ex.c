@@ -295,7 +295,7 @@ static unsigned long translate_fd(struct op_meta *meta,
 	}
 
 	dev = mdpsys_con_ctx.mmu_dev;
-	if (handle->secData.is_secure && mdpsys_con_ctx.mmu_dev_sec)
+	if ((handle->secData.is_secure || handle->pkt_sec) && mdpsys_con_ctx.mmu_dev_sec)
 		dev = mdpsys_con_ctx.mmu_dev_sec;
 	if (!dev) {
 		CMDQ_ERR("%s mmu_dev not ready\n", __func__);
@@ -501,6 +501,27 @@ static s32 translate_meta(struct op_meta *meta,
 							  meta->pipe_idx, meta->cpr_idx),
 					meta->value);
 		}
+		break;
+	}
+	case CMDQ_MOP_WRITE_CPR:
+	{
+		u16 cpr_idx = CMDQ_CPR_STRAT_ID + meta->cpr_idx;
+		u16 path_idx;
+
+		if (cpr_idx != CMDQ_CPR_MDP_INDEX) {
+			CMDQ_ERR("%s: op:%u, engine %d, cpr_idx %d invalid\n",
+				 __func__, meta->op, meta->engine, meta->cpr_idx);
+			return -EINVAL;
+		}
+
+		path_idx = cmdq_mdp_get_func()->mdpGetSecPath(handle->engineFlag);
+		if (!path_idx) {
+			CMDQ_ERR("%s: op:%u, engine %d, path 0x%llx invalid\n",
+				 __func__, meta->op, meta->engine, handle->engineFlag);
+			return -EINVAL;
+		}
+
+		status = cmdq_op_assign_reg_idx_ex(handle, cmd_buf, cpr_idx, path_idx);
 		break;
 	}
 	case CMDQ_MOP_READ:

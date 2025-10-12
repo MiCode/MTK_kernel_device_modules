@@ -37,6 +37,7 @@
 #include "cmdq_mmp.h"
 #endif
 #ifdef CMDQ_SECURE_PATH_SUPPORT
+#include <asm/kvm_pkvm_module.h>
 #include <cmdq-sec.h>
 #endif
 
@@ -56,8 +57,8 @@ struct cmdq_cmd_struct {
 
 /* mutex and spinlock in core, first define first lock */
 static DEFINE_MUTEX(cmdq_clock_mutex);
-static DEFINE_MUTEX(cmdq_res_mutex);
 static DEFINE_MUTEX(cmdq_handle_list_mutex);
+static DEFINE_MUTEX(cmdq_routine_mutex);
 static DEFINE_MUTEX(cmdq_thread_mutex);
 static DEFINE_MUTEX(cmdq_inst_check_mutex);
 
@@ -2853,6 +2854,18 @@ static void cmdq_core_attach_cmdq_error(
 	CMDQ_ERR("============== [CMDQ] Begin of Error %d =============\n",
 		cmdq_ctx.errNum);
 
+#ifdef CMDQ_SECURE_PKVM
+	if (handle->pkt_sec) {
+		mutex_lock(&cmdq_routine_mutex);
+		CMDQ_ERR("[PKVM] cmdq_sec_mbox_stop pkt:%p cl:%p cnt:%d\n",
+			handle->pkt_sec, handle->pkt_sec->cl,
+			atomic_read(&cmdq_ctx.secure_cnt));
+		atomic_set(&cmdq_ctx.secure_cnt, 0);
+		cmdq_sec_mbox_stop(handle->pkt_sec->cl);
+		mutex_unlock(&cmdq_routine_mutex);
+	}
+#endif
+
 	if (!handle->secData.is_secure) {
 		cmdq_core_dump_handle_summary(handle, thread, &nghandle, nginfo_out);
 		cmdq_core_dump_error_handle(handle, thread, pc_out);
@@ -3631,6 +3644,90 @@ void cmdq_core_replace_v3_instr(struct cmdqRecStruct *handle, s32 thread)
 	}
 }
 
+#ifdef CMDQ_SECURE_PKVM
+s32 cmdq_config_secure_routine(struct cmdqRecStruct *handle)
+{
+	s32 err = 0;
+	s32 thread_sec;
+	struct cmdq_client *cl_sec = NULL;
+	struct cmdq_pkt *pkt_sec;
+
+	if (!handle)
+		return 0;
+
+	mutex_lock(&cmdq_routine_mutex);
+	if (cmdq_ctx.pkt_sec) {
+		handle->pkt_sec = cmdq_ctx.pkt_sec;
+		goto unlock;
+	}
+
+	thread_sec = cmdq_get_func()->getThreadID(0, CMDQ_SCENARIO_USER_MDP, true);
+	CMDQ_MSG("%s acquire thread_sec:%d for thread:%d\n", __func__,
+		thread_sec, handle->thread);
+
+	cl_sec = cmdq_helper_mbox_client(thread_sec);
+	if (unlikely(!cl_sec)) {
+		CMDQ_ERR("%s: secure client is invalid, thread:%d\n", __func__,
+			thread_sec);
+		err = -EINVAL;
+		goto unlock;
+	}
+
+	pkt_sec = cmdq_pkt_create(cl_sec);
+	if (IS_ERR(pkt_sec)) {
+		err = PTR_ERR(pkt_sec);
+		CMDQ_ERR("create pkt_sec failed err:%d\n", err);
+		goto unlock;
+	}
+
+	cmdq_sec_pkt_set_data(pkt_sec, 0, 0, CMDQ_SEC_USER_MDP, CMDQ_METAEX_TZMP);
+	cmdq_sec_pkt_set_mtee(pkt_sec, true);
+	cmdq_pkt_finalize_loop(pkt_sec);
+	cmdq_ctx.pkt_sec = pkt_sec;
+	handle->pkt_sec = pkt_sec;
+	CMDQ_LOG("[PKVM] created pkt_sec:%p cl:%p\n",
+		handle->pkt_sec, handle->pkt_sec->cl);
+unlock:
+	CMDQ_MSG("[PKVM] acquired pkt_sec:%p\n", handle->pkt_sec);
+	mutex_unlock(&cmdq_routine_mutex);
+	return err;
+}
+
+static void cmdq_flush_secure_routine(struct cmdqRecStruct *handle)
+{
+	s32 count;
+
+	mutex_lock(&cmdq_routine_mutex);
+	count = atomic_inc_return(&cmdq_ctx.secure_cnt);
+	if (count == 1) {
+		CMDQ_MSG("[PKVM] %s cmdq_pkt_flush_async pkt:%p\n",
+			__func__, handle->pkt_sec);
+		cmdq_pkt_flush_async(handle->pkt_sec, NULL, NULL);
+	}
+	mutex_unlock(&cmdq_routine_mutex);
+
+	if (count <= 0)
+		CMDQ_ERR("%s negative routine ref:%d\n", __func__, count);
+}
+
+static void cmdq_remove_secure_routine(struct cmdqRecStruct *handle)
+{
+	s32 count;
+
+	mutex_lock(&cmdq_routine_mutex);
+	count = atomic_dec_return(&cmdq_ctx.secure_cnt);
+	if (count == 0) {
+		CMDQ_MSG("[PKVM] %s cmdq_sec_mbox_stop pkt:%p cl:%p\n",
+			__func__, handle->pkt_sec, handle->pkt_sec->cl);
+		cmdq_sec_mbox_stop(handle->pkt_sec->cl);
+	}
+	mutex_unlock(&cmdq_routine_mutex);
+
+	if (count < 0)
+		CMDQ_ERR("%s negative routine ref:%d\n", __func__, count);
+}
+#endif
+
 void cmdq_remove_handle_from_handle_active(struct cmdqRecStruct *handle)
 {
 	struct cmdqRecStruct *handle_active_node;
@@ -3680,6 +3777,10 @@ void cmdq_core_release_handle_by_file_node(void *file_node)
 			client = cmdq_clients[(u32)handle->thread_rb];
 			cmdq_mbox_thread_remove_task(client->chan, handle->pkt_rb);
 		}
+#ifdef CMDQ_SECURE_PKVM
+		if (handle->pkt_sec)
+			cmdq_remove_secure_routine(handle);
+#endif
 
 		cmdq_pkt_auto_release_task(handle, true);
 	}
@@ -4378,6 +4479,10 @@ s32 cmdq_pkt_wait_flush_ex_result(struct cmdqRecStruct *handle)
 	status = cmdq_pkt_wait_complete(handle->pkt);
 	if (handle->pkt_rb)
 		status = cmdq_pkt_wait_complete(handle->pkt_rb);
+#ifdef CMDQ_SECURE_PKVM
+	if (handle->pkt_sec)
+		cmdq_remove_secure_routine(handle);
+#endif
 
 	if (handle->profile_exec) {
 		u32 *va = cmdq_pkt_get_perf_ret(handle->pkt);
@@ -4549,6 +4654,11 @@ static s32 cmdq_pkt_flush_async_ex_impl(struct cmdqRecStruct *handle,
 	CMDQ_SYSTRACE_END();
 
 	CMDQ_SYSTRACE_BEGIN("%s\n", __func__);
+#ifdef CMDQ_SECURE_PKVM
+	if (handle->pkt_sec)
+		cmdq_flush_secure_routine(handle);
+#endif
+
 	cmdq_core_replace_v3_instr(handle, handle->thread);
 	if (handle->pkt->cl != client) {
 		CMDQ_LOG("[warn]client not match before flush:0x%p and 0x%p\n",
@@ -4815,6 +4925,12 @@ void cmdq_core_initialize(void)
 	/* for secure path reserve irq notify thread */
 	cmdq_ctx.thread[CMDQ_SEC_IRQ_THREAD].used = true;
 #endif
+#ifdef CMDQ_SECURE_PKVM
+	if (is_protected_kvm_enabled()) {
+		thread_id = cmdq_get_func()->getThreadID(0, CMDQ_SCENARIO_USER_MDP, true);
+		cmdq_mbox_set_thread_timeout(cmdq_clients[thread_id]->chan, CMDQ_NO_TIMEOUT);
+	}
+#endif
 
 	for (index = 0; index < ARRAY_SIZE(cmdq_ctx.thread); index++)
 		mutex_init(&cmdq_ctx.thread[index].thread_mutex);
@@ -4887,6 +5003,9 @@ void cmdq_core_deinitialize(void)
 	cmdq_wait_queue = NULL;
 	kfree(cmdq_ctx.inst_check_buffer);
 	cmdq_ctx.inst_check_buffer = NULL;
+	if (cmdq_ctx.pkt_sec)
+		cmdq_pkt_destroy(cmdq_ctx.pkt_sec);
+	cmdq_ctx.pkt_sec = NULL;
 	cmdq_helper_mbox_clear_pools();
 }
 

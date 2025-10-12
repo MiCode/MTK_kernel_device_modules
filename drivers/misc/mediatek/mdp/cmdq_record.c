@@ -786,6 +786,7 @@ static void cmdq_task_release_buffer(struct cmdqRecStruct *handle)
 	if (handle->pkt_rb)
 		cmdq_pkt_destroy(handle->pkt_rb);
 	handle->pkt_rb = NULL;
+	handle->pkt_sec = NULL;
 
 	/* secure path buffer */
 	if (handle->secData.addrMetadatas) {
@@ -820,9 +821,6 @@ static void cmdq_task_release_buffer(struct cmdqRecStruct *handle)
 	/* user data */
 	kfree(handle->user_debug_str);
 	handle->user_debug_str = NULL;
-
-	kfree(handle->secStatus);
-	handle->secStatus = NULL;
 }
 
 s32 cmdq_task_reset(struct cmdqRecStruct *handle)

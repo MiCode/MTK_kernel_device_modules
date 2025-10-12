@@ -42,6 +42,7 @@
 #include <soc/mediatek/smi.h>
 
 #ifdef CMDQ_SECURE_PATH_SUPPORT
+#include <asm/kvm_pkvm_module.h>
 #include "cmdq-sec.h"
 #include "mtk_heap.h"
 #endif
@@ -733,6 +734,8 @@ static s32 cmdq_mdp_lock_thread(struct cmdqRecStruct *handle)
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	else
 		cmdq_sec_mbox_enable(((struct cmdq_client *) handle->pkt->cl)->chan);
+	if (handle->pkt_sec)
+		cmdq_sec_mbox_enable(((struct cmdq_client *) handle->pkt_sec->cl)->chan);
 #endif
 	if (handle->pkt_rb)
 		cmdq_mbox_enable(((struct cmdq_client *) handle->pkt_rb->cl)->chan);
@@ -842,6 +845,8 @@ static void cmdq_mdp_handle_stop(struct cmdqRecStruct *handle)
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	else
 		cmdq_sec_mbox_disable(((struct cmdq_client *)handle->pkt->cl)->chan);
+	if (handle->pkt_sec)
+		cmdq_sec_mbox_disable(((struct cmdq_client *)handle->pkt_sec->cl)->chan);
 #endif
 	if (handle->pkt_rb)
 		cmdq_mbox_disable(((struct cmdq_client *) handle->pkt_rb->cl)->chan);
@@ -1029,7 +1034,7 @@ static s32 cmdq_mdp_consume_handle(void)
 	struct CmdqCBkStruct *callback = cmdq_core_get_group_cb();
 	bool secure_run = false;
 #ifdef CMDQ_SECURE_PATH_SUPPORT
-	struct ContextStruct *ctx;
+	struct ContextStruct *ctx = cmdq_core_get_context();
 	u32 task_cnt;
 #endif
 
@@ -1066,7 +1071,6 @@ static s32 cmdq_mdp_consume_handle(void)
 
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 		if (handle->secData.is_secure) {
-			ctx = cmdq_core_get_context();
 			task_cnt = ctx->thread[(u32)cmdq_mdp_get_sec_thread(handle->engineFlag)].handle_count;
 			/* sec thread and more than 4 task -> queue the task */
 			if (task_cnt + 1 > CMDQ_MAX_TASK_CNT_ON_THREAD) {
@@ -1304,7 +1308,7 @@ static void cmdq_mdp_config_readback_sec(struct cmdqRecStruct *handle)
 	}
 }
 
-s32 cmdq_mdp_config_readback_thread(struct cmdqRecStruct *handle)
+static s32 cmdq_mdp_config_readback_thread(struct cmdqRecStruct *handle)
 {
 	s32 err;
 	struct cmdq_client *cl_rb = NULL;
@@ -1355,17 +1359,20 @@ s32 cmdq_mdp_handle_sec_setup(struct cmdqSecDataStruct *secData,
 	bool is_sec_meta_data_support;
 	int cmdq_mtee;
 
-	/* set secure data */
-	handle->secStatus = NULL;
-	if (!secData || !secData->is_secure)
-		return 0;
-
 	is_sec_meta_data_support =
 		cmdq_mdp_get_func()->mdpSvpSupportMetaData();
 
 	CMDQ_MSG("%s start:%d, %d, %d\n",
 		__func__, secData->is_secure,
 		secData->addrMetadataCount, is_sec_meta_data_support);
+
+	/* set secure data */
+	if (!secData->is_secure)
+		return 0;
+#ifdef CMDQ_SECURE_PKVM
+	if (is_protected_kvm_enabled())
+		return cmdq_config_secure_routine(handle);
+#endif
 
 	if (is_sec_meta_data_support && !secData->addrMetadataCount) {
 		CMDQ_ERR(
@@ -3190,6 +3197,11 @@ u64 cmdq_mdp_get_secure_engine_virtual(u64 engine_flag)
 	return 0;
 }
 
+u16 cmdq_mdp_get_secure_path_virtual(u64 engine_flag)
+{
+	return 0;
+}
+
 void cmdq_mdp_resolve_token_virtual(u64 engine_flag,
 	const struct cmdqRecStruct *task)
 {
@@ -3775,6 +3787,7 @@ void cmdq_mdp_virtual_function_setting(void)
 	pFunc->endISPTask = cmdq_mdp_isp_end_task_virtual;
 	pFunc->CheckHwStatus = cmdq_mdp_check_hw_status_virtual;
 	pFunc->mdpGetSecEngine = cmdq_mdp_get_secure_engine_virtual;
+	pFunc->mdpGetSecPath = cmdq_mdp_get_secure_path_virtual;
 	pFunc->resolve_token = cmdq_mdp_resolve_token_virtual;
 	pFunc->mdpParseMod = mdp_parse_mod;
 
