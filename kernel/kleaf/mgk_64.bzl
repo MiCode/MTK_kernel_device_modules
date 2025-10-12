@@ -794,6 +794,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/clk/mediatek:fhctl".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/gate_ic:rt4831a_drv".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:bridge-serdes".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:ktz8866".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-aw37501-i2c".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:rt4831a".format(kernel_version),
