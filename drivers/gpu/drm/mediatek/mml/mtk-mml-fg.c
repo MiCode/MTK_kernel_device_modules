@@ -362,7 +362,7 @@ static s32 fg_prepare(struct mml_comp *comp, struct mml_task *task,
 	 */
 	fg_frm->datasize = 4678560;
 
-	return 0;
+	return (s32)sizeof(*fg_frm);
 }
 
 static s32 fg_buf_prepare(struct mml_comp *comp, struct mml_task *task,

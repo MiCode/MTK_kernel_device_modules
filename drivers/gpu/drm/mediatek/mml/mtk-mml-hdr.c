@@ -629,7 +629,7 @@ static s32 hdr_prepare(struct mml_comp *comp, struct mml_task *task,
 	hdr_frm->reuse_curve_ootf.offs_size = ARRAY_SIZE(hdr_frm->offs_ootf);
 	hdr_frm->reuse_curve_oetf.offs = hdr_frm->offs_oetf;
 	hdr_frm->reuse_curve_oetf.offs_size = ARRAY_SIZE(hdr_frm->offs_oetf);
-	return 0;
+	return (s32)sizeof(*hdr_frm);
 }
 
 static s32 hdr_buf_prepare(struct mml_comp *comp, struct mml_task *task,

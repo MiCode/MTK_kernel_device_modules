@@ -519,7 +519,7 @@ static s32 aal_prepare(struct mml_comp *comp, struct mml_task *task,
 		dest->data.format, cfg->info.mode, dest->pq_config.en, dest->pq_config.en_dre);
 	aal_frm->alpha_r2y = aal->data->alpha_pq_r2y && cfg->alpharsz &&
 		dest->data.format == MML_FMT_YUVA8888 && cfg->info.mode != MML_MODE_DIRECT_LINK;
-	return 0;
+	return (s32)sizeof(*aal_frm);
 }
 
 static s32 aal_buf_prepare(struct mml_comp *comp, struct mml_task *task,

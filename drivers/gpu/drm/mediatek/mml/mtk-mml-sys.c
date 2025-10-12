@@ -372,7 +372,7 @@ static s32 sys_config_prepare(struct mml_comp *comp, struct mml_task *task,
 	ccfg->data = sys_frm;
 	if (!sys_frm)
 		return -ENOMEM;
-	return 0;
+	return (s32)sizeof(*sys_frm);
 }
 
 static s32 sys_setup_framedone_events(struct mml_comp *comp, struct mml_task *task,

@@ -49,7 +49,7 @@ static s32 tcc_prepare(struct mml_comp *comp, struct mml_task *task,
 	/* cache out index for easy use */
 	tcc_frm->out_idx = ccfg->node->out_idx;
 
-	return 0;
+	return (s32)sizeof(*tcc_frm);
 }
 
 static s32 tcc_tile_prepare(struct mml_comp *comp, struct mml_task *task,

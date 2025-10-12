@@ -108,7 +108,7 @@ static s32 mutex_prepare(struct mml_comp *comp, struct mml_task *task,
 	if (!ccfg->data)
 		return -ENOMEM;
 
-	return 0;
+	return (s32)sizeof(struct mutex_frame_data);
 }
 
 static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,

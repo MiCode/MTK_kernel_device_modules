@@ -916,7 +916,7 @@ static s32 rdma_prepare(struct mml_comp *comp, struct mml_task *task,
 			cfg->frame_tile_sz.width = round_up(in_crop_w, 2);
 		}
 	}
-	return 0;
+	return (s32)sizeof(struct rdma_frame_data);
 }
 
 static void rdma_config_smi(struct mml_comp_rdma *rdma,

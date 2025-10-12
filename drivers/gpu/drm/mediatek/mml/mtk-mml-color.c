@@ -137,7 +137,7 @@ static s32 color_prepare(struct mml_comp *comp, struct mml_task *task,
 	color_frm = kzalloc(sizeof(*color_frm), GFP_KERNEL);
 
 	ccfg->data = color_frm;
-	return 0;
+	return (s32)sizeof(*color_frm);
 }
 
 static s32 color_buf_prepare(struct mml_comp *comp, struct mml_task *task,

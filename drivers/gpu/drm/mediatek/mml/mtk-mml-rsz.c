@@ -313,6 +313,9 @@ static s32 rsz_prepare(struct mml_comp *comp, struct mml_task *task,
 		}
 	}
 
+	if (ret >= 0)
+		ret = (s32)sizeof(*rsz_frm);
+
 	mml_trace_ex_end();
 	return ret;
 }

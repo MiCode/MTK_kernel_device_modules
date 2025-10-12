@@ -476,7 +476,10 @@ static s32 core_prepare(struct mml_task *task, u32 pipe)
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
 		mml_mmp(comp_prepare, MMPROFILE_FLAG_PULSE, comp->id, 0);
-		call_cfg_op(comp, prepare, task, &cache->cfg[i]);
+		ret = call_cfg_op(comp, prepare, task, &cache->cfg[i]);
+		if (ret >= PAGE_SIZE)
+			mml_log("[warn]prepare %u size %d", comp->id, ret);
+
 		ret = call_cfg_op(comp, buf_prepare, task, &cache->cfg[i]);
 		if (ret < 0) {
 			mml_err("buf_prepare fail comp %u", comp->id);

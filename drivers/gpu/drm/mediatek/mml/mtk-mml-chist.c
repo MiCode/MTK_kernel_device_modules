@@ -168,7 +168,7 @@ static s32 chist_prepare(struct mml_comp *comp, struct mml_task *task,
 	chist_frm = kzalloc(sizeof(*chist_frm), GFP_KERNEL);
 
 	ccfg->data = chist_frm;
-	return 0;
+	return (s32)sizeof(*chist_frm);
 }
 
 static s32 chist_buf_prepare(struct mml_comp *comp, struct mml_task *task,

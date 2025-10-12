@@ -30,7 +30,7 @@
 #define C3D_WAIT_TIMEOUT_MS 50
 #define C3D_REG_NUM 60
 #define REG_NOT_SUPPORT 0xfff
-#define C3D_LABEL_COUNT 10
+#define C3D_LABEL_COUNT 11
 
 enum mml_color_reg_index {
 	C3D_EN,
@@ -174,7 +174,7 @@ static const u16 c3d_reg_table_mt6993[C3D_REG_MAX_COUNT] = {
 
 enum c3d_label_index {
 	C3D_REUSE_LABEL = 0,
-	C3D_POLLGPR_0 = C3D_LUT_NUM + C3D_PROG_IDX_REG_NUM,
+	C3D_POLLGPR_0 = C3D_PROG_IDX_REG_NUM,
 	C3D_POLLGPR_1,
 	C3D_LABEL_TOTAL
 };
@@ -249,7 +249,7 @@ static s32 c3d_prepare(struct mml_comp *comp, struct mml_task *task,
 	c3d_frm->reuse_lut.offs_size = ARRAY_SIZE(c3d_frm->offs_lut);
 
 	ccfg->data = c3d_frm;
-	return 0;
+	return (s32)sizeof(*c3d_frm);
 }
 
 static void c3d_relay(struct mml_comp *comp, struct cmdq_pkt *pkt,
@@ -430,15 +430,18 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
 		base_pa + c3d->data->reg_table[C3D_SRAM_STATUS], (0x1 << 16), gpr);
 	for (i = 0, addr=0; i < result->c3d_lut_num; i++, addr+=4)
-		mml_write(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_1],
-			c3d_lut[i], U32_MAX, reuse, cache, &c3d_frm->labels[i]);
+		mml_write_array(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_1],
+			c3d_lut[i], U32_MAX, reuse, cache, &c3d_frm->reuse_lut);
+	if (c3d_frm->reuse_lut.idx >= ARRAY_SIZE(c3d_frm->offs_lut))
+		mml_pq_err("%s result lut offset size necessary %u",
+			__func__, c3d_frm->reuse_lut.idx);
 
 	if (c3d->data->sup_prog_idx) {
 		mml_pq_msg("%s: c3d_prog_idx_reg_num = %d", __func__, result->c3d_prog_idx_reg_num);
 		for (i = 0; i < result->c3d_prog_idx_reg_num; i++) {
 			mml_write(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_RIDX_00_01 + i],
 				c3d_prog_idx[i], 0x03FF03FF, reuse, cache,
-				&c3d_frm->labels[i + result->c3d_lut_num]);
+				&c3d_frm->labels[i]);
 			mml_pq_msg("%s: c3d_prog_idx[%d] = %d", __func__, i, c3d_prog_idx[i]);
 		}
 	}
@@ -500,7 +503,7 @@ static s32 c3d_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_comp_c3d *c3d = comp_to_c3d(comp);
 	u32 *c3d_lut = NULL, *c3d_prog_idx = NULL;
-	u32 i=0;
+	u32 i, j, val_idx;
 	s32 ret = 0;
 
 
@@ -528,13 +531,20 @@ static s32 c3d_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 
 	c3d_lut = result->c3d_lut;
 	c3d_prog_idx = result->c3d_prog_idx;
-	for (i = 0 ; i < result->c3d_lut_num; i++)
-		mml_update(comp->id, reuse, c3d_frm->labels[i], c3d_lut[i]);
+	val_idx = 0;
+	for (i = 0; i < c3d_frm->reuse_lut.idx; i++)
+		for (j = 0; j < c3d_frm->reuse_lut.offs[i].cnt; j++, val_idx++)
+			mml_update_array(comp->id, reuse, &c3d_frm->reuse_lut, i, j,
+				c3d_lut[val_idx]);
+	if (val_idx != result->c3d_lut_num)
+		mml_pq_err("%s value cnt %u lut cnt %u not match",
+			__func__, val_idx, result->c3d_lut_num);
+
 
 	if (c3d->data->sup_prog_idx) {
 		mml_pq_msg("%s: c3d_prog_idx_reg_num = %d", __func__, result->c3d_prog_idx_reg_num);
 		for (i = 0; i < result->c3d_prog_idx_reg_num; i++) {
-			mml_update(comp->id, reuse, c3d_frm->labels[i + result->c3d_lut_num],
+			mml_update(comp->id, reuse, c3d_frm->labels[i],
 				c3d_prog_idx[i]);
 			mml_pq_msg("%s: c3d_prog_idx[%d] = %d", __func__, i, c3d_prog_idx[i]);
 		}

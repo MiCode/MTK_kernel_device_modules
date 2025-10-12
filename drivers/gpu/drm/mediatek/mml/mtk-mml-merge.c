@@ -91,7 +91,7 @@ static s32 merge_prepare(struct mml_comp *comp, struct mml_task *task,
 	if (!ccfg->data)
 		return -ENOMEM;
 
-	return 0;
+	return (s32)sizeof(struct merge_frame_data);
 }
 
 s32 merge_tile_prepare(struct mml_comp *comp, struct mml_task *task,

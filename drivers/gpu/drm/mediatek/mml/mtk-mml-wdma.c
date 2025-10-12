@@ -745,7 +745,7 @@ static s32 wdma_prepare(struct mml_comp *comp, struct mml_task *task,
 		wdma_frm->out_crop = out_crop;
 	}
 
-	return 0;
+	return (s32)sizeof(*wdma_frm);
 }
 
 static s32 wdma_buf_map(struct mml_comp *comp, struct mml_task *task,

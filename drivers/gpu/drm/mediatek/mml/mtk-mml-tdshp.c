@@ -252,7 +252,7 @@ static s32 tdshp_prepare(struct mml_comp *comp, struct mml_task *task,
 	tdshp_frm = kzalloc(sizeof(*tdshp_frm), GFP_KERNEL);
 
 	ccfg->data = tdshp_frm;
-	return 0;
+	return (s32)sizeof(*tdshp_frm);
 }
 
 static s32 tdshp_buf_prepare(struct mml_comp *comp, struct mml_task *task,

@@ -548,7 +548,7 @@ static s32 rdma_config_read(struct mml_comp *comp, struct mml_task *task,
 			    struct mml_comp_config *ccfg)
 {
 	ccfg->data = kzalloc(sizeof(struct rdma_frame_data), GFP_KERNEL);
-	return 0;
+	return (s32)sizeof(struct rdma_frame_data);
 }
 
 static s32 rdma_buf_map(struct mml_comp *comp, struct mml_task *task,

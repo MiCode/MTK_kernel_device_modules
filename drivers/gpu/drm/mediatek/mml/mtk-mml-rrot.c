@@ -575,7 +575,7 @@ static s32 rrot_prepare(struct mml_comp *comp, struct mml_task *task,
 			__func__, rrot->pipe ? "_2nd" : "    ", cfg->bin_x, cfg->bin_y);
 	}
 
-	return 0;
+	return (s32)sizeof(struct rrot_frame_data);
 }
 
 static s32 rrot_buf_map(struct mml_comp *comp, struct mml_task *task,

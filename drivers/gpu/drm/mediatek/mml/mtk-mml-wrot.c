@@ -940,7 +940,7 @@ static s32 wrot_prepare(struct mml_comp *comp, struct mml_task *task,
 		wrot_frm->out_crop = out_crop;
 	}
 
-	return 0;
+	return (s32)sizeof(*wrot_frm);
 }
 
 static s32 wrot_buf_map(struct mml_comp *comp, struct mml_task *task,

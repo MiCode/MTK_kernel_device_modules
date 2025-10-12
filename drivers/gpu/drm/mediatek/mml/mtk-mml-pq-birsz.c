@@ -269,7 +269,7 @@ static s32 birsz_prepare(struct mml_comp *comp, struct mml_task *task,
 	birsz_frm->fw_out.vert_sub_ofst =
 		(s32)(div_s64(((s64)birsz_frm->fw_out.vert_sub_ofst << MML_SUBPIXEL_BITS),
 		birsz_frm->fw_out.precision));
-	return 0;
+	return (s32)sizeof(*birsz_frm);
 }
 
 static void birsz_init(struct cmdq_pkt *pkt, const phys_addr_t base_pa, bool shadow)
