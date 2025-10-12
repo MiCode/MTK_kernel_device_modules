@@ -8473,7 +8473,7 @@ dramc: dramc@10230000 {
 			scp-ipi-timeout-bugon = "enable";
 			scp-task-monitor-dbg = "enable";
 			scp-asan = "disable";
-			scp-asan-size = <0x200000>;
+			scp-asan-size = <0x300000>;
 			vscp-aging = "disable";
 
 #if 0
