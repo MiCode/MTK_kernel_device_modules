@@ -58,6 +58,7 @@
 			    initcall_debug=1 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
+			    kvm-arm.mode=none \
 			    initcall_debug=1";
 	};
 
@@ -5276,6 +5277,6 @@
 	};
 
 	pkvm: pkvm {
-		status = "okay";
+		status = "disabled";
 	};
 };
