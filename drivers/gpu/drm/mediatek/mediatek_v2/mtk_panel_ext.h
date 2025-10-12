@@ -758,11 +758,12 @@ struct mtk_panel_funcs {
 	int (*get_virtual_width)(void);
 	int (*prepare_power)(struct drm_panel *panel);
 	int (*unprepare_power)(struct drm_panel *panel);
-#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
+
 	int (*get_link_status)(struct drm_panel *panel);
-#endif
+
 	void (*get_switch_mode_delay)(enum SWITCH_MODE_DELAY **switch_mode_delay,
 		unsigned int mode_num);
+	int (*get_real_vdo_timing)(struct drm_panel *panel, struct drm_display_mode *mode);
 	/**
 	 * @doze_enable_start:
 	 *

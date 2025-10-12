@@ -64,6 +64,17 @@ config DRM_PANEL_SERDES
 		resolution and uses 24-bits RGB per pixel. It provides a
 		MIPI DSI interface to host.
 
+config DRM_BRIDGE_SERDES
+	tristate "serdes bridge vdo mode"
+	depends on OF
+	depends on DRM_MIPI_DSI
+	depends on BACKLIGHT_CLASS_DEVICE
+	help
+		Say Y here if you want to enable support for Serdes
+		vdo mode bridge. The bridge has a 1920x1080
+		resolution and uses 24-bits RGB per pixel. It provides a
+		MIPI DSI interface to host.
+
 config ENABLE_SERDES_HOTPLUG
 	bool "serdes hotplug"
 	help
