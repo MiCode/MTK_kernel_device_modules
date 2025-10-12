@@ -1595,6 +1595,7 @@ static const struct dvfsrc_debug_data mt6858_data = {
 	.config = &mt6897_dvfsrc_config,
 	.opps_desc = dvfsrc_opp_mt6858_desc,
 	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6858_desc),
+	.mmdvfs_notify = true,
 };
 
 static const struct of_device_id dvfsrc_helper_of_match[] = {
