@@ -13814,6 +13814,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			dump = <0xd14 0xd18 0xd1c 0xd20 0xd24 0xd60 0xd64 0xd68 0xd6c>;
 			clear = <0x540 0x1 1>,
 				<0x540 0x0 1>;
+			emi-req = <1>;
 			mpu-base-clear = <1>;
 		};
 
@@ -13828,6 +13829,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			chn-num = <2>;
 			clear = <0x014>;
 			assert = <0>;
+			emi-req = <1>;
 			error-flags {
 				int-sts = <0xd40 0xd44 0xd84 0xd88>;
 				int-sts-msk = <0x0fcc358 0x0fcc358 0x7e5 0x7e5>;
