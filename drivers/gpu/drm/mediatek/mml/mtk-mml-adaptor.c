@@ -25,6 +25,12 @@
 int mml_reuse = 1;
 module_param(mml_reuse, int, 0644);
 
+int mml_flush;
+module_param(mml_flush, int, 0644);
+
+int mml_invalid;
+module_param(mml_invalid, int, 0644);
+
 static bool check_frame_wo_change(struct mml_submit *submit,
 	struct mml_frame_config *cfg)
 {
@@ -228,8 +234,8 @@ s32 frame_buf_to_task_buf(struct mml_file_buf *fbuf,
 	for (i = 0; i < user_buf->cnt; i++)
 		fbuf->size[i] = user_buf->size[i];
 	fbuf->cnt = user_buf->cnt;
-	fbuf->flush = user_buf->flush;
-	fbuf->invalid = user_buf->invalid;
+	fbuf->flush = mml_flush || user_buf->flush;
+	fbuf->invalid = mml_invalid || user_buf->invalid;
 
 	if (!fbuf->cnt)
 		fbuf->cnt = MML_FMT_PLANE(format);
