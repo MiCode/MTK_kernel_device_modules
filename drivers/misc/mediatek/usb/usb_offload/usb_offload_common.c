@@ -2933,6 +2933,8 @@ static int usb_offload_probe(struct platform_device *pdev)
 	uodev->adv_lowpwr = uodev->policy.adv_lowpwr;
 
 	uodev->is_streaming = false;
+	uodev->tx_streaming = false;
+	uodev->rx_streaming = false;
 	uodev->adsp_inited = false;
 	uodev->adsp_ready = true; /* default ready ?? */
 	uodev->speed = USB_SPEED_UNKNOWN;
@@ -3041,6 +3043,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 	usb_offload_hid_probe();
 	usb_offload_debug_init(uodev);
 
+	usb_offload_status();
 	USB_OFFLOAD_INFO("Probe Success!!!");
 	return ret;
 GET_DSP_TYPE_FAIL:
