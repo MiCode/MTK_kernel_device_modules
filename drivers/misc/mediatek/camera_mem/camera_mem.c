@@ -30,6 +30,9 @@
 #include "camera_mem.h"
 #include "mtk_heap.h"
 #include "cam_common.h"
+#if IS_ENABLED(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM)
+#include "trusted_mem_api.h"
+#endif
 
 #if IS_ENABLED(CONFIG_COMPAT)
 /* 32/64 bit compatible */
@@ -382,6 +385,7 @@ static bool cam_mem_mmu_get_dma_buffer(
 	struct ION_BUFFER *mmu, struct CAM_MEM_DEV_ION_NODE_STRUCT *IonNode)
 {
 	struct dma_buf *buf;
+	int ret = 0;
 
 	if (unlikely(IonNode->memID < 0)) {
 		LOG_NOTICE("invalid memID(%d)!\n", IonNode->memID);
@@ -402,6 +406,18 @@ static bool cam_mem_mmu_get_dma_buffer(
 		if (IonNode->sec_handle == 0) {
 			LOG_NOTICE("Get sec_handle failed! memID(%d)\n", IonNode->memID);
 			return false;
+		}
+		if (IS_PKVM_SUPPORTED(g_platform_id)) {
+			/* Get Secure PA */
+			ret = trusted_mem_api_query_pa(0, 0, 0, 0,
+				&IonNode->sec_handle, 0, 0, 0, (uint64_t *)&IonNode->sec_pa);
+			if (ret || !IonNode->sec_pa) {
+				LOG_NOTICE("get sec_pa failed (sec_handle:0x%llx, ret:%d)\n",
+					IonNode->sec_handle, ret);
+			} else {
+				LOG_NOTICE("get sec_pa success (iova:0x%llx, sec_handle:0x%llx, sec_pa:0x%llx)\n",
+					IonNode->dma_pa, IonNode->sec_handle, IonNode->sec_pa);
+			}
 		}
 	}
 	#endif

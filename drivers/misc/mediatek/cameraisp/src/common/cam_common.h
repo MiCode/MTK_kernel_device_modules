@@ -130,6 +130,15 @@
 				IS_MT6858(id))
 
 
+
+/* =============================================================================
+ * Must add the platform id in the following macro, if the platform supports
+ * PKVM.
+ */
+#define IS_PKVM_SUPPORTED(id)	(			\
+				IS_MT6858(id))
+
+
 /* =============================================================================
  * Must add the platform id in the following macro, if the platform has to
  * control the clock, "CAMSYS_LARB14_CGPDN".
