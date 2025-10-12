@@ -96,7 +96,8 @@
 			    disable_dma32=on \
 			    transparent_hugepage=never \
 			    kvm-arm.protected_prefault=9 \
-		kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem,pkvm_mkp,pkvm_seninf_6858,pkvm_p1_6858";
+			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem,pkvm_mkp,\
+pkvm_seninf_6858,pkvm_p1_6858,pkvm_cmdq_mt6858";
 	};
 
 	cpus {
@@ -10382,7 +10383,7 @@ dramc: dramc@10230000 {
 
 	pkvm: pkvm {
 		status = "disabled";
-
+		mtkcam-security-cam-normal-preview-support = "disable";
 		hypmmu {
 			use-mtkiommu = <1>;
 			use-gpumpu = <1>;
