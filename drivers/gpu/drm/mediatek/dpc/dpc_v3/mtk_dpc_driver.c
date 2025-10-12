@@ -1830,11 +1830,9 @@ static void dpc_bif_resource_ctrl_mt6993(const bool en, struct cmdq_pkt *pkt)
 	}
 
 	if (en) {
-		writel(0x0, dpc_base + DISP_REG_DPC_DDREN_ACK_SEL);
 		writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
 		writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
 	} else {
-		writel(0xfff, dpc_base + DISP_REG_DPC_DDREN_ACK_SEL);
 		writel(0x05050D05, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
 		writel(0x05050D05, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
 	}

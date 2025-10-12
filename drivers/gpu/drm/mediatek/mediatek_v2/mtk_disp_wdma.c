@@ -868,10 +868,8 @@ static void mtk_wdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 			data->sodi_config(comp->mtk_crtc->base.dev, comp->id, handle, &en);
 	}
 
-	if (!wdma->data->ddr_config) {
-		if (bif_enabled(&comp->mtk_crtc->base) && comp->mtk_crtc->bif_info->wb_comp)
-			mtk_ddp_write_relaxed(comp, DISP_DDREN_REQ_DISABLE, DISP_REG_WDMA_DDREN_CTRL, handle);
-	}
+	if (bif_enabled(&comp->mtk_crtc->base) && comp->mtk_crtc->bif_info->wb_comp)
+		mtk_ddp_write_relaxed(comp, DISP_DDREN_REQ_DISABLE, DISP_REG_WDMA_DDREN_CTRL, handle);
 }
 
 static void mtk_wdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -1961,8 +1959,6 @@ golden_setting:
 	gsc = cfg->p_golden_setting_context;
 	gsc->dst_width = src_w;
 	mtk_wdma_golden_setting(comp, gsc, handle);
-	if (wdma->data->ddr_config)
-		wdma->data->ddr_config(comp, gsc, handle);
 
 	DDPBIF("%s:config addr:0x%lx, roi:(%d,%d,%d,%d)\n", __func__,
 		(unsigned long)addr, clip_x, clip_y, clip_w, clip_h);

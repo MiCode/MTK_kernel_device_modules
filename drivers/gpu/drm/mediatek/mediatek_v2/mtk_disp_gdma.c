@@ -134,6 +134,9 @@ static void mtk_disp_gdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	}
 	DDPINFO("%s,\n", __func__);
 
+	if (bif_enabled(&mtk_crtc->base) && mtk_crtc->bif_info->read_comp)
+		mtk_ddp_write_mask(comp, DDREN_REQ_DISABLE, DISP_GDMA_DDREN_CTRL, DDREN_REQ_DISABLE, handle);
+
 	mtk_ddp_write_mask(comp, RDMA_FME_UND, DISP_REG_GDMA_INT_ENABLE, RDMA_FME_UND, handle);
 	mtk_ddp_write_mask(comp, PIXEL_MODE, DISP_REG_GDMA_CFG, PIXEL_MODE, handle);
 	val = (GDMA_ENABLE | HG_FDMA_CK_ON | HG_FSMI_CK_ON | HF_FDMA_CK_ON);
