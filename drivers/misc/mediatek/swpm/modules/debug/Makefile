@@ -20,6 +20,9 @@ endif
 ifeq ($(CONFIG_MTK_SWPM_MT6879),m)
 obj-$(CONFIG_MTK_SWPM_MT6879) += v6879/
 endif
+ifeq ($(CONFIG_MTK_SWPM_MT6881),m)
+obj-$(CONFIG_MTK_SWPM_MT6881) += v6881/
+endif
 ifeq ($(CONFIG_MTK_SWPM_MT6885),m)
 obj-$(CONFIG_MTK_SWPM_MT6885) += v6885/
 endif
