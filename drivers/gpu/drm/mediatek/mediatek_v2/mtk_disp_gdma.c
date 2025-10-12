@@ -153,18 +153,6 @@ static void mtk_disp_gdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 		return;
 	}
 
-	if (bif_enabled(&mtk_crtc->base) && mtk_crtc->bif_info->read_comp) {
-		addr = bif_info->sram_pa;
-		domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(comp->dev));
-
-		if (domain == NULL)
-			DDPPR_ERR("%s, iommu_get_domain fail\n", __func__);
-
-		ret = iommu_unmap(domain, addr, bif_info->sram_size);
-		if (ret < 0)
-			DDPPR_ERR("%s,iommu_unmap fail\n", __func__);
-	}
-
 	mtk_ddp_write_mask(comp, 0, DISP_REG_GDMA_EN, ~0, handle);
 	mtk_ddp_write_mask(comp, 0, DISP_REG_GDMA_INT_ENABLE, ~0, handle);
 }
@@ -203,23 +191,6 @@ mtk_disp_gdma_bif_read_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *
 	unsigned long long bw_base = 0;
 	struct iommu_domain *domain;
 	int ret = 0;
-
-	domain = iommu_get_domain_for_dev(mtk_smmu_get_shared_device(comp->dev));
-	if (domain == NULL) {
-		DDPPR_ERR("%s, iommu_get_domain fail\n", __func__);
-		bif_info->bif_enable = BIF_DISABLE;
-		return;
-	}
-	ret = iommu_map(domain,
-		ROUNDUP(addr, PAGE_SIZE),
-		ROUNDUP(addr, PAGE_SIZE),
-		ROUNDUP(bif_info->sram_size, PAGE_SIZE),
-		IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
-	if (ret < 0) {
-		DDPPR_ERR("%s,iommu_map fail\n", __func__);
-		bif_info->bif_enable = BIF_DISABLE;
-		return;
-	}
 
 	/* bw setting*/
 	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
