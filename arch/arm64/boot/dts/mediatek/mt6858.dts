@@ -8262,6 +8262,8 @@ dramc: dramc@10230000 {
 			clk-offsets = <0x20>, <0xa0>, <0xc0>, <0xd0>;
 			mediatek,mmdvfs-clk = <&mmdvfs_clk>;
 			debug-version = <2>;
+			force-vcore-ver = <3>;  /* force vcore version, MMDVFS_DBG_VERX */
+			force-vcore-step = <3>;  /* force vcore the lowest opp */
 			mmdvfs-user-freerun;
 			mediatek,met-freerun;
 		};
