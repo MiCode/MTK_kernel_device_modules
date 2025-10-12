@@ -1972,7 +1972,7 @@ static int ufs_mtk_pre_link(struct ufs_hba *hba)
 
 	ret = ufs_mtk_unipro_set_lpm(hba, false);
 	if (ret)
-		return ret;
+		goto out;
 
 	/*
 	 * Setting PA_Local_TX_LCC_Enable to 0 before link startup
@@ -1981,26 +1981,45 @@ static int ufs_mtk_pre_link(struct ufs_hba *hba)
 	 */
 	ret = ufshcd_disable_host_tx_lcc(hba);
 	if (ret)
-		return ret;
+		goto out;
 
-	/* disable deep stall */
+	/* Disable deep stall */
 	ret = ufshcd_dme_get(hba, UIC_ARG_MIB(VS_SAVEPOWERCONTROL), &tmp);
 	if (ret)
-		return ret;
+		goto out;
 
-	tmp &= ~(1 << 6);
-
+	tmp &= ~(1 << DEEP_STALL_EN);
 	ret = ufshcd_dme_set(hba, UIC_ARG_MIB(VS_SAVEPOWERCONTROL), tmp);
+	if (ret)
+		goto out;
 
 	/* Enable the 1144 functions setting */
 	if (host->ip_ver == IP_VER_MT6989) {
 		ret = ufshcd_dme_get(hba, UIC_ARG_MIB(VS_DEBUGOMC), &tmp);
 		if (ret)
-			return ret;
+			goto out;
 
 		tmp |= 0x10;
 		ret = ufshcd_dme_set(hba, UIC_ARG_MIB(VS_DEBUGOMC), tmp);
+		if (ret)
+			goto out;
 	}
+
+	/* Enable RX_SYM_CLK_GAT to decrease clk noise */
+	if (host->ip_ver >= IP_VER_MT6991_B0) {
+		ret = ufshcd_dme_get(hba, UIC_ARG_MIB(VS_SAVEPOWERCONTROL), &tmp);
+		if (ret)
+			goto out;
+
+		tmp |= 1 << RX_SYMBOL_CLK_GATE_EN;
+		ret = ufshcd_dme_set(hba, UIC_ARG_MIB(VS_SAVEPOWERCONTROL), tmp);
+		if (ret)
+			goto out;
+	}
+
+out:
+	if (ret)
+		dev_err(hba->dev, "%s: err = %d\n", __func__, ret);
 
 	return ret;
 }

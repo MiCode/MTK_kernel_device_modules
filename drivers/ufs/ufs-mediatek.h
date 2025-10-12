@@ -198,6 +198,7 @@ enum {
 	RX_SYMBOL_CLK_GATE_EN   = 0,
 	SYS_CLK_GATE_EN         = 2,
 	TX_CLK_GATE_EN          = 3,
+	DEEP_STALL_EN           = 6,
 };
 
 /*
