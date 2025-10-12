@@ -715,7 +715,6 @@ enum CRTC_GCE_EVENT_TYPE {
 	EVENT_WDMA1_EOF,
 	EVENT_STREAM_BLOCK,
 	EVENT_CABC_EOF,
-	EVENT_VDO_CABC_EOF,
 	EVENT_DSI_SOF,
 	/*Msync 2.0*/
 	EVENT_SYNC_TOKEN_VFP_PERIOD,
@@ -828,6 +827,14 @@ enum SET_DIRTY_INDEX {
 	CLR_SET_DIRTY = 0xfffffff,
 	CLR_SET_DIRTY_CB = 0x1000,
 	INDEX_MAX,
+};
+
+enum vdo_mode_cabc_event {
+	WAIT_AND_CLEAR_OPT,
+	WAIT_NOT_CLEAT_OPT,
+	CLEAR_OPT,
+	SET_OPT,
+	CABC_OPT_NUM
 };
 
 struct mtk_crtc_path_data {
@@ -1892,6 +1899,9 @@ void mtk_crtc_set_width_height(
 	struct drm_crtc *crtc,
 	bool is_scaling_path);
 
+void mtk_use_cabc_event(struct cmdq_pkt *handle, struct mtk_drm_crtc *mtk_crtc,
+		enum vdo_mode_cabc_event event, const int line);
+
 int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 	struct drm_crtc_state *old_crtc_state,
 	struct cmdq_pkt *cmdq_handle, unsigned int enable);
@@ -1928,6 +1938,8 @@ void mtk_crtc_prepare_instr(struct drm_crtc *crtc);
 unsigned int check_dsi_underrun_event(void);
 void clear_dsi_underrun_event(void);
 
+int _mtk_drm_dsi_cmd_test(struct drm_crtc *crtc, unsigned int level,
+	unsigned int panel_ext_param, unsigned int cfg_flag, unsigned int lock);
 int mtk_drm_setbacklight(struct drm_crtc *crtc, unsigned int level,
 			unsigned int panel_ext_param, unsigned int cfg_flag, unsigned int lock);
 int mtk_drm_setbacklight_at_te(struct drm_crtc *crtc, unsigned int level,

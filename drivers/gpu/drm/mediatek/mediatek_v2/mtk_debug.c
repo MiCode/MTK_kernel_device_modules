@@ -744,6 +744,30 @@ int __mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param
 	return ret;
 }
 
+int mtk_drm_dsi_cmd_test(unsigned int level, unsigned int panel_ext_param,
+			       unsigned int cfg_flag)
+{
+	struct drm_crtc *crtc;
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(drm_dev)) {
+		DDPPR_ERR("%s error, invalid drm dev\n", __func__);
+		return -EINVAL;
+	}
+
+	/* this debug cmd only for crtc0 */
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+	if (IS_ERR_OR_NULL(crtc)) {
+		DDPPR_ERR("%s failed to find crtc\n", __func__);
+		return -EINVAL;
+	}
+
+	ret = _mtk_drm_dsi_cmd_test(crtc, level, panel_ext_param, cfg_flag, 1);
+
+	return ret;
+}
+
 int mtkfb_set_backlight_level(unsigned int level, unsigned int panel_ext_param,
 				 unsigned int cfg_flag)
 {
@@ -4073,6 +4097,18 @@ static void process_dbg_opt(const char *opt)
 		msleep(20);
 		enable = 1;
 		comp->funcs->io_cmd(comp, NULL, LCM_RESET, &enable);
+	} else if (strncmp(opt, "mtk_dsi_cmd_test:", 17) == 0) {
+		unsigned int level;
+		int ret;
+
+		ret = sscanf(opt, "mtk_dsi_cmd_test:%u\n", &level);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n",
+				__LINE__, opt);
+			return;
+		}
+
+		mtk_drm_dsi_cmd_test(level, 0, 0x1 << LP_MODE_TEST);
 	} else if (strncmp(opt, "backlight:", 10) == 0) {
 		unsigned int level;
 		int ret;
@@ -4147,6 +4183,26 @@ static void process_dbg_opt(const char *opt)
 		}
 
 		mtkfb_set_aod_backlight_level(level);
+	} else if (strncmp(opt, "panel_hbm:", 10) == 0) {
+		unsigned int en;
+		int ret;
+		struct drm_crtc *crtc;
+
+		ret = sscanf(opt, "panel_hbm:%u\n", &en);
+		if (ret != 1) {
+			DDPPR_ERR("%d error to parse cmd %s\n", __LINE__, opt);
+			return;
+		}
+
+		/* this debug cmd only for crtc0 */
+		crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+					typeof(*crtc), head);
+		if (IS_ERR_OR_NULL(crtc)) {
+			DDPPR_ERR("find crtc fail\n");
+			return;
+		}
+
+		mtk_drm_crtc_set_panel_hbm(crtc, en);
 	} else if (!strncmp(opt, "postmask_relay:", 15)) {
 		unsigned int relay;
 		int ret;
@@ -5392,41 +5448,76 @@ static void process_dbg_opt(const char *opt)
 read_test_done:
 		vfree(msg.rx_buf);
 	} else if (strncmp(opt, "new_write_ddic:", 15) == 0) {
-		int flags = 0, tx_len = 0, mode = 0, local_cmd = 0, package = 0;
+		/*
+		 * 0: no use local cmd
+		 * BIT(0): use local cmd
+		 * BIT(1): use local cmd & cmd msg = LP
+		 * BIT(2): use local cmd & vdo_mode_flag |= MTK_DSI_FORCE_STOP_VDO_MODE
+		 */
+		int local_cmd = 0;
+		int vm_porch = 0;
+		int flags = 0, tx_len = 0, mode = 0, package = 0;
 		char tx_buf[5];
 		int ret, i;
 		struct mtk_dsi_cmd_option cmd_opt = { 0 };
 		struct mtk_dsi_cmd_msg test_cmd = { 0 };
 		struct mipi_dsi_msg msg = { 0 };
 
-		ret = sscanf(opt, "new_write_ddic:%x,%d,%d,%x,%x,%x,%x,%x,%d,%d\n",
+		ret = sscanf(opt, "new_write_ddic:%x,%d,%d,%x,%x,%x,%x,%x,%x,%d,%d\n",
 			&flags, &mode, &tx_len, &tx_buf[0], &tx_buf[1], &tx_buf[2], &tx_buf[3],
-			&tx_buf[4], &local_cmd, &package);
+			&tx_buf[4], &local_cmd, &package, &vm_porch);
 		if (ret <= 0) {
 			DDPPR_ERR("new_write_ddic fail, ret=%d\n", ret);
 			return;
 		}
-		DDPMSG("new_write_ddic %d, flags=0x%x,len=%d,tx_buf={0x%x,0x%x,0x%x,0x%x,0x%x}, {%d,%d},ret=%d\n",
+		DDPMSG("new_write_ddic %d, flgs=0x%x,len=%d,tx_buf={0x%x,0x%x,0x%x,0x%x,0x%x},{0x%x,%d},%d,ret=%d\n",
 			__LINE__, flags, tx_len, tx_buf[0], tx_buf[1], tx_buf[2], tx_buf[3], tx_buf[4],
-			local_cmd, package, ret);
+			local_cmd, package, vm_porch, ret);
 
-		static struct mtk_panel_para_table cmd_msg[] = {
+		struct mtk_panel_para_table cmd_msg[] = {
+	#ifdef MUTI_CMD_TEST
 			{0x02, {0x51, 0xff}},
 			{0x02, {0x51, 0xaa}},
-			{0x0, {80}},
+			//{0x0, {80}}, test delay
 			{0x02, {0x51, 0x90}},
 			{0x02, {0x51, 0x27}},
-			{0x0, {100}},
+			//{0x0, {100}}, test delay
+	#else // SINGLE_CMD_TEST
+			{0x40, {0x51, 0x11, 0x22, 0x33,
+					0x44, 0x55, 0x66, 0x77,
+					0x88, 0x99, 0xaa, 0xbb,
+					0xcc, 0xdd, 0xee, 0xff,
+					0x51, 0x11, 0x22, 0x33,
+					0x44, 0x55, 0x66, 0x77,
+					0x88, 0x99, 0xaa, 0xbb,
+					0xcc, 0xdd, 0xee, 0xff,
+					0x51, 0x11, 0x22, 0x33,
+					0x44, 0x55, 0x66, 0x77,
+					0x88, 0x99, 0xaa, 0xbb,
+					0xcc, 0xdd, 0xee, 0xff,
+					0x51, 0x11, 0x22, 0x33,
+					0x44, 0x55, 0x66, 0x77,
+					0x88, 0x99, 0xaa, 0xbb,
+					0xcc, 0xdd, 0xee, 0xff}},
+	#endif
 		};
-		static struct mipi_dsi_msg local_cmd_msg[ARRAY_SIZE(cmd_msg)] = { 0 };
 
-		for (i = 0; i < ARRAY_SIZE(cmd_msg); i++) {
-			local_cmd_msg[i].tx_len = cmd_msg[i].count;
-			local_cmd_msg[i].tx_buf = cmd_msg[i].para_list;
-		}
+		struct mipi_dsi_msg local_cmd_msg[ARRAY_SIZE(cmd_msg)] = { 0 };
+
 		if (local_cmd) {
+			DDPMSG("new_write_ddic, use local cmd\n", __func__);
+			for (i = 0; i < ARRAY_SIZE(cmd_msg); i++) {
+				local_cmd_msg[i].tx_len = cmd_msg[i].count;
+				local_cmd_msg[i].tx_buf = cmd_msg[i].para_list;
+				if ((local_cmd & BIT(1)) && (i%2)) {
+					DDPMSG("new_write_ddic, i=%d set LP mode\n", i);
+					local_cmd_msg[i].flags |= MIPI_DSI_MSG_USE_LPM;
+				}
+			}
+
 			test_cmd.is_package = package;
 			test_cmd.transfer_mode = mode;
+			test_cmd.vm_porch = vm_porch;
 			test_cmd.cmd_num = ARRAY_SIZE(cmd_msg);
 			test_cmd.cmd_msg = local_cmd_msg;
 		} else {
@@ -5434,6 +5525,7 @@ read_test_done:
 			msg.tx_buf = tx_buf;
 			test_cmd.cmd_num = 1;
 			test_cmd.transfer_mode = mode;
+			test_cmd.vm_porch = vm_porch;
 			test_cmd.cmd_msg= &msg;
 		}
 
@@ -5442,7 +5534,7 @@ read_test_done:
 
 		DDPMSG("new_write_ddic ++\n");
 		ret = mtk_mipi_dsi_cmd(NULL, NULL, &cmd_opt, &test_cmd);
-		DDPMSG("new_write_ddic --\n");
+		DDPMSG("new_write_ddic ret = %d, --\n", ret);
 	} else if (strncmp(opt, "dump_prop:", 10) == 0) {
 		if (strncmp(opt + 10, "on", 2) == 0)
 			g_dump_prop_log = 1;
@@ -5625,7 +5717,7 @@ test_done:
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 
 		cmdq_pkt_clear_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
-		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+		mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
 
@@ -5719,7 +5811,7 @@ external_test:
 
 		if (need_lock) {
 			mtk_crtc_pkt_create(&cmdq_handle, crtc, mtk_crtc->gce_obj.client[CLIENT_CFG]);
-			cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
+			mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
 			cmdq_pkt_set_event(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_STREAM_BLOCK]);
 			cmdq_pkt_flush(cmdq_handle);
 			cmdq_pkt_destroy(cmdq_handle);

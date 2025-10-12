@@ -39,7 +39,6 @@
 #define ESD_CHK_TRY_CNT 5
 #define ESD_CHECK_PERIOD 2000 /* ms */
 #define esd_timer_to_mtk_crtc(x) container_of(x, struct mtk_drm_crtc, esd_timer)
-
 int debug_force_esd;
 static int recovery_cnt;
 #define AS_UINT32(x) (*(u32 *)((void *)x))
@@ -297,6 +296,7 @@ static void esd_check_done_cb(struct cmdq_cb_data data)
 			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 4) * 0x4));
 		dsi_data[5] = AS_UINT32(mtk_get_gce_backup_slot_va(mtk_crtc,
 			DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 5) * 0x4));
+
 		DDPINFO(_ESD_CHECK_MSG_FMT,	__func__, i,
 		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM) * 0x4), dsi_data[0],
 		(int)(DISP_SLOT_READ_DSI_DBG_BASE + (i * DBG_DSI_NUM + 1) * 0x4), dsi_data[1],
@@ -317,13 +317,7 @@ static void esd_check_done_cb(struct cmdq_cb_data data)
 				/* TODO: set ESD_EOF event through CPU is better */
 				mtk_crtc_pkt_create(&cmdq_handle2, crtc,
 					mtk_crtc->gce_obj.client[CLIENT_CFG]);
-
-				if (mtk_dsi_is_cmd_mode(output_comp))
-					cmdq_pkt_set_event(cmdq_handle2,
-						mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-				else
-					cmdq_pkt_set_event(cmdq_handle2,
-						mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
+				mtk_use_cabc_event(cmdq_handle2, mtk_crtc, SET_OPT, __LINE__);
 				cmdq_pkt_flush(cmdq_handle2);
 				cmdq_pkt_destroy(cmdq_handle2);
 			}
@@ -432,13 +426,22 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 
 		/* Record Vblank end timestamp and calculate duration */
 		mtk_vblank_config_rec_end_cal(mtk_crtc, cmdq_handle, ESD_CHECK);
-	} else { /* VDO mode */
+	} else if (mtk_dsi_cmd_version() == DSI_CMD_V2) { /* VDO mode v2 */
 		if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
 			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 1);
 		else
 			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 1);
-		cmdq_pkt_wfe(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
+
+		mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
+		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, ESD_CHECK_READ,
+				    (void *)mtk_crtc);
+		mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
+	} else {
+		if (mtk_crtc_with_sub_path(crtc, mtk_crtc->ddp_mode))
+			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_SECOND_PATH, 1);
+		else
+			mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 1);
+		mtk_use_cabc_event(cmdq_handle, mtk_crtc, WAIT_AND_CLEAR_OPT, __LINE__);
 
 		if (mtk_crtc->msync2.msync_on) {
 			u32 vfp_early_stop = 1;
@@ -463,8 +466,7 @@ int _mtk_esd_check_read(struct drm_crtc *crtc)
 		mtk_disp_mutex_trigger(mtk_crtc->mutex[0], cmdq_handle);
 		mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, COMP_REG_START,
 				    NULL);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_VDO_CABC_EOF]);
+		mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
 	}
 	CRTC_MMP_MARK(index, esd_check, 2, 4);
 	if (is_cmd_mode)
