@@ -12,16 +12,32 @@ package(
     ],
 )
 
-define_mgk_ddk_library(
-    name = "hyp",
+PLATFORMS = [
+    "6858",
+    "6993"
+]
+
+[define_mgk_ddk_library(
+    name = "hyp_mt{}".format(p),
     srcs = [
         "cmdq_errno.h",
-        "isp_sec_platform.c",
         "list.h",
         "pkvm_cmdq_hyp.c",
         "pkvm_cmdq_hyp.h",
-        "pkvm_cmdq_platform.c",
-        "pkvm_cmdq_platform.h",
+        "{}/cmdq_sec_iwc_common.h".format(p),
+        "{}/isp_sec_platform.c".format(p),
+        "{}/pkvm_cmdq_platform.c".format(p),
+        "{}/pkvm_cmdq_platform.h".format(p),
+        "{}/mtk-larb-port.h".format(p),
+        "{}/mdp_sec_platform.h".format(p),
+        "{}/mdp_sec_platform.c".format(p),
+        "{}/tlDapcIndex.h".format(p),
+        "{}/gce.h".format(p),
+        "{}/dapc_platform.h".format(p),
+        "{}/fd_sec_platform.c".format(p),
+        "{}/isp_sec_public.h".format(p),
+        "haM4uApi.h",
+        "mtk-memory-port.h",
     ],
     pkvm_el2 = True,
     header_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version)],
@@ -30,8 +46,11 @@ define_mgk_ddk_library(
         "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_cmdq/hyp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_cmdq/hyp/{}".format(p),
     ],
     local_defines = [
         "CMDQ_IOVA",
     ],
-)
+) for p in PLATFORMS]

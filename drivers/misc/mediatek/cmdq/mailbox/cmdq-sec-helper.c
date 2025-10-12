@@ -131,9 +131,25 @@ s32 cmdq_sec_pkt_set_data(struct cmdq_pkt *pkt, const u64 dapc_engine,
 	sec_data->scenario = scenario;
 	sec_data->client_meta_type = meta_type;
 
+	if (is_protected_kvm_enabled())
+		sec_data->pkvm_iwc = true;
+
 	return 0;
 }
 EXPORT_SYMBOL(cmdq_sec_pkt_set_data);
+
+void cmdq_sec_pkvm_set_metadata(struct cmdq_pkt *pkt, const u32 meta_0, const u32 meta_1,
+	const u32 meta_2, const u32 meta_3, const u32 meta_4)
+{
+	struct cmdq_client *client = pkt->cl;
+	s32 thread_id = cmdq_sec_mbox_chan_id(client->chan);
+	u32	hwid_thrd = 0;
+
+	hwid_thrd = thread_id & 0x1F;
+
+	cmdq_sec_pkvm_send_metadata(hwid_thrd, meta_0, meta_1, meta_2, meta_3, meta_4);
+}
+EXPORT_SYMBOL(cmdq_sec_pkvm_set_metadata);
 
 void cmdq_sec_pkt_set_mtee(struct cmdq_pkt *pkt, const bool enable)
 {

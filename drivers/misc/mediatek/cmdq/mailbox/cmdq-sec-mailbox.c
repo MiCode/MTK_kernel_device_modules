@@ -847,7 +847,6 @@ static s32 cmdq_sec_session_init(struct cmdq_sec_context *context)
 		cmdq_log("session opened:%u", context->state);
 		return err;
 	}
-
 	switch (context->state) {
 	case IWC_INIT:
 		err = cmdq_sec_init_context_base(context);
@@ -898,13 +897,18 @@ static s32 cmdq_sec_session_init(struct cmdq_sec_context *context)
 				!context->pkvm_iwc_ex1 || !context->pkvm_iwc_ex2) {
 				err = cmdq_sec_pkvm_allocate_wsm(&context->pkvm,
 					&context->pkvm_iwc_msg,
-					sizeof(struct iwcCmdqMessage_t),
+					PAGE_ALIGN(sizeof(struct iwcCmdqMessage_t)),
 					&context->pkvm_iwc_ex1,
-					sizeof(struct iwcCmdqMessageEx_t),
+					PAGE_ALIGN(sizeof(struct iwcCmdqMessageEx_t)),
 					&context->pkvm_iwc_ex2,
-					sizeof(struct iwcCmdqMessageEx2_t));
+					PAGE_ALIGN(sizeof(struct iwcCmdqMessageEx2_t)));
 				if (err)
 					break;
+				cmdq_sec_pkvm_execute_session_iwc(&context->pkvm,
+					CMD_CMDQ_TL_SHARE_MEM_TO_EL2,
+					context->pkvm_iwc_msg, PAGE_ALIGN(sizeof(struct iwcCmdqMessage_t)),
+					context->pkvm_iwc_ex1, PAGE_ALIGN(sizeof(struct iwcCmdqMessageEx_t)),
+					context->pkvm_iwc_ex2, PAGE_ALIGN(sizeof(struct iwcCmdqMessageEx2_t)));
 			}
 		}
 
@@ -1078,6 +1082,10 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 	u64 cost;
 	struct iwcCmdqMessage_t *iwc_msg = NULL;
 	u32 scenario_aee = 0, hwid_thrd = 0;
+	struct cmdq_sec_data *data;
+
+	if (is_protected_kvm_enabled() && task && task->pkt)
+		data = (struct cmdq_sec_data *)task->pkt->sec_data;
 
 	if (!mtee)
 		iwc_msg = (struct iwcCmdqMessage_t *)context->iwc_msg;
@@ -1120,6 +1128,10 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 		iwc_msg->cancelTask.waitCookie = task->waitCookie;
 		iwc_msg->cancelTask.thread = thrd_idx;
 		iwc_msg->cancelTask.throwAEE = cmdq->cancel.throwAEE;
+		if (is_protected_kvm_enabled() && data) {
+			data->pkvm_iwc = false;
+			cmdq_msg("cancel reset pkvm:%d", data->pkvm_iwc);
+		}
 		break;
 	case CMD_CMDQ_TL_PATH_RES_ALLOCATE:
 		if (!cmdq->shared_mem ||
@@ -1181,12 +1193,20 @@ static s32 cmdq_sec_session_send(struct cmdq_sec_context *context,
 				mem_ex1, mem_ex2);
 #endif
 		else {
-			scenario_aee = task ? task->scenario : 0;
-			scenario_aee = scenario_aee | (cmdq->cancel.throwAEE ? BIT(15) : 0);
-			hwid_thrd = (cmdq->hwid << 5) | (thrd_idx & 0x1F);
-			err = cmdq_sec_pkvm_execute_session(
-				&context->pkvm, iwc_cmd, 3000, hwid_thrd,
-				task ? task->waitCookie : 0, scenario_aee);
+			if (data && data->pkvm_iwc) {
+				cmdq_sec_pkvm_execute_session_iwc(&context->pkvm,
+					CMD_CMDQ_TL_SUBMIT_TASK_IWC,
+					context->pkvm_iwc_msg, PAGE_ALIGN(sizeof(struct iwcCmdqMessage_t)),
+					context->pkvm_iwc_ex1, PAGE_ALIGN(sizeof(struct iwcCmdqMessageEx_t)),
+					context->pkvm_iwc_ex2, PAGE_ALIGN(sizeof(struct iwcCmdqMessageEx2_t)));
+			} else {
+				scenario_aee = task ? task->scenario : 0;
+				scenario_aee = scenario_aee | (cmdq->cancel.throwAEE ? BIT(15) : 0);
+				hwid_thrd = (cmdq->hwid << 5) | (thrd_idx & 0x1F);
+				err = cmdq_sec_pkvm_execute_session(
+					&context->pkvm, iwc_cmd, 3000, hwid_thrd,
+					task ? task->waitCookie : 0, scenario_aee);
+			}
 		}
 	}
 
@@ -1511,6 +1531,18 @@ void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl)
 }
 EXPORT_SYMBOL(cmdq_sec_mbox_switch_normal);
 
+void cmdq_sec_mbox_stop_throwAEE(struct cmdq_client *cl, bool throwAEE)
+{
+#ifdef CMDQ_SECURE_MTEE_SUPPORT
+	struct cmdq_sec *cmdq =
+		container_of(cl->chan->mbox, typeof(*cmdq), mbox);
+
+	cmdq->cancel.throwAEE = throwAEE;
+	cmdq_sec_mbox_stop(cl);
+#endif
+}
+EXPORT_SYMBOL(cmdq_sec_mbox_stop_throwAEE);
+
 void cmdq_sec_mbox_stop(struct cmdq_client *cl)
 {
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
@@ -1534,7 +1566,6 @@ void cmdq_sec_mbox_stop(struct cmdq_client *cl)
 		}
 
 		memset(&cmdq->cancel, 0, sizeof(cmdq->cancel));
-		cmdq->cancel.throwAEE = false;
 		cmdq_sec_task_submit(cmdq, task, CMD_CMDQ_TL_CANCEL_TASK,
 			thread->idx, &cmdq->cancel,
 			((struct cmdq_sec_data *)task->pkt->sec_data)->mtee);
@@ -1639,7 +1670,6 @@ static void cmdq_sec_task_exec_work(struct work_struct *work_item)
 			goto task_err_callback;
 		}
 	}
-
 	err = cmdq_sec_task_submit(
 		cmdq, task, CMD_CMDQ_TL_SUBMIT_TASK, task->thread->idx, NULL,
 		data->mtee);
@@ -1649,14 +1679,15 @@ static void cmdq_sec_task_exec_work(struct work_struct *work_item)
 			task->thread->idx);
 
 task_err_callback:
-	if (err) {
+	if (err || data->client_meta_type == CMDQ_METAEX_FD_NO_SUBMIT) {
 		struct cmdq_cb_data cb_data;
 
 		cb_data.err = err;
 		cb_data.data = task->pkt->err_cb.data;
-		if (task->pkt->err_cb.cb)
+		if (task->pkt->err_cb.cb && err)
 			task->pkt->err_cb.cb(cb_data);
 
+		task->pkt->done = true;
 		cb_data.data = task->pkt->cb.data;
 		if (task->pkt->cb.cb)
 			task->pkt->cb.cb(cb_data);
@@ -2219,6 +2250,16 @@ static s32 cmdq_sec_late_init_wsm(void *data)
 			continue;
 		}
 	} while (++i < g_cmdq_cnt);
+	if (is_protected_kvm_enabled())
+		if (!atomic_cmpxchg(&cmdq_path_res_mtee, 0, 1)) {
+			err = cmdq_sec_task_submit(cmdq, NULL,
+				CMD_CMDQ_TL_PATH_RES_ALLOCATE,
+				CMDQ_INVALID_THREAD,
+				NULL, true);
+			if (err)
+				atomic_set(&cmdq_path_res_mtee, 0);
+		}
+
 	return err;
 }
 

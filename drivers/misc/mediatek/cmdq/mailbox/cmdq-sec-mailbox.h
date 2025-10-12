@@ -36,6 +36,7 @@
 #include "cmdq_sec_pkvm.h"
 
 extern u8 gce_hw_cnt;
+#define METATDATA_MAX	6
 
 /*
  * inter-world communication state
@@ -82,6 +83,8 @@ s32 cmdq_sec_pkvm_allocate_shared_memory(struct cmdq_sec_pkvm_context *tee,
 	const dma_addr_t MVABase, const u32 size);
 s32 cmdq_sec_pkvm_execute_session(struct cmdq_sec_pkvm_context *tee,
 	u32 cmd, s32 timeout_ms, u32 thread_idx, u32 wait_cookie, s32 scenario);
+s32 cmdq_sec_pkvm_execute_session_iwc(struct cmdq_sec_pkvm_context *tee, u32 cmd,
+	void *iwc_msg, u32 size, void *iwc_ex1, u32 size_ex, void *iwc_ex2, u32 size_ex2);
 s32 cmdq_sec_pkvm_open_session(void);
 s32 cmdq_sec_pkvm_allocate_wsm(struct cmdq_sec_pkvm_context *tee,
 	void **wsm_buffer, u32 size, void **wsm_buf_ex, u32 size_ex,
@@ -90,6 +93,8 @@ s32 cmdq_sec_pkvm_free_wsm(
 	struct cmdq_sec_pkvm_context *tee, void **wsm_buffer,
 	void **wsm_buf_ex, void **wsm_buf_ex2);
 s32 cmdq_sec_pkvm_get_reply(struct cmdq_sec_pkvm_context *tee);
+s32 cmdq_sec_pkvm_send_metadata(const u32 meta_0, const u32 meta_1, const u32 meta_2,
+	const u32 meta_3, const u32 meta_4, const u32 meta_5);
 
 #if IS_ENABLED(CONFIG_MMPROFILE)
 void cmdq_sec_mmp_wait(struct mbox_chan *chan, void *pkt);

@@ -40,6 +40,8 @@ enum cmdq_smc_request {
 	CMD_CMDQ_TL_PATH_RES_RELEASE,
 	CMD_CMDQ_TL_PKVM_INIT,
 	CMD_CMDQ_TL_PKVM_DISABLE,
+	CMD_CMDQ_TL_SHARE_MEM_TO_EL2,
+	CMD_CMDQ_TL_SUBMIT_TASK_IWC,
 };
 
 /* Compatibility with 32-bit shift operation */

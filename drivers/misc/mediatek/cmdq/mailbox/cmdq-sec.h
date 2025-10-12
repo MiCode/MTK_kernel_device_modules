@@ -122,6 +122,9 @@ struct cmdq_sec_data {
 
 	/* iommu_sec_id */
 	int32_t sec_id;
+
+	/* pkvm + iwc flush */
+	bool pkvm_iwc;
 };
 
 /* implementation in cmdq-sec-helper.c */
@@ -152,7 +155,11 @@ void cmdq_sec_pkt_set_secid(struct cmdq_pkt *pkt, int32_t sec_id);
 
 /* implementation in cmdq-sec-mailbox.c */
 void cmdq_sec_mbox_switch_normal(struct cmdq_client *cl);
+void cmdq_sec_mbox_stop_throwAEE(struct cmdq_client *cl, bool throwAEE);
 void cmdq_sec_mbox_stop(struct cmdq_client *cl);
 void cmdq_sec_mbox_enable(void *chan);
 void cmdq_sec_mbox_disable(void *chan);
+/*Pkvm*/
+void cmdq_sec_pkvm_set_metadata(struct cmdq_pkt *pkt, const u32 meta_0, const u32 meta_1,
+	const u32 meta_2, const u32 meta_3, const u32 meta_4);
 #endif

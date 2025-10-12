@@ -2,7 +2,6 @@
 /*
  * Copyright (c) 2025 MediaTek Inc.
  */
-
 #include <asm/kvm_pkvm_module.h>
 
 /* TZMP sw token */
@@ -14,6 +13,11 @@
 #define CMDQ_SYNC_TOKEN_TZMP_AIE_SET			658
 #define CMDQ_SYNC_TOKEN_TZMP_ADL_WAIT			659
 #define CMDQ_SYNC_TOKEN_TZMP_ADL_SET			660
+#define CMDQ_SYNC_TOKEN_TZMP_MDP_WAIT			671
+#define CMDQ_SYNC_TOKEN_TZMP_MDP_SET			672
+#define CMDQ_SYNC_TOKEN_TZMP_MDP_LOCK			673
+
+#define PASS2_DONE 0x150220C8
 
 #define CMDQ_SECIO_TYPE_RANGE_0     0x0
 #define CMDQ_SECIO_TYPE_RANGE_1     0x1000
@@ -24,20 +28,16 @@
 
 #define CMDQ_SECIO_GET_OFFSET(addr) (addr & 0xFFF)
 #define CMDQ_SECIO_TYPE_GET_OFFSET(addr) (addr - GCE_BASE_VA)
-#define CMDQ_THR_SECURITY(id)        (GCE_BASE_VA + (0x080 * id) + 0x70118)
+#define CMDQ_THR_SECURITY(id)        (GCE_BASE_VA + (0x080 * id) + 0x118)
 
-#define CMDQ_PKVM_REG_SHIFT_ADDR(addr)	(((uint64_t)(addr) >> 3) + BIT(28))
-#define CMDQ_PKVM_REG_REVERT_ADDR(addr)	(((uint64_t)(addr) << 3) - BIT(31))
+#define CMDQ_PKVM_REG_SHIFT_ADDR(addr)	(((uint64_t)(addr) >> 3) + BIT(27))
+#define CMDQ_PKVM_REG_REVERT_ADDR(addr)	(((uint64_t)(addr) << 3) - BIT(30))
 
 /* Register definition for CMDQ usage */
-#define DEVAPC_MMINFRA_AO_SYS0_BASE	0x30050000
-#define DEVAPC_MMINFRA_AO_SYS1_BASE	0x30051000
+#define DEVAPC_MMINFRA_AO_SYS0_BASE	0x1E820000
+#define DEVAPC_MMINFRA_AO_SYS1_BASE	0x1E821000
 #define DAPC_BASE		DEVAPC_MMINFRA_AO_SYS0_BASE
 #define DAPC_BASE2		DEVAPC_MMINFRA_AO_SYS1_BASE
-
-/* Slave Type */
-#define SLAVE_TYPE_PREFIX_INFRA_SYS1	(0x0)
-#define SLAVE_TYPE_PREFIX_INFRA_SYS2	(0x255)
 
 #define DAPC_REG_PA(sys, idx)	(dapc_base_pa[sys] + idx * 0x4)
 
@@ -49,6 +49,8 @@
 #define CMDQ_MAX_DAPC_COUNT	(CMDQ_DAPC_SYS1_CNT + CMDQ_DAPC_SYS2_CNT)
 
 #define CMDQ_SPECIAL_SUBSYS_ADDR (99)
+
+#define CMDQ_CPR_MDP_INDEX		0x8005
 
 /* MM slaves' config index */
 #define DAPC_IMG_APB_S			(144)	//0x15000000
@@ -75,9 +77,16 @@
 	.sys = 0, \
 }
 
+#define MDP_HWID	0
+#define MDP_THR_IDX	10
+#define MDP_SCENARIO	CMDQ_MAX_SCENARIO_COUNT
+
+bool m4u_larb_port_without_aid(const uint32_t port);
 void cmdq_secio_write(const uint32_t addr, const uint32_t val);
 uint32_t cmdq_secio_read(const uint32_t addr);
 uint32_t cmdq_tz_get_gce_base_va(void);
 void cmdq_tz_setup(uint8_t hwid);
 void cmdq_drv_imgsys_slc_cb(void);
 int32_t cmdq_drv_imgsys_set_domain(void *data, bool isSet);
+int32_t cmdq_tz_isp_secure(void *data, bool isSet);
+int32_t cmdq_tz_isp_normal(void *data, bool isSet);

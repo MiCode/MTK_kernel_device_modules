@@ -2,15 +2,19 @@
 /*
  * Copyright (c) 2025 MediaTek Inc.
  */
-
+#ifndef __PKVM_CMDQ_HYP_H__
+#define __PKVM_CMDQ_HYP_H__
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #include <asm/kvm_pkvm_module.h>
+#include "isp_sec_public.h"
 
 #define PFX_CMDQ_MSG "[cmdq] "
 #define PFX_CMDQ_ERR "[cmdq][err] "
 #include "list.h"
 
-#define CMDQ_MAX_SECURE_CORE_COUNT	(4)
+#define CMDQ_IWC_MAX_ADDR_LIST_LENGTH (30)
+
+#define CMDQ_MAX_SECURE_CORE_COUNT	(2)
 #define CMDQ_MAX_SECURE_THREAD_COUNT	(5) // support executing secure task
 #define CMDQ_MIN_SECURE_THREAD_ID	(8)
 #define CMDQ_MAX_TASK_IN_THREAD_MAX	(10)
@@ -80,6 +84,13 @@
 
 extern bool mtkcam_security_cam_normal_preview_support;
 
+#define CMDQ_IMMEDIATE_VALUE		0
+#define CMDQ_REG_TYPE			1
+#define CMDQ_OPERAND_GET_IDX_VALUE(operand) \
+	((operand)->reg ? (operand)->idx : (operand)->value)
+#define CMDQ_OPERAND_TYPE(operand) \
+	((operand)->reg ? CMDQ_REG_TYPE : CMDQ_IMMEDIATE_VALUE)
+
 struct cmdq_instruction {
 	uint16_t arg_c:16;
 	uint16_t arg_b:16;
@@ -104,77 +115,7 @@ enum TASK_STATE_ENUM {
 	TASK_STATE_ERROR   = 3,	/* task execution error */
 	TASK_STATE_DONE	   = 4,	/* task finished */
 	TASK_STATE_WAITING = 5,	/* allocated but waiting for available thread */
-};
-
-enum CMDQ_SEC_ENG_ENUM {
-	/* MDP */
-	CMDQ_SEC_MDP_RDMA0 = 0,
-	CMDQ_SEC_MDP_RDMA1,	/* 1 */
-	CMDQ_SEC_MDP_WDMA,	/* 2 */
-	CMDQ_SEC_MDP_WROT0,	/* 3 */
-	CMDQ_SEC_MDP_WROT1,	/* 4 */
-
-	/* DISP */
-	CMDQ_SEC_DISP_RDMA0,	/* 5 */
-	CMDQ_SEC_DISP_RDMA1,	/* 6 */
-	CMDQ_SEC_DISP_WDMA0,	/* 7 */
-	CMDQ_SEC_DISP_WDMA1,	/* 8 */
-	CMDQ_SEC_DISP_OVL0,	/* 9 */
-	CMDQ_SEC_DISP_OVL1,	/* 10 */
-	CMDQ_SEC_DISP_OVL2,	/* 11 */
-	CMDQ_SEC_DISP_2L_OVL0,	/* 12 */
-	CMDQ_SEC_DISP_2L_OVL1,	/* 13 */
-	CMDQ_SEC_DISP_2L_OVL2,	/* 14 */
-
-	/* ISP */
-	CMDQ_SEC_ISP_IMGI,	/* 15 */
-	CMDQ_SEC_ISP_VIPI,	/* 16 */
-	CMDQ_SEC_ISP_LCEI,	/* 17 */
-	CMDQ_SEC_ISP_IMG2O,	/* 18 */
-	CMDQ_SEC_ISP_IMG3O,	/* 19 */
-	CMDQ_SEC_ISP_SMXIO,	/* 20 */
-	CMDQ_SEC_ISP_DMGI_DEPI, /* 21 */
-	CMDQ_SEC_ISP_IMGCI,	/* 22 */
-	CMDQ_SEC_ISP_TIMGO,	/* 23 */
-	CMDQ_SEC_DPE,		/* 24 */
-	CMDQ_SEC_OWE,		/* 25 */
-	CMDQ_SEC_WPEI,		/* 26 */
-	CMDQ_SEC_WPEO,		/* 27 */
-	CMDQ_SEC_WPEI2,		/* 28 */
-	CMDQ_SEC_WPEO2,		/* 29 */
-	CMDQ_SEC_FDVT,		/* 30 */
-	CMDQ_SEC_ISP_UFBCI,	/* 31 */
-	CMDQ_SEC_ISP_UFBCO,	/* 32 */
-
-	CMDQ_SEC_MDP_WROT2,	/* 33 */
-	CMDQ_SEC_MDP_WROT3,	/* 34 */
-	CMDQ_SEC_MDP_RDMA2,	/* 35 */
-	CMDQ_SEC_MDP_RDMA3,	/* 36 */
-
-	CMDQ_SEC_VENC_BSDMA,	    /* 37 */
-	CMDQ_SEC_VENC_CUR_LUMA,	    /* 38 */
-	CMDQ_SEC_VENC_CUR_CHROMA,	/* 39 */
-	CMDQ_SEC_VENC_REF_LUMA,     /* 40 */
-	CMDQ_SEC_VENC_REF_CHROMA,	/* 41 */
-	CMDQ_SEC_VENC_REC,          /* 42 */
-	CMDQ_SEC_VENC_SUB_R_LUMA,   /* 43 */
-	CMDQ_SEC_VENC_SUB_W_LUMA,   /* 44 */
-	CMDQ_SEC_VENC_SV_COMV,      /* 45 */
-	CMDQ_SEC_VENC_RD_COMV,      /* 46 */
-	CMDQ_SEC_VENC_NBM_RDMA,     /* 47 */
-	CMDQ_SEC_VENC_NBM_WDMA,     /* 48 */
-	CMDQ_SEC_VENC_NBM_RDMA_LITE,/* 49 */
-	CMDQ_SEC_VENC_NBM_WDMA_LITE,/* 50 */
-	CMDQ_SEC_VENC_FCS_NBM_RDMA, /* 51 */
-	CMDQ_SEC_VENC_FCS_NBM_WDMA, /* 52 */
-	CMDQ_SEC_MDP_HDR0,          /* 53 */
-	CMDQ_SEC_MDP_HDR1,          /* 54 */
-	CMDQ_SEC_MDP_AAL0,          /* 55 */
-	CMDQ_SEC_MDP_AAL1,          /* 56 */
-	CMDQ_SEC_MDP_AAL2,          /* 57 */
-	CMDQ_SEC_MDP_AAL3,          /* 58 */
-
-	CMDQ_SEC_MAX_ENG_COUNT	/* ALWAYS keep at the end */
+	TASK_STATE_MDP_RDY = 6,	/* allocated but waiting for available thread */
 };
 
 enum CMDQ_HW_THREAD_PRIORITY_ENUM {
@@ -266,7 +207,10 @@ struct ThreadStruct {
 	uint32_t nextCookie;
 	struct TaskStruct *pCurTask[CMDQ_MAX_TASK_IN_THREAD_MAX];
 };
-
+struct SecIdTbl_t {
+	uint32_t port;
+	uint32_t sec_id;
+};
 struct TaskStruct {
 	struct list_node listEntry;
 
@@ -295,9 +239,11 @@ struct TaskStruct {
 	uint64_t enginesNeedDAPC;
 	uint64_t enginesNeedPortSecurity;
 	uint32_t sec_id;
-
+	struct SecIdTbl_t pSecIdTbl[CMDQ_IWC_MAX_ADDR_LIST_LENGTH];
+	uint32_t SecIdTblLength;
 	/* Debug */
 	uint64_t hNormalTask;
+	bool	throwAEE;
 };
 
 struct ContextStruct {
@@ -326,6 +272,64 @@ struct cmdq_protect_engine {
 	uint8_t dapc_level;
 };
 
+struct engine_secure_port {
+	uint64_t engine_flag;
+	uint32_t port;
+};
+
+struct cmdq_sec_handle_reg {
+	uint32_t addr;
+	int32_t engine;
+};
+
+struct tlApiCmdqExecMetadata_t {
+	uint32_t pSecFdAddr[CMDQ_IWC_MAX_ADDR_LIST_LENGTH];
+	uint32_t pSecFdCount;
+	uint16_t ovl_handle[CMDQ_IWC_MAX_ADDR_LIST_LENGTH];
+	struct SecIdTbl_t pSecIdTbl[CMDQ_IWC_MAX_ADDR_LIST_LENGTH];
+	uint32_t SecIdTblLength;
+
+	struct isp_exec_metadata isp_execmeta;
+};
+
+/**
+ * IPC execution data (between TL* and cmdqSecDr)
+ *
+ * @paramc pIwcCmdqMessage [IN]  cmdqSecDr IWC message
+ * @param execMetadata  [IN]  cmdqSecDr execution metadata about secure buffer address etc
+ *
+ */
+struct DrIPCData_t {
+	struct iwcCmdqMessage_t *pIwcCmdqMessage;
+	struct iwcCmdqMessageEx_t *message_ex;
+	struct iwcCmdqMessageEx2_t *message_ex2;
+	struct tlApiCmdqExecMetadata_t execMetadata;
+};
+
+uint64_t *cmdq_task_get_va_by_offset(struct TaskStruct *task, uint32_t offset);
+uint64_t cmdq_task_get_curr_pa(struct TaskStruct *task);
+uint64_t cmdq_task_get_pa_by_offset(struct TaskStruct *task, uint32_t offset);
+int cmdq_task_assign_command(struct TaskStruct *task,
+	uint16_t reg_idx, uint32_t value);
+int cmdq_task_store_value_reg(struct TaskStruct *task, u16 indirect_dst_reg_idx,
+	u16 dst_addr_low, u16 indirect_src_reg_idx, u32 mask);
+int cmdq_task_write_reg_addr(struct TaskStruct *task, uint64_t addr,
+	u16 src_reg_idx, u32 mask);
+int cmdq_task_write_indriect(struct TaskStruct *task, struct cmdq_base *clt_base,
+	uint64_t addr, u16 src_reg_idx, u32 mask);
+int cmdq_task_logic_command(struct TaskStruct *task, enum CMDQ_LOGIC_ENUM s_op,
+	u16 result_reg_idx,
+	struct cmdq_operand *left_operand,
+	struct cmdq_operand *right_operand);
+int cmdq_task_sleep(struct TaskStruct *task, u32 tick, u16 reg_gpr);
+int cmdq_task_poll_timeout(struct TaskStruct *task, u32 value,
+	phys_addr_t addr, u32 mask, u16 count, u16 reg_gpr);
+int cmdq_task_clear_event(struct TaskStruct *task, uint16_t event);
+int cmdq_task_cond_jump(struct TaskStruct *task,
+	u16 offset_reg_idx,
+	struct cmdq_operand *left_operand,
+	struct cmdq_operand *right_operand,
+	enum CMDQ_CONDITION_ENUM condition_operator);
 int cmdq_task_wfe(struct TaskStruct *task, uint16_t event);
 int cmdq_task_write_value_addr(struct TaskStruct *task,
 	uint64_t addr, uint32_t value, uint32_t mask);
@@ -337,3 +341,11 @@ void cmdq_task_cb(struct TaskStruct *pTask);
 void cmdq_set_plat_ops(const struct pkvm_module_ops *ops);
 void cmdq_set_isp_ops(const struct pkvm_module_ops *ops);
 int32_t cmdq_tz_set_dapc_security_reg(struct TaskStruct *task, bool enable, bool use_cmdq);
+int32_t cmdq_tz_set_port_security_reg(struct TaskStruct *pTask, bool enable, bool useCmdq);
+void cmdqUtilPrintHexDump(const char *prefix_str, uint32_t *buf,
+	uint32_t len, uint64_t pa);
+bool is_mdp_thread(const int32_t hwid, const int32_t thrd);
+int cmdq_task_finalize_loop(struct TaskStruct *task);
+void cmdq_tz_mdp_handle(struct TaskStruct *pTask);
+
+#endif	/*  __PKVM_CMDQ_HYP_H__ */

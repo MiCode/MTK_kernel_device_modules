@@ -19,18 +19,23 @@ filegroup(
     ])
 )
 
-define_mgk_ddk_ko(
-    name = "pkvm_cmdq",
+PLATFORMS = [
+    "6993",
+    "6858",
+]
+
+[define_mgk_ddk_ko(
+    name = "pkvm_cmdq_mt{}".format(p),
     srcs = [
         "pkvm_cmdq_host.c",
         "pkvm_cmdq_host.h",
     ],
-    out = "pkvm_cmdq.ko",
+    out = "pkvm_cmdq_mt{}.ko".format(p),
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
     ],
     ko_deps = [
-        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_cmdq/hyp:hyp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_cmdq/hyp:hyp_mt{}".format(kernel_version, p),
         "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
     ],
-)
+) for p in PLATFORMS]

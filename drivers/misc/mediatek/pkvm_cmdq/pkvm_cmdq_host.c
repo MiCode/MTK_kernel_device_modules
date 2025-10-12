@@ -50,6 +50,14 @@ static int cmdq_hvc_register(unsigned long token)
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
 		SMC_ID_MTK_PKVM_CMDQ_PKVM_DISABLE, ret, 0, 0, 0, 0, &res);
 
+	ret = pkvm_register_el2_mod_call(kvm_nvhe_sym(cmdq_hyp_pkvm_share), token);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+		SMC_ID_MTK_PKVM_CMDQ_PKVM_SHARE_MEM, ret, 0, 0, 0, 0, &res);
+
+	ret = pkvm_register_el2_mod_call(kvm_nvhe_sym(cmdq_hyp_pkvm_iwc_submit), token);
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,
+		SMC_ID_MTK_PKVM_CMDQ_PKVM_IWC, ret, 0, 0, 0, 0, &res);
+
 	cmdq_memory_mapping = pkvm_register_el2_mod_call(
 		kvm_nvhe_sym(cmdq_hyp_get_memory), token);
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC,

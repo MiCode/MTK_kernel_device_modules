@@ -1,7 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2019 MediaTek Inc.
+ * Copyright (c) 2025 MediaTek Inc.
  */
+#include "pkvm_cmdq_platform.h"
+#include "pkvm_cmdq_hyp.h"
+#include <asm/kvm_pkvm_module.h>
 
 #ifndef __CMDQ_SEC_IWC_COMMON_H__
 #define __CMDQ_SEC_IWC_COMMON_H__
@@ -17,7 +20,7 @@
 #define CMDQ_SEC_SHARED_RESET_CNT		0x308
 
 /* commanad buffer & metadata */
-#define CMDQ_IWC_MAX_CMD_LENGTH		(5 << 12)
+#define CMDQ_IWC_MAX_CMD_LENGTH (5 << 12)
 
 #define CMDQ_IWC_MAX_ADDR_LIST_LENGTH (30)
 
@@ -45,7 +48,6 @@ enum CMDQ_IWC_ADDR_METADATA_TYPE {
 	CMDQ_IWC_H_2_MVA = 1, /* sec handle to sec MVA */
 	CMDQ_IWC_NMVA_2_MVA = 2, /* map normal MVA to secure world */
 	CMDQ_IWC_PH_2_MVA = 3, /* protected handle to sec MVA */
-	CMDQ_IWC_MVA_2_MVA = 4, /* no need to use secure handle for sec MVA */
 };
 
 enum CMDQ_SEC_ENG_ENUM {
@@ -222,11 +224,6 @@ struct iwcCmdqSecIspMeta {
 	uint64_t DmgiHandle;
 };
 
-struct iwcIspMeta {
-	uint32_t size;
-	uint32_t data[CMDQ_SEC_ISP_META_MAX / sizeof(uint32_t)];
-};
-
 /* extension flag for secure driver, must sync with def */
 enum sec_extension_iwc {
 	IWC_MDP_AAL = 0,
@@ -276,6 +273,7 @@ struct iwcCmdqCommand_t {
 	struct readback_engine readback_engs[CMDQ_MAX_READBACK_ENG];
 	uint32_t readback_cnt;
 	int32_t sec_id;
+
 };
 
 enum cmdq_sec_meta_type {

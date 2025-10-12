@@ -33,16 +33,22 @@ s32 cmdq_sec_pkvm_allocate_wsm(struct cmdq_sec_pkvm_context *tee,
 		return -EINVAL;
 
 	*wsm_buffer = kzalloc(size, GFP_KERNEL);
-	if (!*wsm_buffer)
+	if (!*wsm_buffer) {
+		cmdq_err("wsm_buffer fail");
 		return -ENOMEM;
+	}
 
 	*wsm_buf_ex = kzalloc(size_ex, GFP_KERNEL);
-	if (!*wsm_buf_ex)
+	if (!*wsm_buf_ex) {
+		cmdq_err("wsm_buf_ex fail");
 		return -ENOMEM;
+	}
 
 	*wsm_buf_ex2 = kzalloc(size_ex2, GFP_KERNEL);
-	if (!*wsm_buf_ex2)
+	if (!*wsm_buf_ex2) {
+		cmdq_err("wsm_buf_ex2 fail");
 		return -ENOMEM;
+	}
 
 	return 0;
 }
@@ -114,6 +120,48 @@ s32 cmdq_sec_pkvm_execute_session(struct cmdq_sec_pkvm_context *tee,
 	return 0;
 }
 
+s32 cmdq_sec_pkvm_execute_session_iwc(struct cmdq_sec_pkvm_context *tee, u32 cmd,
+	void *iwc_msg, u32 size, void *iwc_ex1, u32 size_ex, void *iwc_ex2, u32 size_ex2)
+{
+	struct arm_smccc_res res;
+#if IS_ENABLED(CONFIG_MTK_PKVM_CMDQ)
+	unsigned long smc_id = -1;
+	unsigned long hvc_id;
+#endif
+	u64 iwc_msg_pa, iwc_ex1_pa, iwc_ex2_pa;
+
+	cmdq_mbox_mtcmos_by_fast(NULL, true);
+#if IS_ENABLED(CONFIG_MTK_PKVM_CMDQ)
+	switch (cmd) {
+	case CMD_CMDQ_TL_SUBMIT_TASK_IWC:
+		smc_id = SMC_ID_MTK_PKVM_CMDQ_PKVM_IWC;
+		break;
+	case CMD_CMDQ_TL_SHARE_MEM_TO_EL2:
+		smc_id = SMC_ID_MTK_PKVM_CMDQ_PKVM_SHARE_MEM;
+		break;
+	default:
+		cmdq_err("invalid cmd");
+		break;
+	}
+	arm_smccc_1_1_smc(smc_id, 0, 0, 0, 0, 0, 0, &res);
+	hvc_id = res.a1;
+	iwc_msg_pa = (u64)virt_to_phys(iwc_msg);
+	iwc_ex1_pa = (u64)virt_to_phys(iwc_ex1);
+	iwc_ex2_pa = (u64)virt_to_phys(iwc_ex2);
+
+	cmdq_log("%s 0x%llx 0x%llx 0x%llx %x %x %x", __func__, iwc_msg_pa, iwc_ex1_pa, iwc_ex2_pa,
+		size, size_ex, size_ex2);
+	pkvm_el2_mod_call(hvc_id, iwc_msg_pa, size, iwc_ex1_pa, size_ex, iwc_ex2_pa, size_ex2);
+
+#endif
+	cmdq_mbox_mtcmos_by_fast(NULL, false);
+
+	cmdq_msg("%s: cmd:%u CMDQ_SMC_REQ_MAX:%u rsp:%llx",
+		__func__, cmd, CMDQ_SMC_REQ_MAX, tee->rsp);
+
+	return 0;
+}
+
 s32 cmdq_sec_pkvm_open_session(void)
 {
 	struct arm_smccc_res res;
@@ -127,6 +175,26 @@ s32 cmdq_sec_pkvm_open_session(void)
 #else
 	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL,
 		CMD_CMDQ_TL_PKVM_INIT, 0, 0, 0, 0, 0, 0, &res);
+#endif
+
+	return 0;
+}
+
+s32 cmdq_sec_pkvm_send_metadata(const u32 meta_0, const u32 meta_1, const u32 meta_2,
+	const u32 meta_3, const u32 meta_4, const u32 meta_5)
+{
+	struct arm_smccc_res res;
+#if IS_ENABLED(CONFIG_MTK_PKVM_CMDQ)
+	unsigned long hvc_id;
+
+	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_CMDQ_PKVM_INIT,
+		0, 0, 0, 0, 0, 0, &res);
+	hvc_id = res.a1;
+	pkvm_el2_mod_call(meta_0, meta_1, meta_2, meta_3, meta_4, meta_5);
+#else
+	arm_smccc_smc(MTK_SIP_CMDQ_CONTROL,
+		CMD_CMDQ_TL_PKVM_INIT, meta_0, meta_1, meta_2,
+		meta_3, meta_4, meta_5, &res);
 #endif
 
 	return 0;
