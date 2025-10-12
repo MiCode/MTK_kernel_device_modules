@@ -283,6 +283,7 @@ enum cmdq_sec_meta_type {
 	CMDQ_METAEX_VENC,
 	CMDQ_METAEX_TZMP,
 	CMDQ_METAEX_FD_NO_SUBMIT,
+	CMDQ_METAEX_FD_IOVA,
 };
 
 struct iwc_cq_meta {

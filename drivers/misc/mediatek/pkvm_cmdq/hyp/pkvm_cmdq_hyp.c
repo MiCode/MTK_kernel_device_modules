@@ -1421,9 +1421,15 @@ static int32_t cmdq_drv_isp_setup_task(uint32_t metaex_type,
 	/* TODO: Check with User */
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "metaex_type:");
 	CALL_FROM_OPS(putx64, (u64)metaex_type);
+
+	if (metaex_type == CMDQ_METAEX_FD_IOVA)
+		return cmdq_drv_isp_setup_iova(msgex ? msgex->data : NULL,
+			msgex ? msgex->size : 0, isp_execmeta, secStatus);
+
 	if (metaex_type == CMDQ_METAEX_FD || metaex_type == CMDQ_METAEX_FD_NO_SUBMIT)
 		return cmdq_drv_isp_setup_task_fd(msgex ? msgex->data : NULL,
 			msgex ? msgex->size : 0, isp_execmeta, secStatus);
+
 	if (metaex_type == CMDQ_METAEX_CQ)
 		return cmdq_drv_isp_setup_task_cq(
 			msgex ? &msgex->isp : NULL,
