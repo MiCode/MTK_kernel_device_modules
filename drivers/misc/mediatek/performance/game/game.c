@@ -191,41 +191,6 @@ end:
 	return;
 }
 
-static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
-	struct affinity_context *ctx, bool *skip_user_ptr)
-{
-	struct cpumask *kernel_allowed_mask = &((struct mtk_task *) android_task_vendor_data(p))->kernel_allowed_mask;
-	struct rq_flags rf;
-	struct rq *rq = task_rq_lock(p, &rf);
-	cpumask_t new_mask;
-
-	// not set or invalid cpu mask
-	if (cpumask_empty(kernel_allowed_mask))
-		goto out;
-
-	if (p->user_cpus_ptr &&
-		!(ctx->flags & (SCA_USER | SCA_MIGRATE_ENABLE | SCA_MIGRATE_DISABLE)) &&
-		cpumask_and(rq->scratch_mask, ctx->new_mask, p->user_cpus_ptr)) {
-		*skip_user_ptr = true;
-		cpumask_copy(rq->scratch_mask, kernel_allowed_mask);
-		ctx->new_mask = rq->scratch_mask;
-	}
-	if (p->user_cpus_ptr && !cpumask_empty(kernel_allowed_mask)){
-		cpumask_copy(&new_mask, ctx->new_mask);
-		game_print_trace(
-		"kernel_core_ctrl: pid = %d, skip_user = %d, user_mask = 0x%x, kernel_allowed_mask = 0x%x, new_mask = 0x%x",
-		p->pid,
-		*skip_user_ptr,
-		cpumask_bits(p->user_cpus_ptr)[0],
-		cpumask_bits(kernel_allowed_mask)[0],
-		cpumask_bits(&new_mask)[0]);
-	}
-
-out:
-	task_rq_unlock(rq, p, &rf);
-	return;
-}
-
 static int gameMain(void *arg)
 {
 	struct sched_attr attr = {};
@@ -253,22 +218,14 @@ static void __exit game_exit(void)
 {
 	if (kGame_task)
 		kthread_stop(kGame_task);
-	set_cpus_allowed_ptr_by_kernel_fp = NULL;
-	loom_set_cpus_allowed_ptr_by_kernel_fp = NULL;
 	loom_exit();
+	kernel_core_ctrl_exit();
 	game_sysfs_exit();
 }
 
 static int __init game_init(void)
 {
 	int ret = 0;
-
-	ret = register_trace_android_rvh_set_cpus_allowed_ptr(mtk_set_cpus_allowed_ptr, NULL);
-	if (ret)
-		pr_info("register mtk_set_cpus_allowed_ptr hooks failed, returned %d\n", ret);
-
-	set_cpus_allowed_ptr_by_kernel_fp = &set_cpus_allowed_ptr_by_kernel;
-	loom_set_cpus_allowed_ptr_by_kernel_fp = &set_cpus_allowed_ptr_by_kernel;
 
 	kGame_task = kthread_create(gameMain, NULL, "kGameThread");
 	if (kGame_task == NULL) {
@@ -279,6 +236,7 @@ static int __init game_init(void)
 	game_sysfs_init();
 	frame_interpolate_init();
 	game_ec_init();
+	kernel_core_ctrl_init();
 	loom_init();
 end:
 	return ret;
