@@ -79,6 +79,7 @@ static void check_valid_device(struct usb_device *rhdev,
 #define DRV_STAGE_FILE_OPS   (1U << 1)
 #define DRV_STAGE_ALSA_OPS   (1U << 2)
 #define DRV_STAGE_XHCI_TRACE (1U << 3)
+#define DRV_STAGE_ADSP_STOP	 (1U << 4)
 
 #define WAIT_IDLE_TIMEOUT_NS 1000000000 /* 1 sec */
 static int stage_occupy(unsigned long stage);
@@ -199,6 +200,9 @@ static void adsp_ee_recovery(void)
 static int usb_offload_event_receive(struct notifier_block *this, unsigned long event,
 			    void *ptr)
 {
+	struct usb_audio_dev *dev;
+	int i;
+
 	switch (event) {
 	case ADSP_EVENT_STOP:
 		USB_OFFLOAD_INFO("<ADSP STOP(%ld)>\n", event);
@@ -213,10 +217,31 @@ static int usb_offload_event_receive(struct notifier_block *this, unsigned long 
 		goto error;
 	}
 
-	usb_offload_status();
-	if (!uodev->adsp_ready && uodev->total_connected > 0)
+	if (!uodev->adsp_ready && uodev->total_connected > 0) {
+		/* disable xHCI interrupter */
 		adsp_ee_recovery();
+
+		if (stage_occupy(DRV_STAGE_ADSP_STOP) < 0)
+			goto error;
+
+		/* shutdown every active audio devices */
+		for (i = 0; i < SNDRV_CARDS; i++) {
+			dev = &uadev[i];
+			if (!dev->chip)
+				continue;
+			USB_OFFLOAD_INFO("self-cleanup card%d on slot%d\n",
+				dev->card_num, dev->slot_id);
+			uaudio_dev_cleanup(dev);
+		}
+
+		/* recycle resource if we inited dsp before */
+		if (uodev->adsp_inited && send_deinit_adsp() < 0)
+			USB_OFFLOAD_ERR("self-deinit failed\n,");
+
+		stage_vacate(DRV_STAGE_ADSP_STOP);
+	}
 error:
+	usb_offload_status();
 	return 0;
 }
 
