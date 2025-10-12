@@ -485,6 +485,11 @@ static void mtk_pcie_config_tlp_header(struct pci_bus *bus, unsigned int devfn,
 	      PCIE_CFG_HEADER(bus->number, devfn);
 
 	writel_relaxed(val, port->base + PCIE_CFGNUM_REG);
+	/*
+	 * Before access the PCIe config space, ensure that
+	 * the config space remap has been completed.
+	 */
+	dsb(sy);
 }
 
 static void mtk_pcie_block_config_access(struct mtk_pcie_port *port)
