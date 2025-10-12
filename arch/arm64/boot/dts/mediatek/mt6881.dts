@@ -340,6 +340,11 @@
 		compatible = "mediatek,tfa_debug";
 	};
 
+	ged: ged {
+		compatible = "mediatek,ged";
+		gpufreq-supply = <&gpufreq>;
+	};
+
 	gpufreq_wrapper: gpufreq-wrapper {
 		compatible = "mediatek,gpufreq_wrapper";
 		gpufreq-version = <2>;
@@ -2408,6 +2413,18 @@
 				};
 			};
 		};
+	};
+
+	mgm: mgm {
+		compatible = "arm,physical-memory-group-manager";
+	};
+
+	gpu_protected_memory_allocator: protected-memory-allocator {
+		compatible = "arm,protected-memory-allocator";
+		pma-version = <2>;
+		gpr-id = <6>;
+		gmpu-table-size = <0x400000>;
+		protected-reserve-size = <0x200000>;
 	};
 
 	soc {
@@ -5097,6 +5114,27 @@
 				pclk_phase = <23>;
 				#phy-cells = <1>;
 			};
+		};
+
+		mali: mali@48000000 {
+			compatible = "mediatek,mali", "arm,mali-valhall";
+			reg = <0 0x48000000 0 0x480000>;
+			physical-memory-group-manager = <&mgm>;
+			interrupts =
+			<GIC_SPI 397 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 398 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 399 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 400 IRQ_TYPE_LEVEL_HIGH 0>,
+			<GIC_SPI 401 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names =
+			"GPU",
+			"MMU",
+			"JOB",
+			"EVENT",
+			"PWR";
+			protected-memory-allocator = <&gpu_protected_memory_allocator>;
+			#cooling-cells = <2>;
+			ged-supply = <&ged>;
 		};
 	};
 
