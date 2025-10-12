@@ -1,0 +1,60 @@
+
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+load("//build/bazel_mgk_rules:mgk_ddk_library.bzl", "define_mgk_ddk_library")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_library(
+    name = "hyp_6881",
+    srcs = glob([
+        "*.c",
+        "*.h",
+        "6881/*.c",
+        "6881/*.h",
+    ]),
+    pkvm_el2 = True,
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_isp:export_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/arch/arm64/kvm/hyp/include/nvhe",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_isp/isp8s",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_isp/isp8s/hyp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_isp/isp8s/hyp/6881",
+    ],
+)
+
+define_mgk_ddk_library(
+    name = "hyp_6993",
+    srcs = glob([
+        "*.c",
+        "*.h",
+        "6993/*.c",
+        "6993/*.h",
+    ]),
+    pkvm_el2 = True,
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_isp:export_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/arch/arm64/kvm/hyp/include/nvhe",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_isp/isp8s",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_isp/isp8s/hyp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_isp/isp8s/hyp/6993",
+    ],
+)
