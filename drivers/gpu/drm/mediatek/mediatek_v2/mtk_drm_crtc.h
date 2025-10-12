@@ -1545,6 +1545,7 @@ struct mtk_drm_crtc {
 
 	/* bif data */
 	struct mtk_bif_info *bif_info;
+	bool is_frame_trigger_mode;
 };
 
 /* one exdma may have both compr and uncompr layers(because ext layer).
@@ -1652,6 +1653,8 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc);
 void mtk_drm_crtc_dump_vr_rg(struct drm_crtc *crtc);
 void mtk_drm_crtc_analysis(struct drm_crtc *crtc);
 void mtk_drm_crtc_diagnose(void);
+void set_mtk_crtc_is_frame_trigger_mode(struct mtk_drm_private *priv,
+	struct mtk_drm_crtc *mtk_crtc);
 bool mtk_crtc_is_frame_trigger_mode(struct drm_crtc *crtc);
 void mtk_crtc_clr_comp_done(struct mtk_drm_crtc *mtk_crtc,
 			      struct cmdq_pkt *cmdq_handle,

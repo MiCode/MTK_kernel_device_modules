@@ -10224,52 +10224,78 @@ bool mtk_crtc_with_event_loop(struct drm_crtc *crtc)
 	}
 }
 
-bool mtk_crtc_is_frame_trigger_mode(struct drm_crtc *crtc)
+void set_mtk_crtc_is_frame_trigger_mode(struct mtk_drm_private *priv,
+	struct mtk_drm_crtc *mtk_crtc)
 {
-	struct mtk_drm_private *priv =
-		(crtc && crtc->dev && crtc->dev->dev_private) ?
-		crtc->dev->dev_private : NULL;
-	struct mtk_drm_crtc *mtk_crtc = crtc ? to_mtk_crtc(crtc) : NULL;
-	int crtc_id = crtc ? drm_crtc_index(crtc) : (-EINVAL);
+	struct drm_crtc *crtc = NULL;
+	int crtc_id = 0;
 	struct mtk_ddp_comp *comp = NULL;
-	int i;
+	int i = 0;
 
-	if (!priv || !mtk_crtc || (crtc_id == -EINVAL)) {
-		DDPPR_ERR("%s, Cannot find priv or mtk_crtc, crtc_id:%d\n",
-							__func__, crtc_id);
-		return false;
+	if (!priv || !mtk_crtc) {
+		DDPPR_ERR("%s: find priv or mtk_crtc fail\n", __func__);
+		return;
 	}
 
-	comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (crtc_id == 0 && comp)
-		return mtk_dsi_is_cmd_mode(comp);
-	else if (crtc_id == 0)
-		return mtk_dsi_is_cmd_mode(priv->ddp_comp[DDP_COMPONENT_DSI0]);
+	crtc = &mtk_crtc->base;
+	if (!crtc) {
+		DDPPR_ERR("%s: find drm_crtc fail\n", __func__);
+		mtk_crtc->is_frame_trigger_mode = false;
+		return;
+	}
 
-	for_each_comp_in_crtc_target_path(
-		comp, mtk_crtc, i,
-		DDP_FIRST_PATH)
+	crtc_id = drm_crtc_index(crtc);
+	comp = mtk_ddp_comp_request_output(mtk_crtc);
+	if (crtc_id == 0 && comp) {
+		mtk_crtc->is_frame_trigger_mode = mtk_dsi_is_cmd_mode(comp);
+		return;
+	} else if (crtc_id == 0) {
+		mtk_crtc->is_frame_trigger_mode =
+			mtk_dsi_is_cmd_mode(priv->ddp_comp[DDP_COMPONENT_DSI0]);
+		return;
+	}
+
+	for_each_comp_in_crtc_target_path(comp, mtk_crtc, i, DDP_FIRST_PATH)
 		if (mtk_ddp_comp_is_output(comp))
 			break;
-
 	if (!comp) {
-		DDPPR_ERR("%s, Cannot find output component\n", __func__);
-		return false;
+		DDPPR_ERR("%s: find output component fail\n", __func__);
+		mtk_crtc->is_frame_trigger_mode = false;
+		return;
 	}
-
-	if (mtk_ddp_comp_get_type(comp->id) == MTK_DSI)
-		return mtk_dsi_is_cmd_mode(priv->ddp_comp[comp->id]);
-
+	if (mtk_ddp_comp_get_type(comp->id) == MTK_DSI) {
+		mtk_crtc->is_frame_trigger_mode =
+			mtk_dsi_is_cmd_mode(priv->ddp_comp[comp->id]);
+		return;
+	}
 	if (comp->id == DDP_COMPONENT_DP_INTF0 ||
 		comp->id == DDP_COMPONENT_DP_INTF1 ||
 		comp->id == DDP_COMPONENT_DISP_DVO ||
 		comp->id == DDP_COMPONENT_SYS_B_DISP_DVO ||
 		comp->id == DDP_COMPONENT_DPI0 ||
 		comp->id == DDP_COMPONENT_DPI1) {
+		mtk_crtc->is_frame_trigger_mode = false;
+		return;
+	}
+	mtk_crtc->is_frame_trigger_mode = true;
+}
+
+bool mtk_crtc_is_frame_trigger_mode(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+
+	if (!crtc) {
+		DDPPR_ERR("%s: find drm_crtc fail\n", __func__);
 		return false;
 	}
 
-	return true;
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s: find mtk_crtc fail\n", __func__);
+		return false;
+	}
+
+	return mtk_crtc->is_frame_trigger_mode;
 }
 
 static bool mtk_crtc_target_is_dc_mode(struct drm_crtc *crtc,
@@ -25899,6 +25925,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	}
 	if (ret < 0)
 		return ret;
+
+	set_mtk_crtc_is_frame_trigger_mode(priv, mtk_crtc);
 
 	ret = disp_mutex_dispatch(priv, mtk_crtc, path_data, pipe);
 	if (ret)
