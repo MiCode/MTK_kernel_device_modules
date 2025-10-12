@@ -5062,8 +5062,11 @@ void fbt_update_freq_qos_min(int policy_id, unsigned int freq)
 
 	if (freq == cluster_min_freq)
 		freq_qos_cap = 0;
-	else
-		freq_qos_cap = freq_qos_cap_temp;
+	else {
+		if ((freq_qos_cap && freq_qos_cap_temp < freq_qos_cap) ||
+			!freq_qos_cap)
+			freq_qos_cap = freq_qos_cap_temp;
+	}
 
 	mutex_unlock(&fbt_mlock);
 
