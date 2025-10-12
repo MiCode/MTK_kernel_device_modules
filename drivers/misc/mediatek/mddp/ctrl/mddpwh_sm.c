@@ -941,11 +941,8 @@ static void wfpm_reset_work_func(struct work_struct *work)
 	app->abnormal_flags &= ~MDDP_ABNORMAL_CCCI_SEND_FAILED;
 	/* MACOD will not init if shm not available.It should be set before notify wlan MD is ON.*/
 	mddpw_wfpm_send_smem_layout();
-	if (!app->reset_cnt)
-		mddp_check_feature();
-	else
-		mddpw_notify_wlan_mdinfo();
-	app->reset_cnt++;
+	mddp_check_feature();
+
 	if (app->state != MDDP_STATE_DISABLED) {
 		mddp_f_dev_del_wan_dev(app->ap_cfg.ul_dev_name);
 		mddp_f_dev_del_lan_dev(app->ap_cfg.dl_dev_name);

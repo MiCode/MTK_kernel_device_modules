@@ -106,7 +106,15 @@ static void mddp_handshake_done(void *buf, uint32_t buf_len)
 	struct mddp_app_t *app;
 
 	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
+	if (app->reset_cnt) {
+		MDDP_S_LOG(MDDP_LL_DEBUG,
+			"%s: FeatureSet Already updated! app->reset_cnt [%d]",
+			__func__, app->reset_cnt);
+		mddpw_notify_wlan_mdinfo(); // Notify wlan driver on MD reset
+		return;
+	}
 	app->abnormal_flags &= ~MDDP_ABNORMAL_CHECK_FEATURE_ABSENT;
+	app->reset_cnt++;
 
 	if (buf_len == 4) {
 		app->feature = *(uint32_t *)buf;
