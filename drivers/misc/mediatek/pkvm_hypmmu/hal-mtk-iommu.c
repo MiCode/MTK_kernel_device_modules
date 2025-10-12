@@ -11,6 +11,7 @@
 
 #include <mtk-iommu-defines.h>
 #include "pkvm_hypmmu_host.h"
+#include "mtk_iommu-pagepool.h"
 
 #if defined(MTK_IOMMU_CMAPOOL) && (MTK_IOMMU_CMAPOOL)
 #include "mtk_iommu-cmapool.h"
@@ -26,6 +27,9 @@ static int add_iommu_device_hvc;
 
 static phys_addr_t rmem_base;
 static phys_addr_t rmem_size;
+
+static phys_addr_t pmm_pfn;
+static phys_addr_t pmm_size;
 
 static phys_addr_t page_pool_base;
 static phys_addr_t page_pool_size;
@@ -89,6 +93,16 @@ static int query_rmem(void)
 
 static int query_page_pool(void)
 {
+	if (is_iommu_pgtbl_page_memory()) {
+		/* Allocate memory from body system for mpool*/
+		pmm_pfn = alloc_iommu_pgtbl_page();
+		pmm_size = PAGE_SIZE;
+	} else {
+		/* Allocate memory from CMA/Reserved memory */
+		pmm_pfn = 0;
+		pmm_size = 0;
+	}
+
 #if defined(MTK_IOMMU_CMAPOOL) && (MTK_IOMMU_CMAPOOL)
 	page_pool_base = (phys_addr_t)cma_pool_base;
 	page_pool_size = (phys_addr_t)cma_pool_size;
@@ -118,7 +132,8 @@ static int setup_memory_pool(void)
 		return ret;
 
 	ret = pkvm_el2_mod_call(init_hvc, page_to_phys(ac_table_page),
-		ac_table_order, rmem_base, rmem_size + page_pool_size);
+		ac_table_order, rmem_base, rmem_size + page_pool_size,
+		pmm_pfn, pmm_size);
 
 	return ret;
 }

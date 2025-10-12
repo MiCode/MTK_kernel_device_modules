@@ -14,6 +14,8 @@ static u32 ac_table_size;
 static void *ac_table_va;
 static u64 rmem_base;
 static u64 rmem_size;
+static u64 pmm_pfn;
+static u64 pmm_size;
 static void *rmem_base_va;
 static u32 enable_jpeg_prot_2;
 static u64 infra_mpu_percpu_ipc_pa;
@@ -402,6 +404,9 @@ void mtk_iommu_hyp_init(struct user_pt_regs *regs)
 	rmem_base = regs->regs[3];
 	rmem_size = regs->regs[4];
 
+	pmm_pfn = regs->regs[5];
+	pmm_size = regs->regs[6];
+
 #if (DEBUG_IOMMU)
 	MOD_PUTS4("mtk_iommu_hyp_init", ac_table_pa, ac_table_size,
 		rmem_base, rmem_size);
@@ -420,7 +425,10 @@ void mtk_iommu_hyp_init(struct user_pt_regs *regs)
 	/* clean ac_table */
 	mod_ops->memset(ac_table_va, 0, ac_table_size);
 
-	create_v7s_pages(page_pool_base, page_pool_size);
+	if (pmm_size == PAGE_SIZE)
+		create_v7s_pages(pmm_pfn, pmm_size);
+	else
+		create_v7s_pages(page_pool_base, page_pool_size);
 
 	register_smc_handler();
 

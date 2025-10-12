@@ -4,6 +4,7 @@
  */
 
 #include <asm/kvm_pkvm_module.h>
+#include <asm/kvm_hyp.h>
 #include <linux/list.h>
 #include <nvhe/spinlock.h>
 
@@ -14,6 +15,12 @@
 
 #define DEBUG_SHADOW_PAGE 0
 #define DEBUG_IOVA 0
+
+/*
+ * Enable Mpool: support Page memory or CMA/Reserved memory for IOMMU pgtbl
+ * Disable Mpool: only support CMA/Reserved memory for IOMMU pgtbl
+ */
+#define ENABLE_MPOOL_IOMMU_PGTBL 0
 
 #define MAX_PAGE_POOL_SZ_MB (64UL)
 #define MAX_PAGE_NODES ((MAX_PAGE_POOL_SZ_MB << 20) >> V7S_PAGE_TABLE_SHIFT)
@@ -34,14 +41,17 @@ static struct share_region share_regions[MAX_TABLE_NUM][MAX_SHARE_REGION_NUM];
 static struct list_head page_list;
 static DEFINE_HYP_SPINLOCK(pgae_list_lock);
 
+static hyp_spinlock_t hw_table_access_lock[MAX_TABLE_NUM];
+static hyp_spinlock_t prot_table_access_lock[MAX_TABLE_NUM];
+
+#if (ENABLE_MPOOL_IOMMU_PGTBL)
 static phys_addr_t iommu_mpool_pa;
 static void *iommu_mpool_va;
 static size_t iommu_mpool_size;
 static struct mpool iommu_mpool;
 static struct list_head inuse_page_list;
-
-static hyp_spinlock_t hw_table_access_lock[MAX_TABLE_NUM];
-static hyp_spinlock_t prot_table_access_lock[MAX_TABLE_NUM];
+struct mpt hyp_mpool;
+#endif
 
 #if (DEBUG_IOVA)
 static struct iommu_info iommu_info_rb;
@@ -97,41 +107,7 @@ static bool in_share_region(u64 iova, u64 tid)
 	return false;
 }
 
-static void iommu_assign_mpool(phys_addr_t pa, size_t size)
-{
-	iommu_mpool_pa = pa;
-	iommu_mpool_size = size;
-}
-
-static void iommu_map_mpool(void *va)
-{
-	phys_addr_t pa = iommu_mpool_pa;
-	size_t size = iommu_mpool_size;
-
-	if (!pa || !size)
-		return;
-
-	iommu_mpool_va = va;
-	mpool_init(&iommu_mpool, 1);
-	mpool_enable_locks();
-	mpool_add_chunk(&iommu_mpool, iommu_mpool_va, size);
-}
-
-static void create_lv2_pgtbl_info(void)
-{
-	uint32_t total_pages = TOTAL_PAGES();
-
-	INIT_LIST_HEAD(&inuse_page_list);
-
-	for (unsigned int i = 0; i < total_pages; i++) {
-		v7s_page_nodes[i].lv2_page_index = i;
-		v7s_page_nodes[i].lv2_va_start = MPOOL_ALLOC_CONTIG(V7S_PAGE_TABLE_SIZE);
-		v7s_page_nodes[i].lv2_pa_start = mod_ops->hyp_pa(v7s_page_nodes[i].lv2_va_start);
-	}
-}
-
-#if (DEBUG_IOVA)
-static bool share_memory_to_hyp(uint64_t region_start, uint64_t region_size)
+bool share_memory_to_hyp(uint64_t region_start, uint64_t region_size)
 {
 	int ret = 0;
 	uint64_t share_idx, share_abort_idx, region_pfn = region_start >> PAGE_SHIFT,
@@ -172,6 +148,112 @@ share_abort_handle:
 	return false;
 }
 
+#if (ENABLE_MPOOL_IOMMU_PGTBL)
+static void iommu_assign_mpool(phys_addr_t pa, size_t size)
+{
+	iommu_mpool_pa = pa;
+	iommu_mpool_size = size;
+}
+
+static void iommu_map_mpool(void *va)
+{
+	phys_addr_t pa = iommu_mpool_pa;
+	size_t size = iommu_mpool_size;
+
+	if (va) {
+		/* Continued memory for pgtbl */
+		if (!pa	|| !size)
+			return;
+
+		iommu_mpool_va = va;
+
+		mpool_init(&iommu_mpool, 1);
+		mpool_enable_locks();
+		mpool_add_chunk(&iommu_mpool, va, size);
+	} else {
+		/* Fragment memory for pgtbl */
+		mpool_init(&iommu_mpool, 1);
+		mpool_enable_locks();
+	}
+}
+
+static void create_lv2_pgtbl_info(void)
+{
+	uint32_t total_l2_pages = TOTAL_PAGES();
+
+	INIT_LIST_HEAD(&inuse_page_list);
+
+	for (unsigned int i = 0; i < total_l2_pages; i++) {
+		v7s_page_nodes[i].lv2_page_index = i;
+		v7s_page_nodes[i].lv2_va_start = MPOOL_ALLOC_CONTIG(V7S_PAGE_TABLE_SIZE);
+		v7s_page_nodes[i].lv2_pa_start = mod_ops->hyp_pa(v7s_page_nodes[i].lv2_va_start);
+	}
+}
+
+static void list_remove_entry(struct v7s_page *page)
+{
+	struct v7s_page *p;
+
+	list_for_each_entry(p, &inuse_page_list, lv2_pgtbl_node) {
+		if (p->lv2_page_index == page->lv2_page_index) {
+			list_del(&p->lv2_pgtbl_node);
+			return;
+		}
+	}
+}
+
+#ifdef memcpy
+#undef memcpy
+#endif
+
+void *memcpy(void *dst, const void *src, size_t count)
+{
+	return CALL_FROM_OPS(memcpy, dst, src, count);
+}
+
+static void add_mem_to_mpool(uint64_t pglist_pfn)
+{
+	struct mpt in_mpt;
+	unsigned int i = 0U;
+	void *pglist_pa;
+	void *pmm_page = NULL;
+	uint64_t pfn;
+
+	if (!share_memory_to_hyp(pglist_pfn << ONE_PAGE_OFFSET, ONE_PAGE_SIZE))
+		return;
+
+	pglist_pa = (void *)(pglist_pfn << ONE_PAGE_OFFSET);
+	MOD_PUTS2("pglist_pa, pglist_pfn", pglist_pa, pglist_pfn);
+
+	pmm_page = (void *)mod_ops->hyp_va((phys_addr_t)pglist_pa);
+	memcpy(&in_mpt, pmm_page, sizeof(in_mpt));
+
+	/* donate mpool memory to hypervisor */
+	for (i = 0; i < in_mpt.mem_block_num; i++) {
+		pfn = (uint64_t)in_mpt.fmpt[i].smpt;
+		share_memory_to_hyp(pfn << ONE_PAGE_OFFSET,
+			(1 << in_mpt.fmpt[i].mem_order) * ONE_PAGE_SIZE);
+		hyp_mpool.fmpt[i].smpt = (void *)mod_ops->hyp_va(pfn << ONE_PAGE_OFFSET);
+		hyp_mpool.fmpt[i].mem_order = in_mpt.fmpt[i].mem_order;
+		MOD_PUTS2("pfn, size", pfn, (1 << in_mpt.fmpt[i].mem_order) * ONE_PAGE_SIZE);
+	}
+	/* mpool init */
+	iommu_map_mpool(NULL);
+
+	/* add memory into mpool */
+	for (i = 0; i < in_mpt.mem_block_num; i++) {
+		if (hyp_mpool.fmpt[i].smpt) {
+			mpool_add_chunk(&iommu_mpool,
+				hyp_mpool.fmpt[i].smpt,
+				(1 << hyp_mpool.fmpt[i].mem_order) * ONE_PAGE_SIZE);
+		}
+	}
+
+	create_lv2_pgtbl_info();
+}
+#endif
+
+#if (DEBUG_IOVA)
 static struct iova_info *iommu_tag_at(int idx)
 {
 	return (struct iova_info *)(iommu_info_rb.tags + (iommu_info_rb.ent_sz * idx));
@@ -275,6 +357,7 @@ void register_iova_debug_info(struct user_pt_regs *regs)
 
 static struct v7s_page *v7s_phys_to_page(phys_addr_t pa)
 {
+#if (ENABLE_MPOOL_IOMMU_PGTBL)
 	struct v7s_page *p;
 
 	hyp_spin_lock(&pgae_list_lock);
@@ -285,12 +368,31 @@ static struct v7s_page *v7s_phys_to_page(phys_addr_t pa)
 		}
 	}
 	hyp_spin_unlock(&pgae_list_lock);
+
 	return NULL;
+#else
+	struct v7s_page *pages = (struct v7s_page *)v7s_page_nodes;
+	u64 pfn;
+
+	pfn = ((u64)pa - page_pool_base) >> ARM_V7S_TABLE_SHIFT;
+
+	return &pages[pfn];
+#endif
 }
 
 static phys_addr_t v7s_page_to_phys(struct v7s_page *page)
 {
+#if (ENABLE_MPOOL_IOMMU_PGTBL)
 	return page->lv2_pa_start;
+#else
+	struct v7s_page *pages = (struct v7s_page *)v7s_page_nodes;
+	u64 pfn = page - pages;
+	phys_addr_t pa;
+
+	pa = page_pool_base + (pfn << ARM_V7S_TABLE_SHIFT);
+
+	return pa;
+#endif
 }
 
 static void dump_usage(void)
@@ -312,7 +414,9 @@ static struct v7s_page *alloc_v7s_page(void)
 	page = list_last_entry(&page_list, struct v7s_page, node);
 	list_del(&page->node);
 	avail_pages--;
+#if (ENABLE_MPOOL_IOMMU_PGTBL)
 	list_add_tail(&page->lv2_pgtbl_node, &inuse_page_list);
+#endif
 
 	dump_usage();
 out:
@@ -337,18 +441,6 @@ static struct v7s_page *zalloc_v7s_page(void)
 	return page;
 }
 
-static void list_remove_entry(struct v7s_page *page)
-{
-	struct v7s_page *p;
-
-	list_for_each_entry(p, &inuse_page_list, lv2_pgtbl_node) {
-		if (p->lv2_page_index == page->lv2_page_index) {
-			list_del(&p->lv2_pgtbl_node);
-			return;
-		}
-	}
-}
-
 static void free_v7s_page(struct v7s_page *page)
 {
 	WARN_ON(page == NULL);
@@ -356,7 +448,9 @@ static void free_v7s_page(struct v7s_page *page)
 	hyp_spin_lock(&pgae_list_lock);
 	list_add_tail(&page->node, &page_list);
 	avail_pages++;
+#if (ENABLE_MPOOL_IOMMU_PGTBL)
 	list_remove_entry(page);
+#endif
 
 	dump_usage();
 
@@ -369,6 +463,7 @@ void create_v7s_pages(u64 rmem_pa, u64 rmem_size)
 	struct v7s_page *pages = (struct v7s_page *)v7s_page_nodes;
 	u32 idx;
 	static int init_list;
+	uint32_t total_l2_pages = TOTAL_PAGES();
 
 #if (DEBUG_SHADOW_PAGE)
 	MOD_PUTS2("max pool mb_size page_nodes", MAX_PAGE_POOL_SZ_MB, MAX_PAGE_NODES);
@@ -380,9 +475,9 @@ void create_v7s_pages(u64 rmem_pa, u64 rmem_size)
 		init_list = 1;
 	}
 
-	mod_ops->memset((void *)pages, 0, sizeof(struct v7s_page) * nr_pages);
+	mod_ops->memset((void *)pages, 0, sizeof(struct v7s_page) * total_l2_pages);
 
-	for (idx = 0; idx < nr_pages; idx++)
+	for (idx = 0; idx < total_l2_pages; idx++)
 		list_add_tail(&pages[idx].node, &page_list);
 
 	total_pages += nr_pages;
@@ -393,9 +488,17 @@ void create_v7s_pages(u64 rmem_pa, u64 rmem_size)
 		nr_pages, total_pages, avail_pages, sizeof(struct v7s_page));
 #endif
 
-	iommu_assign_mpool(rmem_pa, rmem_size);
-	iommu_map_mpool(mod_ops->hyp_va(rmem_pa));
-	create_lv2_pgtbl_info();
+#if (ENABLE_MPOOL_IOMMU_PGTBL)
+	if (rmem_size == PAGE_SIZE) {
+		/* Page memory for iommu page table */
+		add_mem_to_mpool(rmem_pa);
+	} else {
+		/* CMA memory for iommu page table */
+		iommu_assign_mpool(rmem_pa, rmem_size);
+		iommu_map_mpool(mod_ops->hyp_va(rmem_pa));
+		create_lv2_pgtbl_info();
+	}
+#endif
 }
 
 static bool arm_v7s_pte_is_cont(arm_v7s_iopte pte, int lvl)

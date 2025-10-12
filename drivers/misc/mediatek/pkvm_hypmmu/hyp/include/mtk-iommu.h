@@ -9,9 +9,11 @@
 #include <asm/kvm_pkvm_module.h>
 
 #define IOVA_MATCH_NUM 0xBBFD
+#define IOMMU_DRIVER_MEM_PFN_MAX (100U)
 
 extern u64 page_pool_base;
 extern u64 page_pool_size;
+extern bool is_iommu_pgtbl_page_memory(void);
 
 struct iommu_info {
 	int ent_sz; /* size of tag entry (including tag info) */
@@ -26,6 +28,17 @@ struct iova_info {
 	u64 iova_start;
 	u64 iova_end;
 	bool iova_map;
+};
+
+struct fmpt {
+	u64 *smpt;
+	u64 mem_order;
+};
+
+struct mpt {
+	/* Memory used by IOMMU driver */
+	struct fmpt fmpt[IOMMU_DRIVER_MEM_PFN_MAX];
+	u32 mem_block_num;
 };
 
 bool mtkiommu_dabt_handler(struct user_pt_regs *regs, u64 esr, u64 addr);
