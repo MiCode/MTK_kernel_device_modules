@@ -1454,6 +1454,7 @@ static ssize_t dcs_mode_show(struct kobject *kobj,
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 					"T enable: %d (0:disable 1:enable 2:enable with log)\n",
 					dcs_get_dcs_stress());
+		dcs_debug();
 	} else {
 		pos += scnprintf(buf + pos, PAGE_SIZE - pos,
 					"DCS Policy is disabled\n");

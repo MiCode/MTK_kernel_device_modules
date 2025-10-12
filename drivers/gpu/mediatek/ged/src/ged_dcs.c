@@ -26,6 +26,7 @@ static unsigned int g_dcs_enable;
 static unsigned int g_dcs_init;
 static unsigned int g_dcs_support;
 static unsigned int g_dcs_opp_setting;
+static unsigned int g_dcs_opp_setting_org;
 static struct mutex g_DCS_lock;
 
 int g_cur_core_num;
@@ -62,6 +63,78 @@ struct gpufreq_core_mask_info *g_avail_mask_table;
 int (*ged_dvfs_set_gpu_core_mask_fp)(u64 core_mask) = NULL;
 EXPORT_SYMBOL(ged_dvfs_set_gpu_core_mask_fp);
 
+static int _count_valid_bits_num(unsigned int num)
+{
+	int count = 0;
+
+	while (num) {
+		count += num & 1;
+		num >>= 1;
+	}
+	return count;
+}
+
+static int _find_highest_bits(unsigned int num)
+{
+	int highest_bits = 0;
+
+	while (num) {
+		num >>= 1;
+		highest_bits++;
+	}
+	return highest_bits;
+}
+
+static void _dcs_init_core_mask_table_ex(void)
+{
+	int i = 0;
+	unsigned int index = 0;
+	unsigned int shader_present = 0;
+	int highest_bits = 0;
+	unsigned int highest_opp_bits = 0;
+
+	/* init core mask table */
+	shader_present = gpufreq_get_shader_present();
+	highest_bits = _find_highest_bits(shader_present);
+
+	if (highest_bits == 0) {
+		GED_LOGE("Failed to find shader_present bit %u(%d)", shader_present, highest_bits);
+		g_dcs_enable = 0;
+		return;
+	}
+
+	g_max_core_num = _count_valid_bits_num(shader_present);
+	g_cur_core_num = g_max_core_num;
+	g_core_mask_table = kcalloc(g_max_core_num,
+		sizeof(struct gpufreq_core_mask_info), GFP_KERNEL);
+
+	if (!g_core_mask_table) {
+		GED_LOGE("Failed to allocate g_core_mask_table");
+		g_dcs_enable = 0;
+		return;
+	}
+
+	for (i = highest_bits - 1; i >= 0; i--) {
+		if (shader_present & (1U << i) && index < g_max_core_num) {
+			g_core_mask_table[index].mask = shader_present & ((1U << (i + 1)) - 1);
+			g_core_mask_table[index].num = _count_valid_bits_num(g_core_mask_table[index].mask);
+			index++;
+		}
+	}
+
+	for (i = 0; i < g_max_core_num; i++) {
+		GED_LOGD("[%02d*] MC0%d : 0x%X",
+			i, g_core_mask_table[i].num, g_core_mask_table[i].mask);
+	}
+
+	highest_opp_bits = _find_highest_bits(g_dcs_opp_setting);
+	if (highest_opp_bits > g_max_core_num) {
+		g_dcs_opp_setting |= (1 << (g_max_core_num - 1));
+		g_dcs_opp_setting &= ((1U << g_max_core_num) - 1);
+	}
+}
+
+
 void ged_dvfs_set_gpu_core_mask(u64 core_mask)
 {
 	if (ged_dvfs_set_gpu_core_mask_fp != NULL) {
@@ -82,6 +155,14 @@ static void _dcs_init_core_mask_table(void)
 	g_max_core_num = gpufreq_get_core_num();
 	g_cur_core_num = g_max_core_num;
 	mask_table = gpufreq_get_core_mask_table();
+
+	if (mask_table) {
+		if (gpufreq_get_shader_present() != mask_table[0].mask) {
+			_dcs_init_core_mask_table_ex();
+			return;
+		}
+	}
+
 	g_core_mask_table = kcalloc(g_max_core_num,
 		sizeof(struct gpufreq_core_mask_info), GFP_KERNEL);
 
@@ -97,7 +178,7 @@ static void _dcs_init_core_mask_table(void)
 
 
 	for (i = 0; i < g_max_core_num; i++) {
-		GED_LOGD("[%02d*] MC0%d : 0x%llX",
+		GED_LOGD("[%02d*] MC0%d : 0x%X",
 			i, g_core_mask_table[i].num, g_core_mask_table[i].mask);
 	}
 
@@ -132,8 +213,6 @@ GED_ERROR ged_dcs_init_platform_info(void)
 	of_property_read_u32(dcs_node, "dcs-policy-support", &g_dcs_support);
 	of_property_read_u32(dcs_node, "virtual-opp-support", &g_dcs_opp_setting);
 
-	opp_setting = g_dcs_opp_setting;
-
 	if (!g_dcs_support) {
 		GED_LOGE("DCS policy not support");
 		return ret;
@@ -146,16 +225,21 @@ GED_ERROR ged_dcs_init_platform_info(void)
 		GED_LOGI("DCS repair opp setting %x", g_dcs_opp_setting);
 	}
 
+	g_dcs_enable = 1;
+	g_dcs_opp_setting_org = g_dcs_opp_setting;
+
+	_dcs_init_core_mask_table();
+
+	opp_setting = g_dcs_opp_setting;
+
+
 	while (opp_setting) {
 		g_avail_mask_num += opp_setting & 1;
 		opp_setting >>= 1;
 	}
-	g_dcs_enable = 1;
 
-	GED_LOGI("g_dcs_enable: %u,  g_dcs_opp_setting: 0x%X",
-			g_dcs_enable, g_dcs_opp_setting);
-
-	_dcs_init_core_mask_table();
+	GED_LOGI("g_dcs_support%u, g_dcs_enable: %u, g_dcs_opp_setting: 0x%X",
+			g_dcs_support, g_dcs_enable, g_dcs_opp_setting);
 
 	g_adjust_dcs_support = 1;
 	dcs_init_dts_with_eb();
@@ -523,6 +607,38 @@ void dcs_set_dcs_stress(int enable)
 			GED_LOGD("%s err:%d\n", __func__, ret);
 	}
 	mutex_unlock(&g_DCS_lock);
+}
+
+void dcs_debug(void)
+{
+	int i = 0;
+	struct gpufreq_core_mask_info *mask_table;
+
+	trace_GPU_DVFS__Policy__DCS(0, 0, 0, 0);
+	trace_GPU_DVFS__Policy__DCS(g_avail_mask_num, g_dcs_opp_setting,
+					g_dcs_opp_setting_org, g_lowpwr_mode);
+
+	mask_table = gpufreq_get_core_mask_table();
+	if (mask_table != NULL) {
+		trace_GPU_DVFS__Policy__DCS(1, 1, 1, 1);
+		for (i = 0; i < gpufreq_get_core_num(); i++)
+			trace_GPU_DVFS__Policy__DCS(i, mask_table[i].num,
+							mask_table[i].mask, g_lowpwr_mode);
+	}
+
+	if (g_core_mask_table != NULL) {
+		trace_GPU_DVFS__Policy__DCS(2, 2, 2, 2);
+		for (i = 0; i < g_max_core_num; i++)
+			trace_GPU_DVFS__Policy__DCS(i, g_core_mask_table[i].num,
+						g_core_mask_table[i].mask, g_lowpwr_mode);
+	}
+
+	if(g_avail_mask_table != NULL) {
+		trace_GPU_DVFS__Policy__DCS(3, 3, 3, 3);
+		for (i = 0; i < g_avail_mask_num; i++)
+			trace_GPU_DVFS__Policy__DCS(i, g_avail_mask_table[i].num,
+						g_avail_mask_table[i].mask, g_lowpwr_mode);
+	}
 }
 
 // dcs adjust reference
