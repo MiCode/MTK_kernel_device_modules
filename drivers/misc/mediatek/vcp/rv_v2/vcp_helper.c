@@ -865,6 +865,7 @@ uint32_t vcp_wait_ready_sync(void)
 		i += 5;
 		mdelay(5);
 		if (i > VCP_SYNC_TIMEOUT_MS) {
+			dump_vcp_irq_status();
 			vcp_dump_last_regs(1);
 			for (j = 0; j < NUM_FEATURE_ID; j++)
 				if (feature_table[j].enable)
