@@ -340,6 +340,14 @@
 		compatible = "mediatek,tfa_debug";
 	};
 
+	gpufreq_wrapper: gpufreq-wrapper {
+		compatible = "mediatek,gpufreq_wrapper";
+		gpufreq-version = <2>;
+		dual-buck = <0>;
+		gpueb-support = <0>;
+		gpufreq-bringup = <1>;
+	};
+
 	hcp: hcp@15001000 {
 		compatible = "mediatek,hcp8s_e";
 		reg = <0 0x15001000 0 0x4000>;
@@ -5045,6 +5053,33 @@
 				reg = <0 0x11f40000 0 0x400>;
 				#phy-cells = <1>;
 			};
+		};
+
+		gpufreq: gpufreq@3a000000 {
+			compatible = "mediatek,gpufreq";
+			reg =
+				<0 0x3a500000 0 0x10000>, /* MFG_TOP_CONFIG */
+				<0 0x3d1a0000 0 0x10000>, /* MFG_GPUEB_BUS_DBG_TRACKER */
+				<0 0x3d800000 0 0x10000>, /* MFG_RPC */
+				<0 0x3d810000 0 0x400>,   /* MFG_PLL_TOP_P0 */
+				<0 0x3d810400 0 0x400>,   /* MFG_PLL_TOP_P1 */
+				<0 0x3d860000 0 0x10000>, /* MFG_VCORE_AO_CFG */
+				<0 0x3d910000 0 0x10000>, /* MFG_VCORE_BUS_DBG_TRACKER */
+				<0 0x1c001000 0 0x1000>;  /* SLEEP */
+			reg-name =
+				"mfg_top_config",
+				"mfg_gpueb_bus_trk",
+				"mfg_rpc",
+				"mfg_pll_top_p0",
+				"mfg_pll_top_p1",
+				"mfg_vcore_ao_cfg",
+				"mfg_vcore_bus_trk",
+				"sleep";
+			interrupts =
+				<GIC_SPI 402 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names =
+				"BUS_TRACKER";
+			gpufreq-wrapper-supply = <&gpufreq_wrapper>;
 		};
 
 		u3fpgaphy: u3fpgaphy {
