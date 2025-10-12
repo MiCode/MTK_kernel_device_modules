@@ -2381,7 +2381,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 		/* also make sure buffer content flushed by other module */
 		if (task->buf.src.flush) {
 			mml_msg("%s flush source", __func__);
-			mml_trace_ex_begin("%s_flush_src", __func__);
+			mml_trace_ex_begin("%s_src", __func__);
 			mml_buf_flush(&task->buf.src);
 			mml_trace_ex_end();
 		}
@@ -2389,7 +2389,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 		if (cfg->info.dest[0].pq_config.en_region_pq &&
 		    task->buf.seg_map.flush) {
 			mml_msg("%s flush region pq source", __func__);
-			mml_trace_ex_begin("%s_flush_seg_map", __func__);
+			mml_trace_ex_begin("%s_seg_map", __func__);
 			mml_buf_flush(&task->buf.seg_map);
 			mml_trace_ex_end();
 		}
@@ -2398,7 +2398,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 			if (task->buf.dest[i].flush) {
 				mml_msg("%s flush dest %d plane %hhu",
 					__func__, i, task->buf.dest[i].cnt);
-				mml_trace_ex_begin("%s_flush_dst_%u", __func__, i);
+				mml_trace_ex_begin("%s_dst_%u", __func__, i);
 				mml_buf_flush(&task->buf.dest[i]);
 				mml_trace_ex_end();
 			}

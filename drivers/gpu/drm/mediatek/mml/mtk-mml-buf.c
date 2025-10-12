@@ -195,9 +195,12 @@ void mml_buf_flush(struct mml_file_buf *buf)
 				__func__, i);
 			continue;
 		}
+
+		mml_trace_begin("%s_%zu", __func__, buf->dma[i].dmabuf->size);
 		buf->dma[i].attach->dma_map_attrs &= ~DMA_ATTR_SKIP_CPU_SYNC;
 		dma_buf_end_cpu_access(buf->dma[i].dmabuf, DMA_TO_DEVICE);
 		buf->dma[i].attach->dma_map_attrs |= DMA_ATTR_SKIP_CPU_SYNC;
+		mml_trace_end();
 	}
 }
 
