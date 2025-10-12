@@ -167,6 +167,12 @@ enum mtu3_ep_slot_mode {
 	MTU3_EP_SLOT_MAX,
 };
 
+enum mtu3_req_status {
+	MTU3_REQ_STATUS_UNKNOWN = 0,
+	MTU3_REQ_STATUS_ENQUEUED,
+	MTU3_REQ_STATUS_COMPLETED,
+};
+
 enum mtu3_power_state {
 	MTU3_STATE_POWER_OFF = 0,
 	MTU3_STATE_POWER_ON,
@@ -494,6 +500,7 @@ struct mtu3_request {
 	struct mtu3 *mtu;
 	struct qmu_gpd *gpd;
 	int epnum;
+	int status;
 };
 
 static inline struct ssusb_mtk *dev_to_ssusb(struct device *dev)

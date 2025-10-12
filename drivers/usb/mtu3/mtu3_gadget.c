@@ -208,6 +208,8 @@ __acquires(mep->mtu->lock)
 	dev_dbg(mtu->dev, "%s complete req: %p, sts %d, %d/%d\n",
 		mep->name, req, req->status, req->actual, req->length);
 
+	mreq->status = MTU3_REQ_STATUS_COMPLETED;
+
 	spin_unlock(&mtu->lock);
 	usb_gadget_giveback_request(&mep->ep, req);
 	spin_lock(&mtu->lock);
@@ -444,6 +446,7 @@ struct usb_request *mtu3_alloc_request(struct usb_ep *ep, gfp_t gfp_flags)
 	mreq->request.dma = DMA_ADDR_INVALID;
 	mreq->epnum = mep->epnum;
 	mreq->mep = mep;
+	mreq->status = MTU3_REQ_STATUS_UNKNOWN;
 	INIT_LIST_HEAD(&mreq->list);
 	trace_mtu3_alloc_request(mreq);
 
@@ -490,6 +493,13 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 	if (!mreq || mreq->mep != mep)
 		return -EINVAL;
 
+	if (mreq->status == MTU3_REQ_STATUS_ENQUEUED) {
+		dev_info(mtu->dev, "req double add, %s %s EP%d(%s), req=%p, maxp=%d, len#%d\n",
+			__func__, mep->is_in ? "TX" : "RX", mreq->epnum, ep->name,
+		mreq, ep->maxpacket, mreq->request.length);
+		return -EINVAL;
+	}
+
 	dev_dbg(mtu->dev, "%s %s EP%d(%s), req=%p, maxp=%d, len#%d\n",
 		__func__, mep->is_in ? "TX" : "RX", mreq->epnum, ep->name,
 		mreq, ep->maxpacket, mreq->request.length);
@@ -535,6 +545,8 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 			mtu3_gadget_u2_lpm_lock(mtu, U2_LPM_LOCK_TIMEOUT);
 		}
 	}
+
+	mreq->status = MTU3_REQ_STATUS_ENQUEUED;
 
 	trace_mtu3_gadget_queue(mreq);
 	list_add_tail(&mreq->list, &mep->req_list);
