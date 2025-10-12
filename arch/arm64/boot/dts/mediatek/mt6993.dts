@@ -10979,8 +10979,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			clocks = <&dispsys1_config_clk MM1_DISP_GDMA0_DISP>;
 			mediatek,larb = <&smi_larb33 SMMU_L33_P2_DISP_GDMA0>;
 			mediatek,smi-id = <33>;
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L33_P2_DISP_GDMA0)
 					&mmqos SLAVE_COMMON(0)>;
@@ -11243,8 +11241,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			fifo-size-uv-3plane = <345>;
 			mediatek,larb = <&smi_larb33 SMMU_L33_P0_DISP_WDMA0>;
 			mediatek,smi-id = <33>;
-			mtk,smmu-shared = <&mm_smmu_disp>;
-			mtk,smmu-shared-sec = <&mm_smmu_svp_disp>;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L33_P0_DISP_WDMA0)
 					&mmqos SLAVE_COMMON(0)>,
