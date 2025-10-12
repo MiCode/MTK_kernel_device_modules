@@ -14,7 +14,7 @@
 
 #define CMDQ_IWC_MAX_ADDR_LIST_LENGTH (30)
 
-#define CMDQ_MAX_SECURE_CORE_COUNT	(2)
+
 #define CMDQ_MAX_SECURE_THREAD_COUNT	(5) // support executing secure task
 #define CMDQ_MIN_SECURE_THREAD_ID	(8)
 #define CMDQ_MAX_TASK_IN_THREAD_MAX	(10)

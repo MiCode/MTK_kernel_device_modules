@@ -4,6 +4,7 @@
  */
 #include <asm/kvm_pkvm_module.h>
 
+#define CMDQ_MAX_SECURE_CORE_COUNT	(2)
 /* TZMP sw token */
 #define CMDQ_SYNC_TOKEN_TZMP_ISC_WAIT			888
 #define CMDQ_SYNC_TOKEN_TZMP_ISC_SET			889
