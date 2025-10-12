@@ -69,21 +69,159 @@
 		/*TODO: check cpus node with Chip announcement wiki */
 		cpu0: cpu@0 {
 			device_type = "cpu";
-			compatible = "arm,cortex-aXX";
 			reg = <0x0000>;
 			enable-method = "psci";
+			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+			//				&system_vcore &s2idle>;
 		};
-
-		cpu-map {
-			cluster0 {
-				core0 {
-				};
-			};
-			cluster1 {
-				core0 {
-				};
-			};
-		};
+//		cpu1: cpu@1 {
+//			device_type = "cpu";
+//			reg = <0x0100>;
+//			enable-method = "psci";
+//			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+//			//				&system_vcore &s2idle>;
+//		};
+//		cpu2: cpu@2 {
+//			device_type = "cpu";
+//			reg = <0x0200>;
+//			enable-method = "psci";
+//			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+//			//				&system_vcore &s2idle>;
+//		};
+//		cpu3: cpu@3 {
+//			device_type = "cpu";
+//			reg = <0x0300>;
+//			enable-method = "psci";
+//			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
+//			//				&system_vcore &s2idle>;
+//		};
+//		cpu4: cpu@100 {
+//			device_type = "cpu";
+//			reg = <0x0400>;
+//			enable-method = "psci";
+//			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+//			//				&system_vcore &s2idle>;
+//		};
+//		cpu5: cpu@101 {
+//			device_type = "cpu";
+//			reg = <0x0500>;
+//			enable-method = "psci";
+//			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+//			//				&system_vcore &s2idle>;
+//		};
+//		cpu6: cpu@102 {
+//			device_type = "cpu";
+//			reg = <0x0600>;
+//			enable-method = "psci";
+//			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+//			//				&system_vcore &s2idle>;
+//		};
+//		cpu7: cpu@103 {
+//			device_type = "cpu";
+//			reg = <0x0700>;
+//			enable-method = "psci";
+//			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
+//			//				&system_vcore &s2idle>;
+//		};
+//
+//		cpu-map {
+//			cluster0 {
+//				core0 {
+//						cpu = <&cpu0>;
+//				};
+//				core1 {
+//						cpu = <&cpu1>;
+//				};
+//				core2 {
+//						cpu = <&cpu2>;
+//				};
+//				core3 {
+//						cpu = <&cpu3>;
+//				};
+//			};
+//			cluster1 {
+//				core0 {
+//						cpu = <&cpu4>;
+//				};
+//				core1 {
+//						cpu = <&cpu5>;
+//				};
+//				core2 {
+//						cpu = <&cpu6>;
+//				};
+//				core3 {
+//						cpu = <&cpu7>;
+//				};
+//			};
+//		};
+//
+//		idle-states {
+//			entry-method = "arm,psci";
+//			cpuoff_l: cpuoff-l {
+//				compatible = "arm,idle-state";
+//				arm,psci-suspend-param = <0x00010000>;
+//				local-timer-stop;
+//				entry-latency-us = <25>;
+//				exit-latency-us = <57>;
+//				min-residency-us = <5700>;
+//			};
+//			cpuoff_b: cpuoff-b {
+//				compatible = "arm,idle-state";
+//				arm,psci-suspend-param = <0x00010000>;
+//				local-timer-stop;
+//				entry-latency-us = <35>;
+//				exit-latency-us = <82>;
+//				min-residency-us = <1890>;
+//			};
+//			clusteroff_l: clusteroff-l {
+//				compatible = "arm,idle-state";
+//				arm,psci-suspend-param = <0x01010001>;
+//				local-timer-stop;
+//				entry-latency-us = <57>;
+//				exit-latency-us = <134>;
+//				min-residency-us = <5700>;
+//			};
+//			clusteroff_b: clusteroff-b {
+//				compatible = "arm,idle-state";
+//				arm,psci-suspend-param = <0x01010001>;
+//				local-timer-stop;
+//				entry-latency-us = <50>;
+//				exit-latency-us = <144>;
+//				min-residency-us = <2460>;
+//			};
+//			mcusysoff_l: mcusysoff-l {
+//				compatible = "arm,idle-state";
+//				arm,psci-suspend-param = <0x02010007>;
+//				local-timer-stop;
+//				entry-latency-us = <863>;
+//				exit-latency-us = <1237>;
+//				min-residency-us = <5700>;
+//			};
+//			mcusysoff_b: mcusysoff-b {
+//				compatible = "arm,idle-state";
+//				arm,psci-suspend-param = <0x01010001>;
+//				local-timer-stop;
+//				entry-latency-us = <648>;
+//				exit-latency-us = <1172>;
+//				min-residency-us = <4570>;
+//			};
+//			system_vcore: system-vcore {
+//				compatible = "arm,idle-state";
+//				arm,psci-suspend-param = <0x020100ff>;
+//				local-timer-stop;
+//				entry-latency-us = <2400>;
+//				exit-latency-us = <4800>;
+//				min-residency-us = <35200>;
+//			};
+//			s2idle: s2idle {
+//				compatible = "arm,idle-state";
+//				arm,psci-suspend-param = <0x020180ff>;
+//				local-timer-stop;
+//				entry-latency-us = <10000>;
+//				exit-latency-us = <10000>;
+//				min-residency-us = <4294967295>;
+//			};
+//		};
 	};
 
 	psci {
