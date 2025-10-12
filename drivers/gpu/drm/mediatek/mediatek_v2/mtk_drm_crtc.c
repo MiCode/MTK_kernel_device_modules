@@ -23198,9 +23198,10 @@ int mtk_drm_crtc_set_partial_update(struct drm_crtc *crtc,
 		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 
-	/* disable partial update if dal lye is exist */
-	if (mtk_drm_dal_enable() && partial_enable) {
-		DDPDBG("skip because dal lye is exist\n");
+	/* disable partial update if dal or tui lye is exist */
+	if ((mtk_drm_dal_enable() ||
+		mtk_crtc->crtc_blank == true) && partial_enable) {
+		DDPDBG("skip because dal or tui lye is exist\n");
 		partial_enable = MTK_PARTIAL_UPDATE_BIBO;
 	}
 
@@ -27973,13 +27974,11 @@ void mtk_crtc_tui_ovl_status(struct drm_crtc *crtc)
 		mtk_crtc->tui_ovl_stat.aid_setting = 0xB50;
 		mtk_crtc->tui_ovl_stat.cb_reg = 0xE80;
 		mtk_crtc->tui_ovl_stat.mutex_bit = BIT(5);
-		mtk_crtc->tui_ovl_stat.blender_id = DDP_COMPONENT_OVL0_BLENDER2;
 	} else if (priv->data->mmsys_id == MMSYS_MT6993) {
 		/* EXDMA5 */
 		mtk_crtc->tui_ovl_stat.aid_setting = 0xE5C;
 		mtk_crtc->tui_ovl_stat.cb_reg = 0xEF8;
 		mtk_crtc->tui_ovl_stat.mutex_bit = BIT(5);
-		mtk_crtc->tui_ovl_stat.blender_id = DDP_COMPONENT_OVL0_BLENDER2;
 	}
 }
 
@@ -28051,6 +28050,10 @@ int mtk_crtc_enter_tui(struct drm_crtc *crtc)
 	mtk_disp_esd_check_switch(crtc, 0);
 
 	mtk_drm_set_idlemgr(crtc, 0, 0);
+
+	if (priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6993)
+		mtk_crtc->tui_ovl_stat.blender_id = DDP_COMPONENT_OVL0_BLENDER2;
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_SPHRT))
 		hrt_idx = _layering_rule_get_hrt_idx(drm_crtc_index(crtc));
