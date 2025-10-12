@@ -90,13 +90,11 @@ static long aiste_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 static int aiste_open(struct inode *inodep, struct file *filep)
 {
-	aiste_drv_debug("%s(): Device has been opened\n", __func__);
 	return 0;
 }
 
 static int aiste_release(struct inode *inodep, struct file *filep)
 {
-	aiste_drv_debug("%s(): Device successfully closed\n", __func__);
 	return 0;
 }
 

@@ -35,8 +35,8 @@ int aiste_qos_init(void);
 int aiste_qos_deinit(void);
 uint64_t aiste_create_qos(void);
 int aiste_delete_qos(struct qos_entry *entry);
-int aiste_request_qos(struct qos_entry *entry, uint16_t ddr_boost, uint16_t cpu_boost,
-						uint16_t thread_count, pid_t *thread_set);
+int aiste_request_qos(struct qos_entry *entry, uint16_t new_ddr_boost, uint16_t new_cpu_boost,
+						uint16_t new_thread_count, pid_t *new_thread_set);
 struct qos_entry *validate_and_get_qos_entry(uint64_t qos_id);
 
 extern bool is_aiste_supported;

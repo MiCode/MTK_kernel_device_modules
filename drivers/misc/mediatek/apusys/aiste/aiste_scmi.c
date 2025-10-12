@@ -24,7 +24,7 @@ const struct DdrBoostConfig ddrBoostConfigs[] = {
 
 void aiste_scmi_init(unsigned int g_aiste_addr, unsigned int g_aiste_size)
 {
-	aiste_drv_debug("%s:addr=0x%x,size=0x%x\n", __func__, g_aiste_addr, g_aiste_size);
+	aiste_drv_debug("%s: addr=0x%x, size=0x%x\n", __func__, g_aiste_addr, g_aiste_size);
 	int err;
 
 	if ((g_aiste_addr > 0) && (g_aiste_size > 0)) {
@@ -56,7 +56,6 @@ void aiste_scmi_init(unsigned int g_aiste_addr, unsigned int g_aiste_size)
 			}
 		}
 	}
-	aiste_drv_debug("%s++\n", __func__);
 }
 
 int aiste_scmi_set(uint16_t ddr_boost)

@@ -14,7 +14,8 @@
 enum AISTE_DEBUG_MASK {
 	AISTE_DBG_DRV         = (1U << 0),
 	AISTE_DBG_QOS         = (1U << 1),
-	AISTE_DBG_ALL         = (1U << 2) - 1,
+	AISTE_DBG_THR         = (1U << 2),
+	AISTE_DBG_ALL         = (1U << 3) - 1,
 };
 
 extern u32 g_uclamp_min;
@@ -35,6 +36,7 @@ do {                                            \
 
 #define aiste_drv_debug(...) aiste_debug(AISTE_DBG_DRV, __VA_ARGS__)
 #define aiste_qos_debug(...) aiste_debug(AISTE_DBG_QOS, __VA_ARGS__)
+#define aiste_thr_debug(...) aiste_debug(AISTE_DBG_THR, __VA_ARGS__)
 
 int aiste_procfs_init(void);
 void aiste_procfs_remove(void);
