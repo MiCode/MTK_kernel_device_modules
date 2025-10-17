@@ -1,0 +1,9 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2024 MediaTek Inc.
+ * Author: KY Liu <ky.liu@mediatek.com>
+ */
+
+&clkitg {
+	status = "okay";
+};

@@ -1,0 +1,21 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# The 8250/16550 serial drivers.  You shouldn't be in this list unless
+# you somehow have an implicit or explicit dependency on SERIAL_8250.
+#
+
+config DEVICE_MODULES_SERIAL_8250_MT6577
+	tristate "Mediatek serial port support"
+	depends on SERIAL_8250
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	help
+	  If you have a Mediatek based board and want to use the
+	  serial port, say Y to this option. If unsure, say N.
+
+config MTK_NO_SUPPORT_UARTHUB
+	bool "Mediatek support uarthub"
+	help
+	  This config is used to control whether the project supports uarthub.
+	  The default value is n.If uarthub is not supported, please set this config.
+	  This config is specifically enabled for projects without uarthub.
+	  If the current project does not support uarthub, please enable this config.

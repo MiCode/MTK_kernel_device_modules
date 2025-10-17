@@ -1,0 +1,78 @@
+/* 9373 power start */
+&mt6373_vrf18_aif {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	regulator-always-on;
+};
+/* 9373 power end */
+
+/* GPIO IRTX start */
+&irtx_pwm {
+	pwm_ch = <0>;
+	pinctrl-names = "irtx_gpio_led_default", "irtx_gpio_led_set";
+	pinctrl-0 = <&irtx_gpio_led_default>;
+	pinctrl-1 = <&irtx_gpio_led_set>;
+	status = "okay";
+};
+
+/* psensor power start */
+&mt6373_vcn33_1 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+	regulator-always-on;
+};
+/* psensor power end */
+
+&pio {
+	/* IRTX GPIO Settings -Start */
+	/* default: GPIO0, output, high */
+	irtx_gpio_led_default:irtx_gpio_led_def@gpio110 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO110__FUNC_GPIO110>;
+			slew-rate = <1>;
+			bias-disable;
+			output-low;
+			input-schmitt-enable = <0>;
+		};
+	};
+	irtx_gpio_led_set:irtx_gpio_led_set@gpio110 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO110__FUNC_PWM_0>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+};
+/* GPIO IRTX end */
+
+&scp {
+	/* id, mbox, send_size*/
+	send-table =
+	< 0 0  11>,/* IPI_OUT_AUDIO_VOW_1 */
+	//<24 0  6>,/* IPI_OUT_SCP_MPOOL_1 */
+	<17 1  6>,/* IPI_OUT_LOGGER_CTRL */
+	<29 1 16>,/* IPI_OUT_SENSOR_CTRL */
+	<31 1  7>,/* IPI_OUT_SENSOR_NOTIFY */
+	< 4 2  1>,/* IPI_OUT_DVFS_SET_FREQ_0 */
+	< 5 2  2>,/* IPI_OUT_C_SLEEP_0 */
+	< 6 2  1>,/* IPI_OUT_TEST_0 */
+	//<11 2  6>,/* IPI_OUT_SCP_MPOOL_0 */
+	<33 2  16>,/* IPI_OUT_SCP_CONNSYS */
+	<54 2  4>,/* IPI_OUT_SCP_TP */
+	< 3 3  4>,/* IPI_OUT_APCCCI_0 */
+	<37 3  1>,/* IPI_OUT_SCP_AOD */
+	<26 3  9>,/* IPI_OUT_AUDIO_ULTRA_SND_0 */
+	<35 3  2>,/* IPI_OUT_C_SCP_HWVOTER_DEBUG */
+	<45 3  1>,/* IPI_OUT_SCP_PM_NOTIFY_0 */
+	<47 3  2>,/* IPI_PIN_HOST_SCP_CHRE */
+	<48 3  2>,/* IPI_PIN_SCP_HOST_CHRE */
+	<39 4  4>,/* IPI_OUT_AOV_SCP */
+	<43 4  4>,/* IPI_OUT_NPU_SCP */
+	<14 4  1>,/* IPI_OUT_DVFS_SET_FREQ_1 */
+	<15 4  2>,/* IPI_OUT_C_SLEEP_1 */
+	<16 4  1>,/* IPI_OUT_TEST_1 */
+	<18 4  2>,/* IPI_OUT_SCPCTL_1 */
+	<46 4  1>;/* IPI_OUT_SCP_PM_NOTIFY_1 */
+};
+
+
