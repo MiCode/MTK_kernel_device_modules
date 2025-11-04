@@ -2333,30 +2333,6 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_EXDMA_L0_CLIP], clip,
 			~0);
-
-		if (comp->bind_comp) { // need_to_think
-			if (pending->pq_loop_type == 2) {
-				if (priv->data->ovl_exdma_rule &&
-				    (comp->id == cmp_id || (mtk_crtc->is_dual_pipe &&
-				    (DUAL_MAPPING_LEFT_EXDMA(comp->id) == cmp_id)))
-				    && cmp_id < DDP_COMPONENT_ID_MAX) {
-					if (blender_need_align == 1)
-						cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
-							regs[OVL_EXDMA_L0_SRC_SIZE], pending->dst_roi + 1, ~0);
-					else
-						cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
-							regs[OVL_EXDMA_L0_SRC_SIZE], pending->dst_roi, ~0);
-				} else
-					cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
-						regs[OVL_EXDMA_L0_SRC_SIZE], pending->dst_roi, ~0);
-			} else
-				cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
-					regs[OVL_EXDMA_L0_SRC_SIZE], src_size, ~0);
-
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->bind_comp->regs_pa + regs[OVL_EXDMA_L0_CLIP], clip,
-				~0);
-		}
 	}
 }
 
@@ -2872,8 +2848,6 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 				comp->bind_comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, id),
 				(layer_src==LSRC_PQ)?0:layer_src,
 				REG_FLD_MASK(reg_fld[FLD_L0_LAYER_SRC]));
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->bind_comp->regs_pa + OVL_EXDMA_ELX_OFFSET(exdma, id), offset, ~0);
 		}
 
 		disp_reg_ovl_pitch = OVL_EXDMA_ELX_PITCH(exdma, id);
@@ -2920,8 +2894,6 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 				comp->bind_comp->regs_pa + regs[OVL_EXDMA_L0_EN],
 				(layer_src==LSRC_PQ)?0:layer_src,
 				REG_FLD_MASK(reg_fld[FLD_L0_LAYER_SRC]));
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->bind_comp->regs_pa + regs[OVL_EXDMA_L0_OFFSET], offset, ~0);
 		}
 
 		disp_reg_ovl_pitch = regs[OVL_EXDMA_L0_PITCH];
@@ -3542,24 +3514,6 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_EXDMA_L0_HDR_PITCH],
 			lx_hdr_pitch, ~0);
-
-		if (comp->bind_comp) {
-			if (pending->pq_loop_type == 2 &&
-			    (priv->data->ovl_exdma_rule &&
-			    (comp->id == cmp_id || (mtk_crtc->is_dual_pipe &&
-			    DUAL_MAPPING_LEFT_EXDMA(comp->id))) && cmp_id < DDP_COMPONENT_ID_MAX))
-				cmdq_pkt_write(handle, comp->cmdq_base, comp->bind_comp->regs_pa +
-					regs[OVL_EXDMA_L0_SRC_SIZE], pending->dst_roi, ~0);
-			else
-				cmdq_pkt_write(handle, comp->cmdq_base,
-					comp->bind_comp->regs_pa + regs[OVL_EXDMA_L0_SRC_SIZE], lx_src_size,
-					~0);
-
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->bind_comp->regs_pa + regs[OVL_EXDMA_L0_CLIP],
-				lx_clip, ~0);
-		}
-
 	}
 
 	return 0;
