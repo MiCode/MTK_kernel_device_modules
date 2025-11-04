@@ -2255,7 +2255,7 @@ DEFINE_PROC_ATTRIBUTE(m4u_debug_fops, m4u_debug_get, m4u_debug_set, "%llu\n");
 			name ## _proc_show,			\
 			pde_data(inode), file_size);		\
 	}							\
-	static const struct proc_ops name = {			\
+	static const struct proc_ops __maybe_unused name = {	\
 		.proc_open		= name ## _proc_open,	\
 		.proc_read		= seq_read,		\
 		.proc_lseek		= seq_lseek,		\
