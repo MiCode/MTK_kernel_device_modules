@@ -45,6 +45,7 @@
 #define SBE_FRAME_CAP_THREASHOLD_P 90
 #define SBE_FRAME_CAP_THREASHOLD 30
 #define SBE_FRAME_CAP_THREASHOLD_L 18
+#define SBE_LOADING_J_PERCENT 20
 #define SBE_BUFFER_FILTER_DROP_THREASHOLD 2
 #define SBE_BUFFER_FILTER_THREASHOLD 4
 #define SBE_RESCUE_MORE_THREASHOLD 5
@@ -96,6 +97,7 @@ static int sbe_force_bypass_dptv2;
 static int sbe_loading_threashold_l;
 static int sbe_loading_threashold_m;
 static int sbe_loading_threashold_h;
+static int sbe_loading_j_percent;
 static int sbe_affinity_task;
 static int sbe_affinity_task_min_cap;
 static int sbe_affinity_task_low_threshold_cap;
@@ -171,6 +173,7 @@ module_param(sbe_force_bypass_dptv2, int, 0644);
 module_param(sbe_loading_threashold_l, int, 0644);
 module_param(sbe_loading_threashold_m, int, 0644);
 module_param(sbe_loading_threashold_h, int, 0644);
+module_param(sbe_loading_j_percent, int, 0644);
 module_param(sbe_affinity_task, int, 0644);
 module_param(sbe_affinity_task_min_cap, int, 0644);
 module_param(sbe_affinity_task_low_threshold_cap, int, 0644);
@@ -257,6 +260,8 @@ int sbe_get_rescue_enhance(void)
 
 int sbe_get_render_loading(void)
 {
+	sbe_trace("[SBE]now loading is %d pid:%d\n",
+			global_sbe_render_loading, global_sbe_render_loading_pid);
 	return global_sbe_render_loading;
 }
 
@@ -832,6 +837,8 @@ void sbe_notify_ai_frame_hint(int frame_start, int capacity_area, struct sbe_ren
 
 void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid, unsigned long long ts)
 {
+	int peak_threshold = 0;
+
 	if (!thr)
 		return;
 
@@ -843,7 +850,11 @@ void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid,
 
 	sbe_set_per_task_cap(thr);
 
-	if (thr->peak_frame_count >= 15 && thr->loading_type != RENDER_LOADING_PEAK) {
+	peak_threshold = (int)div64_u64((u64)sbe_loading_j_percent * (u64)thr->target_fps, 100ULL);
+
+	if (thr->peak_frame_count >= peak_threshold
+				&& thr->loading_type != RENDER_LOADING_PEAK
+				&& thr->loading_detect) {
 		thr->peak_frame_count = 0;
 		thr->affinity_task_mask = SBE_PREFER_NONE;
 		thr->loading_type = RENDER_LOADING_PEAK;
@@ -879,11 +890,13 @@ void sbe_reset_frame_cap(struct sbe_render_info *thr)
 }
 
 void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
-		unsigned long long start_ts, unsigned long long end_ts)
+		unsigned long long start_ts, unsigned long long end_ts,
+		unsigned long long del_duration)
 {
 	long long runtime;
 	int targettime, targetfps;
 	unsigned long long loading = 0;
+	unsigned long long real_frame_time = 0;
 
 	if (!thr)
 		return;
@@ -899,6 +912,9 @@ void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 		goto EXIT;
 
 	thr->frame_time = end_ts - start_ts;
+	real_frame_time = thr->frame_time;
+	if (del_duration > 0)
+		real_frame_time = thr->frame_time - del_duration;
 
 	sbe_systrace_c(thr->pid, thr->buffer_id, targetfps, "[ux]target_fps");
 	sbe_systrace_c(thr->pid, thr->buffer_id, targettime, "[ux]target_time");
@@ -932,15 +948,19 @@ void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
 
 		//last is peak, but this frame is finish as well
 		if (thr->peak_frame_count > 0
-				&& thr->frame_time < thr->target_time)
+				&& real_frame_time < thr->target_time)
 			thr->peak_frame_count = 0;
 
 		if (thr->ux_blc_cur >= sbe_loading_threashold_h
-				&& thr->frame_time > thr->target_time)
+				&& real_frame_time > thr->target_time)
 			thr->peak_frame_count++;
 
-		if (thr->frame_time > thr->target_time)
+		if (real_frame_time > thr->target_time)
 			thr->jank_count++;
+
+		sbe_trace("[SBE]pid: %d, r_ftime:%llu, ftime:%llu, dur:%llu pF:%d jc:%d",
+				thr->pid, real_frame_time,thr->frame_time, del_duration,
+				thr->peak_frame_count, thr->jank_count);
 	}
 
 	if ((thr->pid != global_ux_max_pid && thr->ux_blc_next > global_ux_blc) ||
@@ -1489,7 +1509,7 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 
 			//drop 15 frame in 1 seconds, and refresh rate 120hz
 			//scroll duration > 800ms
-			if (jank_rate > 20 && scroll_dur_100U > 8000)
+			if (jank_rate > sbe_loading_j_percent && scroll_dur_100U > 8000)
 				p_score += loading_score;
 		}
 	}
@@ -1512,7 +1532,9 @@ int sbe_calculate_dy_enhance(struct sbe_render_info *thr)
 		h_score += loading_score;
 
 	//update render loading type
-	if (p_score >= loading_score)
+	if (!thr->loading_detect)
+		thr->loading_type = 0;
+	else if (p_score >= loading_score)
 		thr->loading_type = RENDER_LOADING_PEAK;
 	else if (h_score >= loading_score)
 		thr->loading_type = RENDER_LOADING_HIGH;
@@ -1731,7 +1753,7 @@ void sbe_ux_scrolling_end(unsigned long long ts, struct sbe_render_info *thr)
 	sbe_systrace_c(thr->pid, thr->buffer_id, thr->sbe_dy_enhance_f, "[ux]sbe_dy_enhance_f");
 	sbe_systrace_c(thr->pid, thr->buffer_id, 0, "[ux]sbe_dy_enhance_f");
 
-	if (thr->loading_type > 0
+	if (thr->loading_type > 0 && thr->loading_detect
 			&& ((thr->pid != global_sbe_render_loading_pid
 			&& thr->loading_type > global_sbe_render_loading)
 			|| thr->pid == global_sbe_render_loading_pid))
@@ -2651,6 +2673,7 @@ int __init sbe_cpu_ctrl_init(void)
 	sbe_ignore_vip_task_enable = 1;
 	sbe_ignore_vip_task_status = 0;
 	sbe_core_ctl_enable = 1;
+	sbe_loading_j_percent = SBE_LOADING_J_PERCENT;
 	sbe_without_dptv2_enable = 1;
 
 	ai_rescuing_frame_id = -1;

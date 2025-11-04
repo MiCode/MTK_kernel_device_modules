@@ -73,6 +73,7 @@ struct sbe_render_info {
 	int frame_count;
 	int frame_cap_count;
 	int dy_compute_rescue;
+	int loading_detect;
 	int user_request_affinity_mask;
 	int affinity_task_mask;
 	int affinity_task_mask_cnt;

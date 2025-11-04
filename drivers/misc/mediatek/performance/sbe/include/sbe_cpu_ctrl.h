@@ -59,7 +59,7 @@ extern unsigned int core_ctl_get_policy(void);
 
 void sbe_do_frame_start(struct sbe_render_info *thr, unsigned long long frameid, unsigned long long ts);
 void sbe_do_frame_end(struct sbe_render_info *thr, unsigned long long frameid,
-		unsigned long long start_ts, unsigned long long end_ts);
+		unsigned long long start_ts, unsigned long long end_ts, unsigned long long del_duration);
 void sbe_do_frame_err(struct sbe_render_info *thr, int frame_count,
 		unsigned long long frameID,unsigned long long ts);
 void sbe_ux_reset(struct sbe_render_info *thr);

@@ -223,6 +223,7 @@ static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 	unsigned long long t_dequeue_end   = 0;
 	unsigned long long t_enqueue_start = 0;
 	unsigned long long t_enqueue_end   = 0;
+	unsigned long long del_duration   = 0;
 
 	if (get_sbe_extra_sub_en_deque_enable()) {
 		fpsgo_render_info = vzalloc(sizeof(struct render_frame_info) * FPSGO_MAX_RENDER_INFO_SIZE);
@@ -258,9 +259,10 @@ static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 				frame_start_time, frame_end_time,
 				t_dequeue_start, t_dequeue_end,
 				t_enqueue_start, t_enqueue_end, 0);
-			sbe_trace("[SBE]:id:%llu,f_s:%llu,f_e:%llu,t_dq_s:%llu,t_dq_e:%llu,t_eq_s:%llu,t_eq_e:%llu\n",
+			sbe_trace("[SBE]:id:%llu,f_s:%llu,f_e:%llu,dq_s:%llu,dq_e:%llu,eq_s:%llu,eq_e:%llu\n",
 			frameid, frame_start_time, frame_end_time, t_dequeue_start,
 			t_dequeue_end, t_enqueue_start, t_enqueue_end);
+			del_duration = (t_dequeue_end - t_dequeue_start) + (t_enqueue_end - t_enqueue_start);
 		} else {
 			fpsgo_other2xgf_calculate_dep(f_render->pid, f_render->buffer_id,
 				&local_raw, &local_ema, &enq_running_time,
@@ -280,7 +282,7 @@ static void __sbe_receive_frame_end(struct sbe_render_info *f_render,
 
 	f_render->target_fps = sbe_get_display_rate();
 	f_render->target_time = div_u64(NSEC_PER_SEC, sbe_get_display_rate());
-	sbe_do_frame_end(f_render, frameid, frame_start_time, frame_end_time);
+	sbe_do_frame_end(f_render, frameid, frame_start_time, frame_end_time, del_duration);
 	// notify GPU target fps
 	ged_kpi_set_target_FPS_margin(f_render->buffer_id, f_render->target_fps,
 		0, 0, f_render->ema_running_time);
@@ -1145,6 +1147,9 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 			else
 				sbe_set_dptv2_policy(thr, start);
 		}
+		thr->loading_detect = 1;
+		if (test_bit(SBE_PAGE_NO_ACTIVITY, &mask))
+			thr->loading_detect = 0;
 
 		thr->user_request_affinity_mask = 0;
 		if (test_bit(SBE_REQUEST_AFFNITY_TASK, &mask))
