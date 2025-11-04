@@ -247,6 +247,7 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x6>;
 		clocks =
+			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>,
 			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C2_I2C>,
 			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C4_I2C>,
 			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C7_I2C>,

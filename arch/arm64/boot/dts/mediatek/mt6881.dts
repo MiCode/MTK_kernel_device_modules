@@ -603,7 +603,6 @@
 		//cam-vcore-supply = <&mt6363_vbuck1>
 
 		infra-infracfg-ao-reg-bus = <&infra_infracfg_ao_reg_clk>;
-		ufscfg-ao-bus = <&ufscfg_ao_clk>;
 		vlpcfg-reg-bus = <&vlpcfg_reg_bus>;
 	};
 
