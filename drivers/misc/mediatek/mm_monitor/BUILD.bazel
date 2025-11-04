@@ -14,6 +14,7 @@ filegroup(
 )
 
 PLATFORMS = [
+    "mt6881",
     "mt6858",
     "mt6789",
     "mt6855",
@@ -39,6 +40,7 @@ define_mgk_ddk_ko(
     ko_deps = [
         "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
     ] +
+    ([":mm-monitor-platform-mt6881"] if glob(["mm-monitor-platform-mt6881.c"]) else []) +
     ([":mm-monitor-platform-mt6858"] if glob(["mm-monitor-platform-mt6858.c"]) else []) +
     ([":mm-monitor-platform-mt6789"] if glob(["mm-monitor-platform-mt6789.c"]) else []) +
     ([":mm-monitor-platform-mt6855"] if glob(["mm-monitor-platform-mt6855.c"]) else []) +
