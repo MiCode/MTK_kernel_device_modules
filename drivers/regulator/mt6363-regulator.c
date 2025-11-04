@@ -290,12 +290,16 @@ static const unsigned int ldo_volt_table5[] = {
 
 static int mt6363_buck_enable(struct regulator_dev *rdev)
 {
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
+		return 0;
 	return regmap_write(rdev->regmap, rdev->desc->enable_reg + SET_OFFSET,
 			    rdev->desc->enable_mask);
 }
 
 static int mt6363_buck_disable(struct regulator_dev *rdev)
 {
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
+		return 0;
 	return regmap_write(rdev->regmap, rdev->desc->enable_reg + CLR_OFFSET,
 			    rdev->desc->enable_mask);
 }

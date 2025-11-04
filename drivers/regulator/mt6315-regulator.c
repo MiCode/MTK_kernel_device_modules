@@ -67,12 +67,12 @@ struct mt6315_chip {
 		.of_map_mode = mt6315_map_mode,		\
 	},						\
 	.da_vsel_reg = MT6315_VBUCK##_bid##_DBG0,	\
-	.da_reg = MT6315_VBUCK##_bid##_DBG4,	\
+	.da_reg = MT6315_VBUCK##_bid##_DBG4,		\
 	.qi = BIT(0),					\
 	.lp_mode_reg = MT6315_BUCK_TOP_CON1,		\
 	.lp_mode_mask = BIT(_bid - 1),			\
 	.lp_mode_shift = _bid - 1,			\
-	.modeset_reg = MT6315_BUCK_TOP_4PHASE_ANA_CON42,	\
+	.modeset_reg = MT6315_BUCK_TOP_4PHASE_ANA_CON42,\
 	.modeset_mask = _modeset_mask,			\
 }
 
@@ -82,12 +82,16 @@ static const struct linear_range mt_volt_range1[] = {
 
 static int mt6315_regulator_enable(struct regulator_dev *rdev)
 {
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
+		return 0;
 	return regmap_write(rdev->regmap, rdev->desc->enable_reg + SET_OFFSET,
 			    rdev->desc->enable_mask);
 }
 
 static int mt6315_regulator_disable(struct regulator_dev *rdev)
 {
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
+		return 0;
 	return regmap_write(rdev->regmap, rdev->desc->enable_reg + CLR_OFFSET,
 			    rdev->desc->enable_mask);
 }
