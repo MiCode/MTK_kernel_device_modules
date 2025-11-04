@@ -372,6 +372,15 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 				return;
 			}
 		}
+	} else {
+		if (keep_first_layer) {
+			if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
+				(comp->mtk_crtc->is_dual_pipe && (comp->id == DDP_COMPONENT_OVL1_BLENDER0 ||
+				comp->id == DDP_COMPONENT_OVL1_BLENDER1))) {
+				DDPDBG("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
+				return;
+			}
+		}
 	}
 	/**
 	 * cmdq_pkt_write(handle, comp->cmdq_base,
