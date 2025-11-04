@@ -22,6 +22,7 @@ struct afe_memory {
 	unsigned char *vir_addr;
 	unsigned int size;
 	u32 type;
+	bool is_rsv;
 	struct list_head list;
 };
 
@@ -155,6 +156,7 @@ static void *afe_alloc_dyn(struct uo_provider *itself,
 		vir = (unsigned char *)ioremap_wc(audio_mem->phys_addr, size);
 		afe->vir_addr = vir;
 		afe->size = size;
+		afe->is_rsv = false;
 		USB_OFFLOAD_MEM_DBG("[%s] allocate [afe:%p virt:%p phys:0x%llx size:%d]\n",
 			afe_get_name(), afe, afe->vir_addr, afe->phys_addr, afe->size);
 		return afe->vir_addr;
@@ -163,6 +165,76 @@ static void *afe_alloc_dyn(struct uo_provider *itself,
 
 allocate_fail:
 	afe_free_dyn(itself, audio_mem->phys_addr);
+	return NULL;
+}
+
+static int afe_free_rsv(struct uo_provider *itself, dma_addr_t addr)
+{
+	struct afe_memory *afe;
+
+	afe = find_afe_memory(addr);
+	if (!afe) {
+		USB_OFFLOAD_ERR("[%s] fail to find afe (phys:0x%llx)\n", afe_get_name(), addr);
+		return -EINVAL;
+	}
+
+	if (!afe->is_rsv)
+		return -EINVAL;
+
+	USB_OFFLOAD_MEM_DBG("[%s] free [afe:%p virt:%p phys:0x%llx size:%d]\n",
+		afe_get_name(), afe, afe->vir_addr, afe->phys_addr, afe->size);
+	iounmap((void *)afe->vir_addr);
+	remove_afe_memory(addr);
+
+	return 0;
+}
+
+static void *afe_alloc_rsv(struct uo_provider *itself,
+	dma_addr_t *phys_addr, unsigned int size, int align)
+{
+	struct mtk_audio_usb_mem *audio_mem;
+	struct afe_memory *afe;
+	void *vir;
+	u32 type;
+
+	if (!afe_intf || !afe_intf->ops->get_rsv_basic_sram)
+		return NULL;
+
+	audio_mem = afe_intf->ops->get_rsv_basic_sram();
+	if (!audio_mem) {
+		USB_OFFLOAD_ERR("[%s] not support reserve\n", afe_get_name());
+		return NULL;
+	}
+
+	if (size != audio_mem->size) {
+		USB_OFFLOAD_ERR("[%s] reserve size is not match, expect %d, actual %d\n",
+			afe_get_name(), size, audio_mem->size);
+		return NULL;
+	}
+
+	type = audio_mem->type;
+	if (!allow_type[type]) {
+		USB_OFFLOAD_ERR("[%s] invalid type:%d\n", afe_get_name(), type);
+		goto allocate_fail;
+	}
+
+	afe = new_afe_memory(audio_mem->phys_addr, audio_mem->type);
+	if (!afe) {
+		USB_OFFLOAD_ERR("[%s] fail creating afe\n", afe_get_name());
+		goto allocate_fail;
+	}
+
+	*phys_addr = audio_mem->phys_addr;
+	vir = (unsigned char *)ioremap_wc(audio_mem->phys_addr, size);
+	afe->vir_addr = vir;
+	afe->size = size;
+	afe->is_rsv = true;
+	USB_OFFLOAD_MEM_DBG("[%s] allocate [afe:%p virt:%p phys:0x%llx size:%d]\n",
+			afe_get_name(), afe, afe->vir_addr, afe->phys_addr, afe->size);
+	return afe->vir_addr;
+
+allocate_fail:
+	afe_free_rsv(itself, audio_mem->phys_addr);
 	return NULL;
 }
 
@@ -193,11 +265,14 @@ static int afe_init_rsv(struct uo_provider *itself, unsigned int size, int min_o
 	if (rsv_region->is_valid)
 		return 0;
 
-	vir = afe_alloc_dyn(itself, &phy_addr, size, -1);
+	vir = afe_alloc_rsv(itself, &phy_addr, size, -1);
 	if (!vir) {
-		USB_OFFLOAD_ERR("[%s] fail allocate rsv_region\n", afe_get_name());
-		ret = -ENOMEM;
-		goto allocate_fail;
+		vir = afe_alloc_dyn(itself, &phy_addr, size, -1);
+		if (!vir) {
+			USB_OFFLOAD_ERR("[%s] fail allocate rsv_region\n", afe_get_name());
+			ret = -ENOMEM;
+			goto allocate_fail;
+		}
 	}
 
 	rsv_region->physical = phy_addr;
@@ -221,9 +296,12 @@ static int afe_deinit_rsv(struct uo_provider *itself)
 	struct uo_rsv_region *rsv_region = &itself->rsv_region;
 	int ret = 0;
 
-	ret = afe_free_dyn(itself, rsv_region->physical);
-	if (ret)
-		goto error;
+	ret = afe_free_rsv(itself, rsv_region->physical);
+	if (ret) {
+		ret = afe_free_dyn(itself, rsv_region->physical);
+		if (ret)
+			goto error;
+	}
 
 	uo_deinit_rsv_pool(itself);
 	uo_rst_rsv_region(rsv_region);

@@ -615,8 +615,8 @@ static int start_dsp(struct hid_ep_info *hid)
 	urb_size = (unsigned int)hid->urb->transfer_buffer_length;
 	hid->buf_payload = uob_get_empty(UO_STRUCT_URB);
 	if (unlikely(!hid->buf_payload) ||
-		mtk_offload_alloc_mem(hid->buf_payload, urb_size, USB_OFFLOAD_TRB_SEGMENT_SIZE,
-			usb_offload_mem_type_lp(), UO_STRUCT_URB, false) < 0) {
+		mtk_offload_alloc_mem(hid->buf_payload, urb_size, 64,
+			usb_offload_mem_type_lp(), UO_STRUCT_URB, true) < 0) {
 		uo_mbrain_update(UO_PHASE_HID_START, UO_ERROR_ALLOC_URB_FAIL);
 		return -ENOMEM;
 	}
@@ -748,7 +748,7 @@ static void hid_unlock(struct hid_ep_info *hid, const char *tag)
 
 static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum uo_provider_type id)
 {
-	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, id, true);
+	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, id, false);
 }
 
 static struct xhci_ring *xhci_get_hid_tr_ring(struct hid_ep_info *hid)
