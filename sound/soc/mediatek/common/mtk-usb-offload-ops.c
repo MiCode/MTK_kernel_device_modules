@@ -14,7 +14,7 @@
 #include "mtk-sram-manager.h"
 
 //Basic + DL & UL
-#define MAX_ALLOCATED_AFE_SRAM_COUNT 3
+#define MAX_ALLOCATED_AFE_SRAM_COUNT 4
 
 unsigned int audio_usb_offload_log;
 module_param(audio_usb_offload_log, uint, 0644);
