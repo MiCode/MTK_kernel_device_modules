@@ -22714,7 +22714,10 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0],
 			cmdq_handle, mtk_crtc->gce_obj.base);
 	}
-
+	if(!mtk_crtc_is_frame_trigger_mode(crtc)) {
+		if (!is_from_dal || !mtk_crtc->skip_frame)
+			mtk_crtc_dbi_count_cfg(mtk_crtc, state, cmdq_handle);
+	}
 	/* if gce flush is form dal_show, we do not update and disconnect WDMA */
 	/* because WDMA addon path is not connected */
 	if (cb_data == cmdq_handle)

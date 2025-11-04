@@ -1644,7 +1644,7 @@ static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 	}
 
 	// single trigger
-	if(dbi_count->data->use_slot_trigger)
+	if(dbi_count->data->use_slot_trigger && mtk_crtc_is_frame_trigger_mode(&comp->mtk_crtc->base))
 		cmdq_pkt_write(handle, comp->mtk_crtc->gce_obj.base,
 			mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
 			DISP_SLOT_DBI_COUNT_SW_TRIGGER), 1, ~0);
