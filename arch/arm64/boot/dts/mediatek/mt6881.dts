@@ -7814,6 +7814,36 @@
 			interrupt-lbc-sz = <0x80000>;
 		};
 
+		apusys-apummu {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek,rv-apummu-mt6881";
+			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+			iommus = <&apu_iommu0 M4U_PORT_L50_APU_CODE>;
+		};
+
+		mtk_apu_mem_data: mtk-apu-mem-data {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek, apu_mem_data";
+			status = "okay";
+			type = <2>;
+			mask = /bits/ 64 <0x00000003ffffffff>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
+			iommus = <&apu_iommu0 M4U_PORT_L50_APU_CODE>;
+		};
+
+		mtk_apu_mem_code: mtk-apu-mem-code {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek, apu_mem_code";
+			status = "okay";
+			type = <1>;
+			mask = /bits/ 64 <0x00000003ffffffff>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+			iommus = <&apu_iommu0 M4U_PORT_L50_APU_CODE>;
+		};
+
 		mali: mali@48000000 {
 			compatible = "mediatek,mali", "arm,mali-valhall";
 			reg = <0 0x48000000 0 0x480000>;
