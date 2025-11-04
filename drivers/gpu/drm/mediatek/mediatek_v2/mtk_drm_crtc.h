@@ -1187,6 +1187,7 @@ struct mtk_vblank_config_node {
 struct mtk_tui_ovl_stat {
 	unsigned int aid_setting;
 	unsigned int cb_reg;
+	unsigned int bld_cb_reg;
 	unsigned int mutex_bit;
 	unsigned int blender_id;
 };

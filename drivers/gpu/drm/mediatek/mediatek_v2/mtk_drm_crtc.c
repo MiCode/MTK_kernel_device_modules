@@ -28131,6 +28131,7 @@ void mtk_crtc_tui_ovl_status(struct drm_crtc *crtc)
 		/* EXDMA5 */
 		mtk_crtc->tui_ovl_stat.aid_setting = 0xE5C;
 		mtk_crtc->tui_ovl_stat.cb_reg = 0xEF8;
+		mtk_crtc->tui_ovl_stat.bld_cb_reg = 0xF48;
 		mtk_crtc->tui_ovl_stat.mutex_bit = BIT(5);
 	}
 }
@@ -28177,6 +28178,30 @@ void mtk_crtc_axuser_control(struct drm_crtc *crtc, int tui_control)
 		else
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 					config_regs_pa + addr, 0, ~0);
+
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+	}
+}
+
+void mtk_crtc_tui_exit_blender_reset(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct cmdq_pkt *cmdq_handle;
+	resource_size_t config_regs_pa;
+	unsigned int bld_addr;
+
+	if (priv->data->mmsys_id == MMSYS_MT6993) {
+		if (mtk_crtc->last_blender == priv->ddp_comp[mtk_crtc->tui_ovl_stat.blender_id])
+			mtk_crtc->last_blender = mtk_crtc->first_blender;
+		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+					mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		bld_addr = mtk_crtc->tui_ovl_stat.bld_cb_reg;
+		config_regs_pa = mtk_crtc->ovlsys0_regs_pa;
+
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				config_regs_pa + bld_addr, 0, ~0);
 
 		cmdq_pkt_flush(cmdq_handle);
 		cmdq_pkt_destroy(cmdq_handle);
@@ -28386,6 +28411,7 @@ int mtk_crtc_exit_tui(struct drm_crtc *crtc)
 		cmdq_pkt_destroy(cmdq_handle2);
 	}
 
+	mtk_crtc_tui_exit_blender_reset(crtc);
 	mtk_crtc->crtc_blank = false;
 
 	atomic_set(&priv->rollback_all, 0);
