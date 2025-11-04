@@ -46,18 +46,6 @@ static int __init pkvm_tmem_nvhe_init(void)
 	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_TMEM_REGION_UNPROTECT,
 				ret, 0, 0, 0, 0, &res);
 
-	ret = pkvm_register_el2_mod_call(__kvm_nvhe_hyp_page_protect, token);
-	if (ret < 0)
-		return ret;
-	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_TMEM_PAGE_PROTECT,
-				ret, 0, 0, 0, 0, &res);
-
-	ret = pkvm_register_el2_mod_call(__kvm_nvhe_hyp_page_unprotect, token);
-	if (ret < 0)
-		return ret;
-	arm_smccc_1_1_smc(SMC_ID_MTK_PKVM_ADD_HVC, SMC_ID_MTK_PKVM_TMEM_PAGE_UNPROTECT,
-				ret, 0, 0, 0, 0, &res);
-
 	return 0;
 }
 module_init(pkvm_tmem_nvhe_init);

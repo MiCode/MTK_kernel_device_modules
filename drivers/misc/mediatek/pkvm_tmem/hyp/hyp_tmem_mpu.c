@@ -8,7 +8,6 @@
 
 #include <include/export.h>
 #include "hyp_tmem_mpu.h"
-#include "hyp_pmm.h"
 
 #ifdef memset
 #undef memset

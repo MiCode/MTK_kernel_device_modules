@@ -15,8 +15,6 @@ package(
 define_mgk_ddk_library(
     name = "hyp",
     srcs = [
-      "hyp_pmm.c",
-      "hyp_pmm.h",
       "hyp_tmem_mpu.c",
       "hyp_tmem_mpu.h",
       "pkvm_tmem_hyp.c",
