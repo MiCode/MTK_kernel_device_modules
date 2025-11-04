@@ -939,12 +939,14 @@ int scp_pll_ctrl_set(unsigned int pll_ctrl_flag, unsigned int pll_sel)
 /****************************
  * show SCP ips
  *****************************/
+#define IPI_RETRY_MAX 5
 static int mt_scp_ips_proc_show(struct seq_file *m, void *v)
 {
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 	struct ipi_tx_data_t ipi_data;
 	unsigned int *scp_ack_data = NULL;
 	int ret;
+	int retry = 0;
 
 	if (!g_dvfs_dev.ips_support)
 		goto IPS_NOT_SUPPORT;
@@ -953,17 +955,22 @@ static int mt_scp_ips_proc_show(struct seq_file *m, void *v)
 		slp_ipi_init();
 
 	ipi_data.arg1 = SCP_SLEEP_IPS_GET;
-	ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
-		IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 100);
-	scp_ack_data = &scp_ipi_ackdata0;
-	if (ret != IPI_ACTION_DONE) {
-		pr_notice("[%s] ipi send failed with error: %d\n",
-			__func__, ret);
-		return -ESCP_DVFS_IPI_FAILED;
-	}
-	seq_printf(m, "scp_ips: %u\n", *scp_ack_data);
+	for (retry = 0; retry < IPI_RETRY_MAX; retry++) {
+		ret = mtk_ipi_send_compl(&scp_ipidev, IPI_OUT_C_SLEEP_0,
+			IPI_SEND_WAIT, &ipi_data, PIN_OUT_C_SIZE_SLEEP_0, 100);
+		scp_ack_data = &scp_ipi_ackdata0;
+		if (ret == IPI_ACTION_DONE) {
+			pr_notice("[%s] ipi send success after %d retries\n", __func__, retry);
+			seq_printf(m, "scp_ips: %u\n", *scp_ack_data);
+			return 0;
+		}
 
-	return 0;
+		pr_notice("[%s] ipi send failed, retry count: %d, error: %d\n",
+			__func__, retry + 1, ret);
+	}
+
+	pr_notice("[%s] ipi send failed after %d retries, abort!\n", __func__, IPI_RETRY_MAX);
+	return -ESCP_DVFS_IPI_FAILED;
 IPS_NOT_SUPPORT:
 #endif
 	seq_puts(m, "scp_ips: off\n");
