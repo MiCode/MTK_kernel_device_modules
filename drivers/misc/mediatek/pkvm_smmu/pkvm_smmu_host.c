@@ -777,13 +777,8 @@ unsigned long smmu_mpool_mem_allocate(struct mpt *mpt,
 static int mtk_kvm_arm_smmu_v3_init(void)
 {
 	int ret;
-	struct kvm_hyp_memcache atomic_mc = {};
+	struct kvm_hyp_memcache atomic_mc = {0};
 
-	ret = topup_hyp_memcache(&atomic_mc, 100, 0);
-	if (ret) {
-		pr_info("topup_hyp_memcache failed ret=%d\n", ret);
-		return ret;
-	}
 	ret = kvm_iommu_init_hyp(ksym_ref_addr_nvhe(smmu_ops), &atomic_mc);
 	if (ret) {
 		pr_info("kvm_iommu_init_hyp ret=%d\n", ret);

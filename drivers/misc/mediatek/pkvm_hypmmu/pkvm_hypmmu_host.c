@@ -115,13 +115,7 @@ static int load_hypmmu_el2_mod(void)
 static int kvm_init_driver(void)
 {
 	int ret;
-	struct kvm_hyp_memcache atomic_mc = {};
-
-	ret = topup_hyp_memcache(&atomic_mc, 100, 0);
-	if (ret) {
-		pr_info("topup_hyp_memcache failed ret=%d\n", ret);
-		return ret;
-	}
+	struct kvm_hyp_memcache atomic_mc = {0};
 
 	ret = kvm_iommu_init_hyp(ksym_ref_addr_nvhe(hypmmu_ops), &atomic_mc);
 	if (ret) {
