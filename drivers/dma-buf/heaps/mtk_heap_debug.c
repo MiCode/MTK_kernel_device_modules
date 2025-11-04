@@ -16,6 +16,7 @@
 #include <linux/dma-heap.h>
 #include <linux/err.h>
 #include <linux/highmem.h>
+#include <linux/kmemleak.h>
 #include <linux/mm.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
@@ -339,6 +340,7 @@ static struct kprobe_pid_info *kp_pid_info_find(int pid, int add)
 	if (!pid_info)
 		return NULL;
 
+	kmemleak_not_leak(pid_info);
 	pid_info->pid = pid;
 	pid_info->ino_root = RB_ROOT;
 	rb_link_node(&pid_info->node, rb, ppn);
@@ -372,6 +374,7 @@ static struct kprobe_pid_ino *kp_pid_ino_find(struct kprobe_pid_info *pid_info, 
 	if (!pid_ino)
 		return NULL;
 
+	kmemleak_not_leak(pid_ino);
 	pid_ino->ino = ino;
 	pid_ino->pid_info = pid_info;
 	rb_link_node(&pid_ino->node, rb, ppn);
@@ -1220,6 +1223,7 @@ dmabuf_rbtree_dbg_add_return(struct dump_fd_data *fd_data, const struct dma_buf 
 		return ERR_PTR(-ENOMEM);
 	}
 
+	kmemleak_not_leak(dbg_node);
 	dbg_node->dmabuf = dmabuf;
 	dbg_node->inode = ino;
 	spin_lock_init(&dbg_node->splock);
