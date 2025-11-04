@@ -714,8 +714,10 @@ out:
 
 int logger_v2_remove_procfs(struct platform_device *pdev)
 {
-	flush_workqueue(apusys_mblog_wq);
-	destroy_workqueue(apusys_mblog_wq);
+	if (apusys_mblog_wq) {
+		flush_workqueue(apusys_mblog_wq);
+		destroy_workqueue(apusys_mblog_wq);
+	}
 
 	remove_proc_entry("log", proc_root);
 	remove_proc_entry("attr", proc_root);
