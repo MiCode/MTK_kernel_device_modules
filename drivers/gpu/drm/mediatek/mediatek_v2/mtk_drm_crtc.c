@@ -3275,6 +3275,11 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 		state->rsz_dst_roi = old_state->rsz_dst_roi;
 		state->ovl_partial_dirty= old_state->ovl_partial_dirty;
 		state->ovl_partial_roi = old_state->ovl_partial_roi;
+		state->mml_src_roi[0] = old_state->mml_src_roi[0];
+		state->mml_src_roi[1] = old_state->mml_src_roi[1];
+		state->mml_dst_roi = old_state->mml_dst_roi;
+		state->mml_dst_roi_dual[0] = old_state->mml_dst_roi_dual[0];
+		state->mml_dst_roi_dual[1] = old_state->mml_dst_roi_dual[1];
 
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_PROP_INHERITANCE) &&
 			!debug_drm_prop_force_reset) {
@@ -7257,7 +7262,7 @@ static void _mtk_crtc_lye_addon_module_connect(
 	int pipe;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
-	DDPINFO("%s +\n", __func__);
+	DDPINFO("%s crtc->state[%p]+\n", __func__, crtc->state);
 	if (lye_state->rpo_lye ||
 		priv->data->mmsys_id == MMSYS_MT6768 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
