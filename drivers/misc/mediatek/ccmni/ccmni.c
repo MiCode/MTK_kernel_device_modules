@@ -125,7 +125,6 @@ static struct ctl_table tcp_pacing_table[] = {
 		.mode		= 0644,
 		.proc_handler	= proc_dointvec_minmax,
 	},
-	{}
 };
 
 static int ccmni_rx_callback(unsigned int ccmni_idx, struct sk_buff *skb,
