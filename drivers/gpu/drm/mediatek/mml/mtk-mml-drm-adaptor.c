@@ -195,8 +195,7 @@ bool mml_drm_query_hw_support(struct mml_frame_info *info)
 	}
 
 	src->format = format_drm_to_mml(src->format, src->modifier);
-	if (src->modifier && src->modifier != MML_AFBC &&
-	    !MML_FMT_AFBC(src->format)) {
+	if (src->modifier && (src->modifier != MML_AFBC || !MML_FMT_AFBC(src->format))) {
 		mml_err("[drm]invalid src modifier %#010llx, format %#x",
 			src->modifier, src->format);
 		goto not_support;
@@ -280,8 +279,8 @@ bool mml_drm_query_hw_support(struct mml_frame_info *info)
 		}
 
 		dest->data.format = format_drm_to_mml(dest->data.format, dest->data.modifier);
-		if (dest->data.modifier && dest->data.modifier != MML_AFBC &&
-		    !MML_FMT_AFBC(dest->data.format)) {
+		if (dest->data.modifier
+		    && (dest->data.modifier != MML_AFBC || !MML_FMT_AFBC(dest->data.format))) {
 			mml_err("[drm]invalid dest modifier %#010llx, format %#x",
 				dest->data.modifier, dest->data.format);
 			goto not_support;
