@@ -27,7 +27,7 @@ void mtk_emidbg_dump(void)
 	arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIDBG_DUMP,
 		0, 0, 0, 0, 0, 0, &smc_res);
 
-	while (smc_res.a0 > 0) {
+	while ((long)(smc_res.a0) > 0) {//if TFA not ready, a0 will return -1.
 		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIDBG_MSG,
 		0, 0, 0, 0, 0, 0, &smc_res);
 
