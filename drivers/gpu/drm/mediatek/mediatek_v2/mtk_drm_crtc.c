@@ -5364,8 +5364,11 @@ int mtk_crtc_user_cmd_impl(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 		return -EINVAL;
 	}
 
-	if (need_lock)
+	if (need_lock) {
 		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		if (index == 0)
+			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
+	}
 
 	if (!mtk_crtc->enabled) {
 		DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
@@ -5476,8 +5479,11 @@ err:
 out:
 	mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
 out2:
-	if (need_lock)
+	if (need_lock) {
+		if (index == 0)
+			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	}
 
 	return ret;
 }
