@@ -2056,9 +2056,34 @@ static int mtk_ovl_yuv_matrix_convert(enum mtk_drm_dataspace plane_ds)
 	return OVL_CON_MTX_BT601_TO_RGB;
 }
 
+static void write_addr_msb_cmdq(struct mtk_ddp_comp *comp,
+				      struct cmdq_pkt *handle, int ext_lye_idx,
+				      dma_addr_t addr, dma_addr_t hdr_addr)
+{
+	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
+	const u16 *regs = exdma->data->regs;
+
+	if (!exdma->data->is_support_34bits)
+		return;
+
+	if (ext_lye_idx != LYE_NORMAL) {
+		unsigned int id = ext_lye_idx - 1;
+		dma_addr_t addr_msb = ((hdr_addr >> 24) & 0xf00) | ((addr >> 32) & 0xf);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + OVL_EXDMA_ELX_ADDR_MSB(exdma, id),
+				addr_msb, ~0);
+	} else {
+		dma_addr_t addr_msb = (((hdr_addr >> 32) << 8) & 0xf00) | ((addr >> 32) & 0xf);
+
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + regs[OVL_EXDMA_L0_ADDR_MSB],
+				addr_msb, ~0);
+	}
+}
+
 static void write_phy_layer_addr_cmdq(struct mtk_ddp_comp *comp,
-				      struct cmdq_pkt *handle, int id,
-				      dma_addr_t addr)
+				      struct cmdq_pkt *handle, dma_addr_t addr)
 {
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
@@ -2066,60 +2091,37 @@ static void write_phy_layer_addr_cmdq(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + regs[OVL_EXDMA_L0_ADDR],
 		       addr, ~0);
-
-	if (exdma->data->is_support_34bits)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + regs[OVL_EXDMA_L0_ADDR_MSB],
-			       (addr >> 32), 0xf);
 }
 
 static void write_ext_layer_addr_cmdq(struct mtk_ddp_comp *comp,
-				      struct cmdq_pkt *handle, int id,
-				      dma_addr_t addr)
+				      struct cmdq_pkt *handle, int id, dma_addr_t addr)
 {
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + OVL_EXDMA_ELX_ADDR(exdma, id),
 			addr, ~0);
-
-	if (exdma->data->is_support_34bits)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + OVL_EXDMA_ELX_ADDR_MSB(exdma, id),
-			       (addr >> 32), 0xf);
 }
 
 static void write_phy_layer_hdr_addr_cmdq(struct mtk_ddp_comp *comp,
-				      struct cmdq_pkt *handle, int id,
-				      dma_addr_t addr)
+				      struct cmdq_pkt *handle, dma_addr_t hdr_addr)
 {
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_EXDMA_L0_HDR_ADDR],
-			addr, ~0);
-
-	if (exdma->data->is_support_34bits)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + regs[OVL_EXDMA_L0_ADDR_MSB],
-			       ((addr >> 32) << 8), 0xf00);
+			hdr_addr, ~0);
 }
 
 static void write_ext_layer_hdr_addr_cmdq(struct mtk_ddp_comp *comp,
-				      struct cmdq_pkt *handle, int id,
-				      dma_addr_t addr)
+				      struct cmdq_pkt *handle, int id, dma_addr_t hdr_addr)
 {
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + OVL_EXDMA_ELX_HDR_ADDR(exdma, id),
-			addr, ~0);
-
-	if (exdma->data->is_support_34bits)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + OVL_EXDMA_ELX_ADDR_MSB(exdma, id),
-			       (addr >> 24), 0xf00);
+			hdr_addr, ~0);
 }
 
 /* config addr, pitch, src_size */
@@ -2247,6 +2249,7 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 		}
 
 		write_ext_layer_addr_cmdq(comp, handle, id, pending->addr + offset);
+		write_addr_msb_cmdq(comp, handle, ext_lye_idx, pending->addr + offset, 0);
 
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + OVL_EXDMA_ELX_SRC_SIZE(exdma, id),
@@ -2308,7 +2311,8 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 				DDPPR_ERR("%s: comp %d larb_cons is null\n", __func__, comp->id);
 		}
 
-		write_phy_layer_addr_cmdq(comp, handle, lye_idx, pending->addr + offset);
+		write_phy_layer_addr_cmdq(comp, handle, pending->addr + offset);
+		write_addr_msb_cmdq(comp, handle, ext_lye_idx, pending->addr + offset, 0);
 
 		mtk_addon_get_comp(crtc, crtc_state->lye_state.rpo_lye, &cmp_id, NULL);
 
@@ -3453,6 +3457,8 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 
 		write_ext_layer_addr_cmdq(comp, handle, id, lx_addr);
 		write_ext_layer_hdr_addr_cmdq(comp, handle, id, lx_hdr_addr);
+		write_addr_msb_cmdq(comp, handle, ext_lye_idx, lx_addr, lx_hdr_addr);
+
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + OVL_EXDMA_ELX_PITCH_MSB(exdma, id),
 			lx_pitch_msb, ~0);
@@ -3495,9 +3501,10 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 			}
 		}
 
-		write_phy_layer_addr_cmdq(comp, handle, lye_idx, lx_addr);
-		write_phy_layer_hdr_addr_cmdq(comp, handle, lye_idx,
-					lx_hdr_addr);
+		write_phy_layer_addr_cmdq(comp, handle, lx_addr);
+		write_phy_layer_hdr_addr_cmdq(comp, handle, lx_hdr_addr);
+		write_addr_msb_cmdq(comp, handle, ext_lye_idx, lx_addr, lx_hdr_addr);
+
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_EXDMA_L0_PITCH_MSB],
 			lx_pitch_msb, ~0);
@@ -4151,10 +4158,12 @@ static int mtk_ovl_replace_bootup_mva(struct mtk_ddp_comp *comp,
 			ret = iommu_map(domain, layer_addr, layer_addr,
 				ROUNDUP(fb_info->size, PAGE_SIZE),
 				IOMMU_READ | IOMMU_WRITE, GFP_KERNEL);
-			write_phy_layer_addr_cmdq(comp, handle, 0, layer_addr);
+			write_phy_layer_addr_cmdq(comp, handle, layer_addr);
+			write_addr_msb_cmdq(comp, handle, 0, layer_addr, 0);
 		} else {
 			layer_mva = layer_addr - fb_info->fb_pa + fb_info->fb_gem->dma_addr;
-			write_phy_layer_addr_cmdq(comp, handle, 0, layer_mva);
+			write_phy_layer_addr_cmdq(comp, handle, layer_mva);
+			write_addr_msb_cmdq(comp, handle, 0, layer_mva, 0);
 		}
 		if (mode)
 			comp->qos_bw = bw;
