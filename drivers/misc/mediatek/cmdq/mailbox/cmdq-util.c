@@ -101,6 +101,7 @@ struct cmdq_record {
 
 struct cmdq_buf_record {
 	u32	buf_peek_cnt[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
+	u32	buf_curr_cnt[CMDQ_HW_MAX][CMDQ_THR_MAX_COUNT];
 	u64	nsec;
 };
 
@@ -635,14 +636,15 @@ void cmdq_util_mbrain_buf_rec_latest(void)
 		nsec = do_div(sec, 1000000000);
 		for (i = 0; i < gce_hw_cnt; i++) {
 			for (j = 0; j < CMDQ_THR_MAX_COUNT; j++) {
-				if(buf_rec->buf_peek_cnt[i][j] == 0)
+				if(buf_rec->buf_curr_cnt[i][j] == 0)
 					continue;
 				buf_va += scnprintf(buf_va, buf_va_end - buf_va,
-					"%llu:%d:%d:%u%s", sec, i, j, buf_rec->buf_peek_cnt[i][j],end);
+					"%llu:%d:%d:%u%s", sec, i, j, buf_rec->buf_curr_cnt[i][j],end);
 			}
 		}
 	}
 }
+
 void cmdq_util_buf_record_save(void)
 {
 	struct cmdq_buf_record *buf_rec;
@@ -1281,7 +1283,8 @@ void cmdq_util_user_buf_track(struct cmdq_client *cl, dma_addr_t pa, bool alloc)
 }
 EXPORT_SYMBOL(cmdq_util_user_buf_track);
 
-void cmdq_util_buff_track(u32 *buf_peek_arr, const uint rows, const uint cols)
+void cmdq_util_buf_track(u32 *buf_peek_arr, u32 *buf_curr_arr,
+	const uint rows, const uint cols)
 {
 	u32 i, j;
 	struct cmdq_buf_record *buf_record_unit;
@@ -1293,14 +1296,16 @@ void cmdq_util_buff_track(u32 *buf_peek_arr, const uint rows, const uint cols)
 	buf_record_unit = &util.buf_record[util.buf_record_idx++];
 	buf_record_unit->nsec = sched_clock();
 	for(i = 0; i < rows; i++)
-		for(j = 0; j < cols; j++)
+		for(j = 0; j < cols; j++) {
 			buf_record_unit->buf_peek_cnt[i][j] = buf_peek_arr[i * cols + j];
+			buf_record_unit->buf_curr_cnt[i][j] = buf_curr_arr[i * cols + j];
+		}
 
 	if (util.buf_record_idx >= CMDQ_BUF_RECORD_NUM)
 		util.buf_record_idx = 0;
 	mutex_unlock(&cmdq_buf_record_mutex);
 }
-EXPORT_SYMBOL(cmdq_util_buff_track);
+EXPORT_SYMBOL(cmdq_util_buf_track);
 
 void cmdq_util_track(struct cmdq_pkt *pkt)
 {
