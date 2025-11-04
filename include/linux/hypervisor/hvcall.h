@@ -47,7 +47,10 @@
 
 #define SMC_DEFAULT_SECURE_ID  0  /* SMC call for default target */
 #define SMC_VTEE_SECURE_ID     1  /* SMC call for virtual TEE */
-
+#define SMC_TEE_SECURE_ID    0  /* SMC call for TEE */
+#define SMC_HYP_SECURE_ID    1  /* SMC call for Hypervisor */
+#define MAX_SMC_SECURE_ID    (SMC_HYP_SECURE_ID + 1)
+#define UNKNOWN_SECURE_ID  256  /* Unknown secure id */
 /****************************************************/
 /********** Nebula Specific SMC Calls ***************/
 /****************************************************/
@@ -57,6 +60,8 @@
 #define SMC_FC_NBL_KERNEL_SUSPEND_ON        SMC_FASTCALL_NR(SMC_ENTITY_NEBULA, 113)
 #define SMC_FC_NBL_TEST_ADD                 SMC_FASTCALL_NR(SMC_ENTITY_NEBULA, 200)
 #define SMC_FC_NBL_TEST_MULTIPLY            SMC_FASTCALL_NR(SMC_ENTITY_NEBULA, 201)
+#define SMC_FC_NBL_VHM_REQ                  SMC_FASTCALL_NR(SMC_ENTITY_NEBULA, 256)
+
 
 #define SMC_SC_NBL_SMC_RETURN               SMC_STDCALL_NR(SMC_ENTITY_NEBULA, 100)
 #define SMC_SC_NBL_STDCALL_DONE             SMC_STDCALL_NR(SMC_ENTITY_NEBULA, 101)
@@ -72,6 +77,7 @@
 #define SMC_SC_NBL_VDEV_RESET               SMC_STDCALL_NR(SMC_ENTITY_NEBULA, 133)
 #define SMC_SC_NBL_VDEV_KICK_VQ             SMC_STDCALL_NR(SMC_ENTITY_NEBULA, 134)
 #define SMC_NC_NBL_VDEV_KICK_VQ             SMC_STDCALL_NR(SMC_ENTITY_NEBULA, 135)
+#define SMC_SC_NBL_VDEV_SET_VQ_NOTIF_IRQ    SMC_STDCALL_NR(SMC_ENTITY_NEBULA, 139)
 #define SMC_SC_NBL_TEST_ADD                 SMC_STDCALL_NR(SMC_ENTITY_NEBULA, 200)
 #define SMC_SC_NBL_TEST_MULTIPLY            SMC_STDCALL_NR(SMC_ENTITY_NEBULA, 201)
 #define SMC_SC_NBL_VHM_REQ                  SMC_STDCALL_NR(SMC_ENTITY_NEBULA, 256)
@@ -99,6 +105,14 @@
 #define SMC_FC_PLAT_STDCALL_SWITCH          SMC_FASTCALL_NR(SMC_ENTITY_PLAT, 117)
 #define SMC_FC_PLAT_ARITHMETIC              SMC_FASTCALL_NR(SMC_ENTITY_PLAT, 32768)
 #define SMC_FC_PLAT_GET_RTC                 SMC_FASTCALL_NR(SMC_ENTITY_PLAT, 32769)
+
+#define SMC_SC_PLAT_TEST_MULTIPLY           SMC_STDCALL_NR(SMC_ENTITY_PLAT, 115)
+#define SMC_SC_PLAT_MTEE_SERVICE_CMD        SMC_STDCALL_NR(SMC_ENTITY_PLAT, 121)
+
+/* hypercall ID for SMC_FC_NBL_VHM_REQ */
+#define FC_ID_INJECT_HW_IRQ                 0x0UL
+#define FC_ID_INJECT_VIRT_IRQ               0x1UL
+#define FC_ID_NOTIFY_VMLOG                  0x2UL
 
 #define SMC_SC_PLAT_TEST_MULTIPLY           SMC_STDCALL_NR(SMC_ENTITY_PLAT, 115)
 #define SMC_SC_PLAT_MTEE_SERVICE_CMD        SMC_STDCALL_NR(SMC_ENTITY_PLAT, 121)

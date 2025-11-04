@@ -17,7 +17,7 @@
 // #include <linux/regmap.h>
 #include <linux/irqdomain.h>
 #include <linux/arm-smccc.h> /* for Kernel Native SMC API */
-#include <linux/nebula/hvcall.h>
+#include <linux/hypervisor/hvcall.h>
 #include <linux/irq.h>
 // #include "../soc/mediatek/mt6991/mt6991-reg.h"
 // #include "../soc/mediatek/mt6991/mt6991-afe-common.h"
