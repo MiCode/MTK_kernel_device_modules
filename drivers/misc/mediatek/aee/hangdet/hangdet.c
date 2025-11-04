@@ -63,6 +63,21 @@ extern void mt_irq_dump_status(unsigned int irq);
 #else
 #define WK_MAX_MSG_SIZE (1024)
 #endif
+
+#if IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
+#define WK_MAX_BUFFER_SIZE (256)
+#define WK_MAX_BUFFER_NUM (64)
+
+struct KickLogBuffer {
+	char kick_logs[WK_MAX_BUFFER_NUM][WK_MAX_BUFFER_SIZE];
+	int head;
+	int tail;
+	int count;
+};
+
+struct KickLogBuffer kick_log_buffer;
+#endif
+
 #define MAX_CPUNR 16
 #define SOFT_KICK_RANGE     (100741) // 100741us, use magic num to check wdtk in which hrtimer
 
@@ -114,6 +129,7 @@ static unsigned int wk_tsk_bind[MAX_CPUNR] = { 0 };	/* max cpu 16 */
 static unsigned long long wk_tsk_bind_time[MAX_CPUNR] = { 0 };	/* max cpu 16 */
 static unsigned long long wk_tsk_kick_time[MAX_CPUNR] = { 0 };	/* max cpu 16 */
 static char wk_tsk_buf[128] = { 0 };
+static char time_sync_buf[WK_MAX_MSG_SIZE] = { 0 };
 static unsigned long kick_bit;
 static int g_kinterval = -1;
 static struct work_struct wdk_work;
@@ -513,16 +529,60 @@ void tick_broadcast_mtk_aee_dump(void)
 }
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
+static void kick_log_buffer_init(void)
+{
+	int i;
+
+	kick_log_buffer.head = 0;
+	kick_log_buffer.tail = 0;
+	kick_log_buffer.count = 0;
+
+	for (i = 0; i < WK_MAX_BUFFER_NUM; i++)
+		kick_log_buffer.kick_logs[i][0] = '\0';
+}
+
+static int save_kick_log(const char *log)
+{
+	int ret = 0;
+
+	ret = strscpy(kick_log_buffer.kick_logs[kick_log_buffer.tail], log, WK_MAX_BUFFER_SIZE);
+	if (ret < 0)
+		return ret;
+
+	kick_log_buffer.tail = (kick_log_buffer.tail + 1) % WK_MAX_BUFFER_NUM;
+
+	if (kick_log_buffer.count < WK_MAX_BUFFER_NUM)
+		kick_log_buffer.count++;
+	else
+		kick_log_buffer.head = (kick_log_buffer.head + 1) % WK_MAX_BUFFER_NUM;
+
+	return 0;
+}
+
+static void show_wdk_kick_info(void)
+{
+	int i, index;
+
+	pr_info("Show wdk kick log:\n");
+	for (i = 0; i < kick_log_buffer.count; i++) {
+		index = (kick_log_buffer.head + i) % WK_MAX_BUFFER_NUM;
+		pr_info("%s", kick_log_buffer.kick_logs[index]);
+	}
+	pr_info("\n");
+}
+#endif
+
 void dump_wdk_bind_info(bool to_aee_sram)
 {
 	int i = 0, ret = -1;
 
 	ret = snprintf(wk_tsk_buf, sizeof(wk_tsk_buf),
 		"kick=0x%x,check=0x%x\n",
-		get_kick_bit(), get_check_bit());
+		(get_kick_bit() & get_check_bit()), get_check_bit());
 
 #if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
-	aee_rr_rec_kick(('D' << 24) | get_kick_bit());
+	aee_rr_rec_kick(('D' << 24) | (get_kick_bit() & get_check_bit()));
 	aee_rr_rec_check(('B' << 24) | get_check_bit());
 #endif
 
@@ -608,6 +668,7 @@ void wk_cpu_update_bit_flag(int cpu, int plug_status, int set_check)
 
 static void kwdt_time_sync(void)
 {
+	int ret = -1;
 	struct rtc_time tm;
 	struct timespec64 tv = { 0 };
 	/* android time */
@@ -619,7 +680,8 @@ static void kwdt_time_sync(void)
 	rtc_time64_to_tm(tv.tv_sec, &tm);
 	tv_android.tv_sec -= (uint64_t)sys_tz.tz_minuteswest * 60;
 	rtc_time64_to_tm(tv_android.tv_sec, &tm_android);
-	pr_info("[thread:%d] %d-%02d-%02d %02d:%02d:%02d.%06d UTC;"
+	ret = snprintf(time_sync_buf, WK_MAX_MSG_SIZE,
+		"[thread:%d] %d-%02d-%02d %02d:%02d:%02d.%06d UTC;"
 		"android time %d-%02d-%02d %02d:%02d:%02d.%06d\n",
 		current->pid, tm.tm_year + 1900, tm.tm_mon + 1,
 		tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec,
@@ -627,6 +689,11 @@ static void kwdt_time_sync(void)
 		tm_android.tm_mon + 1, tm_android.tm_mday, tm_android.tm_hour,
 		tm_android.tm_min, tm_android.tm_sec,
 		(unsigned int)(tv_android.tv_nsec / 1000));
+	if (ret < 0)
+		strscpy(time_sync_buf, "kwdt time sync message Error.", WK_MAX_MSG_SIZE);
+#if IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
+	save_kick_log(time_sync_buf);
+#endif
 }
 
 #if IS_ENABLED(CONFIG_ARM64)
@@ -974,6 +1041,9 @@ static void kwdt_dump_func(void)
 			sched_show_task(rq->curr);
 	}
 
+#if IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
+	show_wdk_kick_info();
+#endif
 	dump_wdk_bind_info(true);
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR)
@@ -1139,6 +1209,14 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	if (toprgu_base && (ioread32(toprgu_base + WDT_STATUS) & WDT_STATUS_IRQ))
 		rgu_fiq = true;
 
+	if ((kick_bit == 0) &&
+		(all_k_timer_t != 0) &&
+		(sched_clock() > all_k_timer_t) &&
+		(sched_clock() - all_k_timer_t) < CHG_TMO_DLY_SEC * 1000000000ULL) {
+		spin_unlock_bh(&lock);
+		return;
+	}
+
 	if (aee_dump_timer_t && ((sched_clock() - aee_dump_timer_t) >
 	    (CHG_TMO_DLY_SEC + 5) * 1000000000ULL)) {
 		if (!aee_dump_timer_c) {
@@ -1246,9 +1324,7 @@ static void kwdt_process_kick(int local_bit, int cpu,
 		g_hang_detected = 0;
 		dump_timeout = 0;
 		local_bit = 0;
-#if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 		kwdt_time_sync();
-#endif
 		if (toprgu_base)
 			iowrite32(WDT_RST_RELOAD, toprgu_base + WDT_RST);
 	}
@@ -1282,11 +1358,18 @@ static void kwdt_process_kick(int local_bit, int cpu,
 	}
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
+	save_kick_log(msg_buf);
+	save_kick_log(tmr_buf[cpu]);
+#endif
+
 	spin_unlock_bh(&lock);
 
 #if !IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
 	if (ret >= 0)
 		pr_info("%s", msg_buf);
+	if (local_bit == 0)
+		pr_info("%s", time_sync_buf);
 
 #if IS_ENABLED(CONFIG_SMP)
 	pr_info("%s", tmr_buf[cpu]);
@@ -1850,6 +1933,10 @@ static int __init hangdet_init(void)
 		}
 #endif
 	}
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
+	kick_log_buffer_init();
 #endif
 
 	for_each_matching_node(np_toprgu, toprgu_of_match) {
