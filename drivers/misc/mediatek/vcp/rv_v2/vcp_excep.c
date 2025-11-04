@@ -474,8 +474,13 @@ void vcp_aed(enum VCP_RESET_TYPE type, enum vcp_core_id id)
 	if (vcp_excep_mode == VCP_NO_EXCEP) {
 		pr_debug("[VCP]ee disable value=%d\n", vcp_excep_mode);
 		return;
-	}  else if ((vcp_excep_mode == VCP_KE_ENABLE) || (id != VCP_ID))
+	}  else if ((vcp_excep_mode == VCP_KE_ENABLE) || (id != VCP_ID)) {
+		if (!IS_ERR((void const *) vcpreg.clk_ctrl)) {
+			writel(0x24741001, VCP_NON_RESET);
+			pr_notice("[VCP] set vcp ke flag %x\n", readl(VCP_NON_RESET));
+		}
 		BUG_ON(1);
+	}
 
 	mutex_lock(&vcp_excep_mutex);
 

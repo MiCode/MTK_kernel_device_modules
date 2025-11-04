@@ -236,4 +236,6 @@
 #define VCP_PDN                         (vcpreg.vcp_clk_sys + vcpreg.vcp_clk_sys_pdn)
 #define VCP_FENC                        (vcpreg.vcp_clk_sys + vcpreg.vcp_clk_sys_fenc)
 
+/* vcp non reset rg */
+#define VCP_NON_RESET                   (vcpreg.clk_ctrl + 0x002C)
 #endif

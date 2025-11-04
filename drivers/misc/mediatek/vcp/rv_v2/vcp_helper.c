@@ -2979,6 +2979,11 @@ static int vcp_device_probe(struct platform_device *pdev)
 		pr_notice("[VCP] vcpreg.cfg_sec_gpr not support\n");
 	pr_debug("[VCP] cfg_sec_gpr base = 0x%p\n", vcpreg.cfg_sec_gpr);
 
+	res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "vcp_clk_ctrl");
+	vcpreg.clk_ctrl = devm_ioremap_resource(dev, res);
+	if (IS_ERR((void const *) vcpreg.clk_ctrl))
+		pr_notice("[VCP] vcpreg.clk_ctrlnot support\n");
+
 	of_property_read_u32(pdev->dev.of_node, "vcp-sram-size"
 						, &vcpreg.vcp_tcmsize);
 	if (!vcpreg.vcp_tcmsize) {

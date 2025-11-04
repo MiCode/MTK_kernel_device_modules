@@ -106,6 +106,7 @@ struct vcp_regs {
 	void __iomem *vcp_vlp_ao_rsvd7;
 	void __iomem *vcp_pwr_ack;
 	void __iomem *vcp_clk_sys;
+	void __iomem *clk_ctrl;
 	int irq0;
 	int irq1;
 	unsigned int total_tcmsize;
