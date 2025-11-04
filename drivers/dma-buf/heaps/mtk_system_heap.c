@@ -1362,7 +1362,8 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	 */
 	if (buffer->uncached) {
 		dma_map_sgtable(dma_heap_get_dev(heap), table, DMA_BIDIRECTIONAL, 0);
-		dma_unmap_sgtable(dma_heap_get_dev(heap), table, DMA_BIDIRECTIONAL, 0);
+		dma_unmap_sgtable(dma_heap_get_dev(heap), table, DMA_BIDIRECTIONAL,
+				  DMA_ATTR_SKIP_CPU_SYNC);
 	}
 
 	atomic64_add(dmabuf->size, &dma_heap_normal_total);
