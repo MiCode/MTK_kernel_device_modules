@@ -31576,28 +31576,33 @@ void mtk_disp_dbg_cmdq_use_mutex(struct mtk_drm_crtc *mtk_crtc,
 			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 	}
 }
+void mtk_crtc_bif_sodi_config_MT6993(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en)
+{
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	unsigned int val = 0;
+
+	if (handle == NULL) {
+		if (en) {
+			val = (readl(priv->side_config_regs + DISPSYS1_SODI_REQ_SEL));
+			val &= ~ DISPSYS1_SODI_REQ_SEL_DSI0;
+			writel_relaxed(val, priv->side_config_regs + DISPSYS1_SODI_REQ_SEL);
+		} else {
+			val = (readl(priv->side_config_regs + DISPSYS1_SODI_REQ_SEL));
+			val |= DISPSYS1_SODI_REQ_SEL_DSI0;
+			writel_relaxed(val, priv->side_config_regs + DISPSYS1_SODI_REQ_SEL);
+		}
+	}
+}
 void mtk_crtc_bif_resource_control_MT6993(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
-	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
-	struct mtk_ddp_comp *comp = NULL;
-	int i = 0, j = 0, tgt_comp = 0;
-
-	for_each_comp_in_crtc_path_bound(comp, mtk_crtc, i, j, 1)
-		mtk_ddp_comp_ddren_config(comp, en, handle);
-
-	if (priv->data->ovl_exdma_rule && mtk_crtc_state->lye_state.rpo_lye) {
-		mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.rpo_lye, &tgt_comp, NULL);
-		mtk_ddp_comp_ddren_config(priv->ddp_comp[tgt_comp], en, handle);
-	}
-
-	if (priv->data->ovl_exdma_rule && mtk_crtc_state->lye_state.mml_dl_lye) {
-		mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.mml_dl_lye, &tgt_comp, NULL);
-		mtk_ddp_comp_ddren_config(priv->ddp_comp[tgt_comp], en, handle);
-	}
 
 	mtk_vidle_bif_resource_ctrl(en, handle);
+
+	if (priv->data->wla_config)
+		priv->data->wla_config(crtc->dev, NULL, en, priv->side_config_regs);
 }
 void mtk_disp_bif_keep_read_mutex_MT6993(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 {

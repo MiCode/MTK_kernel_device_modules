@@ -3876,7 +3876,7 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			if (en) {
 				va = (readl(priv->side_config_regs + DISPSYS1_SODI_REQ_SEL));
 				va |= DISPSYS1_SODI_REQ_SEL_WDMA0;
-				writel_relaxed(va, priv->ovlsys0_regs + DISPSYS1_SODI_REQ_SEL);
+				writel_relaxed(va, priv->side_config_regs + DISPSYS1_SODI_REQ_SEL);
 			} else {
 				va = (readl(priv->side_config_regs + DISPSYS1_SODI_REQ_SEL));
 				va = (va & ~(DISPSYS1_SODI_REQ_SEL_WDMA0));
@@ -3949,33 +3949,33 @@ void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 	}
 }
 
-void mt6993_mtk_wla_config(struct drm_device *drm, struct cmdq_pkt *handle)
+void mt6993_mtk_wla_config(struct drm_device *drm, struct cmdq_pkt *handle, bool en, void __iomem *config_regs)
 {
 	struct mtk_drm_private *priv = drm->dev_private;
-	unsigned int val = 0, val_mask = 0;
+	unsigned int val = 0;
+
+	if (!config_regs) {
+		DDPMSG("%s,config_regs null\n", __func__);
+		return;
+	}
 
 	if (handle == NULL) {
-		if (priv->side_config_regs) {
-			val = 1;
-			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
-			writel_relaxed(val, priv->side_config_regs + DISPSYS1_WLA_CON);
-		}
-		if (priv->sys_b_side_config_regs) {
-			val = 1;
-			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
-			writel_relaxed(val, priv->sys_b_side_config_regs + DISPSYS1_WLA_CON);
+		if (en) {
+			val = (readl(config_regs + DISPSYS1_WLA_CON));
+			val |= REG_WLA20_EN;
+			writel_relaxed(val, config_regs + DISPSYS1_WLA_CON);
+		} else {
+			val = (readl(config_regs + DISPSYS1_WLA_CON));
+			val = (val & ~(REG_WLA20_EN));
+			writel_relaxed(val, config_regs + DISPSYS1_WLA_CON);
 		}
 	} else {
-		if (priv->side_config_regs) {
-			val = 1;
-			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
-			cmdq_pkt_write(handle, NULL, priv->side_config_regs_pa + DISPSYS1_WLA_CON, val, ~0);
-		}
-		if (priv->sys_b_side_config_regs) {
-			val = 1;
-			SET_VAL_MASK(val, val_mask, 1, RG_WLA20_EN);
-			cmdq_pkt_write(handle, NULL, priv->sys_b_side_config_regs_pa + DISPSYS1_WLA_CON, val, ~0);
-		}
+		if (en)
+			cmdq_pkt_write(handle, NULL,
+				config_regs + DISPSYS1_WLA_CON, REG_WLA20_EN, REG_WLA20_EN);
+		else
+			cmdq_pkt_write(handle, NULL,
+				config_regs + DISPSYS1_WLA_CON, 0, REG_WLA20_EN);
 	}
 }
 

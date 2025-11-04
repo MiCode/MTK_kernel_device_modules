@@ -5540,7 +5540,18 @@ static int mtk_ovl_exdma_set_partial_update(struct mtk_ddp_comp *comp,
 
 	return 0;
 }
-void mtk_ovl_exdma_ddren(struct mtk_ddp_comp *comp,
+static void mtk_ovl_exdma_ddren(struct mtk_ddp_comp *comp,
+	bool en, struct cmdq_pkt *handle)
+{
+	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
+	const u16 *regs = exdma->data->regs;
+
+	DDPDBG("%s,comp:%s,en:%d\n", __func__, mtk_dump_comp_str(comp), en);
+
+	if (exdma->data->bif_ddren_config)
+		exdma->data->bif_ddren_config(comp, en, handle);
+}
+static void mtk_ovl_exdma_bif_ddren_mt6991(struct mtk_ddp_comp *comp,
 	bool en, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
@@ -5882,6 +5893,7 @@ static const struct mtk_disp_ovl_exdma_data mt6991_ovl_exdma_driver_data = {
 	.afbc_header_min_ostdl = 5,
 	.ovl_fifo_depth = 1536,
 	.ovl_hdr_fifo_depth = 320,
+	.bif_ddren_config = &mtk_ovl_exdma_bif_ddren_mt6991,
 };
 
 static const struct exdma_compress_info compr_info_mt6993 = {

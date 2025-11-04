@@ -111,7 +111,7 @@ struct mtk_mmsys_driver_data {
 	const struct mtk_session_mode_tb *mode_tb;
 	void (*sodi_config)(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			struct cmdq_pkt *handle, void *data);
-	void (*wla_config)(struct drm_device *drm, struct cmdq_pkt *handle);
+	void (*wla_config)(struct drm_device *drm, struct cmdq_pkt *handle, bool en, void __iomem *config_regs);
 	void (*sodi_apsrc_config)(struct drm_crtc *crtc,
 			struct cmdq_pkt *_cmdq_handle, bool first_init, bool check_reset,
 			unsigned int crtc_id, bool enable);
@@ -143,6 +143,7 @@ struct mtk_mmsys_driver_data {
 	void (*bif_path_insert)(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
 	void (*bif_path_remove)(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
 	void (*bif_resource_ctrl)(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en);
+	void (*bif_sodi_config)(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en);
 	void (*update_channel_hrt)(struct mtk_drm_crtc *mtk_crtc,
 			unsigned int bw_base, unsigned int channel_bw[]);
 	void (*update_channel_hrt_write)(struct mtk_drm_crtc *mtk_crtc,

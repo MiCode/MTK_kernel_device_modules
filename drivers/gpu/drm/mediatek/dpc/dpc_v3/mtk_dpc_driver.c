@@ -52,6 +52,9 @@
 #include "mdp_dpc.h"
 #include "mtk_vdisp.h"
 
+int debug_bif_ddren;
+module_param(debug_bif_ddren, int, 0644);
+
 int debug_mmp = 1;
 module_param(debug_mmp, int, 0644);
 int debug_trace = 1;
@@ -1832,9 +1835,15 @@ static void dpc_bif_resource_ctrl_mt6993(const bool en, struct cmdq_pkt *pkt)
 	if (en) {
 		writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
 		writel(0x0D0D0D0D, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
+
+		if (debug_bif_ddren)
+			writel(0x0, dpc_base + DISP_REG_DPC_MML1_DEBUG0);
 	} else {
 		writel(0x05050D05, dpc_base + DISP_REG_DPC_DISP_DDRSRC_EMIREQ_CFG);
 		writel(0x05050D05, dpc_base + DISP_REG_DPC_MML_DDRSRC_EMIREQ_CFG);
+
+		if (debug_bif_ddren)
+			writel(0x10ffe, dpc_base + DISP_REG_DPC_MML1_DEBUG0);
 	}
 }
 static void dpc_apsrc_enable(bool en, const enum mtk_vidle_voter_user user)

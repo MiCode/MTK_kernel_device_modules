@@ -56,6 +56,7 @@ struct mtk_disp_ovl_exdma_data {
 	unsigned int afbc_header_min_ostdl;
 	unsigned int ovl_fifo_depth;
 	unsigned int ovl_hdr_fifo_depth;
+	void (*bif_ddren_config)(struct mtk_ddp_comp *comp, bool en, struct cmdq_pkt *handle);
 };
 
 struct exdma_compress_info {

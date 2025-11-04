@@ -7716,6 +7716,7 @@ static const struct mtk_mmsys_driver_data mt6993_mmsys_driver_data = {
 	.bif_path_insert = mtk_ddp_insert_bif_racing_MT6993,
 	.bif_path_remove = mtk_ddp_remove_bif_racing_MT6993,
 	.bif_resource_ctrl = mtk_crtc_bif_resource_control_MT6993,
+	.bif_sodi_config = mtk_crtc_bif_sodi_config_MT6993,
 };
 
 static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
@@ -8545,8 +8546,10 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	if (priv->data->sodi_config)
 		priv->data->sodi_config(crtc->dev, DDP_COMPONENT_ID_MAX, NULL, &en);
 
-	if (priv->data->wla_config)
-		priv->data->wla_config(crtc->dev, NULL);
+	if (priv->data->wla_config) {
+		priv->data->wla_config(crtc->dev, NULL, true, priv->side_config_regs);
+		priv->data->wla_config(crtc->dev, NULL, true, priv->sys_b_side_config_regs);
+	}
 
 	if (priv->data->disable_merge_irq)
 		priv->data->disable_merge_irq(crtc->dev);

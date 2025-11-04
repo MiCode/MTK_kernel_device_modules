@@ -734,6 +734,9 @@ void mtk_crtc_bif_apsrc_ddren_control(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 	struct mtk_ddp_comp *comp = NULL;
 	int i = 0, j = 0, tgt_comp = 0;
 
+	if (priv->data->bif_sodi_config)
+		priv->data->bif_sodi_config(mtk_crtc, handle, en);
+
 	if (priv->data->bif_resource_ctrl)
 		priv->data->bif_resource_ctrl(mtk_crtc,handle, en);
 
@@ -19050,8 +19053,10 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 			for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
 				priv->data->sodi_config(crtc->dev, comp->id, NULL, &en);
 		}
-		if (priv->data->wla_config)
-			priv->data->wla_config(crtc->dev, NULL);
+		if (priv->data->wla_config) {
+			priv->data->wla_config(crtc->dev, NULL, true, priv->side_config_regs);
+			priv->data->wla_config(crtc->dev, NULL, true, priv->sys_b_side_config_regs);
+		}
 	}
 
 	comp = mtk_ddp_comp_request_output_lpc(mtk_crtc);

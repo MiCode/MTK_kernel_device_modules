@@ -92,7 +92,7 @@ struct drm_crtc_state;
 #define DISPSYS0_DDREN_ACK_CON                    0x50
 #define DISPSYS1_DDREN_ACK_CON                    0x3F4
 #define DISPSYS1_WLA_CON	0x3B0
-	#define RG_WLA20_EN       REG_FLD_MSB_LSB(31, 31)
+	#define REG_WLA20_EN      BIT(31)
 
 
 #define MMSYS_DUMMY0 0x0400
@@ -144,6 +144,7 @@ struct drm_crtc_state;
 	#define DVFS_HALT_MASK_SEL_WDMA1              REG_FLD_MSB_LSB(23, 23)
 
 #define DISPSYS1_SODI_REQ_SEL 0x0F0
+	#define DISPSYS1_SODI_REQ_SEL_DSI0            BIT(16)
 	#define DISPSYS1_SODI_REQ_SEL_WDMA0           BIT(24)
 	#define DISPSYS1_SODI_REQ_SEL_WDMA1           BIT(25)
 
@@ -2014,7 +2015,7 @@ void mt6991_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
 void mt6993_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
-void mt6993_mtk_wla_config(struct drm_device *drm, struct cmdq_pkt *handle);
+void mt6993_mtk_wla_config(struct drm_device *drm, struct cmdq_pkt *handle, bool en, void __iomem *config_regs);
 void mt6895_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			    struct cmdq_pkt *handle, void *data);
 void mt6873_mtk_sodi_config(struct drm_device *drm, enum mtk_ddp_comp_id id,
