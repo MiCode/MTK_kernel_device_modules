@@ -707,7 +707,7 @@ static void mtk_pcie_dump_pextp_info(struct mtk_pcie_port *port)
 	if (port->pmrc)
 		val = readl_relaxed(port->pmrc + PMRC_BBCK2_STA);
 
-	dev_info(port->dev, "V2:Modem HW MODE:%#x, RC HW MODE:%#x, EP HW MODE:%#x, Clock gate:%#x, REQ_STA:%#x, REQ_CTRL:%#x, Sleep protect:%#x, pmrc regs:%#x\n",
+	dev_info(port->dev, "V2:Modem HW MODE:%#x, RC HW MODE:%#x, EP HW MODE:%#x, Clock gate:%#x, REQ_STA:%#x, REQ_CTRL:%#x, Sleep protect:%#x, Clock Con:%#x, pmrc regs:%#x\n",
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_4),
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_6),
 		readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_8),
@@ -715,6 +715,7 @@ static void mtk_pcie_dump_pextp_info(struct mtk_pcie_port *port)
 		readl_relaxed(port->pextpcfg + PEXTP_RES_REQ_STA),
 		readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL),
 		readl_relaxed(port->pextpcfg + PEXTP_SLPPROT_RDY),
+		readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON),
 		val);
 }
 
@@ -2736,6 +2737,8 @@ static int mtk_pcie_control_vote_v2(struct mtk_pcie_port *port, bool hw_mode_en,
 	writel_relaxed(val, addr);
 
 	if (!hw_mode_en && !who) {
+		/* delay 500us(RTFF off + RTFF on) to avoid race condition */
+		udelay(500);
 		/* Check the sleep protect ready */
 		err = readl_poll_timeout_atomic(port->pextpcfg +
 			      PEXTP_SLPPROT_RDY, val,
