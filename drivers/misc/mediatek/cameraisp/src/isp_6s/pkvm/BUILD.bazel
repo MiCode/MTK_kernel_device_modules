@@ -38,19 +38,3 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm/hyp:hyp_p1_6858".format(kernel_version),
     ],
 )
-define_mgk_ddk_ko(
-    name = "pkvm_seninf_6858",
-    srcs = [
-        "isp6/pkvm_seninf_host.c",
-        "isp6/pkvm_seninf_host.h",
-        "isp6/pkvm_seninf_ioctl.h",
-    ],
-    out = "pkvm_seninf_6858.ko",
-    copts = [
-        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
-    ],
-    ko_deps = [
-        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
-        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf/isp6/hyp:hyp_6858".format(kernel_version),
-    ],
-)
