@@ -830,7 +830,6 @@ int mt6881_enable_dc_compensation(bool enable);
 int mt6881_set_lch_dc_compensation(int value);
 int mt6881_set_rch_dc_compensation(int value);
 int mt6881_adda_dl_gain_control(bool mute);
-int mt6881_set_adda_predistortion(int hp_impedance);
 
 /* audio delay*/
 void mt6881_aud_delay(unsigned long cycles);

@@ -234,68 +234,6 @@ int mt6881_adda_dl_gain_control(bool mute)
 }
 EXPORT_SYMBOL(mt6881_adda_dl_gain_control);
 
-int mt6881_set_adda_predistortion(int hp_impedance)
-{
-	int ret;
-	unsigned int read_predis_con0 = 0;
-	unsigned int read_predis_con1 = 0;
-
-	dev_info(local_afe->dev, "%s()++\n", __func__);
-
-	if (!local_afe)
-		return -EPERM;
-
-	if (pm_runtime_status_suspended(local_afe->dev))
-		dev_info(local_afe->dev, "%s(), status suspended\n", __func__);
-
-	ret = pm_runtime_resume_and_get(local_afe->dev);
-	if (ret < 0) {
-		dev_err(local_afe->dev, "%s: failed to resume: %d\n",
-			__func__, ret);
-		return ret;
-	}
-
-	if (hp_impedance == 0) {
-		dev_info(local_afe->dev, "%s(), clean predistortion\n", __func__);
-		regmap_write(local_afe->regmap, AFE_ADDA_DL_PREDIS_CON0, 0);
-		regmap_write(local_afe->regmap, AFE_ADDA_DL_PREDIS_CON1, 0);
-		goto exit;
-	}
-
-	if (hp_impedance < 30) { /* 16 Ohm */
-		regmap_write(local_afe->regmap,
-			   AFE_ADDA_DL_PREDIS_CON0,
-			   0x800E0000);
-		regmap_write(local_afe->regmap,
-			   AFE_ADDA_DL_PREDIS_CON1,
-			   0x800E0000);
-	} else {              /* 32 Ohm */
-		regmap_write(local_afe->regmap,
-			   AFE_ADDA_DL_PREDIS_CON0,
-			   0x80090000);
-		regmap_write(local_afe->regmap,
-			   AFE_ADDA_DL_PREDIS_CON1,
-			   0x80090000);
-	}
-
-exit:
-	regmap_read(local_afe->regmap, AFE_ADDA_DL_PREDIS_CON0, &read_predis_con0);
-	regmap_read(local_afe->regmap, AFE_ADDA_DL_PREDIS_CON1, &read_predis_con1);
-
-	dev_info(local_afe->dev, "%s(), AFE_ADDA_DL_PREDIS_CON0=0x%x, AFE_ADDA_DL_PREDIS_CON1=0x%x\n",
-		 __func__, read_predis_con0, read_predis_con1);
-
-	ret = pm_runtime_put(local_afe->dev);
-	if (ret < 0) {
-		dev_dbg(local_afe->dev, "%s(), fail\n", __func__);
-		return ret;
-	}
-
-	dev_info(local_afe->dev, "%s()--\n", __func__);
-	return 0;
-}
-EXPORT_SYMBOL(mt6881_set_adda_predistortion);
-
 // int mt6881_get_output_device(struct mtk_base_afe *afe)
 // {
 //	unsigned int value = 0;

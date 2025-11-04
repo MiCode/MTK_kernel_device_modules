@@ -539,7 +539,6 @@ static int mt6881_mt6368_init(struct snd_soc_pcm_runtime *rtd)
 	ops.set_lch_dc_compensation = mt6881_set_lch_dc_compensation;
 	ops.set_rch_dc_compensation = mt6881_set_rch_dc_compensation;
 	ops.adda_dl_gain_control = mt6881_adda_dl_gain_control;
-	ops.set_adda_predistortion = mt6881_set_adda_predistortion;
 	mt6368_set_codec_ops(codec_component, &ops);
 
 	/* set mtkaif protocol */
