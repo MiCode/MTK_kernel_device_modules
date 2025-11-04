@@ -1568,8 +1568,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-img".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-mdp1".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6855-mdp".format(kernel_version): "mt6855",
-    "//kernel_device_modules-{}/drivers/i3c/master:mtk-i3c-master-mt69xx".format(kernel_version): "mt6991 mt6993 mt6858",
-    "//kernel_device_modules-{}/drivers/misc/mediatek/i3c_i2c_wrap:mtk-i3c-i2c-wrap".format(kernel_version): "mt6991 mt6993 mt6858",
+    "//kernel_device_modules-{}/drivers/i3c/master:mtk-i3c-master-mt69xx".format(kernel_version): "mt6991 mt6993 mt6858 mt6881",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/i3c_i2c_wrap:mtk-i3c-i2c-wrap".format(kernel_version): "mt6991 mt6993 mt6858 mt6881",
 
 
     "//kernel_device_modules-{}/drivers/clk/mediatek:clk-mt6895".format(kernel_version): "mt6895",
@@ -1759,7 +1759,7 @@ mgk_64_kleaf_eng_device_modules = [
 
 mgk_64_kleaf_platform_eng_modules = {
     # keep sorted
-    "//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c": "mt6991 mt6993 mt6858",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c": "mt6991 mt6993 mt6858 mt6881",
     ## write vendor file by platform here
 
 }
@@ -1773,7 +1773,7 @@ mgk_64_kleaf_userdebug_device_modules = [
 
 mgk_64_kleaf_platform_userdebug_modules = {
     # keep sorted
-    "//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c": "mt6991 mt6993 mt6858",
+    "//vendor/mediatek/tests/kernel/ktf_testcase/i3c:ktf_i3c": "mt6991 mt6993 mt6858 mt6881",
     ## write vendor file by platform here
 
 }
