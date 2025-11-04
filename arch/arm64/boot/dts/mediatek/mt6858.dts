@@ -1004,7 +1004,7 @@ pkvm_seninf_6858,pkvm_p1_6858,pkvm_cmdq_mt6858";
 		reg = <0 0x1a00d000 0 0x1000>;
 	};
 
-	aie@1b001000 {
+	aie: aie@1b001000 {
 		compatible = "mediatek,mt6858-aie", "mediatek,aie-hw2.0";
 		reg = <0 0x1b001000 0 0x1000>;
 		interrupts = <GIC_SPI 581 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -1020,6 +1020,10 @@ pkvm_seninf_6858,pkvm_p1_6858,pkvm_cmdq_mt6858";
 				 <&disp_iommu M4U_L20_P1_IPESYS_SMI_FDVT_RDB_0>,
 				 <&disp_iommu M4U_L20_P2_IPESYS_SMI_FDVT_WRA_0>,
 				 <&disp_iommu M4U_L20_P3_IPESYS_SMI_FDVT_WRB_0>;
+		sw-sync-token-tzmp-aie-wait =
+				 <CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT>;
+		sw-sync-token-tzmp-aie-set =
+				 <CMDQ_SYNC_TOKEN_TZMP_AIE_SET>;
 		fdvt_frame_done = <CMDQ_EVENT_IPE_FDVT_DONE>;
 		mediatek,larb = <&smi_larb20>;
 		interconnects =
