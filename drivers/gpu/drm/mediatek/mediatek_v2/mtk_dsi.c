@@ -18988,6 +18988,13 @@ static int mtk_dsi_probe(struct platform_device *pdev)
 				ret = -EPROBE_DEFER;
 				goto error;
 			}
+			if (dsi->bridge) {
+				struct priv_panel_data *panel_data;
+
+				panel_data = (struct priv_panel_data *)dsi->bridge->driver_private;
+				if (panel_data)
+					dsi->panel = &panel_data->panel;
+			}
 			if (dsi->panel) {
 				dsi->ext = find_panel_ext(dsi->panel);
 				dsi->dummy_cmd_en = dsi->ext->params->cmd_null_pkt_en;
