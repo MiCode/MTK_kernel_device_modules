@@ -728,7 +728,7 @@ static int mmdvfs_v3_debug_thread(void *data)
 	if (g_mmdvfs->user_freerun && (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VCORE)))
 		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VCORE, -1, false);
 
-	if (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM))
+	if (g_mmdvfs->user_freerun && (g_mmdvfs->use_v3_pwr & (1 << PWR_MMDVFS_VMM)))
 		mtk_mmdvfs_v3_set_vote_step(PWR_MMDVFS_VMM, -1, false);
 
 	if (g_mmdvfs->vote_step != 0xff)
