@@ -495,6 +495,9 @@ static void mtk_postmask_config(struct mtk_ddp_comp *comp,
 #endif
 		/* config relay mode */
 	} else {
+#ifdef POSTMASK_DRAM_MODE
+		postmask->postmask_force_relay = 1;
+#endif
 		value = (REG_FLD_VAL((CFG_FLD_RELAY_MODE), 1) |
 			 REG_FLD_VAL((CFG_FLD_DRAM_MODE), 1) |
 			 REG_FLD_VAL((CFG_FLD_BGCLR_IN_SEL), 1) |
