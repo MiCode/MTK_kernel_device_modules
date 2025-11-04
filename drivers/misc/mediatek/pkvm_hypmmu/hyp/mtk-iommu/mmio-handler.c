@@ -237,7 +237,7 @@ bool mtkiommu_dabt_handler(struct user_pt_regs *regs, u64 esr, u64 addr)
 		return false;
 
 #if (DEBUG_IOMMU >= 2)
-	MOD_PUTS2("found mtkiommu dev", addr);
+	MOD_PUTS1("found mtkiommu dev", addr);
 #endif
 
 	offset = addr - dev->bank_reg[NS_BANK].reg_base;
