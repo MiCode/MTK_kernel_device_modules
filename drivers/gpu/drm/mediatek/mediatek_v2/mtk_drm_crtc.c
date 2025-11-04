@@ -10025,7 +10025,12 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 			}
 			mtk_crtc_get_plane_comp_state(crtc,old_mtk_state,crtc_state, cmdq_handle);
 
-			if (lyeblob_ids->ddp_blob_id)
+			if (lyeblob_ids->ddp_blob_id &&
+				(crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX] ==
+					old_mtk_state->prop_val[CRTC_PROP_PRES_FENCE_IDX] ||
+				crtc_state->prop_val[CRTC_PROP_LYE_IDX] !=
+					old_mtk_state->prop_val[CRTC_PROP_LYE_IDX] ||
+				crtc_state->prop_val[CRTC_PROP_OUTPUT_ENABLE]))
 				mtk_crtc_atomic_ddp_config(crtc, old_mtk_state, cmdq_handle);
 
 			/* update DMR valid hrt */
