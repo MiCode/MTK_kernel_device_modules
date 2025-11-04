@@ -711,8 +711,6 @@ static s32 cmdq_mdp_lock_thread(struct cmdqRecStruct *handle)
 	 * common clock enable here to avoid disable when mdp engines still
 	 * need use for later tasks
 	 */
-	CMDQ_ERR("%s handle:0x%p pkt:0x%p engine:0x%016llx\n",
-		__func__, handle, handle->pkt, handle->engineFlag);
 	err = cmdq_mdp_common_clock_enable(handle->engineFlag);
 	if (err != 0)
 		return TASK_STATE_ERROR;
