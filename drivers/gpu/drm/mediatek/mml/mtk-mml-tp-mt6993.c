@@ -26,9 +26,9 @@
 #define MML_IR_RSZ_MIN_RATIO	375	/* resize must lower than this ratio */
 #define MML_OUT_MIN_W		784	/* wqhd 1440/2+64=784 */
 #define MML_DL_MAX_W		3840
-#define MML_DL_MAX_H		2400
+#define MML_DL_MAX_H		3840
 #define MML_DL_RROT_S_PX	(1920 * 1088)
-#define MML_MIN_SIZE		480
+#define MML_MIN_SIZE		64
 #define MML_DC_MAX_DURATION_US	8300
 
 /* use OPP index 0(229Mhz) 1(273Mhz) 2(458Mhz) */
@@ -1508,12 +1508,6 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 	if ((!rotated && dest->crop.r.width < MML_MIN_SIZE) ||
 		(rotated && dest->crop.r.height < MML_MIN_SIZE)) {
 		*reason = mml_query_min_size;
-		goto decouple;
-	}
-
-	/* destination width must cross display pipe width */
-	if (dest->data.width < MML_OUT_MIN_W) {
-		*reason = mml_query_outwidth;
 		goto decouple;
 	}
 
