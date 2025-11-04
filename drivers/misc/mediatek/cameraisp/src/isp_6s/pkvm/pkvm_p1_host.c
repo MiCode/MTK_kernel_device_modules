@@ -12,7 +12,6 @@
 #include <linux/kernel.h>
 #include <linux/miscdevice.h>
 #include <linux/module.h>
-#include <linux/delay.h>
 #include <pkvm_mgmt/pkvm_mgmt.h>
 #include "pkvm_p1_host.h"
 
@@ -156,7 +155,7 @@ static long pkvm_p1_ioctl(struct file *filep, unsigned int cmd, unsigned long Pa
 				fh_copy_size = 14;
 			else
 				fh_copy_size = 13;
-			mdelay(50);
+
 			for (int i = 0; i < fh_copy_size; i++) {
 				temp = pkvm_el2_mod_call(pkvm_p1_get_sec_fh_info, secinfo_pkvm.sec_pa, i);
 				secinfo_pkvm.sec_fhinfo[i] = temp;

@@ -528,6 +528,7 @@ void pkvm_p1_hyp_get_sec_fh_info(struct user_pt_regs *regs)
 	pfixmap = CALL_FROM_OPS(fixmap_map, sec_pa);
 	sec_fh = (uint32_t *)pfixmap;
 	cur_sec_fh = sec_fh[index];
+	sec_fh[index] = 0;
 
 	CALL_FROM_OPS(putx64, cur_sec_fh);
 	CALL_FROM_OPS(fixmap_unmap);
