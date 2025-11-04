@@ -158,10 +158,14 @@ static void filter_by_yuv_layers(struct drm_device *dev, struct drm_mtk_layering
 				continue;
 
 			/* display not support RGBA1010102 & DRM_FORMAT_ABGR16161616F) */
+			if (info->src_fmt == DRM_FORMAT_ABGR16161616F) {
+				mtk_rollback_layer_to_GPU(disp_info, disp_idx, i);
+				continue;
+			}
+
 			if ((priv->data->mmsys_id == MMSYS_MT6765
 				|| priv->data->mmsys_id == MMSYS_MT6761)
-					&& (info->src_fmt == DRM_FORMAT_RGBA1010102
-						|| info->src_fmt == DRM_FORMAT_ABGR16161616F)) {
+					&& (info->src_fmt == DRM_FORMAT_RGBA1010102)) {
 				mtk_rollback_layer_to_GPU(disp_info, disp_idx, i);
 				continue;
 			}
