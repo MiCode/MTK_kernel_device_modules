@@ -138,7 +138,7 @@ static void *afe_alloc_dyn(struct uo_provider *itself,
 	}
 
 	audio_mem = afe_intf->ops->allocate_sram(size);
-	if (!audio_mem) {
+	if (!audio_mem || !audio_mem->phys_addr) {
 		USB_OFFLOAD_ERR("[%s] fail allocating (size:%d align:%d)\n",
 			afe_get_name(), size, align);
 		return NULL;
@@ -154,6 +154,7 @@ static void *afe_alloc_dyn(struct uo_provider *itself,
 	if (afe) {
 		*phys_addr = audio_mem->phys_addr;
 		vir = (unsigned char *)ioremap_wc(audio_mem->phys_addr, size);
+		memset_io(vir, 0, size);
 		afe->vir_addr = vir;
 		afe->size = size;
 		afe->is_rsv = false;
@@ -201,7 +202,7 @@ static void *afe_alloc_rsv(struct uo_provider *itself,
 		return NULL;
 
 	audio_mem = afe_intf->ops->get_rsv_basic_sram();
-	if (!audio_mem) {
+	if (!audio_mem || !audio_mem->phys_addr) {
 		USB_OFFLOAD_ERR("[%s] not support reserve\n", afe_get_name());
 		return NULL;
 	}
@@ -226,6 +227,7 @@ static void *afe_alloc_rsv(struct uo_provider *itself,
 
 	*phys_addr = audio_mem->phys_addr;
 	vir = (unsigned char *)ioremap_wc(audio_mem->phys_addr, size);
+	memset_io(vir, 0, size);
 	afe->vir_addr = vir;
 	afe->size = size;
 	afe->is_rsv = true;
