@@ -28,9 +28,6 @@
 #define TOTAL_PAGES() (SZ_32M >> V7S_PAGE_TABLE_SHIFT)
 #define MPOOL_ALLOC_CONTIG(sz) mpool_alloc_contiguous(&iommu_mpool, sz, 1)
 
-#define ONE_PAGE_OFFSET 12
-#define ONE_PAGE_SIZE (1 << ONE_PAGE_OFFSET)
-
 static u64 total_pages;
 static u64 avail_pages;
 
@@ -219,10 +216,10 @@ static void add_mem_to_mpool(uint64_t pglist_pfn)
 	void *pmm_page = NULL;
 	uint64_t pfn;
 
-	if (!share_memory_to_hyp(pglist_pfn << ONE_PAGE_OFFSET, ONE_PAGE_SIZE))
+	if (!share_memory_to_hyp(pglist_pfn << PAGE_SHIFT, PAGE_SIZE))
 		return;
 
-	pglist_pa = (void *)(pglist_pfn << ONE_PAGE_OFFSET);
+	pglist_pa = (void *)(pglist_pfn << PAGE_SHIFT);
 	MOD_PUTS2("pglist_pa, pglist_pfn", pglist_pa, pglist_pfn);
 
 	pmm_page = (void *)mod_ops->hyp_va((phys_addr_t)pglist_pa);
@@ -231,11 +228,11 @@ static void add_mem_to_mpool(uint64_t pglist_pfn)
 	/* donate mpool memory to hypervisor */
 	for (i = 0; i < in_mpt.mem_block_num; i++) {
 		pfn = (uint64_t)in_mpt.fmpt[i].smpt;
-		share_memory_to_hyp(pfn << ONE_PAGE_OFFSET,
-			(1 << in_mpt.fmpt[i].mem_order) * ONE_PAGE_SIZE);
-		hyp_mpool.fmpt[i].smpt = (void *)mod_ops->hyp_va(pfn << ONE_PAGE_OFFSET);
+		share_memory_to_hyp(pfn << PAGE_SHIFT,
+			(1 << in_mpt.fmpt[i].mem_order) * PAGE_SIZE);
+		hyp_mpool.fmpt[i].smpt = (void *)mod_ops->hyp_va(pfn << PAGE_SHIFT);
 		hyp_mpool.fmpt[i].mem_order = in_mpt.fmpt[i].mem_order;
-		MOD_PUTS2("pfn, size", pfn, (1 << in_mpt.fmpt[i].mem_order) * ONE_PAGE_SIZE);
+		MOD_PUTS2("pfn, size", pfn, (1 << in_mpt.fmpt[i].mem_order) * PAGE_SIZE);
 	}
 	/* mpool init */
 	iommu_map_mpool(NULL);
@@ -245,7 +242,7 @@ static void add_mem_to_mpool(uint64_t pglist_pfn)
 		if (hyp_mpool.fmpt[i].smpt) {
 			mpool_add_chunk(&iommu_mpool,
 				hyp_mpool.fmpt[i].smpt,
-				(1 << hyp_mpool.fmpt[i].mem_order) * ONE_PAGE_SIZE);
+				(1 << hyp_mpool.fmpt[i].mem_order) * PAGE_SIZE);
 		}
 	}
 
@@ -334,12 +331,12 @@ void register_iova_debug_info(struct user_pt_regs *regs)
 	iommu_info_rb.cnt = 1024;
 
 	info_pfn = regs->regs[2];
-	total_page = (1 << regs->regs[3]) * ONE_PAGE_SIZE;
-	if (!share_memory_to_hyp(info_pfn << ONE_PAGE_OFFSET, total_page)) {
+	total_page = (1 << regs->regs[3]) * PAGE_SIZE;
+	if (!share_memory_to_hyp(info_pfn << PAGE_SHIFT, total_page)) {
 		iommu_info_rb.cnt = 0;
 		return;
 	}
-	info_pa = (void *)(info_pfn << ONE_PAGE_OFFSET);
+	info_pa = (void *)(info_pfn << PAGE_SHIFT);
 	iommu_info_rb.tags = (void *)mod_ops->hyp_va((phys_addr_t)info_pa);
 
 	mod_ops->memset(iommu_info_rb.tags, 0, iommu_info_rb.ent_sz * iommu_info_rb.cnt);
