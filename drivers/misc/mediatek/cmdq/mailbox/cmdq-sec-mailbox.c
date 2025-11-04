@@ -1383,10 +1383,12 @@ cmdq_sec_task_submit(struct cmdq_sec *cmdq, struct cmdq_sec_task *task,
 		}
 #endif
 
-		err = cmdq_sec_irq_notify_start(cmdq);
-		if (err < 0) {
-			cmdq_err("start irq notify fail");
-			break;
+		if (iwc_cmd != CMD_CMDQ_TL_PATH_RES_ALLOCATE) {
+			err = cmdq_sec_irq_notify_start(cmdq);
+			if (err < 0) {
+				cmdq_err("start irq notify fail");
+				break;
+			}
 		}
 
 		if (iwc_cmd == CMD_CMDQ_TL_SUBMIT_TASK && pkt)
