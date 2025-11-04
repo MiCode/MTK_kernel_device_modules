@@ -4479,6 +4479,17 @@ static void _dpc_analysis(bool detail)
 	DPCDUMP("========== DPC analysis: base:0x%llx,panel:%d,win:0x%x,dur:%u=========",
 		(unsigned long long)g_priv->dpc_pa, g_panel_type,
 		atomic_read(&g_vidle_window), g_te_duration);
+	if (g_priv->get_sys_status) {
+		status = g_priv->get_sys_status(SYS_VALUE_VDISP_DVFS_LEVEL, &value);
+		DPCDUMP("vdisp req:0x%x, value:%#04x", status, value);
+		status = g_priv->get_sys_status(SYS_STATE_APSRC, &value);
+		DPCDUMP("APSRC req:0x%x, value:%#04x", status, value);
+		status = g_priv->get_sys_status(SYS_STATE_MMINFRA, &value);
+		DPCDUMP("MMINFRA req:0x%x, value:%#04x", status, value);
+		status = g_priv->get_sys_status(SYS_STATE_EMI, &value);
+		DPCDUMP("EMI req:0x%x, value:%#04x", status, value);
+	}
+
 	mtk_dpc_dump_caps();
 
 	dpc_pm_user_dump(true);
@@ -4502,14 +4513,13 @@ static void _dpc_analysis(bool detail)
 		readl(dpc_base + DISP_REG_DPC_MML_HRTBW_SRTBW_CFG),
 		readl(dpc_base + DISP_REG_DPC_MML_SW_HRT_BW),
 		g_priv->get_sys_status ? g_priv->get_sys_status(SYS_STATE_HRT_BW, NULL) : 0xdead);
-	DPCDUMP("vdisp cfg: disp:%u(%#04x %#04x), mml:%u(%#04x %#04x), vdisp_sta:0x%x",
+	DPCDUMP("vdisp cfg: disp:%u(%#04x %#04x), mml:%u(%#04x %#04x)",
 		g_vdisp_level_disp,
 		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG),
 		readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL),
 		g_vdisp_level_mml,
 		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_CFG),
-		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL),
-		g_priv->get_sys_status ? g_priv->get_sys_status(SYS_VALUE_VDISP_DVFS_LEVEL, NULL): 0xdead);
+		readl(dpc_base + DISP_REG_DPC_MML_VDISP_DVFS_VAL));
 	DPCDUMP("vdisp req: disp:%u,mml:%u,bw:%u(%u,%u)(%u,%u)(%u,%u)(%u,%u)",
 		g_priv->dvfs_bw.disp_level, g_priv->dvfs_bw.mml_level,
 		g_priv->dvfs_bw.bw_level,
@@ -4538,15 +4548,6 @@ static void _dpc_analysis(bool detail)
 		readl(dpc_base + DISP_REG_DPC_DTx_COUNTER(5)),
 		readl(dpc_base + DISP_REG_DPC_DTx_COUNTER(11)),
 		readl(dpc_base + DISP_REG_DPC_DTx_COUNTER(12)));
-
-	if (g_priv->get_sys_status) {
-		status = g_priv->get_sys_status(SYS_STATE_APSRC, &value);
-		DPCDUMP("APSRC req:0x%x, value:%#04x", status, value);
-		status = g_priv->get_sys_status(SYS_STATE_MMINFRA, &value);
-		DPCDUMP("MMINFRA req:0x%x, value:%#04x", status, value);
-		status = g_priv->get_sys_status(SYS_STATE_EMI, &value);
-		DPCDUMP("EMI req:0x%x, value:%#04x", status, value);
-	}
 
 	if (!detail && !dbg_runtime_ctrl)
 		goto out;
@@ -4599,18 +4600,6 @@ static void _dpc_analysis(bool detail)
 
 out:
 	DPCDUMP("===================================================");
-
-	if (atomic_read(&g_mmdvfs_available) && g_panel_type == PANEL_TYPE_VDO &&
-		mtk_dpc_support_cap(DPC_VIDLE_LOWER_VDISP_DVFS)) {
-		value = readl(dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
-		if (value > 0) {
-			writel(1, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_CFG);
-			writel((value + 1) % 4, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
-			udelay(100);
-			writel(value, dpc_base + DISP_REG_DPC_DISP_VDISP_DVFS_VAL);
-			DPCFUNC("sw force update vdisp level:%u\n", value);
-		}
-	}
 	dpc_pm_ctrl(false, __func__);
 }
 
