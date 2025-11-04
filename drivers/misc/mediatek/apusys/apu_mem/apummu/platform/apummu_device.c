@@ -92,7 +92,7 @@ static struct apummu_plat mt6881_drv = {
 	.is_general_SLB_support          = false,
 	.alloc_DRAM_FB_in_session_create = false,
 	.is_ASE_support                  = false,
-	.hw_ops                          = NULL,
+	.hw_ops                          = &mt6881_ammudata.ops,
 	.reserved_session_num            = 0,
 	.is_SLC_support                  = false,
 };
