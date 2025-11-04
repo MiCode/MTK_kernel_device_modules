@@ -533,6 +533,11 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 
 		if (atomic_read(&g_vdisp_ctrl_cnt) == 2) {
 			mtk_vidle_user_power_clean_up_by_gce();
+
+			/* release exception flow by ap */
+			if (disp_dpc_driver.dpc_mtcmos_on_off)
+				disp_dpc_driver.dpc_mtcmos_on_off(false, NULL, DISP_VIDLE_USER_DISP_DPC_CFG, true, 0);
+
 			ret = readx_poll_timeout(vdisp_hwccf_check_power, , value,
 						 value == 0, POLL_DELAY_1US, TIMEOUT_10MS);
 			if (ret) {
