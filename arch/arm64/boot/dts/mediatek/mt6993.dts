@@ -16219,6 +16219,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,dmaheap-mtk-sec-page";
 			heap-name = "mtk_sapu_page-uncached";
 			trusted-mem-type = <14>;
+			status = "disabled";
 		};
 
 		mtkheap_page_svp: mtkheap-page-svp {
@@ -24553,7 +24554,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		datamem-type = <2>;
 		datamem-size = <0x0 0x0 0x0 0x0>;
 		smmu-device = <&secure_apu_smmu_device>;
-		status = "okay";
+		status = "disabled";
 	};
 };
 
