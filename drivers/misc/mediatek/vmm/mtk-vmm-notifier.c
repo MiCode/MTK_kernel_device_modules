@@ -142,6 +142,24 @@ static int vmm_locked_vde_close(void)
 	return 0;
 }
 
+int vmm_enable_cvfs(enum VMM_CVFS_USR_ID user_id, enum VMM_CVFS_SEL_ID vmm_cvfs_sel_id)
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(vmm_enable_cvfs);
+
+int vmm_disable_cvfs(enum VMM_CVFS_USR_ID user_id, enum VMM_CVFS_SEL_ID vmm_cvfs_sel_id)
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(vmm_disable_cvfs);
+
+int vmm_cvfs_dump(void)
+{
+	return 0;
+}
+EXPORT_SYMBOL_GPL(vmm_cvfs_dump);
+
 #ifdef AVS_RO_READY
 static int mtk_avs_detect(struct vmm_notifier_data *data)
 {
