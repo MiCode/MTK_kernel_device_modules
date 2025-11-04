@@ -626,11 +626,19 @@ uint64_t cmdq_task_get_curr_pa(struct TaskStruct *task)
 int cmdq_task_sleep(struct TaskStruct *task, u32 tick, u16 reg_gpr)
 {
 	struct cmdq_operand lop, rop;
-	const u32 timeout_en = GCE_BASE_VA + CMDQ_TPR_TIMEOUT_EN;
+	u32 timeout_en;
 	u32 tpr_en;
 	u16 event;
 	u32 end_addr_mark;
 	u64 *inst;
+	uint32_t base;
+
+	if (!task)
+		return -(CMDQ_ERR_BAD_PARAM);
+	base = cmdq_get_base_by_hwid(task->hwid);
+
+	timeout_en = base + CMDQ_TPR_TIMEOUT_EN;
+
 
 	tpr_en = 1 << reg_gpr;
 	event = (u16)CMDQ_EVENT_GPR_TIMER + reg_gpr;
@@ -1084,8 +1092,8 @@ struct TaskStruct *cmdq_pkvm_acquire_task_with_metadata(int32_t hwid_thrd,
 		/* init basic information */
 		pTask->taskState  = TASK_STATE_WAITING;
 		pTask->scenario   = scenario;
-		pTask->hwid = hwid;
-		pTask->thread	 = thread; /* note we dispatch thread form normal path */
+		// pTask->hwid = hwid;
+		// pTask->thread	 = thread; /* note we dispatch thread form normal path */
 		pTask->irqFlag	= 0;
 		pTask->waitCookie = cookie;
 
@@ -1152,19 +1160,30 @@ struct ThreadStruct *cmdq_tz_get_thread_struct_by_id(const int32_t thread)
 	return pThread;
 }
 
-int32_t cmdq_pkvm_reset_HW_thread(int32_t thread)
+int32_t cmdq_pkvm_reset_HW_thread(struct TaskStruct *pTask)
 {
-	uint32_t loop = 0;
+	uint32_t base, thread, loop = 0;
 
+	if (!pTask) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask is null");
+		return -(CMDQ_ERR_BAD_PARAM);
+	}
+
+	base = cmdq_get_base_by_hwid(pTask->hwid);
+	thread = pTask->thread;
 #if defined(CMDQ_DEBUG)
 	CALL_FROM_OPS(puts, __func__);
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "EXEC: reset HW thread:");
 	CALL_FROM_OPS(putx64, (u64)thread);
 #endif
+	if (!base) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+		return -(CMDQ_ERR_FAULT);
+	}
 
-	CMDQ_REG_SET32(CMDQ_THR_WARM_RESET(thread), 0x01);
+	CMDQ_REG_SET32(base, CMDQ_THR_WARM_RESET(base, thread), 0x01);
 
-	while (CMDQ_REG_GET32(CMDQ_THR_WARM_RESET(thread)) == 0x1) {
+	while (CMDQ_REG_GET32(base, CMDQ_THR_WARM_RESET(base, thread)) == 0x1) {
 		if (loop > CMDQ_MAX_LOOP_COUNT) {
 			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "thread:");
 			CALL_FROM_OPS(putx64, (u64)thread);
@@ -1181,14 +1200,14 @@ int32_t cmdq_pkvm_reset_HW_thread(int32_t thread)
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "EXEC: reset HW thread");
 	CALL_FROM_OPS(putx64, (u64)thread);
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "+ , CNT:");
-	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_EXEC_CNT(thread)));
+	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_EXEC_CNT(base, thread)));
 #endif
 
-	CMDQ_REG_SET32(CMDQ_THR_EXEC_CNT(thread), 0);
+	CMDQ_REG_SET32(base, CMDQ_THR_EXEC_CNT(base, thread), 0);
 
 #if defined(CMDQ_DEBUG)
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "- , CNT:");
-	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_EXEC_CNT(thread)));
+	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_EXEC_CNT(base, thread)));
 #endif
 
 	return 0;
@@ -1305,15 +1324,23 @@ int32_t cmdq_pkvm_insert_task_from_thread_array_by_cookie(struct TaskStruct *pTa
 	return 0;
 }
 
-static int32_t cmdq_pkvm_enable_HW_thread(int32_t thread)
+static int32_t cmdq_pkvm_enable_HW_thread(struct TaskStruct *pTask)
 {
-	CMDQ_REG_SET32(CMDQ_THR_ENABLE_TASK(thread), 0x01);
+	uint32_t base = cmdq_get_base_by_hwid(pTask->hwid);
+	uint32_t thread = pTask->thread;
+
+	if (!base) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+		return -(CMDQ_ERR_FAULT);
+	}
+
+	CMDQ_REG_SET32(base, CMDQ_THR_ENABLE_TASK(base, thread), 0x01);
 
 	CALL_FROM_OPS(puts, __func__);
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "EXEC: enable thread:");
 	CALL_FROM_OPS(putx64, (u64)thread);
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "val:");
-	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_ENABLE_TASK(thread)));
+	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_ENABLE_TASK(base, thread)));
 
 	return 0;
 }
@@ -1321,9 +1348,26 @@ static int32_t cmdq_pkvm_enable_HW_thread(int32_t thread)
 int32_t cmdq_pkvm_exec_task_async(struct TaskStruct *pTask, int32_t hwid_thrd)
 {
 	struct ThreadStruct *pThread;
-	int32_t status = 0, thread;
-	uint32_t threadPrio;
-	const int32_t cookie = pTask->waitCookie;
+	int32_t status = 0, thread, cookie;
+	uint32_t threadPrio, base;
+
+	if (!pTask) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask is null");
+		return -(CMDQ_ERR_BAD_PARAM);
+	}
+	CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask thread");
+	CALL_FROM_OPS(putx64, (u64)pTask->thread);
+	CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask hwid");
+	CALL_FROM_OPS(putx64, (u64)pTask->hwid);
+	base = cmdq_get_base_by_hwid(pTask->hwid);
+	CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask base");
+	CALL_FROM_OPS(putx64, (u64)base);
+	cookie = pTask->waitCookie;
+
+	if (!base) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+		return -(CMDQ_ERR_FAULT);
+	}
 
 	thread = CMDQ_GET_THREAD(hwid_thrd);
 
@@ -1348,12 +1392,10 @@ int32_t cmdq_pkvm_exec_task_async(struct TaskStruct *pTask, int32_t hwid_thrd)
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "thread:");
 	CALL_FROM_OPS(putx64, (u64)thread);
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "spr:");
-	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR0(thread)));
-	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR1(thread)));
-	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR2(thread)));
-	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR3(thread)));
-	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "hw cookie:");
-	CALL_FROM_OPS(putx64, (u64)CMDQ_GET_COOKIE_CNT(thread));
+	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR0(base, thread)));
+	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR1(base, thread)));
+	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR2(base, thread)));
+	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR3(base, thread)));
 
 	pThread = cmdq_tz_get_thread_struct_by_id(thread);
 	if (!pThread) {
@@ -1365,7 +1407,7 @@ int32_t cmdq_pkvm_exec_task_async(struct TaskStruct *pTask, int32_t hwid_thrd)
 	/* attach task to thread, so switch state to BUSY */
 	pTask->taskState = TASK_STATE_BUSY;
 
-	status = cmdq_pkvm_reset_HW_thread(thread);
+	status = cmdq_pkvm_reset_HW_thread(pTask);
 	if (status < 0)
 		return status;
 
@@ -1373,24 +1415,25 @@ int32_t cmdq_pkvm_exec_task_async(struct TaskStruct *pTask, int32_t hwid_thrd)
 	CALL_FROM_OPS(putx64, (u64)thread);
 
 	/* NWd CMDQ will monitor task execute result, so we enable EXEC_CMD only */
-	CMDQ_REG_SET32(CMDQ_THR_IRQ_ENABLE(thread), CMDQ_THR_IRQ_FALG_EXEC_CMD | CMDQ_THR_IRQ_FALG_INVALID_INSTN);
+	CMDQ_REG_SET32(base, CMDQ_THR_IRQ_ENABLE(base, thread),
+		CMDQ_THR_IRQ_FALG_EXEC_CMD | CMDQ_THR_IRQ_FALG_INVALID_INSTN);
 
 	/* HW thread config */
 	/* HACK: disable HW timeout */
-	CMDQ_REG_SET32(CMDQ_THR_INST_CYCLES(thread), 0);	/* HACK: disable HW timeout */
+	CMDQ_REG_SET32(base, CMDQ_THR_INST_CYCLES(base, thread), 0);
 	/* set THRx_SECURITY=1, THRx_SECURE_IRQ_EN=0 */
-	CMDQ_REG_SET32(CMDQ_THR_SECURITY(thread), 0x1);		/* set THRx_SECURITY=1, THRx_SECURE_IRQ_EN=0 */
+	CMDQ_REG_SET32(base, CMDQ_THR_SECURITY(base, thread), 0x1);
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "SECURITY:");
-	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SECURITY(thread)));
-	CMDQ_REG_SET32(CMDQ_THR_END_ADDR(thread),
+	CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SECURITY(base, thread)));
+	CMDQ_REG_SET32(base, CMDQ_THR_END_ADDR(base, thread),
 		CMDQ_PKVM_REG_SHIFT_ADDR(pTask->MVABase + pTask->commandSize));
-	CMDQ_REG_SET32(CMDQ_THR_CURR_ADDR(thread),
+	CMDQ_REG_SET32(base, CMDQ_THR_CURR_ADDR(base, thread),
 		CMDQ_PKVM_REG_SHIFT_ADDR(pTask->MVABase));
 
 	/* thread priority */
 	threadPrio = cmdq_tz_priority_from_scenario((enum CMDQ_SCENARIO_ENUM)pTask->scenario);
 	/* bit 0-2 for priority level; */
-	CMDQ_REG_SET32(CMDQ_THR_CFG(thread), threadPrio & 0x7);	/* bit 0-2 for priority level; */
+	CMDQ_REG_SET32(base, CMDQ_THR_CFG(base, thread), threadPrio & 0x7);	/* bit 0-2 for priority level; */
 
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "pc:");
 	CALL_FROM_OPS(putx64, (u64)pTask->MVABase);
@@ -1401,7 +1444,7 @@ int32_t cmdq_pkvm_exec_task_async(struct TaskStruct *pTask, int32_t hwid_thrd)
 	cmdq_pkvm_insert_task_from_thread_array_by_cookie(pTask, pThread, (uint32_t)cookie, true);
 
 	/* enable HW */
-	cmdq_pkvm_enable_HW_thread(thread);
+	cmdq_pkvm_enable_HW_thread(pTask);
 
 	return status;
 }
@@ -1480,7 +1523,10 @@ int32_t cmdq_pkvm_handle_submit_task_async(
 
 	if (pTask == NULL)
 		return -CMDQ_ERR_NULL_TASK;
-
+	CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask thread");
+	CALL_FROM_OPS(putx64, (u64)pTask->thread);
+	CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask hwid");
+	CALL_FROM_OPS(putx64, (u64)pTask->hwid);
 
 	// submit to GCE
 	status = cmdq_pkvm_exec_task_async(pTask, hwid_thrd);
@@ -1505,7 +1551,6 @@ void cmdq_hyp_submit_task(struct user_pt_regs *regs)
 	scenario = regs->regs[3] & 0x7FFF;
 
 	hwid = (uint8_t)CMDQ_GET_HWID(hwid_thrd);
-	cmdq_tz_setup(hwid);
 	status = cmdq_pkvm_handle_submit_task_async(
 		hwid_thrd, waitCookie, scenario, NULL, NULL, NULL);
 
@@ -1523,13 +1568,27 @@ void cmdq_hyp_res_release(struct user_pt_regs *regs)
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 
-int32_t cmdq_pkvm_suspend_HW_thread(int32_t thread)
+int32_t cmdq_pkvm_suspend_HW_thread(struct TaskStruct *pTask)
 {
 	int retry = 0;
+	uint32_t base, thread;
 
-	CMDQ_REG_SET32(CMDQ_THR_SUSPEND_TASK(thread), 0x01);
+	if (!pTask) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask is null");
+		return -(CMDQ_ERR_BAD_PARAM);
+	}
 
-	while (!(CMDQ_REG_GET32(CMDQ_THR_CURR_STATUS(thread)) & 0x2)) {
+	base = cmdq_get_base_by_hwid(pTask->hwid);
+	thread = pTask->thread;
+
+	if (!base) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+		return -(CMDQ_ERR_FAULT);
+	}
+
+	CMDQ_REG_SET32(base, CMDQ_THR_SUSPEND_TASK(base, thread), 0x01);
+
+	while (!(CMDQ_REG_GET32(base, CMDQ_THR_CURR_STATUS(base, thread)) & 0x2)) {
 		if (retry >= 100) {
 			CALL_FROM_OPS(puts, __func__);
 			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "retry:");
@@ -1544,18 +1603,30 @@ int32_t cmdq_pkvm_suspend_HW_thread(int32_t thread)
 	return 0;
 }
 
-uint32_t *cmdq_tz_get_pc(const struct TaskStruct *pTask, uint32_t thread,
+int32_t *cmdq_tz_get_pc(const struct TaskStruct *pTask, uint32_t thread,
 	uint32_t insts[4])
 {
 	u64 currPC = 0LL;
 	uint8_t *pInst = NULL;
+	uint32_t base;
+
+	if (!pTask) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask is null");
+		return NULL;
+	}
+
+	base = cmdq_get_base_by_hwid(pTask->hwid);
+	if (!base) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+		return NULL;
+	}
 
 	insts[0] = 0;
 	insts[1] = 0;
 	insts[2] = 0;
 	insts[3] = 0;
 
-	currPC = CMDQ_PKVM_REG_REVERT_ADDR(CMDQ_REG_GET32(CMDQ_THR_CURR_ADDR(thread)));
+	currPC = CMDQ_PKVM_REG_REVERT_ADDR(CMDQ_REG_GET32(base, CMDQ_THR_CURR_ADDR(base, thread)));
 	pInst = (uint8_t *) pTask->pVABase + (currPC - pTask->MVABase);
 
 	CALL_FROM_OPS(puts, __func__);
@@ -1574,13 +1645,9 @@ uint32_t *cmdq_tz_get_pc(const struct TaskStruct *pTask, uint32_t thread,
 		if (pInst != (uint8_t *)pTask->pCMDEnd + 4) {
 			/* If PC points to start of pCMD, */
 			/* - 8 causes access violation */
-			/* insts[0] = CMDQ_REG_GET32(pInst - 8); */
-			/* insts[1] = CMDQ_REG_GET32(pInst - 4); */
 			insts[2] = *(uint32_t *)(pInst + 0);
 			insts[3] = *(uint32_t *)(pInst + 4);
 		} else {
-			/* insts[0] = CMDQ_REG_GET32(pInst - 16); */
-			/* insts[1] = CMDQ_REG_GET32(pInst - 12); */
 			insts[2] = *(uint32_t *)(pInst - 8);
 			insts[3] = *(uint32_t *)(pInst - 4);
 		}
@@ -1619,20 +1686,33 @@ void cmdq_tz_dump_pc(const struct TaskStruct *pTask, int thread, const char *tag
 
 }
 
-void cmdq_pkvm_attach_error_task(const struct TaskStruct *pTask, int32_t thread)
+int32_t cmdq_pkvm_attach_error_task(const struct TaskStruct *pTask, int32_t thread)
 {
 	struct ThreadStruct *pThread = NULL;
+	uint32_t base;
+
+	if (!pTask) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask is null");
+		return -(CMDQ_ERR_BAD_PARAM);
+	}
+
+	base = cmdq_get_base_by_hwid(pTask->hwid);
+	if (!base) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+		return -(CMDQ_ERR_FAULT);
+	}
+
 
 	if (thread < 0 || thread >= CMDQ_MAX_THREAD_COUNT) {
 		CALL_FROM_OPS(puts, __func__);
 		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "Invalid thread:");
 		CALL_FROM_OPS(putx64, (u64)thread);
-		return;
+		return -(CMDQ_ERR_BAD_PARAM);
 	}
 
 	pThread = cmdq_pkvm_get_thread_struct_by_id(thread);
 	if (!pThread)
-		return;
+		return -(CMDQ_ERR_BAD_PARAM);
 	if (pTask->throwAEE) {
 		uint32_t value[10] = { 0 };
 
@@ -1644,16 +1724,15 @@ void cmdq_pkvm_attach_error_task(const struct TaskStruct *pTask, int32_t thread)
 		CALL_FROM_OPS(putx64, (u64)thread);
 		CALL_FROM_OPS(puts, PFX_CMDQ_ERR ") Status");
 
-		value[0] = (uint32_t)CMDQ_PKVM_REG_REVERT_ADDR(CMDQ_REG_GET32(CMDQ_THR_CURR_ADDR(thread)));
-		value[1] = (uint32_t)CMDQ_PKVM_REG_REVERT_ADDR(CMDQ_REG_GET32(CMDQ_THR_END_ADDR(thread)));
-		value[2] = CMDQ_REG_GET32(CMDQ_THR_WAIT_TOKEN(thread));
-		value[3] = CMDQ_GET_COOKIE_CNT(thread);
-		value[4] = CMDQ_REG_GET32(CMDQ_THR_IRQ_STATUS(thread));
-		value[5] = CMDQ_REG_GET32(CMDQ_THR_INST_CYCLES(thread));
-		value[6] = CMDQ_REG_GET32(CMDQ_THR_CURR_STATUS(thread));
-		value[7] = CMDQ_REG_GET32(CMDQ_THR_IRQ_ENABLE(thread));
-		value[8] = CMDQ_REG_GET32(CMDQ_THR_ENABLE_TASK(thread));
-		value[9] = CMDQ_REG_GET32(CMDQ_THR_SECURITY(thread));
+		value[0] = (uint32_t)CMDQ_PKVM_REG_REVERT_ADDR(CMDQ_REG_GET32(base, CMDQ_THR_CURR_ADDR(base, thread)));
+		value[1] = (uint32_t)CMDQ_PKVM_REG_REVERT_ADDR(CMDQ_REG_GET32(base, CMDQ_THR_END_ADDR(base, thread)));
+		value[2] = CMDQ_REG_GET32(base, CMDQ_THR_WAIT_TOKEN(base, thread));
+		value[4] = CMDQ_REG_GET32(base, CMDQ_THR_IRQ_STATUS(base, thread));
+		value[5] = CMDQ_REG_GET32(base, CMDQ_THR_INST_CYCLES(base, thread));
+		value[6] = CMDQ_REG_GET32(base, CMDQ_THR_CURR_STATUS(base, thread));
+		value[7] = CMDQ_REG_GET32(base, CMDQ_THR_IRQ_ENABLE(base, thread));
+		value[8] = CMDQ_REG_GET32(base, CMDQ_THR_ENABLE_TASK(base, thread));
+		value[9] = CMDQ_REG_GET32(base, CMDQ_THR_SECURITY(base, thread));
 
 		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "Enabled:");
 		CALL_FROM_OPS(putx64, (u64)value[8]);
@@ -1685,10 +1764,11 @@ void cmdq_pkvm_attach_error_task(const struct TaskStruct *pTask, int32_t thread)
 		CALL_FROM_OPS(putx64, (u64)value[9]);
 
 		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "spr ");
-		CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR0(thread)));
-		CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR1(thread)));
-		CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR2(thread)));
-		CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR3(thread)));
+
+		CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR0(base, thread)));
+		CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR1(base, thread)));
+		CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR2(base, thread)));
+		CALL_FROM_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR3(base, thread)));
 
 		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "Error Thread(");
 		CALL_FROM_OPS(putx64, (u64)thread);
@@ -1720,6 +1800,7 @@ void cmdq_pkvm_attach_error_task(const struct TaskStruct *pTask, int32_t thread)
 		CALL_FROM_OPS(putx64, (u64)gCmdqContext.errNum);
 	}
 	gCmdqContext.errNum++;
+	return 0;
 }
 
 void cmdq_pkvm_remove_all_task_in_thread_unlocked(int32_t thread)
@@ -1761,22 +1842,53 @@ void cmdq_pkvm_remove_all_task_in_thread_unlocked(int32_t thread)
 	} while (0);
 }
 
-int32_t cmdq_pkvm_disable_HW_thread(int32_t thread)
+int32_t cmdq_pkvm_disable_HW_thread(struct TaskStruct *pTask)
 {
-	cmdq_pkvm_reset_HW_thread(thread);
+	uint32_t base, thread;
+
+	if (!pTask) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask is null");
+		return -(CMDQ_ERR_BAD_PARAM);
+	}
+
+	base = cmdq_get_base_by_hwid(pTask->hwid);
+	thread = pTask->thread;
+
+	if (!base) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+		return -(CMDQ_ERR_FAULT);
+	}
+
+	cmdq_pkvm_reset_HW_thread(pTask);
 #if defined(CMDQ_DEBUG)
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "EXEC: disable HW thread:");
 	CALL_FROM_OPS(putx64, (u64)thread);
 #endif
-	CMDQ_REG_SET32(CMDQ_THR_ENABLE_TASK(thread), 0x00);
+	CMDQ_REG_SET32(base, CMDQ_THR_ENABLE_TASK(base, thread), 0x00);
 	return 0;
 }
 
-int32_t cmdq_pkvm_get_and_update_CNT_to_shared_CNT_region(int32_t thread)
+int32_t cmdq_pkvm_get_and_update_CNT_to_shared_CNT_region(struct TaskStruct *pTask)
 {
-	const int32_t cookie = (int32_t)CMDQ_GET_COOKIE_CNT(thread);
+	uint32_t base, thread;
+	int32_t cookie;
 
-	CMDQ_REG_SET32(CMDQ_THR_EXEC_CNT(thread), (uint32_t)cookie);
+	if (!pTask) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask is null");
+		return -(CMDQ_ERR_BAD_PARAM);
+	}
+
+	base = cmdq_get_base_by_hwid(pTask->hwid);
+	thread = pTask->thread;
+
+	if (!base) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+		return -(CMDQ_ERR_FAULT);
+	}
+
+	cookie = (int32_t)CMDQ_GET_COOKIE_CNT(base, thread);
+
+	CMDQ_REG_SET32(base, CMDQ_THR_EXEC_CNT(base, thread), (uint32_t)cookie);
 
 #if defined(CMDQ_DEBUG)
 	CALL_FROM_OPS(puts, __func__);
@@ -1790,7 +1902,7 @@ int32_t cmdq_pkvm_get_and_update_CNT_to_shared_CNT_region(int32_t thread)
 
 void cmdq_hyp_cancel_task(struct user_pt_regs *regs)
 {
-	uint32_t hwid_thrd, scenario_aee;
+	uint32_t hwid_thrd, scenario_aee, base = 0;
 	int32_t hwid, thread, max_task = 0;
 	uint32_t currCookie, cookie;
 	struct ThreadStruct *pThread = NULL;
@@ -1808,18 +1920,24 @@ void cmdq_hyp_cancel_task(struct user_pt_regs *regs)
 	thread = CMDQ_GET_THREAD(hwid_thrd);
 	hwid = CMDQ_GET_HWID(hwid_thrd);
 
-	cmdq_tz_setup((uint8_t)hwid);
-	cmdq_pkvm_suspend_HW_thread(thread);
-
 	do {
 		pThread = cmdq_pkvm_get_thread_struct_by_id(thread);
-		if (!pThread)
+		if (!pThread) {
+			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "pthead is null");
 			return;
+		}
 		max_task = cmdq_tz_get_max_task_in_thread(thread);
-		if (max_task == 0)
+
+		if (max_task == 0) {
+			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "max_task is 0");
 			return;
+		}
+
 		pTask = pThread->pCurTask[cookie % max_task];
-		currCookie = (uint32_t)cmdq_pkvm_get_and_update_CNT_to_shared_CNT_region(thread);
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask thread");
+		CALL_FROM_OPS(putx64, (u64)pTask->thread);
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask hwid");
+		CALL_FROM_OPS(putx64, (u64)pTask->hwid);
 		if (pTask == NULL) {
 			CALL_FROM_OPS(puts, __func__);
 			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "CANCEL_TASK: thread");
@@ -1829,10 +1947,22 @@ void cmdq_hyp_cancel_task(struct user_pt_regs *regs)
 			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "is NULL task");
 			break;
 		}
+		pTask->thread = thread;
+		pTask->hwid = hwid;
+		currCookie = (uint32_t)cmdq_pkvm_get_and_update_CNT_to_shared_CNT_region(pTask);
+		cmdq_pkvm_suspend_HW_thread(pTask);
+
+		base = cmdq_get_base_by_hwid(pTask->hwid);
+		if (!base) {
+			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+			return;
+		}
+
 		pTask->throwAEE = throwAEE;
 
 		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "CANCEL_TASK: start to remove all tasks on thread ");
 		CALL_FROM_OPS(putx64, (u64)thread);
+
 		if (pTask->throwAEE) {
 			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "since error task(cookie:");
 			CALL_FROM_OPS(putx64, (u64)cookie);
@@ -1854,18 +1984,25 @@ void cmdq_hyp_cancel_task(struct user_pt_regs *regs)
 		/* remove all task in thread */
 		cmdq_pkvm_remove_all_task_in_thread_unlocked(thread);
 	} while (0);
-
-	if (pTask && pTask->throwAEE) {
+	pTask->thread = thread;
+	pTask->hwid = hwid;
+	if (pTask->throwAEE) {
 		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "CANCEL_TASK: clear thread ");
 		CALL_FROM_OPS(putx64, (u64)thread);
 		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "shared_cookie to 0");
 	}
 
-	CMDQ_REG_SET32(CMDQ_THR_EXEC_CNT(thread), 0);
+	if (!base) {
+		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "base is null");
+		return;
+	}
 
-	cmdq_pkvm_disable_HW_thread(thread);
+	CMDQ_REG_SET32(base, CMDQ_THR_EXEC_CNT(base, thread), 0);
+
+	cmdq_pkvm_disable_HW_thread(pTask);
 
 	regs->regs[0] = SMCCC_RET_SUCCESS;
+	return;
 }
 
 void cmdq_hyp_path_res_allocate(struct user_pt_regs *regs)
@@ -1874,7 +2011,6 @@ void cmdq_hyp_path_res_allocate(struct user_pt_regs *regs)
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "enter");
 
 	cmdq_pkvm_cmd_buffer_init();
-	cmdq_tz_setup(MDP_HWID);
 	cmdq_pkvm_acquire_task_with_metadata((MDP_HWID<<5 | MDP_THR_IDX), 0x1, CMDQ_MAX_SCENARIO_COUNT);
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
@@ -1911,7 +2047,8 @@ void cmdq_hyp_pkvm_init(struct user_pt_regs *regs)
 				pTask[index].pVABase = NULL;
 				pTask[index].pCMDEnd = NULL;
 				pTask[index].MVABase = 0; /* Delay CMD buffer init when setup path resource */
-
+				pTask[index].hwid = core;
+				pTask[index].thread = CMDQ_MIN_SECURE_THREAD_ID + i;
 				// be carefully that list parameter order is not same as linux version
 				// secure world's list: list_add_tail(list, list_node)
 				list_add_tail_new(&gCmdqFreeTask[core][i], &(pTask[index].listEntry));
@@ -2059,7 +2196,6 @@ void cmdq_hyp_pkvm_iwc_submit(struct user_pt_regs *regs)
 	CALL_FROM_OPS(putx64, hwid_thrd);
 
 	hwid = (uint8_t)CMDQ_GET_HWID(hwid_thrd);
-	cmdq_tz_setup(hwid);
 
 	ret = cmdq_pkvm_handle_submit_task_async(
 		hwid_thrd,

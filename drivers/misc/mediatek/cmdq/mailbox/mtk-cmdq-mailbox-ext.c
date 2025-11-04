@@ -4071,7 +4071,7 @@ void cmdq_mbox_enable(void *chan)
 #else
 			ret = 0;
 #endif
-				if (ret != 0)
+				if (ret < 0)
 					cmdq_err("vote mminfra on err:%d", ret);
 
 				if (mminfra_power_cb && !mminfra_power_cb())

@@ -25,11 +25,9 @@
 #define CMDQ_SECIO_TYPE_RANGE_7     0x70000
 #define CMDQ_SECIO_TYPE_RANGE_8     0x80000
 
-#define GCE_BASE_VA                   cmdq_tz_get_gce_base_va()
-
 #define CMDQ_SECIO_GET_OFFSET(addr) (addr & 0xFFF)
-#define CMDQ_SECIO_TYPE_GET_OFFSET(addr) (addr - GCE_BASE_VA)
-#define CMDQ_THR_SECURITY(id)        (GCE_BASE_VA + (0x080 * id) + 0x118)
+#define CMDQ_SECIO_TYPE_GET_OFFSET(base, addr) (addr - base)
+#define CMDQ_THR_SECURITY(base, id)        (base + (0x080 * id) + 0x118)
 
 #define CMDQ_PKVM_REG_SHIFT_ADDR(addr)	(((uint64_t)(addr) >> 3) + BIT(27))
 #define CMDQ_PKVM_REG_REVERT_ADDR(addr)	(((uint64_t)(addr) << 3) - BIT(30))
@@ -104,11 +102,10 @@
 #define MDP_SCENARIO	CMDQ_MAX_SCENARIO_COUNT
 
 bool m4u_larb_port_without_aid(const uint32_t port);
-void cmdq_secio_write(const uint32_t addr, const uint32_t val);
-uint32_t cmdq_secio_read(const uint32_t addr);
-uint32_t cmdq_tz_get_gce_base_va(void);
-void cmdq_tz_setup(uint8_t hwid);
-void cmdq_drv_imgsys_slc_cb(void);
+void cmdq_secio_write(const uint32_t base, const uint32_t addr, const uint32_t val);
+uint32_t cmdq_secio_read(const uint32_t base, const uint32_t addr);
+void cmdq_drv_imgsys_slc_cb(const uint32_t base);
 int32_t cmdq_drv_imgsys_set_domain(void *data, bool isSet);
 int32_t cmdq_tz_isp_secure(void *data, bool isSet);
 int32_t cmdq_tz_isp_normal(void *data, bool isSet);
+uint32_t cmdq_get_base_by_hwid(uint8_t hwid);

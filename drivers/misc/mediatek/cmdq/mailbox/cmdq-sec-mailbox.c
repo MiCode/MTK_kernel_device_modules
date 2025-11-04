@@ -328,7 +328,7 @@ void cmdq_sec_mbox_enable(void *chan)
 			mtk_mminfra_on_off(true, cmdq->mminfra_all_on_pwr_idx, MM_TYPE_CMDQ) :
 			pm_runtime_get_sync(cmdq->mbox.dev);
 
-		if (ret != 0)
+		if (ret < 0)
 			cmdq_err("%s vote mminfra on err:%d", __func__, ret);
 		if (mminfra_power_cb && !mminfra_power_cb())
 			cmdq_err("hwid:%hu usage:%d mminfra power not enable",
@@ -1539,6 +1539,7 @@ void cmdq_sec_mbox_stop_throwAEE(struct cmdq_client *cl, bool throwAEE)
 	struct cmdq_sec *cmdq =
 		container_of(cl->chan->mbox, typeof(*cmdq), mbox);
 
+	memset(&cmdq->cancel, 0, sizeof(cmdq->cancel));
 	cmdq->cancel.throwAEE = throwAEE;
 	cmdq_sec_mbox_stop(cl);
 #endif
@@ -1567,7 +1568,6 @@ void cmdq_sec_mbox_stop(struct cmdq_client *cl)
 			return;
 		}
 
-		memset(&cmdq->cancel, 0, sizeof(cmdq->cancel));
 		cmdq_sec_task_submit(cmdq, task, CMD_CMDQ_TL_CANCEL_TASK,
 			thread->idx, &cmdq->cancel,
 			((struct cmdq_sec_data *)task->pkt->sec_data)->mtee);
@@ -1690,6 +1690,7 @@ task_err_callback:
 			task->pkt->err_cb.cb(cb_data);
 
 		task->pkt->done = true;
+		task->pkt->task_alloc = false;
 		cb_data.data = task->pkt->cb.data;
 		if (task->pkt->cb.cb)
 			task->pkt->cb.cb(cb_data);

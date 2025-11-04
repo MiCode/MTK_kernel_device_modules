@@ -149,10 +149,7 @@ s32 cmdq_sec_pkvm_execute_session_iwc(struct cmdq_sec_pkvm_context *tee, u32 cmd
 	iwc_ex1_pa = (u64)virt_to_phys(iwc_ex1);
 	iwc_ex2_pa = (u64)virt_to_phys(iwc_ex2);
 
-	cmdq_log("%s 0x%llx 0x%llx 0x%llx %x %x %x", __func__, iwc_msg_pa, iwc_ex1_pa, iwc_ex2_pa,
-		size, size_ex, size_ex2);
 	pkvm_el2_mod_call(hvc_id, iwc_msg_pa, size, iwc_ex1_pa, size_ex, iwc_ex2_pa, size_ex2);
-
 #endif
 	cmdq_mbox_mtcmos_by_fast(NULL, false);
 

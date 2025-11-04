@@ -18,15 +18,15 @@ void cmdq_set_isp_ops(const struct pkvm_module_ops *ops)
 }
 
 #define SLC_SEC_THD (8)
-void cmdq_drv_imgsys_slc_cb(void)
+void cmdq_drv_imgsys_slc_cb(const uint32_t base)
 {
 	CALL_FROM_CMDQ_ISP_OPS(puts, __func__);
 	CALL_FROM_CMDQ_ISP_OPS(puts, PFX_CMDQ_MSG "spr1:");
-	CALL_FROM_CMDQ_ISP_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR1(SLC_SEC_THD)));
+	CALL_FROM_CMDQ_ISP_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR1(base, SLC_SEC_THD)));
 	CALL_FROM_CMDQ_ISP_OPS(puts, PFX_CMDQ_MSG "spr2:");
-	CALL_FROM_CMDQ_ISP_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR2(SLC_SEC_THD)));
+	CALL_FROM_CMDQ_ISP_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR2(base, SLC_SEC_THD)));
 	CALL_FROM_CMDQ_ISP_OPS(puts, PFX_CMDQ_MSG "spr3:");
-	CALL_FROM_CMDQ_ISP_OPS(putx64, (u64)CMDQ_REG_GET32(CMDQ_THR_SPR3(SLC_SEC_THD)));
+	CALL_FROM_CMDQ_ISP_OPS(putx64, (u64)CMDQ_REG_GET32(base, CMDQ_THR_SPR3(base, SLC_SEC_THD)));
 }
 
 int32_t cmdq_drv_imgsys_set_domain(void *data, bool isSet)

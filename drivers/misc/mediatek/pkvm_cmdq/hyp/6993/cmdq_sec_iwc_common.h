@@ -366,6 +366,7 @@ struct iwcCmdqMessageEx2_t {
 /* note the error result returns negative value, i.e, -(ERRNO) */
 /*  */
 #define	CMDQ_ERR_NOMEM		(12)	/* out of memory */
+#define	CMDQ_ERR_BAD_PARAM		(13)	/* bad param */
 #define	CMDQ_ERR_FAULT		(14)	/* bad address */
 
 #define CMDQ_ERR_ADDR_CONVERT_HANDLE_2_PA (1000)

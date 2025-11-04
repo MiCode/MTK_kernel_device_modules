@@ -19,7 +19,7 @@ void cmdq_set_isp_ops(const struct pkvm_module_ops *ops)
 
 #define SLC_SEC_THD (8)
 
-void cmdq_drv_imgsys_slc_cb(void)
+void cmdq_drv_imgsys_slc_cb(const uint32_t base)
 {
 }
 

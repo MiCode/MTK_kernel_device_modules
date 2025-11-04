@@ -17,9 +17,6 @@
 #define GCED_BASE_PA 0x1e980000
 #define GCEM_BASE_PA 0x1e990000
 
-static uint32_t gce_base_va;
-static uint8_t cmdq_id;
-
 const struct pkvm_module_ops *pkvm_cmdq_plat_ops;
 #define CALL_FROM_PLAT_OPS(fn, ...) pkvm_cmdq_plat_ops->fn(__VA_ARGS__)
 
@@ -30,23 +27,28 @@ void cmdq_set_plat_ops(const struct pkvm_module_ops *ops)
 	CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_MSG "enter");
 }
 
-uint32_t cmdq_tz_get_gce_base_va(void)
+uint32_t cmdq_get_base_by_hwid(uint8_t hwid)
 {
-	return gce_base_va;
+	if (hwid == 0)
+		return GCED_BASE_PA;
+	else if (hwid == 1)
+		return GCEM_BASE_PA;
+
+	CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_ERR "HWID not supported");
+	CALL_FROM_PLAT_OPS(putx64, (u64)hwid);
+	return 0;
 }
 
-void cmdq_tz_setup(uint8_t hwid)
+uint8_t cmdq_get_hwid_by_base(uint32_t base)
 {
-	CALL_FROM_PLAT_OPS(puts, __func__);
+	if (base == GCED_BASE_PA)
+		return 0;
+	else if (base == GCEM_BASE_PA)
+		return 1;
 
-	if (hwid == 0) {
-		gce_base_va = GCED_BASE_PA;
-		CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_MSG "setup gce-d");
-	} else if (hwid == 1) {
-		gce_base_va = GCEM_BASE_PA;
-		CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_MSG "setup gce-m");
-	}
-	cmdq_id = hwid;
+	CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_ERR "base not supported");
+	CALL_FROM_PLAT_OPS(putx64, (u64)base);
+	return 0;
 }
 
 uint32_t cmdq_secio_type(const uint32_t addr, const uint32_t cmdq_id)
@@ -73,12 +75,15 @@ uint32_t cmdq_secio_type(const uint32_t addr, const uint32_t cmdq_id)
 	return SECIO_MAX;
 }
 
-uint32_t cmdq_secio_read(const uint32_t addr)
+uint32_t cmdq_secio_read(const uint32_t base, const uint32_t addr)
 {
 	uint32_t secio_type = 0;
 	uint32_t val;
+	uint8_t cmdq_id;
 
-	secio_type = cmdq_secio_type(CMDQ_SECIO_TYPE_GET_OFFSET(addr), cmdq_id);
+	cmdq_id = cmdq_get_hwid_by_base(base);
+
+	secio_type = cmdq_secio_type(CMDQ_SECIO_TYPE_GET_OFFSET(base, addr), cmdq_id);
 
 	SECIO_READ(secio_type,
 		CMDQ_SECIO_GET_OFFSET(addr), &val);
@@ -86,26 +91,16 @@ uint32_t cmdq_secio_read(const uint32_t addr)
 	return val;
 }
 
-void cmdq_secio_write(const uint32_t addr, const uint32_t val)
+void cmdq_secio_write(const uint32_t base, const uint32_t addr, const uint32_t val)
 {
 	uint32_t secio_type = 0;
+	uint8_t cmdq_id;
 
-	secio_type = cmdq_secio_type(CMDQ_SECIO_TYPE_GET_OFFSET(addr), cmdq_id);
+	cmdq_id = cmdq_get_hwid_by_base(base);
+	secio_type = cmdq_secio_type(CMDQ_SECIO_TYPE_GET_OFFSET(base, addr), cmdq_id);
 
 	SECIO_WRITE(secio_type,
 		CMDQ_SECIO_GET_OFFSET(addr), val);
-
-	// CALL_FROM_PLAT_OPS(puts, __func__);
-	// CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_MSG "ret:");
-	// CALL_FROM_PLAT_OPS(putx64, (u64)ret);
-	// CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_MSG "secio_type:");
-	// CALL_FROM_PLAT_OPS(putx64, (u64)secio_type);
-	// CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_MSG "addr:");
-	// CALL_FROM_PLAT_OPS(putx64, (u64)CMDQ_SECIO_GET_OFFSET(addr));
-	// CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_MSG "val:");
-	// CALL_FROM_PLAT_OPS(putx64, (u64)val);
-	// CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_MSG "read:");
-	// CALL_FROM_PLAT_OPS(putx64, (u64)CMDQ_REG_GET32(addr));
 }
 
 int32_t cmdq_drv_imgsys_set_slc(void *data)
@@ -228,8 +223,11 @@ void cmdq_task_cb(struct TaskStruct *pTask)
 		CALL_FROM_PLAT_OPS(putx64, (u64)pTask->thread);
 	}
 
-	if (pTask->hwid == 2 && pTask->thread == 8)
-		cmdq_drv_imgsys_slc_cb();
+	if (pTask->hwid == 2 && pTask->thread == 8) {
+		uint32_t base = cmdq_get_base_by_hwid(pTask->hwid);
+
+		cmdq_drv_imgsys_slc_cb(base);
+	}
 }
 
 bool m4u_larb_port_without_aid(const uint32_t port)

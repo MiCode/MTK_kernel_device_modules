@@ -180,6 +180,6 @@ void cmdq_drv_isp_dump_task_cq(void);
 
 int32_t cmdq_drv_imgsys_set_domain(void *data, bool isSet);
 int32_t cmdq_drv_imgsys_set_slc(void *data);
-void cmdq_drv_imgsys_slc_cb(void);
+void cmdq_drv_imgsys_slc_cb(const uint32_t base);
 
 #endif
