@@ -12,6 +12,7 @@
 #include <dt-bindings/pinctrl/mt6881-pinfunc.h>
 #include <dt-bindings/gce/mt6881-gce.h>
 #include <dt-bindings/soc/mediatek,boot-mode.h>
+#include <dt-bindings/spmi/spmi.h>
 #include <dt-bindings/memory/mt6881-larb-port.h>
 
 
@@ -4503,6 +4504,47 @@
 			fmeter-args-u2-result =
 			/* fm_id	fm_type */
 			< 36		1>; /* ad_ulposc2_mon_vcore_ck */
+		};
+
+		spmi: spmi@1cc18000 {
+			compatible = "mediatek,mt6881-spmi";
+			reg = <0 0x1cc18000 0 0x00671c>,
+				<0 0x1cc14000 0 0x0030c0>,
+				<0 0x1cc20000 0 0x00671c>,
+				<0 0x1cc10000 0 0x0030c0>;
+			reg-names = "pmif","spmimst","pmif-p","spmimst-p";
+			interrupts-extended = <&pio 215 IRQ_TYPE_LEVEL_HIGH>,
+					<&pio 216 IRQ_TYPE_LEVEL_HIGH>,
+					<&gic GIC_SPI 624 IRQ_TYPE_LEVEL_HIGH 0>,
+					<&gic GIC_SPI 642 IRQ_TYPE_LEVEL_HIGH 0>,
+					<&gic GIC_SPI 625 IRQ_TYPE_LEVEL_HIGH 0>,
+					<&gic GIC_SPI 643 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names = "rcs_irq","rcs_irq_p",
+					"pmif_irq","spmi_nack_irq",
+					"pmif_p_irq","spmi_p_nack_irq";
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			irq-event-en = <0xc0000000 0x1 0x0 0x0 0x0>;
+			irq-event-en-p = <0xc0000000 0x1 0x0 0x0 0x0>;
+			spmi-dev-mask = <0x20>;
+			#address-cells = <2>;
+			#size-cells = <0>;
+			hwinf-err-irq-idx = <0x21 0x30>;
+			swinf-err-irq-idx = <0x71 0x76>;
+			rcs-mask-list = <0x4 0x4>;
+		};
+
+		spmi_pmif_mpu: spmi-pmif-mpu@1cc1e004 {
+			compatible = "mediatek,mt6881-spmi-pmif-mpu";
+			// reg = <0 0x1c01a900 0 0x000808>,
+			//       <0 0x1c018900 0 0x000808>;
+			reg-names = "pmif_mpu", "pmif_p_mpu";
+			mediatek,pmic-all-rgn-en = <0x0>;
+			mediatek,pmic-all-rgn-en-2 = <0x0>;
+			mediatek,pmic-all-rgn-en-p = <0x0>;
+			mediatek,pmic-all-rgn-en-p-2 = <0x0>;
+			mediatek,kernel-enable-time = <0x3c>;
+			disable = <1>;
 		};
 
 		gce: gce@1e980000 {
