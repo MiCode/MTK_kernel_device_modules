@@ -82,4 +82,6 @@ extern void MTKFWDump(void);
 extern unsigned long long g_ns_gpu_on_ts;
 extern u32 g_curr_pwr_state;
 
+unsigned long long ged_dvfs_get_gpu_target_ns(void);
+
 #endif

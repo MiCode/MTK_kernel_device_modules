@@ -2082,3 +2082,9 @@ void ged_notify_sw_vsync_system_exit(void)
 	mutex_destroy(&gsVsyncModeLock);
 	mutex_destroy(&gsVsyncStampLock);
 }
+
+unsigned long long ged_dvfs_get_gpu_target_ns(void)
+{
+	return (unsigned long long)mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_T_TARGET_US].addr) * 1000;
+}
+EXPORT_SYMBOL(ged_dvfs_get_gpu_target_ns);
