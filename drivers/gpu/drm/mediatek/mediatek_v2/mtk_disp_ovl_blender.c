@@ -602,9 +602,6 @@ static void mtk_ovl_blender_layer_off(struct mtk_ddp_comp *comp, unsigned int id
 		}
 
 		if (comp->mtk_crtc->path_data->is_dynamic_blender) {
-			cmdq_pkt_write(handle, comp->cmdq_base,
-			   comp->regs_pa + regs[OVL_BLD_DATAPATH_CON], 0, ~0);
-
 			mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, true);
 		}
 	}

@@ -1225,33 +1225,7 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + regs[OVL_EXDMA_RST], 0, ~0);
 
-	if (ext_idx != LYE_NORMAL) {
-		SET_VAL_MASK(wcg_value, wcg_mask, 0,
-			     FLD_ELn_IGAMMA_EN(ext_idx - 1));
-		SET_VAL_MASK(wcg_value, wcg_mask, 0,
-			     FLD_ELn_GAMMA_EN(ext_idx - 1));
-		SET_VAL_MASK(wcg_value, wcg_mask, 0,
-			     FLD_ELn_CSC_EN(ext_idx - 1));
-		SET_VAL_MASK(sel_value, sel_mask, 0,
-			     FLD_ELn_IGAMMA_SEL(ext_idx - 1));
-		SET_VAL_MASK(sel_value, sel_mask, 0,
-			     FLD_ELn_GAMMA_SEL(ext_idx - 1));
-	} else {
-		SET_VAL_MASK(wcg_value, wcg_mask, 0, reg_fld[FLD_L0_IGAMMA_EN]);
-		SET_VAL_MASK(wcg_value, wcg_mask, 0, reg_fld[FLD_L0_GAMMA_EN]);
-		SET_VAL_MASK(wcg_value, wcg_mask, 0, reg_fld[FLD_L0_CSC_EN]);
-		SET_VAL_MASK(sel_value, sel_mask, 0, reg_fld[FLD_L0_IGAMMA_SEL]);
-		SET_VAL_MASK(sel_value, sel_mask, 0, reg_fld[FLD_L0_GAMMA_SEL]);
-	}
-
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + regs[OVL_EXDMA_WCG_CFG1], wcg_value,
-		       wcg_mask);
-	cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + regs[OVL_EXDMA_WCG_CFG2], sel_value,
-		       sel_mask);
-
-	mtk_ovl_exdma_stash_off(comp, handle, idx, ext_idx);
+	//mtk_ovl_exdma_stash_off(comp, handle, idx, ext_idx);
 
 	if (ext_idx != LYE_NORMAL) {
 		unsigned int id = ext_idx - 1;
@@ -1260,11 +1234,6 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 				comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, ext_idx-1), 0,
 				REG_FLD_MASK(reg_fld[FLD_L0_EN]) |
 				REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
-		cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa +
-				OVL_EXDMA_ELX_ADDR(exdma, id), 0x0, ~0);
-
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
-				OVL_EXDMA_ELX_ADDR_MSB(exdma, id), 0x0, 0xf);
 	} else {
 		/*cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_DATAPATH_CON, 0,
@@ -1274,13 +1243,6 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 			comp->regs_pa + regs[OVL_EXDMA_L0_EN], 0,
 			REG_FLD_MASK(reg_fld[FLD_L0_EN]) |
 			REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
-
-		cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa +
-			regs[OVL_EXDMA_L0_HDR_ADDR], 0x0, ~0);
-
-		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
-			regs[OVL_EXDMA_L0_ADDR_MSB], 0x0, ~0);
-
 	}
 
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
@@ -1288,9 +1250,6 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 		mtk_drm_crtc_exdma_ovl_path(comp->mtk_crtc, comp, comp->bind_comp->id, handle, true, false);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_EN], 0x0,
 			   REG_FLD_MASK(reg_fld[FLD_OVL_EN]) | REG_FLD_MASK(reg_fld[FLD_FORCE_RELAY_MODE]));
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + regs[OVL_EXDMA_DATAPATH_CON], 0,
-			       BIT(0));
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			   comp->regs_pa + regs[OVL_EXDMA_RDMA0_CTRL], 0,
 			   ~0);
