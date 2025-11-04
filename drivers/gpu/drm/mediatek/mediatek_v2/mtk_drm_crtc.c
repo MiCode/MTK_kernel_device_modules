@@ -881,6 +881,10 @@ static void mtk_drm_crtc_init_bind_comp(struct mtk_drm_crtc *mtk_crtc)
 					comp->bind_comp = priv->ddp_comp[DDP_COMPONENT_OVL2_BLENDER0];
 			}
 		}
+
+		if (!mtk_crtc->path_data->is_dynamic_blender &&
+			mtk_ddp_comp_get_type(comp->id) == MTK_OVL_BLENDER)
+			mtk_crtc->last_blender = comp;
 	}
 
 	if (drm_crtc_index(&mtk_crtc->base) == 0 && mtk_crtc_is_dual_pipe(&(mtk_crtc->base))) {
@@ -914,6 +918,10 @@ static void mtk_drm_crtc_init_bind_comp(struct mtk_drm_crtc *mtk_crtc)
 				}
 			}
 		}
+
+		if (!mtk_crtc->path_data->is_dynamic_blender &&
+			mtk_ddp_comp_get_type(comp->id) == MTK_OVL_BLENDER)
+			mtk_crtc->last_blender = comp;
 
 	}
 
@@ -1218,6 +1226,12 @@ void mtk_drm_crtc_check_blender_connect(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_comp *r_comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	int retri_blank = 0;
+
+	/* bypass discrete ic */
+	if (mtk_crtc && (mtk_crtc->path_data->is_discrete_path ||
+		!mtk_crtc->path_data->is_dynamic_blender))
+		return;
+
 	/* connect blender path */
 	if (plane_state && plane_state->comp_state.blender_comp_id != 0) {
 		comp = priv->ddp_comp[plane_state->comp_state.blender_comp_id];
@@ -1495,8 +1509,12 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 		 */
 		if (priv->data->mmsys_id == MMSYS_MT6991)
 			mask = 0xfffff;
-		else if (priv->data->mmsys_id == MMSYS_MT6993)
-			mask = 0xffff;
+		else if (priv->data->mmsys_id == MMSYS_MT6993) {
+			if (mtk_crtc->path_data->is_dynamic_blender)
+				mask = 0xffff;
+			else
+				mask = 0xff;
+		}
 
 		reg = readl_relaxed(ovl_mutex_regs) & (unsigned int)(~mask);
 		writel_relaxed(reg, ovl_mutex_regs);
@@ -1553,27 +1571,29 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 		}
 	}
 
-	priv->ovlsys_data->exdma_mout_reset(MTK_OVL_BLENDER, &offset, &addr_begin,
-		&addr_end, crtc_id);
+	if (mtk_crtc->path_data->is_dynamic_blender) {
+		priv->ovlsys_data->exdma_mout_reset(MTK_OVL_BLENDER, &offset, &addr_begin,
+			&addr_end, crtc_id);
 
 
-	for (i = addr_begin; i <= addr_end; i = i + offset) {
-		if (crtc_id == 0) {
-			if (mtk_crtc->crtc_blank)
-				if (i == mtk_crtc->tui_ovl_stat.cb_reg)
-					continue;
-			writel_relaxed(0, mtk_crtc->ovlsys0_regs + i);
-			if (mtk_crtc->is_dual_pipe)
+		for (i = addr_begin; i <= addr_end; i = i + offset) {
+			if (crtc_id == 0) {
+				if (mtk_crtc->crtc_blank)
+					if (i == mtk_crtc->tui_ovl_stat.cb_reg)
+						continue;
+				writel_relaxed(0, mtk_crtc->ovlsys0_regs + i);
+				if (mtk_crtc->is_dual_pipe)
+					writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
+			} else if (crtc_id == 1) {
+				if (priv->data->mmsys_id == MMSYS_MT6991)
+					writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
+				else
+					writel_relaxed(0, mtk_crtc->ovlsys2_regs + i);
+			} else if (crtc_id == 2) {
 				writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
-		} else if (crtc_id == 1) {
-			if (priv->data->mmsys_id == MMSYS_MT6991)
+			} else if (crtc_id == 3) {
 				writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
-			else
-				writel_relaxed(0, mtk_crtc->ovlsys2_regs + i);
-		} else if (crtc_id == 2) {
-			writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
-		} else if (crtc_id == 3) {
-			writel_relaxed(0, mtk_crtc->ovlsys1_regs + i);
+			}
 		}
 	}
 
@@ -1588,72 +1608,72 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 		}
 	}
 
-	out_proc = DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6;
-	first_blender = mtk_crtc->first_blender;
-	if (mtk_crtc->is_dual_pipe) {
-		first_blender_map = priv->ddp_comp[DUAL_MAPPING_BLENDER(first_blender->id)];
-	}
+	if (mtk_crtc->path_data->is_dynamic_blender) {
+		out_proc = DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6;
+		first_blender = mtk_crtc->first_blender;
+		if (mtk_crtc->is_dual_pipe)
+			first_blender_map = priv->ddp_comp[DUAL_MAPPING_BLENDER(first_blender->id)];
 
-	if (priv->data->mmsys_id == MMSYS_MT6991 ||
-		priv->data->mmsys_id == MMSYS_MT6993) {
-		if (crtc_id == 0) {
-			out_proc = DDP_COMPONENT_OVL0_OUTPROC0;
-			if (mtk_crtc->is_dual_pipe)
-				out_proc1 = DDP_COMPONENT_OVL1_OUTPROC0;
-		} else if  (crtc_id == 1) {
-			if (priv->data->mmsys_id == MMSYS_MT6991)
+		if (priv->data->mmsys_id == MMSYS_MT6991 ||
+			priv->data->mmsys_id == MMSYS_MT6993) {
+			if (crtc_id == 0) {
+				out_proc = DDP_COMPONENT_OVL0_OUTPROC0;
+				if (mtk_crtc->is_dual_pipe)
+					out_proc1 = DDP_COMPONENT_OVL1_OUTPROC0;
+			} else if  (crtc_id == 1) {
+				if (priv->data->mmsys_id == MMSYS_MT6991)
+					out_proc = DDP_COMPONENT_OVL1_OUTPROC3;
+				else
+					out_proc = DDP_COMPONENT_OVL2_OUTPROC0;
+			} else if  (crtc_id == 2)
 				out_proc = DDP_COMPONENT_OVL1_OUTPROC3;
+			else if  (crtc_id == 3)
+				out_proc = DDP_COMPONENT_OVL1_OUTPROC4;
 			else
-				out_proc = DDP_COMPONENT_OVL2_OUTPROC0;
+				out_proc = DDP_COMPONENT_OVL0_OUTPROC0;
 		}
-		else if  (crtc_id == 2)
-			out_proc = DDP_COMPONENT_OVL1_OUTPROC3;
-		else if  (crtc_id == 3)
-			out_proc = DDP_COMPONENT_OVL1_OUTPROC4;
-		else
-			out_proc = DDP_COMPONENT_OVL0_OUTPROC0;
-	}
 
-	mtk_disp_mutex_add_comp(mutex, first_blender->id);
-	if (mtk_crtc->is_dual_pipe)
-		mtk_disp_mutex_add_comp(mutex, first_blender_map->id);
+		mtk_disp_mutex_add_comp(mutex, first_blender->id);
+		if (mtk_crtc->is_dual_pipe)
+			mtk_disp_mutex_add_comp(mutex, first_blender_map->id);
 
-	value = priv->ovlsys_data->exdma_mout(first_blender->id, out_proc, &addr);
-	if (mtk_crtc->is_dual_pipe)
-		value1 = priv->ovlsys_data->exdma_mout(first_blender_map->id, out_proc1, &addr);
+		value = priv->ovlsys_data->exdma_mout(first_blender->id, out_proc, &addr);
+		if (mtk_crtc->is_dual_pipe)
+			value1 = priv->ovlsys_data->exdma_mout(first_blender_map->id, out_proc1, &addr);
 
-	if (crtc_id == 0)
-		ovlsys_base = mtk_crtc->ovlsys0_regs;
-	else if (crtc_id == 1) {
-		if (priv->data->mmsys_id == MMSYS_MT6991)
+		if (crtc_id == 0)
+			ovlsys_base = mtk_crtc->ovlsys0_regs;
+		else if (crtc_id == 1) {
+			if (priv->data->mmsys_id == MMSYS_MT6991)
+				ovlsys_base = mtk_crtc->ovlsys1_regs;
+			else
+				ovlsys_base = mtk_crtc->ovlsys2_regs;
+		} else if (crtc_id == 2)
+			ovlsys_base = mtk_crtc->ovlsys1_regs;
+		else if (crtc_id == 3)
 			ovlsys_base = mtk_crtc->ovlsys1_regs;
 		else
-			ovlsys_base = mtk_crtc->ovlsys2_regs;
-	}
-	else if (crtc_id == 2)
-		ovlsys_base = mtk_crtc->ovlsys1_regs;
-	else if (crtc_id == 3)
-		ovlsys_base = mtk_crtc->ovlsys1_regs;
-	else
-		ovlsys_base = mtk_crtc->ovlsys1_regs;
+			ovlsys_base = mtk_crtc->ovlsys1_regs;
 
-	reg = readl_relaxed(ovlsys_base + addr) | (unsigned int)value;
-	writel_relaxed(reg, ovlsys_base + addr);
-
-	if (mtk_crtc->is_dual_pipe) {
-		ovlsys_base = mtk_crtc->ovlsys1_regs;
-
-		reg = readl_relaxed(ovlsys_base + addr) | (unsigned int)value1;
+		reg = readl_relaxed(ovlsys_base + addr) | (unsigned int)value;
 		writel_relaxed(reg, ovlsys_base + addr);
-	}
-	DDPINFO("%s, mtk_crtc->last_blender = first_blender\n", __func__);
-	mtk_crtc->last_blender = first_blender;
 
-	if (first_blender && first_blender->funcs && first_blender->funcs->connect) {
-		first_blender->funcs->connect(first_blender, NULL, first_blender->id, out_proc);
-		first_blender->blender_hold = true;
-		if (mtk_crtc->is_dual_pipe)
-			first_blender_map->funcs->connect(first_blender_map, NULL, first_blender_map->id, out_proc1);
+		if (mtk_crtc->is_dual_pipe) {
+			ovlsys_base = mtk_crtc->ovlsys1_regs;
+
+			reg = readl_relaxed(ovlsys_base + addr) | (unsigned int)value1;
+			writel_relaxed(reg, ovlsys_base + addr);
+		}
+		DDPINFO("%s, mtk_crtc->last_blender = first_blender\n", __func__);
+		mtk_crtc->last_blender = first_blender;
+
+		if (first_blender && first_blender->funcs && first_blender->funcs->connect) {
+			first_blender->funcs->connect(first_blender, NULL, first_blender->id, out_proc);
+			first_blender->blender_hold = true;
+			if (mtk_crtc->is_dual_pipe)
+				first_blender_map->funcs->connect(first_blender_map,
+					NULL, first_blender_map->id, out_proc1);
+		}
 	}
 
 //	mtk_crtc->last_blender = NULL;
@@ -1788,6 +1808,9 @@ void mtk_drm_crtc_default_blender(struct mtk_drm_crtc *mtk_crtc,
 
 	mutex = mtk_crtc->mutex[0];
 	ddp = container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
+
+	if (!mtk_crtc->path_data->is_dynamic_blender)
+		return;
 
 	out_proc = DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6;
 	first_blender = mtk_crtc->first_blender;
@@ -8098,7 +8121,7 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 		if (plane_state->comp_state.ext_lye_id == 0)
 			comp->bind_comp = blender_comp;
 
-		if (blender_set ||
+		if (blender_set || !mtk_crtc->path_data->is_dynamic_blender ||
 			(plane_state->comp_state.ext_lye_id != 0 &&
 			blender_comp != mtk_crtc->first_blender))
 			continue;
@@ -8114,7 +8137,8 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 
 	if (!blender_set && prop_fence_idx != old_prop_fence_idx) {
 		DDPINFO("no plane to update, set default path\n");
-		mtk_crtc->last_blender = mtk_crtc->first_blender;
+		if (mtk_crtc->path_data->is_dynamic_blender)
+			mtk_crtc->last_blender = mtk_crtc->first_blender;
 	}
 	if (mtk_crtc->last_blender)
 		DDPINFO("%s, mtk_crtc->last_blender %s\n", __func__,
@@ -15674,11 +15698,13 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 			if (plane_state->comp_state.blender_comp_id != 0) {
 				blender_comp = priv->ddp_comp[plane_state->comp_state.blender_comp_id];
 				comp->bind_comp = blender_comp;
-				mtk_crtc->last_blender = comp->bind_comp;
+				if (mtk_crtc->path_data->is_dynamic_blender)
+					mtk_crtc->last_blender = comp->bind_comp;
 
 				if (mtk_crtc->path_data->is_exdma_dual_layer) {
-					mtk_crtc->last_blender =
-						priv->ddp_comp[plane_state->comp_state.blender_comp_id + 1];
+					if (mtk_crtc->path_data->is_dynamic_blender)
+						mtk_crtc->last_blender =
+							priv->ddp_comp[plane_state->comp_state.blender_comp_id + 1];
 				}
 
 				DDPINFO("%s, comp id %s, blender id %s\n", __func__,

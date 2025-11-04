@@ -359,14 +359,16 @@ static void mtk_ovl_blender_all_layer_off(struct mtk_ddp_comp *comp,
 	const u16 *regs = bld->data->regs;
 
 	DDPINFO("%s+ %s id:%d  keep_first_layer:%d\n", __func__, mtk_dump_comp_str(comp), comp->id, keep_first_layer);
-	if (keep_first_layer) {
-		if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
-		    (comp->mtk_crtc->is_dual_pipe &&
-		    (comp->id == mtk_ddp_get_nth_comp(comp->mtk_crtc, MTK_OVL_BLENDER, 0, true)))) {
-			DDPINFO("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
-			mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, false);
-			mtk_ovl_blender_connect(comp, handle, 0, 0);
-			return;
+	if (comp->mtk_crtc->path_data->is_dynamic_blender) {
+		if (keep_first_layer) {
+			if (comp->id == DDP_COMPONENT_OVL0_BLENDER0 || comp->id == DDP_COMPONENT_OVL0_BLENDER1 ||
+			    (comp->mtk_crtc->is_dual_pipe &&
+			    (comp->id == mtk_ddp_get_nth_comp(comp->mtk_crtc, MTK_OVL_BLENDER, 0, true)))) {
+				DDPINFO("%s+ %s not off\n", __func__, mtk_dump_comp_str(comp));
+				mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, false);
+				mtk_ovl_blender_connect(comp, handle, 0, 0);
+				return;
+			}
 		}
 	}
 	/**
@@ -599,10 +601,12 @@ static void mtk_ovl_blender_layer_off(struct mtk_ddp_comp *comp, unsigned int id
 			return;
 		}
 
-		cmdq_pkt_write(handle, comp->cmdq_base,
-		   comp->regs_pa + regs[OVL_BLD_DATAPATH_CON], 0, ~0);
+		if (comp->mtk_crtc->path_data->is_dynamic_blender) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+			   comp->regs_pa + regs[OVL_BLD_DATAPATH_CON], 0, ~0);
 
-		mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, true);
+			mtk_drm_crtc_blender_ovl_path(comp->mtk_crtc, comp, handle, true);
+		}
 	}
 }
 

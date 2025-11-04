@@ -6473,6 +6473,7 @@ static const struct mtk_crtc_path_data mt6993_mtk_main_path_data = {
 	.addon_data_dual = mt6993_addon_main_dual,
 	.scaling_data = mt6993_scaling_main,
 	.scaling_data_dual = mt6993_scaling_main_dual,
+//	.is_dynamic_blender = true,
 };
 
 static const struct mtk_crtc_path_data mt6993_mtk_main_full_set_data = {
@@ -6495,7 +6496,7 @@ static const struct mtk_crtc_path_data mt6993_mtk_ext_path_data = {
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	.is_exdma_dual_layer = true,
 #endif
-
+	.is_dynamic_blender = true,
 };
 
 static const struct mtk_crtc_path_data mt6993_mtk_dp_w_tdshp_path_data = {
