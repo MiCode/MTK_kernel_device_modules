@@ -1,0 +1,90 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "snd-soc-mt6881-afe",
+    srcs = [
+        "mt6881-afe-pcm.c",
+        "mt6881-afe-clk.c",
+        "mt6881-afe-clk.h",
+        "mt6881-afe-gpio.c",
+        "mt6881-afe-gpio.h",
+        "mt6881-dai-adda.c",
+        "mt6881-afe-control.c",
+        "mt6881-dai-i2s.c",
+        "mt6881-dai-hw-gain.c",
+        "mt6881-dai-src.c",
+        "mt6881-dai-pcm.c",
+        "mt6881-dai-hostless.c",
+        "mt6881-misc-control.c",
+        "mt6881-afe-cm.c",
+        "mt6881-afe-cm.h",
+        "mt6881-afe-common.h",
+        "mt6881-reg.h",
+        "mt6881-interconnection.h",
+    ],
+    includes = [
+        ".",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        #"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm",
+        "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_dsp",
+        #"-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/ultrasound/ultra_scp",
+        #"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas",
+        "-I$(srctree)/kernel/",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:ddk_public_headers".format(kernel_version),
+        #"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:pbm_headers".format(kernel_version),
+        #"//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
+        #"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_peak_power_budget".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:snd-soc-mtk-common".format(kernel_version),
+        #"//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:snd-soc-mtk-scp-ultra".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version),
+        #"//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6881-mt6368",
+    srcs = [
+        "mt6881-mt6368.c",
+        "mt6881-afe-common.h",
+        "mt6881-afe-clk.h",
+        "mt6881-afe-gpio.h",
+        "mt6881-reg.h",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        #"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:ddk_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
+        #"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_peak_power_budget".format(kernel_version),
+        #"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_bp_thl".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:snd-soc-mtk-common".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/mt6881:snd-soc-mt6881-afe".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
+        #"//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-sp-spk-amp".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:mt6368-accdet".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version),
+    ],
+)

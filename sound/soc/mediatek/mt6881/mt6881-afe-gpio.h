@@ -1,0 +1,47 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * mt6881-afe-gpio.h  --  Mediatek 6881 afe gpio ctrl definition
+ *
+ *  Copyright (c) 2025 MediaTek Inc.
+ *  Author: Shawn Sung <shawn.sung@mediatek.com>
+ */
+
+#ifndef _MT6881_AFE_GPIO_H_
+#define _MT6881_AFE_GPIO_H_
+
+enum mt6881_afe_gpio {
+	MT6881_AFE_GPIO_DAT_MISO0_OFF,
+	MT6881_AFE_GPIO_DAT_MISO0_ON,
+	MT6881_AFE_GPIO_DAT_MISO1_OFF,
+	MT6881_AFE_GPIO_DAT_MISO1_ON,
+	MT6881_AFE_GPIO_DAT_MOSI0_OFF,
+	MT6881_AFE_GPIO_DAT_MOSI0_ON,
+	MT6881_AFE_GPIO_DAT_MOSI1_OFF,
+	MT6881_AFE_GPIO_DAT_MOSI1_ON,
+	MT6881_AFE_GPIO_I2SIN1_OFF,
+	MT6881_AFE_GPIO_I2SIN1_ON,
+	MT6881_AFE_GPIO_I2SOUT1_OFF,
+	MT6881_AFE_GPIO_I2SOUT1_ON,
+	MT6881_AFE_GPIO_AP_DMIC_OFF,
+	MT6881_AFE_GPIO_AP_DMIC_ON,
+	MT6881_AFE_GPIO_AP_DMIC1_OFF,
+	MT6881_AFE_GPIO_AP_DMIC1_ON,
+	MT6881_AFE_GPIO_VOW_DAT_OFF,
+	MT6881_AFE_GPIO_VOW_DAT_ON,
+	MT6881_AFE_GPIO_VOW_CLK_OFF,
+	MT6881_AFE_GPIO_VOW_CLK_ON,
+	MT6881_AFE_GPIO_VOW_SCP_DMIC_DAT_OFF,
+	MT6881_AFE_GPIO_VOW_SCP_DMIC_DAT_ON,
+	MT6881_AFE_GPIO_VOW_SCP_DMIC_CLK_OFF,
+	MT6881_AFE_GPIO_VOW_SCP_DMIC_CLK_ON,
+	MT6881_AFE_GPIO_GPIO_NUM
+};
+
+struct mtk_base_afe;
+
+int mt6881_afe_gpio_init(struct mtk_base_afe *afe);
+int mt6881_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
+			    int dai, int uplink);
+bool mt6881_afe_gpio_is_prepared(enum mt6881_afe_gpio type);
+
+#endif
