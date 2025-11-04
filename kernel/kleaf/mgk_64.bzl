@@ -1637,7 +1637,7 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8:imgsys_cmdq_isp8":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s":"mt6993",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/cmdq/isp8s:imgsys_cmdq_isp8s_mt6881":"mt6881",
-    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8s:mtk-hcp-isp8s":"mt6993",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8s:mtk-hcp-isp8s":"mt6993 mt6881",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp8:mtk-hcp-isp8":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/legacy:mtk-hcp":"mt6858",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-hcp/isp71:mtk-hcp-isp71":"mt6895 mt6879",
