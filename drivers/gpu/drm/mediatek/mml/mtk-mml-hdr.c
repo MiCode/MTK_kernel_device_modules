@@ -35,9 +35,9 @@
  */
 #define HDR_LABEL_CNT_REG	6
 #define HDR_LABEL_CNT_CURVE	7
-#define HDR_LABEL_CNT_OOTF 4
-#define HDR_LABEL_CNT_OETF 4
-#define HDR_LABEL_CNT		(HDR_LABEL_CNT_REG + HDR_LABEL_CNT_CURVE)
+#define HDR_LABEL_CNT_OOTF	4
+#define HDR_LABEL_CNT_OETF	4
+
 #define call_hw_op(_comp, op, ...) \
 	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
 #define REG_NOT_SUPPORT 0xfff
@@ -578,8 +578,7 @@ struct mml_comp_hdr {
 };
 
 enum hdr_label_index {
-	HDR_REUSE_LABEL = 0,
-	HDR_POLLGPR_0 = HDR_LABEL_CNT,
+	HDR_POLLGPR_0,
 	HDR_POLLGPR_1,
 	HDR_LABEL_TOTAL
 };
@@ -603,6 +602,9 @@ struct hdr_frame_data {
 	bool is_hdr_need_readback;
 	bool config_success;
 };
+
+#define HDR_LABEL_CNT (HDR_LABEL_TOTAL + HDR_LABEL_CNT_REG + HDR_LABEL_CNT_CURVE + \
+		       HDR_LABEL_CNT_OOTF + HDR_LABEL_CNT_OETF)
 
 static inline struct hdr_frame_data *hdr_frm_data(struct mml_comp_config *ccfg)
 {
@@ -702,7 +704,7 @@ static u32 hdr_get_label_count(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_hdr)
 		return 0;
 
-	return HDR_LABEL_TOTAL;
+	return HDR_LABEL_CNT;
 }
 
 static void hdr_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa)
@@ -1451,7 +1453,7 @@ static s32 hdr_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* check mml reuse array for safe */
 	if (hdr_frm->reuse_reg.idx + hdr_frm->reuse_curve.idx +
 		hdr_frm->reuse_curve_ootf.idx + hdr_frm->reuse_curve_oetf.idx >
-		HDR_LABEL_TOTAL)
+		HDR_LABEL_CNT)
 		mml_pq_err("%s reuse count reuse_reg %u reuse_curve %u ootf %u oetf %u overflow",
 			__func__, hdr_frm->reuse_reg.idx, hdr_frm->reuse_curve.idx,
 			hdr_frm->reuse_curve_ootf.idx, hdr_frm->reuse_curve_oetf.idx);

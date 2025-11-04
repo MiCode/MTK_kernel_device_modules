@@ -463,9 +463,10 @@ struct mml_comp_aal {
 };
 
 enum aal_label_index {
-	AAL_REUSE_LABEL = 0,
-	AAL_POLLGPR_0 = AAL_LABEL_CNT,
-	AAL_POLLGPR_1,
+	AAL_LABEL_INTEN = 0,
+	AAL_LABEL_SRAMCFG,
+	AAL_LABEL_POLLGPR_0,
+	AAL_LABEL_POLLGPR_1,
 	AAL_LABEL_TOTAL
 };
 
@@ -590,7 +591,7 @@ static u32 aal_get_label_count(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_dre || mode == MML_MODE_DDP_ADDON)
 		return 0;
 
-	return AAL_LABEL_TOTAL;
+	return AAL_LABEL_TOTAL + AAL_LABEL_CNT;
 }
 
 static void aal_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
@@ -775,11 +776,7 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 		task->pq_task->read_status.aal_comp);
 
 	if (is_config)
-		mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_INTSTA],
-			0x0, U32_MAX, reuse, cache,
-			&aal_frm->labels[0]);
-	else
-		mml_update(comp->id, reuse, aal_frm->labels[0], 0x0);
+		cmdq_pkt_write(pkt, NULL, base_pa + aal->data->reg_table[AAL_INTSTA], 0, U32_MAX);
 
 	if (task->pq_task->read_status.aal_comp == MML_PQ_HIST_IDLE) {
 
@@ -839,18 +836,18 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			if (is_config)
 				mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_INTEN],
 					0x2, U32_MAX, reuse, cache,
-					&aal_frm->labels[1]);
+					&aal_frm->labels[AAL_LABEL_INTEN]);
 			else
-				mml_update(comp->id, reuse, aal_frm->labels[1], 0x2);
+				mml_update(comp->id, reuse, aal_frm->labels[AAL_LABEL_INTEN], 0x2);
 		}
 		if (is_config)
 			mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
 				aal->hist_sram_idx << 6 | aal->hist_read_idx << 5 |
 				1 << 4,	0x7 << 4, reuse, cache,
-				&aal_frm->labels[2]);
+				&aal_frm->labels[AAL_LABEL_SRAMCFG]);
 		else
-			mml_update(comp->id, reuse, aal_frm->labels[2], aal->hist_sram_idx << 6 |
-				aal->hist_read_idx << 5 | 1 << 4);
+			mml_update(comp->id, reuse, aal_frm->labels[AAL_LABEL_SRAMCFG],
+				aal->hist_sram_idx << 6 | aal->hist_read_idx << 5 | 1 << 4);
 
 		mml_pq_msg("%s: hist_sram_idx write to [%d], hist_read_idx change to[%d]",
 			__func__, aal->hist_sram_idx, aal->hist_read_idx);
@@ -869,16 +866,17 @@ static s32 aal_hist_ctrl(struct mml_comp *comp, struct mml_task *task,
 			if (is_config)
 				mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_INTEN],
 					0x0, U32_MAX, reuse, cache,
-					&aal_frm->labels[1]);
+					&aal_frm->labels[AAL_LABEL_INTEN]);
 			else
-				mml_update(comp->id, reuse, aal_frm->labels[1], 0x0);
+				mml_update(comp->id, reuse, aal_frm->labels[AAL_LABEL_INTEN], 0x0);
 		}
 		if (is_config)
 			mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
 				aal->hist_sram_idx << 6 | 1 << 4,
-				0x5 << 4, reuse, cache, &aal_frm->labels[2]);
+				0x5 << 4, reuse, cache, &aal_frm->labels[AAL_LABEL_SRAMCFG]);
 		else
-			mml_update(comp->id, reuse, aal_frm->labels[2], aal->hist_sram_idx << 6 | 1 << 4);
+			mml_update(comp->id, reuse, aal_frm->labels[AAL_LABEL_SRAMCFG],
+				aal->hist_sram_idx << 6 | 1 << 4);
 	}
 
 	mml_pq_msg("%s: hist_sram_idx write to [%d], hist_read_idx[%d]",
@@ -966,10 +964,10 @@ static void aal_write_curve(struct mml_comp *comp, struct mml_task *task,
 	if (is_config)
 		mml_write(comp->id, pkt, base_pa + aal->data->reg_table[AAL_SRAM_CFG],
 			!aal->curve_sram_idx << 10 | aal->curve_sram_idx << 9 | 1 << 8,
-			0x7 << 8, reuse, cache, &aal_frm->labels[3]);
+			0x7 << 8, reuse, cache, &aal_frm->labels[AAL_LABEL_SRAMCFG]);
 	else
-		mml_update(comp->id, reuse, aal_frm->labels[3], !aal->curve_sram_idx << 10 |
-			aal->curve_sram_idx << 9 | 1 << 8);
+		mml_update(comp->id, reuse, aal_frm->labels[AAL_LABEL_SRAMCFG],
+			!aal->curve_sram_idx << 10 | aal->curve_sram_idx << 9 | 1 << 8);
 }
 
 static s32 aal_config_frame(struct mml_comp *comp, struct mml_task *task,
@@ -1401,9 +1399,9 @@ static void aal_readback_cmdq(struct mml_comp *comp, struct mml_task *task,
 	cmdq_pkt_assign_command(pkt, idx_addr, dre30_hist_sram_start);
 
 	mml_assign(comp->id, pkt, idx_out, (u32)pa,
-		reuse, cache, &aal_frm->labels[AAL_POLLGPR_0]);
+		reuse, cache, &aal_frm->labels[AAL_LABEL_POLLGPR_0]);
 	mml_assign(comp->id, pkt, idx_out + 1, (u32)DO_SHIFT_RIGHT(pa, 32),
-		reuse, cache, &aal_frm->labels[AAL_POLLGPR_1]);
+		reuse, cache, &aal_frm->labels[AAL_LABEL_POLLGPR_1]);
 
 
 	/* config aal sram addr and poll */
@@ -1540,7 +1538,7 @@ static void aal_readback_vcp(struct mml_comp *comp, struct mml_task *task,
 		&aal_frm->polling_reuse);
 	cmdq_pkt_clear_event(pkt, aal->event_vcp_readback_done);
 
-	mml_add_reuse_label(comp->id, reuse, &aal_frm->labels[AAL_POLLGPR_0],
+	mml_add_reuse_label(comp->id, reuse, &aal_frm->labels[AAL_LABEL_POLLGPR_0],
 		task->pq_task->aal_hist[pipe]->va_offset);
 
 	mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p] offset[%d]",
@@ -1686,7 +1684,7 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_get_vcp_buf_offset(task, MML_PQ_AAL0+pipe,
 			task->pq_task->aal_hist[pipe]);
 
-		mml_update(comp->id, reuse, aal_frm->labels[AAL_POLLGPR_0],
+		mml_update(comp->id, reuse, aal_frm->labels[AAL_LABEL_POLLGPR_0],
 			cmdq_pkt_vcp_reuse_val(engine,
 			task->pq_task->aal_hist[pipe]->va_offset,
 			AAL_HIST_NUM + AAL_DUAL_INFO_NUM));
@@ -1715,9 +1713,9 @@ static s32 aal_config_repost(struct mml_comp *comp, struct mml_task *task,
 			goto comp_config_put;
 		}
 
-		mml_update(comp->id, reuse, aal_frm->labels[AAL_POLLGPR_0],
+		mml_update(comp->id, reuse, aal_frm->labels[AAL_LABEL_POLLGPR_0],
 			(u32)task->pq_task->aal_hist[pipe]->pa);
-		mml_update(comp->id, reuse, aal_frm->labels[AAL_POLLGPR_1],
+		mml_update(comp->id, reuse, aal_frm->labels[AAL_LABEL_POLLGPR_1],
 			(u32)DO_SHIFT_RIGHT(task->pq_task->aal_hist[pipe]->pa, 32));
 
 		mml_pq_rb_msg("%s end job_id[%d] engine_id[%d] va[%p] pa[%pad] pkt[%p]",

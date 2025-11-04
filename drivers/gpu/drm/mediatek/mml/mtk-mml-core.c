@@ -2838,12 +2838,14 @@ void mml_core_stop_racing(struct mml_frame_config *cfg, bool force)
 		mml_core_stop_racing_pipe(cfg, 1, force);
 }
 
-static s32 check_label_idx(struct mml_task_reuse *reuse,
-			     struct mml_pipe_cache *cache)
+static s32 check_label_idx(u32 comp_id, struct mml_task_reuse *reuse,
+	struct mml_pipe_cache *cache)
 {
 	if (reuse->label_idx >= cache->label_cnt) {
-		mml_err("out of label cnt idx %u count %u",
-			reuse->label_idx, cache->label_cnt);
+		mml_err("out of label cnt idx %u count %u comp %u",
+			reuse->label_idx, cache->label_cnt, comp_id);
+		mml_aee("mml", "reuse label count overflow count %u idx %u comp %u",
+			reuse->label_idx, cache->label_cnt, comp_id);
 		return -ENOMEM;
 	}
 	return 0;
@@ -2865,7 +2867,7 @@ s32 mml_assign(u32 comp_id, struct cmdq_pkt *pkt, u16 reg_idx, u32 value,
 	if (!cache->label_cnt)
 		return cmdq_pkt_assign_command(pkt, reg_idx, value);
 
-	if (check_label_idx(reuse, cache))
+	if (check_label_idx(comp_id, reuse, cache))
 		return -ENOMEM;
 
 	cmdq_pkt_assign_command_reuse(pkt, reg_idx, value,
@@ -2883,7 +2885,7 @@ s32 mml_write(u32 comp_id, struct cmdq_pkt *pkt, dma_addr_t addr, u32 value, u32
 	if (!cache->label_cnt)
 		return cmdq_pkt_write_value_addr(pkt, addr, value, mask);
 
-	if (check_label_idx(reuse, cache))
+	if (check_label_idx(comp_id, reuse, cache))
 		return -ENOMEM;
 
 	cmdq_pkt_write_value_addr_reuse(pkt, addr, value, mask,

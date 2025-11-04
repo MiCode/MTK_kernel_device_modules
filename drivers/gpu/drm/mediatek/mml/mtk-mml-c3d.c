@@ -30,7 +30,7 @@
 #define C3D_WAIT_TIMEOUT_MS 50
 #define C3D_REG_NUM 60
 #define REG_NOT_SUPPORT 0xfff
-#define C3D_LABEL_COUNT 11
+#define C3D_LABEL_COUNT 12
 
 enum mml_color_reg_index {
 	C3D_EN,
@@ -329,7 +329,7 @@ static u32 c3d_get_label_count(struct mml_comp *comp, struct mml_task *task,
 	if (!dest->pq_config.en_c3d)
 		return 0;
 
-	return C3D_LABEL_TOTAL;
+	return C3D_LABEL_TOTAL + C3D_LABEL_COUNT;
 }
 
 static void c3d_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_addr_t base_pa,
