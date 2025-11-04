@@ -2224,7 +2224,7 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 			comp->regs_pa + OVL_EXDMA_ELX_PITCH(exdma, id),
 			pitch, ~0);
 
-		if (mmsys_reg && aid_sel_offset) {
+		if (mmsys_reg && aid_sel_offset && (!old_pending || (pending->is_sec != old_pending->is_sec))) {
 			sec_bit = mtk_ovl_exdma_aid_bit(comp, true, id);
 			if (exdma->data->aid_per_layer_setting == true) {
 				if (pending->is_sec && pending->addr) {
@@ -3397,7 +3397,7 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	if (ext_lye_idx != LYE_NORMAL) {
 		unsigned int id = ext_lye_idx - 1;
 
-		if (mmsys_reg && aid_sel_offset) {
+		if (mmsys_reg && aid_sel_offset && (!old_pending || (pending->is_sec != old_pending->is_sec))) {
 			sec_bit = mtk_ovl_exdma_aid_bit(comp, true, id);
 			if (exdma->data->aid_per_layer_setting == true) {
 				if (pending->is_sec && pending->addr) {
