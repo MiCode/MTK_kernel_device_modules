@@ -8334,6 +8334,7 @@
 				regulator-max-microvolt = <1193750>;
 				regulator-enable-ramp-delay = <256>;
 				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
 			};
 			mt6319_6_vbuck4: 6-vbuck4 {
 				regulator-compatible = "vbuck4";
@@ -8853,6 +8854,10 @@
 };
 
 &mt6368_vaud18 {
+	regulator-always-on;
+};
+
+&mt6363_vsram_apu {
 	regulator-always-on;
 };
 
