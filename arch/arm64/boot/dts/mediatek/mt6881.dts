@@ -77,7 +77,7 @@
 	/* chosen */
 	chosen: chosen {
 		bootargs = "console=tty0 root=/dev/ram \
-			    8250.nr_uarts=4 \
+			    8250.nr_uarts=3 \
 			    nosoftlockup \
 			    loglevel=8 \
 			    androidboot.hardware=mt6881 \
@@ -4062,20 +4062,16 @@
 					<0 0x11300d00 0 0x80>,
 					<0 0x11300d80 0 0x80>,
 					<0 0x11300e00 0 0x80>,
-					<0 0x11300e80 0 0x80>,
-					<0 0x11300f00 0 0x80>,
-					<0 0x11300f80 0 0x80>;
+					<0 0x11300e80 0 0x80>;
 				interrupts =    <GIC_SPI 560 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 561 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 562 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 563 IRQ_TYPE_LEVEL_HIGH 0>,
 						<GIC_SPI 564 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 565 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 566 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 567 IRQ_TYPE_LEVEL_HIGH 0>;
-				// clocks = <&pericfg_ao_clk CLK_PERAOP_DMA_B_UART>;
-				// clock-names = "apdma";
-				dma-requests = <8>;
+						<GIC_SPI 565 IRQ_TYPE_LEVEL_HIGH 0>;
+				clocks = <&pericfg_ao_reg_clk  CLK_PERICFG_AO_REG_PERI_DMA_B_UART>;
+				clock-names = "apdma";
+				dma-requests = <6>;
 				#dma-cells = <1>;
 		};
 
@@ -4083,8 +4079,8 @@
 			compatible = "mediatek,mt6577-uart";
 			reg = <0 0x11001000 0 0x1000>;
 			interrupts = <GIC_SPI 522 IRQ_TYPE_LEVEL_HIGH 0>;
-			// clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAOP_UART0_UART>;
-			// clock-names = "baud", "bus";
+			clocks = <&clk26m>, <&pericfg_ao_reg_clk  CLK_PERICFG_AO_REG_PERI_UART0_UART>;
+			clock-names = "baud", "bus";
 			dmas = <&apdma 0 &apdma 1>;
 			dma-names = "tx", "rx";
 			uart-line = <0>;
@@ -4094,8 +4090,8 @@
 			compatible = "mediatek,mt6577-uart";
 			reg = <0 0x11002000 0 0x1000>;
 			interrupts = <GIC_SPI 523 IRQ_TYPE_LEVEL_HIGH 0>;
-			// clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAOP_UART1_UART>;
-			// clock-names = "baud", "bus";
+			clocks = <&clk26m>, <&pericfg_ao_reg_clk  CLK_PERICFG_AO_REG_PERI_UART1_UART>;
+			clock-names = "baud", "bus";
 			dmas = <&apdma 2 &apdma 3>;
 			dma-names = "tx", "rx";
 			uart-line = <1>;
@@ -4105,22 +4101,11 @@
 			compatible = "mediatek,mt6577-uart";
 			reg = <0 0x11003000 0 0x1000>;
 			interrupts = <GIC_SPI 524 IRQ_TYPE_LEVEL_HIGH 0>;
-			// clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAOP_UART2_UART>;
-			// clock-names = "baud", "bus";
+			clocks = <&clk26m>, <&pericfg_ao_reg_clk  CLK_PERICFG_AO_REG_PERI_UART2_UART>;
+			clock-names = "baud", "bus";
 			dmas = <&apdma 4 &apdma 5>;
 			dma-names = "tx", "rx";
 			uart-line = <2>;
-		};
-
-		uart3: serial@11004000 {
-			compatible = "mediatek,mt6577-uart";
-			reg = <0 0x11004000 0 0x1000>;
-			interrupts = <GIC_SPI 525 IRQ_TYPE_LEVEL_HIGH 0>;
-			// clocks = <&clk26m>, <&pericfg_ao_clk CLK_PERAOP_UART3_UART>;
-			// clock-names = "baud", "bus";
-			dmas = <&apdma 6 &apdma 7>;
-			dma-names = "tx", "rx";
-			uart-line = <3>;
 		};
 
 		topckgen@10000000 {
