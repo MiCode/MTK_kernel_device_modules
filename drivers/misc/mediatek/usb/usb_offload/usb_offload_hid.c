@@ -50,6 +50,7 @@ MODULE_PARM_DESC(hid_debug_sync, "Enable/Disable HID Offload sync log");
 #define HID_DSP_RUNNING     1
 #define HID_AP_QUEUE        2
 #define HID_ON_RESET        3
+#define HID_DSP_START_EVER  4
 
 /* counter bit defined */
 #define HID_GIVEBACK_CNT_MASK	GENMASK(3, 0)
@@ -121,6 +122,11 @@ static bool is_valid_hid_urb(struct urb *urb, struct usb_interface_descriptor *i
 
 /* hid ep helper */
 static void hid_dump_ep(struct hid_ep_info *hid, const char *tag);
+static inline void hid_ep_reset_sync(struct hid_ep_info *hid)
+{
+	clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
+	clear_bit(HID_DSP_START_EVER, &hid->sync_flag);
+}
 static void hid_lock(struct hid_ep_info *hid, const char *tag);
 static void hid_unlock(struct hid_ep_info *hid, const char *tag);
 static inline struct hid_ep_info *get_hid_ep_safe(int dir, int slot, int ep)
@@ -224,6 +230,13 @@ bool usb_offload_trace_hid_enqueue(struct xhci_hcd *xhci, struct urb *urb)
 	}
 
 	hid_lock(hid, __func__);
+	if (!test_bit(HID_DSP_START_EVER, &hid->sync_flag)) {
+		hid_info("%s weird enqueue, do not skip urb %p\n", hid->name, urb);
+		hid_ep_reset_sync(hid);
+		hid_dump_ep(hid, "<AP Weird Enqueue>");
+		hid_unlock(hid, __func__);
+		return false;
+	}
 	set_bit(HID_AP_QUEUE, &hid->sync_flag);
 	hid->urb = urb;
 	hid_dump_ep(hid, "<AP Enqueue>");
@@ -419,7 +432,7 @@ static void hid_offload_reset(struct hid_ep_info *hid)
 	hid->ep_id = 0;
 	set_cnt(hid, GIVEBACK, 0);
 	clear_bit(HID_ON_RESET, &hid->sync_flag);
-	clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
+	hid_ep_reset_sync(hid);
 	hid_dump_ep(hid, "<HID RESET End>");
 
 	ktime_get_ts64(&end);
@@ -487,8 +500,10 @@ int usb_offload_hid_start(void)
 				clear_bit(HID_NEED_OFFLOAD, &hid->sync_flag);
 				hid_info("fail to start dsp, HID WASN'T Offloading!!\n");
 				continue;
-			} else
+			} else {
 				hid_info("success to start dsp, HID WAS Offloading!!\n");
+				set_bit(HID_DSP_START_EVER, &hid->sync_flag);
+			}
 
 			hid_dump_ep(hid, "<Suspend>");
 		}
@@ -724,12 +739,13 @@ void usb_offload_hid_probe(void)
 
 static void hid_dump_ep(struct hid_ep_info *hid, const char *tag)
 {
-	hid_info("%s %s flag(need:%d dsp_run:%d queue:%d rst:%d) cnt(give:%lu payload:%lu)\n",
+	hid_info("%s %s flag(need:%d dsp_run:%d queue:%d rst:%d ever:%d) cnt(give:%lu payload:%lu)\n",
 		tag, hid->name,
 		test_bit(HID_NEED_OFFLOAD, &hid->sync_flag),
 		test_bit(HID_DSP_RUNNING, &hid->sync_flag),
 		test_bit(HID_AP_QUEUE, &hid->sync_flag),
 		test_bit(HID_ON_RESET, &hid->sync_flag),
+		test_bit(HID_DSP_START_EVER, &hid->sync_flag),
 		get_cnt(hid, GIVEBACK), get_cnt(hid, PAYLOAD));
 }
 
