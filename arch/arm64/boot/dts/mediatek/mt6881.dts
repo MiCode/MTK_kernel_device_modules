@@ -5633,6 +5633,10 @@
 			reg = <0 0x3d820000 0 0x4000>;
 		};
 
+		mtkfb: mtkfb {
+			compatible = "mediatek,mtkfb";
+		};
+
 		dispsys_config: dispsys-config@14000000 {
 			compatible = "mediatek,mt6881-disp";
 			reg = <0 0x14000000 0 0x1000>;
@@ -6155,22 +6159,58 @@
 #endif
 		};
 
-#if 0
 		dsi_te: dsi-te {
 			compatible = "mediatek, dsi_te-eint";
 			status = "disabled";
 		};
 
-		disp-dsi1@1401b000 {
-			compatible = "mediatek,disp_dsi1";
+		mipi_tx_config0: mipi-tx-config0@11e50000 {
+			compatible = "mediatek,mipi_tx_config0",
+						"mediatek,mt6881-mipi-tx";
+			reg = <0 0x11e50000 0 0x1000>;
+			// clocks = <&clk26m>;
+			// #clock-cells = <0>;
+			#phy-cells = <0>;
+			// clock-output-names = "mipi_tx0_pll";
+			dispsys-sel-offset = <0x170 0x174>;
+		};
+
+#if 0
+		dsi1: dsi1@1401b000 {
+			compatible = "mediatek,disp_dsi1",
+					"mediatek,mt6881-dsi";
 			reg = <0 0x1401b000 0 0x1000>;
-			interrupts = <GIC_SPI 457 IRQ_TYPE_NONE 0>;
+			interrupts = <GIC_SPI 457 IRQ_TYPE_LEVEL_HIGH 0>;
+			phys = <&mipi_tx_config1>;
+			phy-names = "dphy";
+			clocks = <&dispsys_config_clk CLK_MM_DISP_DSI1>,
+			<&dispsys_config_clk CLK_MM_DSI1>,
+			<&mipi_tx_config1>;
+			clock-names = "engine", "digital", "hs";
+			status = "disabled";
+		};
+
+		dsi1_te: dsi1-te {
+			compatible = "mediatek, dsi1_te-eint";
+			status = "disabled";
 		};
 
 		disp-wdma1@1401c000 {
 			compatible = "mediatek,disp_wdma1";
 			reg = <0 0x1401c000 0 0x1000>;
 			interrupts = <GIC_SPI 458 IRQ_TYPE_NONE 0>;
+		};
+
+		mipi_tx_config1: mipi-tx-config1@11e10000 {
+			compatible = "mediatek,mipi_tx_config1",
+						"mediatek,mt6881-mipi-tx";
+			reg = <0 0x11e10000 0 0x1000>;
+			clocks = <&clk26m>;
+			#clock-cells = <0>;
+			#phy-cells = <0>;
+			clock-output-names = "mipi_tx1_pll";
+			dispsys-sel-offset = <0x178 0x17c>;
+			status = "disabled";
 		};
 #endif
 
@@ -6984,6 +7024,16 @@
 
 #include "mediatek/mt6881-clkitg.dtsi"
 // #include "mediatek/mt6881-disable-unused.dtsi"
+
+&i2c6 {
+	gate_ic: gate-ic@11 {
+		compatible = "mediatek,gate-ic-i2c";
+		gate-power-gpios = <&pio 135 0>;
+		reg = <0x11>;
+		id = <6>;
+		status = "okay";
+	};
+};
 
 #if 0
 &mddriver {

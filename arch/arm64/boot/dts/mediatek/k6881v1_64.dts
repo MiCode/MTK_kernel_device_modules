@@ -42,27 +42,103 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	status = "okay";
 };
 
+&mtkfb {
+	pinctrl-names = "lcd_bias_enp0_gpio",
+		"lcd_bias_enn0_gpio",
+		"lcm_rst_out0_gpio",
+		"mode_te_te",
+		"lcm_led_en0_gpio";
+	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-1 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-2 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-3 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-4 = <&mtkfb_pins_lcm_led_en0>;
+
+	status = "okay";
+};
+
+&dispsys_config {
+	pinctrl-names = "mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+
+&pio {
+	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm-rst-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO60__FUNC_GPIO60>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_dsi_te: lcm-dsi-te {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO59__FUNC_DSI_TE>;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
 &dsi0 {
 	status = "okay";
 	#address-cells = <1>;
 	#size-cells = <0>;
 	panel1@0 {
-		compatible = "truly,nt35595,cmd";
+		compatible = "vtdr6126a,vdo";
 		reg = <0>;
-		// pm-enable-gpios = <&pio 163 0>;
-		// reset-gpios = <&pio 97 0>;
-		// gate-ic = <4831>;
-		// pinctrl-names = "default";
+		pm-enable-gpios = <&pio 135 0>;
+		reset-gpios = <&pio 60 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
 		port {
 			panel_in1: endpoint {
-				remote-endpoint = <&dsi_out>;
+				remote-endpoint = <&dsi_out1>;
+			};
+		};
+	};
+	panel2@1 {
+	    compatible = "jdi,nt36672e,vdo,60hz";
+		reg = <1>;
+		pm-enable-gpios = <&pio 135 0>;
+		reset-gpios = <&pio 60 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out2>;
 			};
 		};
 	};
 	ports {
 		port {
-			dsi_out: endpoint {
+			dsi_out1: endpoint@0 {
 				remote-endpoint = <&panel_in1>;
+			};
+			dsi_out2: endpoint@1 {
+				remote-endpoint = <&panel_in2>;
 			};
 		};
 	};
