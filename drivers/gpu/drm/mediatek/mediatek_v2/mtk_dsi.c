@@ -13458,7 +13458,6 @@ static int mtk_dsi_cmd_transfer(struct mtk_dsi *mtk_dsi, struct cmdq_pkt *handle
 		} else {
 			DDPDSI_CMD("%s, vm cmd transfer\n", __func__);
 			mtk_dsi_vm_cmd_transfer(mtk_dsi, handle, cmd_msg);
-			mtk_dsi_power_keep_gce(mtk_dsi, handle, false);
 			return 0;
 		}
 	}
