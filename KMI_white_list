@@ -18,6 +18,7 @@ drm_dp_aux_register
 drm_dp_channel_eq_ok
 drm_dp_clock_recovery_ok
 drm_dp_dpcd_read
+drm_dp_dpcd_set_powered
 drm_dp_dpcd_write
 drm_dp_link_train_channel_eq_delay
 drm_dp_link_train_clock_recovery_delay
