@@ -136,14 +136,14 @@ struct lcm {
 	struct backlight_device *backlight;
 	struct gpio_desc *reset_gpio;
 	struct gpio_desc *vddi_gpio;
+	struct gpio_desc *vci_gpio;
+	struct gpio_desc *vddr_gpio;
 	bool prepared;
 	bool enabled;
 	int error;
 	bool hbm_en;
 	bool hbm_wait;
 
-	struct gpio_desc *bias_pos;
-	struct gpio_desc *bias_neg;
 	unsigned int gate_ic;
 };
 
@@ -1023,17 +1023,33 @@ static int lcm_unprepare(struct drm_panel *panel)
 		//sizeof(lcm_suspend_setting) / sizeof(struct LCM_setting_table));
 
 	if (ctx->gate_ic == 0) {
-		ctx->bias_neg =
-			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
-		gpiod_set_value(ctx->bias_neg, 0);
-		devm_gpiod_put(ctx->dev, ctx->bias_neg);
+		ctx->vddr_gpio = devm_gpiod_get(ctx->dev, "vddr", GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->vddr_gpio)) {
+			dev_info(ctx->dev, "cannot get vddr-gpios %ld\n",
+				 PTR_ERR(ctx->vddr_gpio));
+		} else {
+			gpiod_set_value(ctx->vddr_gpio, 0);
+			devm_gpiod_put(ctx->dev, ctx->vddr_gpio);
+			usleep_range(2000, 2001);
+		}
 
-		usleep_range(2000, 2001);
+		ctx->vci_gpio = devm_gpiod_get(ctx->dev, "vci", GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->vci_gpio)) {
+			dev_info(ctx->dev, "cannot get vci-gpios %ld\n",
+				 PTR_ERR(ctx->vci_gpio));
+		} else {
+			gpiod_set_value(ctx->vci_gpio, 0);
+			devm_gpiod_put(ctx->dev, ctx->vci_gpio);
+			usleep_range(2000, 2001);
+		}
 
-		ctx->bias_pos =
-			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
-		gpiod_set_value(ctx->bias_pos, 0);
-		devm_gpiod_put(ctx->dev, ctx->bias_pos);
+		ctx->vddi_gpio = devm_gpiod_get(ctx->dev, "vddi", GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->vddi_gpio)) {
+			dev_info(ctx->dev, "cannot get vddi-gpios %ld\n",
+				 PTR_ERR(ctx->vddi_gpio));
+		}
+		gpiod_set_value(ctx->vddi_gpio, 0);
+		devm_gpiod_put(ctx->dev, ctx->vddi_gpio);
 	}
 #if IS_ENABLED(CONFIG_RT4831A_I2C)
 	else if (ctx->gate_ic == 4831) {
@@ -1059,16 +1075,29 @@ static int lcm_prepare(struct drm_panel *panel)
 		return 0;
 
 	if (ctx->gate_ic == 0) {
-		ctx->bias_pos =
-			devm_gpiod_get_index(ctx->dev, "bias", 0, GPIOD_OUT_HIGH);
-		gpiod_set_value(ctx->bias_pos, 1);
-		devm_gpiod_put(ctx->dev, ctx->bias_pos);
-
+		ctx->vddi_gpio = devm_gpiod_get(ctx->dev, "vddi", GPIOD_OUT_HIGH);
+		gpiod_set_value(ctx->vddi_gpio, 1);
+		devm_gpiod_put(ctx->dev, ctx->vddi_gpio);
 		usleep_range(2000, 2001);
-		ctx->bias_neg =
-			devm_gpiod_get_index(ctx->dev, "bias", 1, GPIOD_OUT_HIGH);
-		gpiod_set_value(ctx->bias_neg, 1);
-		devm_gpiod_put(ctx->dev, ctx->bias_neg);
+
+		ctx->vci_gpio = devm_gpiod_get(ctx->dev, "vci", GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->vci_gpio)) {
+			dev_info(ctx->dev, "cannot get vci-gpios %ld\n",
+				 PTR_ERR(ctx->vci_gpio));
+		} else {
+			gpiod_set_value(ctx->vci_gpio, 1);
+			devm_gpiod_put(ctx->dev, ctx->vci_gpio);
+			usleep_range(2000, 2001);
+		}
+
+		ctx->vddr_gpio = devm_gpiod_get(ctx->dev, "vddr", GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->vddr_gpio)) {
+			dev_info(ctx->dev, "cannot get vddr-gpios %ld\n",
+				 PTR_ERR(ctx->vddr_gpio));
+		} else {
+			gpiod_set_value(ctx->vddr_gpio, 1);
+			devm_gpiod_put(ctx->dev, ctx->vddr_gpio);
+		}
 	}
 #if IS_ENABLED(CONFIG_RT4831A_I2C)
 	else if (ctx->gate_ic == 4831) {
@@ -2789,21 +2818,27 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	devm_gpiod_put(dev, ctx->reset_gpio);
 
 	if (ctx->gate_ic == 0) {
-		ctx->bias_pos = devm_gpiod_get_index(dev, "bias", 0, GPIOD_OUT_HIGH);
-		if (IS_ERR(ctx->bias_pos)) {
-			dev_info(dev, "cannot get bias-gpios 0 %ld\n",
-				 PTR_ERR(ctx->bias_pos));
-			return PTR_ERR(ctx->bias_pos);
+		ctx->vddi_gpio = devm_gpiod_get(dev, "vddi", GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->vddi_gpio)) {
+			dev_info(dev, "cannot get vddi-gpios %ld\n",
+				 PTR_ERR(ctx->vddi_gpio));
+			return PTR_ERR(ctx->vddi_gpio);
 		}
-		devm_gpiod_put(dev, ctx->bias_pos);
+		devm_gpiod_put(dev, ctx->vddi_gpio);
 
-		ctx->bias_neg = devm_gpiod_get_index(dev, "bias", 1, GPIOD_OUT_HIGH);
-		if (IS_ERR(ctx->bias_neg)) {
-			dev_info(dev, "cannot get bias-gpios 1 %ld\n",
-				 PTR_ERR(ctx->bias_neg));
-			return PTR_ERR(ctx->bias_neg);
-		}
-		devm_gpiod_put(dev, ctx->bias_neg);
+		ctx->vci_gpio = devm_gpiod_get(dev, "vci", GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->vci_gpio))
+			dev_info(dev, "cannot get vci-gpios %ld\n",
+				 PTR_ERR(ctx->vci_gpio));
+		else
+			devm_gpiod_put(dev, ctx->vci_gpio);
+
+		ctx->vddr_gpio = devm_gpiod_get(dev, "vddr", GPIOD_OUT_HIGH);
+		if (IS_ERR(ctx->vddr_gpio))
+			dev_info(dev, "cannot get vddr-gpios %ld\n",
+				 PTR_ERR(ctx->vddr_gpio));
+		else
+			devm_gpiod_put(dev, ctx->vddr_gpio);
 	}
 
 	ctx->prepared = true;
