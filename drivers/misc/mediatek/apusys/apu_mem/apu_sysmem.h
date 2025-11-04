@@ -93,9 +93,10 @@ struct apu_sysmem_allocator {
 
 	uint64_t session_id;
 	uint32_t smmu_ssid;
-	struct list_head buffers; //for apu_sysmem_allocator
-	struct list_head maps; //for apu_sysmem_map
-	struct mutex mtx;
+	struct list_head buffers; // for apu_sysmem_allocator
+	struct list_head maps;    // for apu_sysmem_map
+	struct list_head a_node;  // to allocator
+	spinlock_t spin;
 };
 
 struct apu_sysmem_allocator *apu_sysmem_create_allocator(uint64_t session_id);

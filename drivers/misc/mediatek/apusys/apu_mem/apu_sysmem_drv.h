@@ -25,6 +25,11 @@ static inline int apu_sysmem_log_level_check(int log_level)
 	return g_apu_sysmem_klog & log_level;
 }
 
+#define apu_sysmem_dbg_dump(x, args...) \
+	do { \
+		if (apu_sysmem_log_level_check(APU_SYSMEM_ERR)) \
+			pr_info("[dump][%s/%d]" x, __func__, __LINE__, ##args); \
+	} while (0)
 #define apu_sysmem_err(x, args...) \
 	do { \
 		if (apu_sysmem_log_level_check(APU_SYSMEM_ERR)) \
@@ -55,5 +60,7 @@ int apu_sysmem_pages_free(struct dma_buf *dbuf);
 
 struct dma_buf *apu_sysmem_aram_alloc(uint64_t session_id, enum apu_sysmem_mem_type type, uint64_t size, uint64_t flags);
 int apu_sysmem_aram_free(struct dma_buf *dbuf);
+
+void apu_sysmem_allocator_dump(uint32_t target_ssid);
 
 #endif

@@ -40,6 +40,7 @@
 #include "apummu_remote_cmd.h"
 #include "apummu_mgt.h"
 #include "apummu_export.h"
+#include "apu_sysmem_drv.h"
 
 /* define */
 #define APUSYS_DRV_NAME "apusys_drv_apummu"
@@ -102,6 +103,10 @@ static int apu_ipi_apummu_rx_rpmsg_cb(struct rpmsg_device *rpdev, void *data,
 	case APUMMU_RX_CBFC_AEE:
 		pr_info("CBFC error in uP, error_code = %d\n", d->error_code);
 		apusys_cbfc_exception("CBFC error in uP");
+		break;
+	case APUMMU_RX_SMMU_TF:
+		pr_info("SMMU TF from NPU RV side, error_code = %d\n", d->error_code);
+		apu_sysmem_allocator_dump((uint32_t)  d->error_code);
 		break;
 	default:
 		pr_info("%s: unknown cmd %d\n", __func__, d->module_id);

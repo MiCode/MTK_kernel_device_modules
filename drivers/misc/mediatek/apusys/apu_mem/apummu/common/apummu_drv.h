@@ -79,15 +79,16 @@ struct apummu_dev_info {
 
 /* for aputop module AEE data */
 struct apummu_rx_data {
-	uint8_t module_id;
-	int8_t  error_code;
+	uint8_t  module_id;
+	int8_t   error_code;
 };
 enum {
 	APUMMU_RX_TEST = 0,
 	APUMMU_RX_APUMMU_AEE = 1,
 	APUMMU_RX_HSE_AEE = 2,
 	APUMMU_RX_CBFC_AEE = 3,
-	APUMMU_RX_LAST = 4,
+	APUMMU_RX_SMMU_TF = 4,
+	APUMMU_RX_LAST,
 };
 
 extern struct apummu_tbl g_ammu_table_set;

@@ -25,6 +25,8 @@
 #include "apu_mem_export.h"
 
 struct apusys_core_info *g_apusys_core;
+static struct list_head g_allocator_list_head;
+static DEFINE_SPINLOCK(allocator_list_lock);
 
 /* mem domain type */
 enum {
@@ -129,6 +131,7 @@ static struct apu_sysmem_buffer *apu_sysmem_alloc(struct apu_sysmem_allocator *a
 	enum apu_sysmem_mem_type mem_type, uint64_t size, uint64_t flags, char *name)
 {
 	struct apu_sysmem_buffer *buf = NULL;
+	unsigned long spin_flags;
 
 	apu_sysmem_debug("alloc memtype(%d) size(%llu) flags(0x%llx) name(%s)\n",
 		mem_type, size, flags, name);
@@ -183,9 +186,9 @@ static struct apu_sysmem_buffer *apu_sysmem_alloc(struct apu_sysmem_allocator *a
 	buf->allocator = allocator;
 	buf->flags = flags;
 	/* add to allocator's buffer list */
-	mutex_lock(&allocator->mtx);
+	spin_lock_irqsave(&allocator->spin, spin_flags);
 	list_add_tail(&buf->a_node, &allocator->buffers);
-	mutex_unlock(&allocator->mtx);
+	spin_unlock_irqrestore(&allocator->spin, spin_flags);
 
 	apu_sysmem_debug("alloc sysbuf(0x%pK/0x%pK) done, memtype(%d) size(%llu) flags(0x%llx) name(%s)\n",
 		buf, buf->dbuf, mem_type, size, flags, name);
@@ -208,14 +211,15 @@ static int apu_sysmem_free(struct apu_sysmem_allocator *allocator,
 	struct apu_sysmem_buffer *buf)
 {
 	struct dma_buf *dbuf = buf->dbuf;
+	unsigned long flags;
 
 	apu_sysmem_debug("free(0x%pK/0x%pK) memtype(%d) size(%llu) flags(0x%llx)\n",
 		buf, buf->dbuf, buf->mem_type, buf->size, buf->flags);
 
 	/* delete from allocator's buffer list */
-	mutex_lock(&allocator->mtx);
+	spin_lock_irqsave(&allocator->spin, flags);
 	list_del(&buf->a_node);
-	mutex_unlock(&allocator->mtx);
+	spin_unlock_irqrestore(&allocator->spin, flags);
 
 	/* unmap kva */
 	if (buf->mem_type == APU_SYSMEM_TYPE_DRAM)
@@ -263,6 +267,7 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 {
 	struct apu_sysmem_map *map = NULL;
 	struct scatterlist *sg = NULL;
+	unsigned long flags;
 	int ret = 0, i = 0;
 	uint a_SLC_DC_EN;
 
@@ -352,9 +357,9 @@ static struct apu_sysmem_map *apu_sysmem_map(struct apu_sysmem_allocator *alloca
 	map->vaddr = map->map.vaddr;
 
 	/* add to allocator's map list */
-	mutex_lock(&allocator->mtx);
+	spin_lock_irqsave(&allocator->spin, flags);
 	list_add_tail(&map->a_node, &allocator->maps);
-	mutex_unlock(&allocator->mtx);
+	spin_unlock_irqrestore(&allocator->spin, flags);
 
 	apu_sysmem_debug("map(0x%pK/0x%pK) map_bitmask(0x%llx) dva(0x%llx) iova(0x%llx) size(%llu)\n",
 		map, map->dbuf, map->map_bitmask, map->device_va, map->device_iova, map->size);
@@ -381,15 +386,16 @@ static int apu_sysmem_unmap(struct apu_sysmem_allocator *allocator,
 		struct apu_sysmem_map *map)
 {
 	struct dma_buf *dbuf = map->dbuf;
+	unsigned long flags;
 
 	apu_sysmem_debug("unmap(0x%pK/0x%pK) map_bitmask(0x%llx) dva(0x%llx) iova(0x%llx) size(%llu)\n",
 		map, map->dbuf, map->map_bitmask, map->device_va,
 		map->device_iova, map->size);
 
 	/* delete from allocator's buffer list */
-	mutex_lock(&allocator->mtx);
+	spin_lock_irqsave(&allocator->spin, flags);
 	list_del(&map->a_node);
-	mutex_unlock(&allocator->mtx);
+	spin_unlock_irqrestore(&allocator->spin, flags);
 
 	/* unmap eva */
 	if (apu_mem_unmap_iova(allocator->session_id, map->device_iova, map->size))
@@ -416,15 +422,16 @@ static void apu_sysmem_dump(struct apu_sysmem_allocator *allocator)
 {
 	struct apu_sysmem_map *map = NULL;
 	struct apu_sysmem_buffer *buf = NULL;
+	unsigned long flags;
 	uint32_t idx = 0;
 
-	apu_sysmem_info("allocator(0x%pK/0x%llx) dump:\n", allocator, allocator->session_id);
+	apu_sysmem_dbg_dump("allocator(0x%pK/0x%llx) dump:\n", allocator, allocator->session_id);
 
-	mutex_lock(&allocator->mtx);
+	spin_lock_irqsave(&allocator->spin, flags);
 
 	idx = 0;
 	list_for_each_entry(buf, &allocator->buffers, a_node) {
-		apu_sysmem_info(" buf[%u]: name(%s/%s) dbuf(0x%pK) size(%llu) mem_type(%d) vaddr(%pK)\n",
+		apu_sysmem_dbg_dump(" buf[%u]: name(%s/%s) dbuf(0x%pK) size(%llu) mem_type(%d) vaddr(%pK)\n",
 			idx, buf->dbuf->exp_name, buf->dbuf->name,
 			buf->dbuf, buf->size, buf->mem_type, buf->vaddr);
 		idx++;
@@ -432,20 +439,23 @@ static void apu_sysmem_dump(struct apu_sysmem_allocator *allocator)
 
 	idx = 0;
 	list_for_each_entry(map, &allocator->maps, a_node) {
-		apu_sysmem_info(" map[%u]: name(%s/%s) dbuf(0x%pK) device_va(0x%llx) device_iova(0x%llx) size(%llu) map_bitmask(0x%llx)\n",
-			idx, map->dbuf->exp_name, map->dbuf->name,
-			map->dbuf, map->device_va, map->device_iova,
-			map->size, map->map_bitmask);
+		apu_sysmem_dbg_dump(" map[%u]: name(%s/%s) dbuf(0x%pK) device_va(0x%llx)\n",
+			idx, map->dbuf->exp_name, map->dbuf->name, map->dbuf, map->device_va
+		);
+		apu_sysmem_dbg_dump(" map[%u]: device_iova(0x%llx) size(%llu) map_bitmask(0x%llx)\n",
+			idx, map->device_iova, map->size, map->map_bitmask
+		);
 		idx++;
 	}
 
-	mutex_unlock(&allocator->mtx);
+	spin_unlock_irqrestore(&allocator->spin, flags);
 }
 
 struct apu_sysmem_allocator *apu_sysmem_create_allocator(uint64_t session_id)
 {
 	struct apu_sysmem_allocator *allocator = NULL;
 	uint32_t ssid;
+	unsigned long flags;
 	int ret;
 
 	apu_sysmem_debug("session_id(0x%llx) allocator create\n", session_id);
@@ -474,7 +484,8 @@ struct apu_sysmem_allocator *apu_sysmem_create_allocator(uint64_t session_id)
 	/* init allocator */
 	INIT_LIST_HEAD(&allocator->buffers);
 	INIT_LIST_HEAD(&allocator->maps);
-	mutex_init(&allocator->mtx);
+	INIT_LIST_HEAD(&allocator->a_node);
+	spin_lock_init(&allocator->spin);
 	allocator->session_id = session_id;
 	allocator->smmu_ssid = ssid;
 	allocator->alloc = apu_sysmem_alloc;
@@ -483,6 +494,10 @@ struct apu_sysmem_allocator *apu_sysmem_create_allocator(uint64_t session_id)
 	allocator->unmap = apu_sysmem_unmap;
 	allocator->dump = apu_sysmem_dump;
 
+	spin_lock_irqsave(&allocator_list_lock, flags);
+	list_add_tail(&allocator->a_node, &g_allocator_list_head);
+	spin_unlock_irqrestore(&allocator_list_lock, flags);
+
 out:
 	return allocator;
 }
@@ -490,6 +505,9 @@ out:
 int apu_sysmem_delete_allocator(struct apu_sysmem_allocator *allocator)
 {
 	int ret = -EEXIST;
+	struct list_head *a_node_ptr;
+	struct apu_sysmem_allocator *target_node;
+	unsigned long flags;
 
 	/* check buffers empty */
 	if (!list_empty(&allocator->buffers)) {
@@ -505,6 +523,24 @@ int apu_sysmem_delete_allocator(struct apu_sysmem_allocator *allocator)
 		goto out;
 	}
 
+	spin_lock_irqsave(&allocator_list_lock, flags);
+
+	list_for_each(a_node_ptr, &g_allocator_list_head) {
+		target_node = list_entry(a_node_ptr, struct apu_sysmem_allocator, a_node);
+		if (target_node->session_id == allocator->session_id) {
+			ret = 0;
+			list_del(&target_node->a_node);
+			break;
+		}
+	}
+
+	spin_unlock_irqrestore(&allocator_list_lock, flags);
+
+	if (ret) {
+		apu_sysmem_err("fail to delete allocator from list, session_id %llx not found\n",
+			allocator->session_id);
+	}
+
 	apu_mem_table_free(allocator->session_id);
 
 	apu_sysmem_debug("delete allocator(0x%pK/0x%llx)\n", allocator, allocator->session_id);
@@ -514,6 +550,32 @@ int apu_sysmem_delete_allocator(struct apu_sysmem_allocator *allocator)
 
 out:
 	return ret;
+}
+
+void apu_sysmem_allocator_dump(uint32_t target_ssid)
+{
+	struct list_head *a_node_ptr;
+	struct apu_sysmem_allocator *target_node;
+	bool is_dump = false;
+
+	apu_sysmem_dbg_dump("NPU MEM allocator dump for ssid %u is triggered!!!\n",
+		target_ssid);
+
+	spin_lock_irq(&allocator_list_lock);
+
+	list_for_each(a_node_ptr, &g_allocator_list_head) {
+		target_node = list_entry(a_node_ptr, struct apu_sysmem_allocator, a_node);
+		if(target_node->smmu_ssid == target_ssid) {
+			target_node->dump(target_node);
+			is_dump = true;
+		}
+	}
+
+	if(!is_dump)
+		apu_sysmem_dbg_dump("NPU MEM allocator dump for ssid %u not found!!!\n",
+			target_ssid);
+
+	spin_unlock_irq(&allocator_list_lock);
 }
 
 static void of_find_ssid_range(struct device_node *np, uint32_t *ssid_range)
@@ -709,6 +771,8 @@ int apu_sysmem_init(struct apusys_core_info *info)
 
 	if (apu_sysmem_dbg_init(info->dbg_root))
 		apu_sysmem_err("apu_sysmem_dbg_init fail\n");
+
+	INIT_LIST_HEAD(&g_allocator_list_head);
 
 	apu_sysmem_info("-\n");
 
