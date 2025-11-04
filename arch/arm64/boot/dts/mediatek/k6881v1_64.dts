@@ -26,22 +26,6 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	clock-frequency = <0x00000002 0xafbef362>;
 };
 
-&ssusb {
-	phys = <&u3fpgaport0 PHY_TYPE_USB3>;
-	plat-type = <1>; /* FPGA */
-	fpga-phy = <3>; /* A60931 */
-	dr_mode = "peripheral";
-	status = "okay";
-};
-
-&u2phy {
-	status = "disabled";
-};
-
-&u3fpgaphy {
-	status = "okay";
-};
-
 &mtkfb {
 	pinctrl-names = "lcd_bias_enp0_gpio",
 		"lcd_bias_enn0_gpio",

@@ -7096,9 +7096,12 @@
 			reg = <0 0x11201000 0 0x2e00>,
 				<0 0x11203e00 0 0x0100>;
 			reg-names = "mac", "ippc";
+			vusb33-supply = <&mt6368_vusb>;
 			interrupts = <GIC_SPI 512 IRQ_TYPE_LEVEL_HIGH 0>;
 			phy-cells = <1>;
 			phys = <&u2port0 PHY_TYPE_USB2>;
+			clocks = <&clk26m>, <&clk26m>, <&clk26m>;
+			clock-names = "sys_ck", "host_ck", "frmcnt_ck";
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
@@ -7106,13 +7109,28 @@
 			maximum-speed = "high-speed";
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
-			mediatek,usb3-drd;
 			usb-role-switch;
 			cdp-block;
+
+			port {
+				mtu3_drd_switch: endpoint {
+					remote-endpoint = <&usb_role>;
+				};
+			};
+
+			usb_host: xhci0@11200000 {
+				compatible = "mediatek,mtk-xhci";
+				reg = <0 0x11200000 0 0x1000>;
+				reg-names = "mac";
+				interrupts = <GIC_SPI 513 IRQ_TYPE_LEVEL_HIGH 0>;
+				clocks = <&clk26m>;
+				clock-names = "sys_ck";
+				status = "okay";
+			};
 		};
 
 		u2phy: usb-phy0@11f40000 {
-			compatible = "mediatek,xsphy";
+			compatible = "mediatek,xsphy", "mediatek,mt6881-xsphy";
 			reg = <0 0x11f40000 0 0x400>;
 			#address-cells = <2>;
 			#size-cells = <2>;
@@ -7295,6 +7313,27 @@
 			interrupt-names =
 				"BUS_TRACKER";
 			gpufreq-wrapper-supply = <&gpufreq_wrapper>;
+		};
+
+		extcon_usb: extcon-usb {
+			compatible = "mediatek,extcon-usb";
+			/* vbus-supply = <&mt6720_otg_vbus>; */
+			/* vbus-voltage = <5000000>; */
+			/* vbus-current = <1800000>; */
+			/* charger = <&mt6720_chg>; */
+			/* tcpc = "type_c_port0"; */
+			mediatek,bypss-typec-sink = <1>;
+			mediatek,u2;
+			port {
+				usb_role: endpoint {
+					remote-endpoint = <&mtu3_drd_switch>;
+				};
+			};
+		};
+
+		usb_meta: usb-meta {
+			compatible = "mediatek,usb-meta";
+			udc = <&ssusb>;
 		};
 
 		u3fpgaphy: u3fpgaphy {
