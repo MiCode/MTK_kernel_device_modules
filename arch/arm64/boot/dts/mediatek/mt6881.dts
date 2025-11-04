@@ -4778,6 +4778,69 @@
 			interrupts = <GIC_SPI 341 IRQ_TYPE_NONE 0>;
 		};
 
+		emicen: emicen@10219000 {
+			compatible = "mediatek,mt6877-emicen";
+			reg = <0 0x10219000 0 0x1000>;
+			mediatek,emi-reg = <&emichn>;
+		};
+
+		emichn: emichn@10235000 {
+			compatible = "mediatek,common-emichn";
+			reg = <0 0x10235000 0 0x1000>,
+				<0 0x10245000 0 0x1000>;
+		};
+
+		emimpu: emimpu@10226000 {
+			compatible = "mediatek,common-emimpu";
+			reg = <0 0x10226000 0 0x1000>;
+			mediatek,emi-reg = <&emicen>;
+			interrupts = <GIC_SPI 213 IRQ_TYPE_LEVEL_HIGH 0>;
+			dump = <0x1f0 0x1f8 0x1fc>;
+			clear = <0x1f0 0x80000000 1>,
+				<0x160 0xffffffff 16>,
+				<0x200 0x00000003 16>;
+			clear-md = <0x1fc 0x80000000 1>;
+			smc-clear = <0>;
+		};
+
+		emiisu {
+			compatible = "mediatek,common-emiisu";
+			ctrl-intf = <1>;
+		};
+
+		emi-fake-eng@1026d000 {
+			compatible = "mediatek,emi-fake-engine";
+			reg = <0 0x1026d000 0 0x1000>,   /* FAKE_ENG_0 */
+				<0 0x1026c000 0 0x1000>; /* FAKE_ENG_1 */
+			mediatek,emi-reg = <&emicen>;
+			pre-setting {
+				setting1 {
+					reg-name = "M2M5_APB_IDLE_EN";
+					addr = <0x10270210>;
+					mask-value = <0x0>;
+					set-value = <0x10000000>;
+				};
+				setting2 {
+					reg-name = "FAKE_EN_PROTECT_EN";
+					addr = <0x10001c60>;
+					mask-value = <0xc00>;
+					set-value = <0x0>;
+				};
+				setting3 {
+					reg-name = "M0M1_FAKE_ENG_IDLE_EN";
+					addr = <0x10270204>;
+					mask-value = <0x180000>;
+					set-value = <0x0>;
+				};
+				setting4 {
+					reg-name = "DRAMC_FAKE_ENG_IDLE_EN";
+					addr = <0x10270238>;
+					mask-value = <0x180000>;
+					set-value = <0x0>;
+				};
+			};
+		};
+
 		infra-device-mpu@1021a000 {
 			compatible = "mediatek,infra_device_mpu";
 			reg = <0 0x1021a000 0 0x1000>;
