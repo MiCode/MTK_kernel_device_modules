@@ -106,6 +106,23 @@ DEFINE_PROC_FOPS_RO(mgmt_cpu_protection_fops);
 DEFINE_PROC_FOPS_RO(mgmt_gpu_protection_fops);
 DEFINE_PROC_FOPS_RO(mgmt_inframpu_protection_fops);
 
+static bool is_loading_hypmmu(void)
+{
+	struct device_node *node = NULL;
+
+	node = of_find_node_by_name(NULL, "pkvm");
+	if (!node)
+		goto out;
+
+	node = of_find_node_by_name(node, "hypmmu");
+	if (!node)
+		goto out;
+
+	return true;
+out:
+	return false;
+}
+
 static int mgmt_dump_show(struct seq_file *s, void *v)
 {
 	if (!s)
@@ -113,8 +130,10 @@ static int mgmt_dump_show(struct seq_file *s, void *v)
 
 	seq_puts(s, "Protection Status:\n");
 	seq_printf(s, "CPU       : %d\n", protection_status[CPU_PROTECTION]);
-	seq_printf(s, "GPU       : %d\n", protection_status[GPU_PROTECTION]);
-	seq_printf(s, "INFRA-MPU : %d\n", protection_status[INFRA_MPU_PROTECTION]);
+	if (is_loading_hypmmu()) {
+		seq_printf(s, "GPU       : %d\n", protection_status[GPU_PROTECTION]);
+		seq_printf(s, "INFRA-MPU : %d\n", protection_status[INFRA_MPU_PROTECTION]);
+	}
 
 	pkvm_el2_mod_call(hyp_pmm_debug_hypmmu_hcall, DUMP_PROTECTION_STATUS);
 
