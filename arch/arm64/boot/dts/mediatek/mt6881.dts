@@ -848,11 +848,6 @@
 		sspm-share-region-size = <0x8000>; /* 32K */
 	};
 
-	pmsr: pmsr {
-		compatible = "mediatek,mtk-pmsr";
-		dpmsr-count = <3>;
-	};
-
 	ssram1@1c350000 {
 		compatible = "mmio-sram_1";
 		reg = <0x0 0x1c350000 0x0 0x80>;
@@ -898,6 +893,11 @@
 	/* ATF logger */
 	atf_logger: atf-logger {
 		compatible = "mediatek,tfa_debug";
+	};
+
+	pmsr: pmsr {
+		compatible = "mediatek,mtk-pmsr";
+		dpmsr-count = <3>;
 	};
 
 	ged: ged {
