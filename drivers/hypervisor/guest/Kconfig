@@ -3,7 +3,7 @@
 # Virtualization android guest support drivers
 #
 
-config GRT_VM
+config HYPER_VM_UOS
 	tristate "hypervisor guest android1 os"
 	help
 	  The hypervisor project is "m".
