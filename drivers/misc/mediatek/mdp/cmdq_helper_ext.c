@@ -2861,7 +2861,7 @@ static void cmdq_core_attach_cmdq_error(
 			handle->pkt_sec, handle->pkt_sec->cl,
 			atomic_read(&cmdq_ctx.secure_cnt));
 		atomic_set(&cmdq_ctx.secure_cnt, 0);
-		cmdq_sec_mbox_stop(handle->pkt_sec->cl);
+		cmdq_sec_mbox_stop_throwAEE (handle->pkt_sec->cl, true);
 		mutex_unlock(&cmdq_routine_mutex);
 	}
 #endif
