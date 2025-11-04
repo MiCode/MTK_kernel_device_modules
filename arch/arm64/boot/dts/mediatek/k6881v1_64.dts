@@ -8,6 +8,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
+#include <dt-bindings/pinctrl/mt6881-pinfunc.h>
 
 /* chosen */
 &chosen {
@@ -67,4 +68,5 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 
+#include "mediatek/cust_mt6881_camera_v4l2.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/

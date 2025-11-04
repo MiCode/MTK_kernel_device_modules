@@ -6292,6 +6292,14 @@
 			#iommu-cells = <1>;
 		};
 
+		flashlight_core: flashlight-core {
+			compatible = "mediatek,flashlight_core";
+		};
+
+		mtk_composite_v4l2_1: mtk-composite-v4l2-1 {
+			compatible = "mediatek,mtk_composite_v4l2_1";
+		};
+
 		ssusb: usb0@11201000 {
 			compatible = "mediatek,mtu3";
 			reg = <0 0x11201000 0 0x2e00>,
