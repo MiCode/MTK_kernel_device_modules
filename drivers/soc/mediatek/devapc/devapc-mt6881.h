@@ -158,15 +158,16 @@ enum ADSP_MI_SELECT {
 #define SRAM_END_ADDR				(0x1FFFFF)
 
 /* For VLP Bus Parser */
-#define VLP_SCP_START_ADDR			(0x1C400000)
-#define VLP_SCP_END_ADDR			(0x1CBFFFFF)
+#define VLP_SCP_1_START				(0x1C400000)
+#define VLP_SCP_1_END				(0x1CB9FFFF)
+#define VLP_SCP_2_START				(0x1CCA0000)
+#define VLP_SCP_2_END				(0x1CCFFFFF)
 #define VLP_INFRA_START				(0x00000000)
 #define VLP_INFRA_END				(0x1BFFFFFF)
 #define VLP_INFRA_1_START			(0x1D000000)
 #define VLP_INFRA_1_END				(0x1FFFFFFF)
 #define VLP_INFRA_2_START			(0x20000000)
-#define VLP_INFRA_2_END				(0x63FFFFFFFF)
-
+#define VLP_INFRA_2_END				(0x63FFFFFFF)
 
 /* For MMINFRA Bus Parser */
 #define IMG_START_ADDR				(0x15000000)
