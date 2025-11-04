@@ -2120,6 +2120,11 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc;
 	struct mtk_plane_pending_state *pending = &state->pending;
+	struct mtk_plane_pending_state *old_pending = NULL;
+	struct drm_plane_state *drm_state = &state->base;
+	struct drm_atomic_state *atomic_state = drm_state->state;
+	struct drm_plane_state *old_state;
+	struct mtk_plane_state *mtk_old_state;
 	unsigned int fmt = pending->format;
 	unsigned int pitch = pending->pitch & 0xffff;
 	unsigned int pitch_msb = ((pending->pitch >> 16) & 0xf);
@@ -2153,6 +2158,16 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 	crtc = &mtk_crtc->base;
 	priv = crtc->dev->dev_private;
 	crtc_state = to_mtk_crtc_state(crtc->state);
+
+	if (drm_state->plane && atomic_state) {
+		old_state = drm_atomic_get_old_plane_state(atomic_state, drm_state->plane);
+		if (old_state) {
+			mtk_old_state = to_mtk_plane_state(old_state);
+			old_pending = &mtk_old_state->pending;
+		} else {
+			DDPPR_ERR("%s old_state = NULL", __func__);
+		}
+	}
 
 	if (fmt == DRM_FORMAT_YUYV || fmt == DRM_FORMAT_YVYU ||
 	    fmt == DRM_FORMAT_UYVY || fmt == DRM_FORMAT_VYUY) {
@@ -2279,9 +2294,11 @@ static void _ovl_exdma_common_config(struct mtk_ddp_comp *comp, unsigned int idx
 		}
 
 		if (pending->mml_mode == MML_MODE_RACING) {
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + regs[OVL_EXDMA_L0_SYSRAM_CFG], 1,
-				~0);
+			if (!old_pending || (old_pending->mml_mode != MML_MODE_RACING)) {
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + regs[OVL_EXDMA_L0_SYSRAM_CFG], 1,
+					~0);
+			}
 			cmdq_pkt_write(handle, comp->cmdq_base,
 				comp->regs_pa + regs[OVL_EXDMA_L0_BUF0_ADDR],
 				pending->addr + offset, ~0);
@@ -3129,6 +3146,11 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
 	/* input config */
 	struct mtk_plane_pending_state *pending = &state->pending;
+	struct mtk_plane_pending_state *old_pending = NULL;
+	struct drm_plane_state *drm_state = &state->base;
+	struct drm_atomic_state *atomic_state = drm_state->state;
+	struct drm_plane_state *old_state;
+	struct mtk_plane_state *mtk_old_state;
 	dma_addr_t addr = pending->addr;
 	bool enable = pending->enable;
 	unsigned int pitch = pending->pitch & 0xffff;
@@ -3183,6 +3205,16 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	priv = crtc->dev->dev_private;
 	crtc_state = to_mtk_crtc_state(crtc->state);
 
+	if (drm_state->plane && atomic_state) {
+		old_state = drm_atomic_get_old_plane_state(atomic_state, drm_state->plane);
+		if (old_state) {
+			mtk_old_state = to_mtk_plane_state(old_state);
+			old_pending = &mtk_old_state->pending;
+		} else {
+			DDPPR_ERR("%s old_state = NULL", __func__);
+		}
+	}
+
 	DDPDBG("%s:%d, addr:0x%lx, pitch:%d, vpitch:%d\n",
 		__func__, __LINE__, (unsigned long)addr,
 		pitch, vpitch);
@@ -3214,29 +3246,34 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, id), lx_fbdc_en << 4,
 		       REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_CFG(exdma, id), 0,
-			~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_BUF0_ADDR(exdma, id),
-			0, ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_BUF1_ADDR(exdma, id),
-			0, ~0);
+		if (!old_pending || ((old_pending->mml_mode == MML_MODE_RACING) &&
+			!(pending->mml_mode == MML_MODE_RACING))) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_CFG(exdma, id), 0,
+				~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_BUF0_ADDR(exdma, id),
+				0, ~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_BUF1_ADDR(exdma, id),
+				0, ~0);
+		}
 	} else {
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_EXDMA_L0_EN],
 			lx_fbdc_en << 4, REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
-
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + regs[OVL_EXDMA_L0_SYSRAM_CFG], 0,
-			~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + regs[OVL_EXDMA_L0_BUF0_ADDR],
-			0, ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + regs[OVL_EXDMA_L0_BUF1_ADDR],
-			0, ~0);
+		if (!old_pending || ((old_pending->mml_mode == MML_MODE_RACING) &&
+			!(pending->mml_mode == MML_MODE_RACING))) {
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + regs[OVL_EXDMA_L0_SYSRAM_CFG], 0,
+				~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + regs[OVL_EXDMA_L0_BUF0_ADDR],
+				0, ~0);
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + regs[OVL_EXDMA_L0_BUF1_ADDR],
+				0, ~0);
+		}
 	}
 
 	/* if no compress, do common config and return */
