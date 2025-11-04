@@ -1354,7 +1354,7 @@ static void fdvt_sec_fd2handler(struct fdvt_config *basic_config,
 				0, 0, 0, &dmabuf->ImgSrcY.pa);
 		log_inf("[%s] pa: 0x%llx\n", __func__, dmabuf->ImgSrcY.pa);
 	} else {
-		basic_config->FDVT_METADATA_TO_GCE.ImgSrcY_Handler =
+		fdvt_sec_dma.ImgY_Handler =
 				dmabuf_to_secure_handle(dmabuf->ImgSrcY.dmabuf);
 	}
 	if (basic_config->FDVT_METADATA_TO_GCE.ImgSrcUV_Handler) {
@@ -1370,7 +1370,7 @@ static void fdvt_sec_fd2handler(struct fdvt_config *basic_config,
 				0, 0, 0, &dmabuf->ImgSrcUV.pa);
 			log_inf("[%s] pa: 0x%llx\n", __func__, dmabuf->ImgSrcUV.pa);
 		} else {
-			basic_config->FDVT_METADATA_TO_GCE.ImgSrcUV_Handler =
+			fdvt_sec_dma.ImgUV_Handler =
 				dmabuf_to_secure_handle(dmabuf->ImgSrcUV.dmabuf);
 	}
 }
@@ -2124,8 +2124,8 @@ static void fdvt_tzmp2(struct fdvt_config *basic_config, struct FDVT_MEM_RECORD 
 		dmabuf_metadata->FDOutBuf_Handler = fdvt_sec_dma.FDOutBuf.pa;
 		dmabuf_metadata->FD_POSE_Config_Handler = fdvt_sec_dma.FD_POSE.pa;
 	} else {
-		dmabuf_metadata->ImgSrcY_Handler = basic_config->FDVT_METADATA_TO_GCE.ImgSrcY_Handler;
-		dmabuf_metadata->ImgSrcUV_Handler = basic_config->FDVT_METADATA_TO_GCE.ImgSrcUV_Handler;
+		dmabuf_metadata->ImgSrcY_Handler = fdvt_sec_dma.ImgY_Handler;
+		dmabuf_metadata->ImgSrcUV_Handler = fdvt_sec_dma.ImgUV_Handler;
 		dmabuf_metadata->YUVConfig_Handler = fdvt_sec_dma.YUVConfig_Handler;
 		dmabuf_metadata->RSConfig_Handler = fdvt_sec_dma.RSConfig_Handler;
 		dmabuf_metadata->RSOutBuf_Handler = fdvt_sec_dma.RSOutBuf_Handler;
