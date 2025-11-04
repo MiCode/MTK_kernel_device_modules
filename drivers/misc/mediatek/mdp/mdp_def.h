@@ -40,10 +40,9 @@
 #define CMDQ_MAX_HIGH_PRIORITY_THREAD_COUNT (8)
 #define CMDQ_MIN_SECURE_THREAD_ID	(CMDQ_MAX_HIGH_PRIORITY_THREAD_COUNT)
 
-#if IS_ENABLED(CONFIG_MACH_MT6779) || IS_ENABLED(CONFIG_MACH_MT6785) || \
-	defined(ISP_GCE_M_SEC_SUPPORT)
-/* primary disp / secondary disp / mdp / isp fd */
-#define CMDQ_MAX_SECURE_THREAD_COUNT	(4)
+#if defined(ISP_GCE_M_SEC_SUPPORT)
+/* mt6858 */
+#define CMDQ_MAX_SECURE_THREAD_COUNT	(5)
 #else
 /* primary disp / secondary disp / mdp */
 #define CMDQ_MAX_SECURE_THREAD_COUNT	(3)
