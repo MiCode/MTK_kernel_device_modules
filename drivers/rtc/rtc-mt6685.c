@@ -57,6 +57,7 @@ static const struct rtc_time default_alm = {
 
 static int rtc_is_shutdown;
 static struct rtc_wkalrm p_alm;
+static struct rtc_wkalrm set_alm;
 
 void power_on_mclk(struct mt6685_rtc *rtc)
 {
@@ -1261,6 +1262,8 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 		*tm = rtc_ktime_to_tm(target);
 	}
 
+	memcpy(&set_alm, alm, sizeof(struct rtc_wkalrm));
+
 	tm->tm_year -= RTC_MIN_YEAR_OFFSET;
 	tm->tm_mon++;
 
@@ -1281,18 +1284,22 @@ static int mtk_rtc_set_alarm(struct device *dev, struct rtc_wkalrm *alm)
 		/* enable power-on alarm with logo */
 		mtk_rtc_save_pwron_time(rtc, true, tm);
 		memcpy(&p_alm, alm, sizeof(struct rtc_wkalrm));
+		p_alm.time.tm_year += RTC_MIN_YEAR_OFFSET;
+		p_alm.time.tm_mon--;
 		break;
 	case 4:
 		/* disable power-on alarm */
 		mtk_rtc_save_pwron_time(rtc, false, tm);
 		memcpy(&p_alm, alm, sizeof(struct rtc_wkalrm));
+		p_alm.time.tm_year += RTC_MIN_YEAR_OFFSET;
+		p_alm.time.tm_mon--;
 		break;
 	default:
 		break;
 	}
 
 	if (alm->enabled == 1) {
-		scheduled = rtc_tm_to_time64(tm);
+		scheduled = rtc_tm_to_time64(&set_alm.time);
 		if (p_alm.enabled == 3) {
 			p_now = rtc_tm_to_time64(&p_alm.time);
 			if (scheduled >= p_now) {
