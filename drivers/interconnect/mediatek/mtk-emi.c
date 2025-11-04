@@ -218,6 +218,7 @@ static const struct of_device_id emi_icc_of_match[] = {
 	{ .compatible = "mediatek,mt6899-dvfsrc", .data = &mt6873_icc },
 	{ .compatible = "mediatek,mt6993-dvfsrc", .data = &mt6873_icc },
 	{ .compatible = "mediatek,mt6858-dvfsrc", .data = &mt6873_icc },
+	{ .compatible = "mediatek,mt6881-dvfsrc", .data = &mt6873_icc },
 	{ },
 };
 MODULE_DEVICE_TABLE(of, emi_icc_of_match);
