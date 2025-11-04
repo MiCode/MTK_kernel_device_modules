@@ -751,6 +751,8 @@ static void uaudio_dev_release(struct kref *kref)
 	struct usb_audio_dev *dev = container_of(kref, struct usb_audio_dev, kref);
 	struct xhci_sideband_ *sb;
 
+	usb_offload_hid_stop();
+
 	if (!dev) {
 		USB_OFFLOAD_ERR("dev has been freed!!\n");
 		return;
@@ -868,8 +870,6 @@ static void usb_offload_end_offloading(struct usb_audio_dev *dev)
 	uodev->last_card_num = -EINVAL;
 	uodev->speed = USB_SPEED_UNKNOWN;
 	uodev->is_streaming = false;
-
-	usb_offload_hid_stop();
 
 	usb_offload_hub_working(dev->on_hub, false);
 
@@ -2302,7 +2302,6 @@ int xhci_mtk_realloc_transfer_ring(unsigned int slot_id, unsigned int ep_id,
 
 	return ret;
 error:
-	USB_OFFLOAD_ERR("fail to reallocate, ring was still on AP viewed only\n");
 	return ret;
 }
 

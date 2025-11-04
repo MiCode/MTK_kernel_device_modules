@@ -320,6 +320,7 @@ struct usb_offload_policy {
 	bool force_on_secondary;
 	bool support_fb;
 	bool support_hub;
+	bool hid_dbg_flow;
 	bool hid_disable_offload;
 	bool hid_disable_sync;
 	bool hid_tr_switch;

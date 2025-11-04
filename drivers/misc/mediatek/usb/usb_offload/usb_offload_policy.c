@@ -109,6 +109,7 @@ static struct policy_member flow_control[] = {
 	POLICY_MAP(force_on_secondary,  18),
 	POLICY_MAP(support_fb,          10),
 	POLICY_MAP(support_hub,         11),
+	POLICY_MAP(hid_dbg_flow,        12),
 	POLICY_MAP(hid_disable_offload, 19),
 	POLICY_MAP(hid_disable_sync,    16),
 	POLICY_MAP(hid_tr_switch,       13),
