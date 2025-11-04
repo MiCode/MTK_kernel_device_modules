@@ -497,6 +497,8 @@ struct DISP_AAL_TRIG_STATE {
 
 /* DISP to MML */
 #define DRM_MTK_MML_CTRL 0x5f
+/* auto host crtc info*/
+#define DRM_MTK_GET_HOST_CRTC_OBJ_ID 0x60
 
 /* The device specific ioctl range is from DRM_COMMAND_BASE(0x40) to DRM_COMMAND_END(0x9f)
  * The index of ioctl which define here must be less then 0x60
@@ -1957,6 +1959,9 @@ struct CRTC_READY_INFO {
 			DRM_MTK_GET_PQ_CAPS, struct mtk_drm_pq_caps_info)
 #define DRM_IOCTL_MTK_SET_PQ_CAPS    DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_SET_PQ_CAPS, struct mtk_drm_pq_caps_info)
+
+#define DRM_IOCTL_MTK_GET_HOST_CRTC_OBJ_ID        \
+	DRM_IOWR(DRM_COMMAND_BASE + DRM_MTK_GET_HOST_CRTC_OBJ_ID, int)
 
 #define DRM_IOCTL_MTK_KICK_IDLE    DRM_IOWR(DRM_COMMAND_BASE + \
 			DRM_MTK_KICK_IDLE, unsigned int)
