@@ -309,7 +309,7 @@ static struct mtk_dpc2_dt_usage mt6993_dt_usage[DPC3_VIDLE_CNT] = {
 /*16*/	{0, 0x13B13B},
 /*17*/	{0, DPC2_DT_MMINFRA},	/* MMINFRA */
 /*18*/	{1, DT_TE_360 - DPC2_DT_PRESZ - DPC2_DT_MMINFRA},
-/*19*/	{0, DPC2_DT_MMINFRA},
+/*19*/	{0, DPC2_DT_POSTSZ + 200},
 /*20*/	{0, 0x13B13B},	/* INFRA */
 /*21*/	{0, 0x13B13B},
 /*22*/	{0, 0x13B13B},
