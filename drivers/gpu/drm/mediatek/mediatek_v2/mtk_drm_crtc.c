@@ -769,13 +769,26 @@ unsigned int mtk_drm_crtc_check_ovl_status(struct drm_crtc *crtc, struct mtk_cmd
 	priv = mtk_crtc->base.dev->dev_private;
 	int id = drm_crtc_index(crtc);
 	unsigned int ovl_status = 0;
-
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	unsigned int time_0, time_1, exec_time;
+#endif
 	if (priv && priv->power_state) {
 		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
 				DISP_SLOT_OVL_STATUS(id));
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+		time_0 = cmdq_mbox_get_tpr_from_dram(cb_data->cmdq_handle, 4);
+		time_1 = cmdq_mbox_get_tpr_from_dram(cb_data->cmdq_handle, 5);
+		exec_time = (time_0 - time_1) / 26;
+
+		CRTC_MMP_MARK(id, ovl_status_err, exec_time, cb_data->cmdq_handle->cmd_buf_size);
+#endif
 		if (ovl_status & 1) {
 			CRTC_MMP_MARK(id, ovl_status_err, ovl_status, 0);
 			DDPPR_ERR("%s CRTC%d ovl status error:0x%x\n", __func__, id, ovl_status);
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+			DDPMSG("time:%d,size:%d\n", exec_time, cb_data->cmdq_handle->cmd_buf_size);
+			DDPAEE("[IRQ] ovl status error\n");
+#endif
 			mtk_dprec_snapshot();
 			if (priv->data->mmsys_id == MMSYS_MT6985 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
@@ -19674,6 +19687,9 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 				mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_VFP_PERIOD]);
 	} else {
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+		cmdq_pkt_save_tpr_to_dram(cmdq_handle, 5);
+#endif
 		mtk_crtc_partial_update_wait_cabc(crtc, cmdq_handle);
 	}
 
@@ -24320,8 +24336,8 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
 				mtk_crtc->side_config_regs_pa + MMSYS_EMI_REQ_CTL, 0x0, DSI0_URGENT);
 	}
+	cmdq_pkt_save_tpr_to_dram(cmdq_handle, 4);
 #endif
-
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* update kick timestamp */
 
 #ifndef DRM_CMDQ_DISABLE
