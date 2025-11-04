@@ -135,6 +135,8 @@ static int mtk_ovl_blender_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 static void mtk_ovl_blender_connect(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			    enum mtk_ddp_comp_id prev,
 			    enum mtk_ddp_comp_id next);
+static void mtk_ovl_blender_config_begin(struct mtk_ddp_comp *comp,
+			  struct cmdq_pkt *handle, const u32 idx);
 
 static inline struct mtk_disp_ovl_blender *comp_to_ovl_blender(struct mtk_ddp_comp *comp)
 {
@@ -412,6 +414,13 @@ static void mtk_ovl_blender_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + regs[OVL_BLD_BGCLR_CLR], OVL_ROI_BGCLR,
 		       ~0);
+}
+
+static void mtk_ovl_blender_first_config(struct mtk_ddp_comp *comp,
+			   struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	mtk_ovl_blender_config(comp, cfg, handle);
+	mtk_ovl_blender_config_begin(comp, handle, 0);
 }
 
 void bld_enable_mt6991(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle, bool enable)
@@ -1269,8 +1278,8 @@ static int mtk_ovl_blender_set_partial_update(struct mtk_ddp_comp *comp,
 
 static const struct mtk_ddp_comp_funcs mtk_disp_ovl_blender_funcs = {
 	.config = mtk_ovl_blender_config,
-	.first_cfg = mtk_ovl_blender_config,
-	.config_begin = mtk_ovl_blender_config_begin,
+	.first_cfg = mtk_ovl_blender_first_config,
+//	.config_begin = mtk_ovl_blender_config_begin,
 	.start = mtk_ovl_blender_start,
 	.stop = mtk_ovl_blender_stop,
 	.reset = mtk_ovl_blender_reset,

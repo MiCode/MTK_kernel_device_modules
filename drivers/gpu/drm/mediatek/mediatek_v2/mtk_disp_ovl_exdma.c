@@ -50,6 +50,8 @@
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 static void mtk_ovl_exdma_vcsel_config(struct mtk_ddp_comp *comp, unsigned int enable,
 		struct cmdq_pkt *handle);
+static void mtk_ovl_exdma_config_begin(struct mtk_ddp_comp *comp,
+		struct cmdq_pkt *handle, const u32 idx);
 
 int debug_module_bw[MAX_LAYER_NR];
 module_param_array(debug_module_bw, int, NULL, 0644);
@@ -878,18 +880,13 @@ static void mtk_ovl_exdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *hand
 	*/
 
 	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_BURST16_EN]);
-	if (drm_crtc_index(crtc) == 2)
+	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL) {
 		SET_VAL_MASK(value, mask, 0, reg_fld[FLD_DDR_EN]);
-	else if (drm_crtc_index(crtc) == 1)
-		SET_VAL_MASK(value, mask, 0, reg_fld[FLD_DDR_EN]);
-	else if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL)
-		SET_VAL_MASK(value, mask, 0, reg_fld[FLD_DDR_EN]);
-	else
-		SET_VAL_MASK(value, mask, 1, reg_fld[FLD_DDR_EN]);
-	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL)
 		SET_VAL_MASK(value, mask, 0, reg_fld[FLD_DDR_ACK_EN]);
-	else
+	} else {
+		SET_VAL_MASK(value, mask, 1, reg_fld[FLD_DDR_EN]);
 		SET_VAL_MASK(value, mask, 1, reg_fld[FLD_DDR_ACK_EN]);
+	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + regs[OVL_EXDMA_RDMA_BURST_CON1],
@@ -1113,6 +1110,13 @@ static void mtk_ovl_exdma_config(struct mtk_ddp_comp *comp,
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG0],
 					value, mask);
 	mtk_ovl_exdma_vcsel_config(comp, 1, handle);
+}
+
+static void mtk_ovl_exdma_first_config(struct mtk_ddp_comp *comp,
+			   struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	mtk_ovl_exdma_config(comp, cfg, handle);
+	mtk_ovl_exdma_config_begin(comp, handle, 0);
 }
 
 static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
@@ -5548,8 +5552,8 @@ void mtk_ovl_exdma_ddren(struct mtk_ddp_comp *comp,
 }
 static const struct mtk_ddp_comp_funcs mtk_disp_ovl_exdma_funcs = {
 	.config = mtk_ovl_exdma_config,
-	.first_cfg = mtk_ovl_exdma_config,
-	.config_begin = mtk_ovl_exdma_config_begin,
+	.first_cfg = mtk_ovl_exdma_first_config,
+//	.config_begin = mtk_ovl_exdma_config_begin,
 	.start = mtk_ovl_exdma_start,
 	.stop = mtk_ovl_exdma_stop,
 	.reset = mtk_ovl_exdma_reset,
