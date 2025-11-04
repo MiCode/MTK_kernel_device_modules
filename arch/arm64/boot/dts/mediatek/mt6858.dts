@@ -6441,7 +6441,7 @@ dramc: dramc@10230000 {
 			reg = <0 0x1f000000 0 0x1000>;
 			thread-count = <24>;
 			mboxes = <&gce_sec 10 0 CMDQ_THR_PRIO_1>,
-				<&gce_m_sec 10 0 CMDQ_THR_PRIO_1>,
+				<&gce_m_sec 12 0 CMDQ_THR_PRIO_1>,
 				<&gce 16 0 CMDQ_THR_PRIO_1>,
 				<&gce 17 0 CMDQ_THR_PRIO_1>,
 				<&gce 18 0 CMDQ_THR_PRIO_1>,
