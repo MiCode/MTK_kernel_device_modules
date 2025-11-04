@@ -504,6 +504,28 @@ int ssusb_host_u3_suspend(struct ssusb_mtk *ssusb)
 	return 0;
 }
 
+static void ssusb_get_platform_driver(struct ssusb_mtk *ssusb)
+{
+	struct device_node *parent_dn = ssusb->dev->of_node;
+	struct device_node *child;
+	struct platform_device *pdev;
+
+	for_each_child_of_node(parent_dn, child) {
+		if (of_device_is_compatible(child, "mediatek,mtk-xhci") ||
+			of_device_is_compatible(child, "mediatek,mtk-xhci-p1") ||
+			of_device_is_compatible(child, "mediatek,mtk-xhci-p2")) {
+			pdev = of_find_device_by_node(child);
+			if (pdev && pdev->dev.driver) {
+				ssusb->xhci_pdrv = to_platform_driver(pdev->dev.driver);
+			} else {
+				ssusb->xhci_pdrv = NULL;
+				dev_info(ssusb->dev, "pdev->dev.driver is NULL?, set xhci_pdrv to NULL\n");
+			}
+			break;
+		}
+	}
+}
+
 static void ssusb_get_host_rscs(struct ssusb_mtk *ssusb)
 {
 	struct device_node *parent_dn = ssusb->dev->of_node;
@@ -517,8 +539,6 @@ static void ssusb_get_host_rscs(struct ssusb_mtk *ssusb)
 		    of_device_is_compatible(child, "mediatek,mtk-xhci-p2")) {
 			pdev = of_find_device_by_node(child);
 			if (pdev) {
-				ssusb->xhci_pdrv = to_platform_driver(pdev->dev.driver);
-
 				res = platform_get_resource_byname(pdev, IORESOURCE_MEM, "mac");
 				if (res)
 					ssusb->host_base = devm_ioremap(ssusb->dev, res->start,
@@ -589,6 +609,8 @@ int ssusb_host_init(struct ssusb_mtk *ssusb, struct device_node *parent_dn)
 
 	ssusb_set_noise_still_tr(ssusb);
 
+	ssusb_get_platform_driver(ssusb);
+
 	ssusb_get_host_rscs(ssusb);
 
 	return 0;
@@ -642,6 +664,7 @@ int ssusb_host_init_v2(struct ssusb_mtk *ssusb)
 
 	ssusb_set_noise_still_tr(ssusb);
 
+	/* get host info, such as host base...etc */
 	ssusb_get_host_rscs(ssusb);
 
 	return 0;
@@ -649,6 +672,8 @@ int ssusb_host_init_v2(struct ssusb_mtk *ssusb)
 
 void ssusb_host_exit_v2(struct ssusb_mtk *ssusb)
 {
+	/* before unregister, record host information. */
+	ssusb_get_platform_driver(ssusb);
 	ssusb_host_register(ssusb, false);
 	ssusb_host_cleanup(ssusb);
 }
