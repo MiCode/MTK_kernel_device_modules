@@ -1547,7 +1547,8 @@ static void drv3_dump_register(int buf_type)
 
 	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 ||
 		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991 ||
-		g_plat_inf == 6899 || g_plat_inf == 6993 || g_plat_inf == 6858) {
+		g_plat_inf == 6899 || g_plat_inf == 6993 || g_plat_inf == 6858 ||
+		g_plat_inf == 6881) {
 		len = DPMAIF_AO_UL_CHNL3_STA_6985 - DPMAIF_AO_UL_CHNL0_STA_6985 + 4;
 		CCCI_BUF_LOG_TAG(0, buf_type, TAG,
 			"dump AP DPMAIF Tx ao; ao_ul_base register -> (start addr: 0x%llX, len: %d):\n",
@@ -2049,7 +2050,8 @@ int ccci_dpmaif_drv3_init(void)
 
 	if (g_plat_inf == 6985 || g_plat_inf == 6835 || g_plat_inf == 6897 ||
 		g_plat_inf == 6989 || g_plat_inf == 6878 || g_plat_inf == 6991 ||
-		g_plat_inf == 6899 || g_plat_inf == 6993 || g_plat_inf == 6858) {
+		g_plat_inf == 6899 || g_plat_inf == 6993 || g_plat_inf == 6858 ||
+		g_plat_inf == 6881) {
 		ops.drv_ul_get_rwidx = &drv3_ul_get_rwidx_6985;
 		ops.drv_ul_get_rdidx = &drv3_ul_get_rdidx_6985;
 	} else {
