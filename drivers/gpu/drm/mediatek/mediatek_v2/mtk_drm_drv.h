@@ -404,6 +404,7 @@ struct mtk_drm_private {
 	struct mtk_dbgtp mtk_dbgtp_sta;
 
 	unsigned int enable_bif;
+	struct device *attach_share_dev;
 };
 
 struct mtk_drm_property {
