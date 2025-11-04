@@ -162,6 +162,7 @@
 #define MT6991_DISP_ODDMR_REG_OD_BASE 0x0200
 #define MT6991_DISP_ODDMR_OD_SRAM_CTRL_0 (0x0004 + MT6991_DISP_ODDMR_REG_OD_BASE)
 #define MT6991_DISP_ODDMR_OD_SRAM_CTRL_1 (0x0008 + MT6991_DISP_ODDMR_REG_OD_BASE)
+#define REG_OD_SRAM1_IOADDR REG_FLD_MSB_LSB(8, 0)
 #define MT6991_DISP_ODDMR_OD_SRAM_CTRL_2 (0x000C + MT6991_DISP_ODDMR_REG_OD_BASE)
 #define MT6991_DISP_ODDMR_OD_SRAM_CTRL_3 (0x0010 + MT6991_DISP_ODDMR_REG_OD_BASE)
 
@@ -4078,21 +4079,35 @@ static void mtk_oddmr_od_config(struct mtk_ddp_comp *comp,
 		cmdq_mbox_enable(client->chan);
 		cmdq_handle0 =
 			oddmr_data->od_data.od_sram_pkgs[oddmr_data->od_data.od_dram_sel[0]][0];
-		cmdq_handle1 =
-			oddmr_data->od_data.od_sram_pkgs[oddmr_data->od_data.od_dram_sel[1]][1];
+		if (!oddmr_data->primary_data->od_sram_pkt_reduce)
+			cmdq_handle1 =
+				oddmr_data->od_data.od_sram_pkgs[oddmr_data->od_data.od_dram_sel[1]][1];
 		if (cmdq_handle0) {
+			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_OD_SRAM_IDX) = 0;
 			CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 0);
 			cmdq_pkt_refinalize(cmdq_handle0);
 			CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 1);
 			cmdq_pkt_flush(cmdq_handle0);
 			CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 2);
+			if (oddmr_data->primary_data->od_sram_pkt_reduce) {
+				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_OD_SRAM_IDX) = 1;
+				CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 0);
+				cmdq_pkt_refinalize(cmdq_handle0);
+				CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 1);
+				cmdq_pkt_flush(cmdq_handle0);
+				CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 2);
+			}
 		}
-		if (cmdq_handle1) {
-			CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 3);
-			cmdq_pkt_refinalize(cmdq_handle1);
-			CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 4);
-			cmdq_pkt_flush(cmdq_handle1);
-			CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 5);
+		if (!oddmr_data->primary_data->od_sram_pkt_reduce) {
+			if (cmdq_handle1) {
+				CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 3);
+				cmdq_pkt_refinalize(cmdq_handle1);
+				CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 4);
+				cmdq_pkt_flush(cmdq_handle1);
+				CRTC_MMP_MARK(0, oddmr_ctl, comp->id, 5);
+			}
 		}
 		cmdq_mbox_disable(client->chan);
 		ODDMRAPI_LOG("oddmr_config_od_sram, %d\n", oddmr_data->od_data.od_sram_read_sel);
@@ -4735,6 +4750,21 @@ void mtk_disp_oddmr_debug(struct drm_crtc *crtc, const char *opt)
 				val = 1000 / oddmr_data->primary_data->od_min_fps;
 			oddmr_data->primary_data->od_wait_time = val;
 		}
+	} else if (strncmp(opt, "od_sram_reduce:", 15) == 0) {
+		unsigned int ret, val1, val2;
+
+		ret = sscanf(opt, "od_sram_reduce:%u,%u\n", &val1, &val2);
+		if (ret != 2) {
+			ODDMRFLOW_LOG("error to parse cmd %s\n", opt);
+			return;
+		}
+		if (oddmr_data->primary_data->od_state >= ODDMR_LOAD_DONE) {
+			ODDMRFLOW_LOG("error: need before od init\n");
+			return;
+		}
+		ODDMRFLOW_LOG("od_sram_auto_inc = %u, od_sram_pkt_reduce = %u\n", val1, val2);
+		oddmr_data->primary_data->od_sram_auto_inc = val1;
+		oddmr_data->primary_data->od_sram_pkt_reduce = val2;
 	} else if (strncmp(opt, "od_merge_lines:", 15) == 0) {
 		unsigned int lines, ret;
 
@@ -5313,6 +5343,38 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 		//ODDMRAPI_LOG("i %d, 0x%x 0x%x\n", i, param_pq[i].value, param_pq[i].addr);
 	}
 
+	if (oddmr_data->primary_data->od_sram_pkt_reduce) {
+		GCE_COND_DECLARE;
+		struct cmdq_operand lop, rop;
+		const u16 var1 = CMDQ_THR_SPR_IDX2;
+		const u16 var2 = 0;
+
+		GCE_COND_ASSIGN(pkg, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
+		/* get sram_idx from back slot */
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.idx = var2;
+		rop.value = 0;
+		cmdq_pkt_read(pkg, NULL, mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+			DISP_SLOT_OD_SRAM_IDX), var1);
+		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		/* condition true: sram_idx = 0 */
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, 0, REG_OD_SRAM_WRITE_SEL);
+		SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_SEL);
+		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, mask, pkg);
+		GCE_ELSE;
+		/* condition false: sram_idx = 1 */
+		value = 0;
+		mask = 0;
+		SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_WRITE_SEL);
+		SET_VAL_MASK(value, mask, 0, REG_OD_SRAM_READ_SEL);
+		mtk_oddmr_write_mask(comp, value, MT6991_DISP_ODDMR_OD_SRAM_CTRL_0, mask, pkg);
+		GCE_FI;
+	}
+
 	if (priv->data->mmsys_id != MMSYS_MT6897)
 		sram_write_change = 1;
 	else
@@ -5332,14 +5394,23 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 		//change end
 
 		for (srams = 1; srams < 5; srams++) {
+			if (oddmr_data->primary_data->od_sram_auto_inc)
+				mtk_oddmr_write_mask(comp, 0,
+					(MT6991_DISP_ODDMR_OD_SRAM_CTRL_1 + 12 * (srams - 1)),
+					REG_FLD_MASK(REG_OD_SRAM1_IOADDR), pkg); //set before REG_AUTO_SRAM_ADR_INC_EN
 			value = 0;
 			mask = 0;
 			tmp_w_sel = sram_idx;
 			tmp_r_sel = !sram_idx;
 			SET_VAL_MASK(value, mask, 1 << (change_channel  + 1), REG_WBGR_OD_SRAM_IO_EN);
-			SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
-			SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
-			SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+			if (oddmr_data->primary_data->od_sram_auto_inc)
+				SET_VAL_MASK(value, mask, 1, REG_AUTO_SRAM_ADR_INC_EN);
+			else
+				SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
+			if (!oddmr_data->primary_data->od_sram_pkt_reduce) {
+				SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
+				SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+			}
 			if (oddmr_data->data->od_version >= MTK_OD_V3)
 				SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
 			if (oddmr_data->data->od_version >= MTK_OD_V2) {
@@ -5357,8 +5428,9 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 				if (oddmr_data->data->od_version >= MTK_OD_V2) {
 					mtk_oddmr_write(comp, tmp_data,
 						(MT6991_DISP_ODDMR_OD_SRAM_CTRL_2 + 12 * (srams - 1)), pkg);
-					mtk_oddmr_write(comp, 0x8000 | (i & 0x1FF),
-						(MT6991_DISP_ODDMR_OD_SRAM_CTRL_1 + 12 * (srams - 1)), pkg);
+					if (!oddmr_data->primary_data->od_sram_auto_inc)
+						mtk_oddmr_write(comp, 0x8000 | (i & 0x1FF),
+							(MT6991_DISP_ODDMR_OD_SRAM_CTRL_1 + 12 * (srams - 1)), pkg);
 				} else {
 					mtk_oddmr_write(comp, tmp_data,
 						(DISP_ODDMR_OD_SRAM_CTRL_2 + 12 * (srams - 1)), pkg);
@@ -5369,8 +5441,10 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 			value = 0;
 			mask = 0;
 			SET_VAL_MASK(value, mask, 0, REG_WBGR_OD_SRAM_IO_EN);
-			SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
-			SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+			if (!oddmr_data->primary_data->od_sram_pkt_reduce) {
+				SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
+				SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+			}
 			SET_VAL_MASK(value, mask, 0, REG_AUTO_SRAM_ADR_INC_EN);
 			if (oddmr_data->data->od_version >= MTK_OD_V3)
 				SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
@@ -5385,8 +5459,10 @@ static int mtk_oddmr_od_init_sram(struct mtk_ddp_comp *comp,
 		//mtk_oddmr_write(comp, 0, DISP_ODDMR_OD_SRAM_CTRL_0, pkg);
 		value = 0;
 		mask = 0;
-		SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
-		SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+		if (!oddmr_data->primary_data->od_sram_pkt_reduce) {
+			SET_VAL_MASK(value, mask, tmp_w_sel, REG_OD_SRAM_WRITE_SEL);
+			SET_VAL_MASK(value, mask, tmp_r_sel, REG_OD_SRAM_READ_SEL);
+		}
 		if (oddmr_data->data->od_version >= MTK_OD_V3)
 			SET_VAL_MASK(value, mask, 1, REG_OD_SRAM_READ_BACK_SEL);
 		if (oddmr_data->data->od_version >= MTK_OD_V2) {
@@ -9610,12 +9686,14 @@ static void mtk_oddmr_od_gce_pkt_init(struct mtk_drm_crtc *mtk_crtc,
 	//table write in sram 0
 	mtk_oddmr_od_init_sram(comp,
 		oddmr_data->od_data.od_sram_pkgs[dram_id][0], dram_id, 0);
-	//create table  gce for sram 1
-	mtk_oddmr_create_gce_pkt(&mtk_crtc->base,
-		&oddmr_data->od_data.od_sram_pkgs[dram_id][1]);
-	//table write in sram 1
-	mtk_oddmr_od_init_sram(comp,
-		oddmr_data->od_data.od_sram_pkgs[dram_id][1], dram_id, 1);
+	if (!oddmr_data->primary_data->od_sram_pkt_reduce) {
+		//create table  gce for sram 1
+		mtk_oddmr_create_gce_pkt(&mtk_crtc->base,
+			&oddmr_data->od_data.od_sram_pkgs[dram_id][1]);
+		//table write in sram 1
+		mtk_oddmr_od_init_sram(comp,
+			oddmr_data->od_data.od_sram_pkgs[dram_id][1], dram_id, 1);
+	}
 }
 
 static int mtk_oddmr_od_trigger_frame(struct mtk_ddp_comp *comp)
@@ -9768,6 +9846,9 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 			oddmr_data->od_data.od_dram_sel[0] = 0;
 			CRTC_MMP_MARK(0, oddmr_ctl, 0, 1);
 			//use gce for sram 0
+			if (oddmr_data->primary_data->od_sram_pkt_reduce)
+				*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_OD_SRAM_IDX) = 0;
 			cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[0][0]);
 			CRTC_MMP_MARK(0, oddmr_ctl, 0, 2);
 		} else {
@@ -9786,7 +9867,13 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 				oddmr_data->od_data.od_dram_sel[1] = 1;
 				CRTC_MMP_MARK(0, oddmr_ctl, 0, 11);
 				//use gce for sram 1
-				cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[1][1]);
+				if (oddmr_data->primary_data->od_sram_pkt_reduce) {
+					*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+						DISP_SLOT_OD_SRAM_IDX) = 1;
+					cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[1][0]);
+				} else {
+					cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[1][1]);
+				}
 			}
 			CRTC_MMP_MARK(0, oddmr_ctl, 0, 12);
 		}
@@ -9798,7 +9885,13 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 					oddmr_data->od_data.od_sram_table_idx[1] = 1;
 					oddmr_data->od_data.od_dram_sel[1] = idx;
 					CRTC_MMP_MARK(0, oddmr_ctl, 0, idx * 10 + 1);
-					cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[idx][1]);
+					if (oddmr_data->primary_data->od_sram_pkt_reduce) {
+						*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+							DISP_SLOT_OD_SRAM_IDX) = 1;
+						cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[idx][0]);
+					} else {
+						cmdq_pkt_flush(oddmr_data->od_data.od_sram_pkgs[idx][1]);
+					}
 				}
 				CRTC_MMP_MARK(0, oddmr_ctl, 0, idx * 10 + 2);
 			}
@@ -9839,6 +9932,9 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 				oddmr1_data->od_data.od_sram_table_idx[0] = 0;
 				oddmr1_data->od_data.od_dram_sel[0] = 0;
 				CRTC_MMP_MARK(0, oddmr_ctl, 1, 1);
+				if (oddmr_data->primary_data->od_sram_pkt_reduce)
+					*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+						DISP_SLOT_OD_SRAM_IDX) = 0;
 				cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[0][0]);
 				CRTC_MMP_MARK(0, oddmr_ctl, 1, 2);
 			}
@@ -9849,22 +9945,34 @@ static int mtk_oddmr_od_init(struct mtk_ddp_comp *comp, void *data)
 					oddmr1_data->od_data.od_sram_table_idx[1] = 1;
 					oddmr1_data->od_data.od_dram_sel[1] = 1;
 					CRTC_MMP_MARK(0, oddmr_ctl, 1, 11);
-					cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[1][1]);
+					if (oddmr_data->primary_data->od_sram_pkt_reduce) {
+						*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+							DISP_SLOT_OD_SRAM_IDX) = 1;
+						cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[1][0]);
+					} else {
+						cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[1][1]);
+					}
 				}
 				CRTC_MMP_MARK(0, oddmr_ctl, 1, 12);
 			}
 			for (idx = 2; idx < cnts; idx++) {
-				if (IS_TABLE_VALID(idx, od_param->valid_table)) {
-					CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10);
-					mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp1, oddmr1_data, idx);
-					if(table_idx == idx) {
-						oddmr1_data->od_data.od_sram_table_idx[1] = 1;
-						oddmr1_data->od_data.od_dram_sel[1] = idx;
-						CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10 +1);
+				if (!IS_TABLE_VALID(idx, od_param->valid_table))
+					continue;
+				CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10);
+				mtk_oddmr_od_gce_pkt_init(mtk_crtc, comp1, oddmr1_data, idx);
+				if(table_idx == idx) {
+					oddmr1_data->od_data.od_sram_table_idx[1] = 1;
+					oddmr1_data->od_data.od_dram_sel[1] = idx;
+					CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10 +1);
+					if (oddmr_data->primary_data->od_sram_pkt_reduce) {
+						*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+							DISP_SLOT_OD_SRAM_IDX) = 1;
+						cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[idx][0]);
+					} else {
 						cmdq_pkt_flush(oddmr1_data->od_data.od_sram_pkgs[idx][1]);
 					}
-					CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10 + 2);
 				}
+				CRTC_MMP_MARK(0, oddmr_ctl, 1, idx * 10 + 2);
 			}
 
 			if (table_idx == 0) {
@@ -10063,12 +10171,14 @@ static int mtk_oddmr_od_deinit(struct mtk_ddp_comp *comp, void *data)
 	/* 3. destroy sram pkgs */
 	for (idx = 0; idx < cnts; idx++) {
 		cmdq_pkt_destroy(oddmr_data->od_data.od_sram_pkgs[idx][0]);
-		cmdq_pkt_destroy(oddmr_data->od_data.od_sram_pkgs[idx][1]);
+		if (!oddmr_data->primary_data->od_sram_pkt_reduce)
+			cmdq_pkt_destroy(oddmr_data->od_data.od_sram_pkgs[idx][1]);
 	}
 	if (comp->mtk_crtc->is_dual_pipe) {
 		for (idx = 0; idx < cnts; idx++) {
 			cmdq_pkt_destroy(oddmr1_data->od_data.od_sram_pkgs[idx][0]);
-			cmdq_pkt_destroy(oddmr1_data->od_data.od_sram_pkgs[idx][1]);
+			if (!oddmr_data->primary_data->od_sram_pkt_reduce)
+				cmdq_pkt_destroy(oddmr1_data->od_data.od_sram_pkgs[idx][1]);
 		}
 	}
 	ODDMRFLOW_LOG("done destroy sram pkgs\n");
@@ -15555,8 +15665,15 @@ static void mtk_oddmr_update_table_handle(struct work_struct *work_item)
 		update_sram_idx = (uint32_t)!oddmr_data->od_data.od_sram_read_sel;
 		updata_dram_idx = (uint32_t)od_param->updata_dram_table;
 		CRTC_MMP_MARK(0, oddmr_ctl, 10, 0);
-		cmdq_handle0 =
-			oddmr_data->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
+		if (oddmr_data->primary_data->od_sram_pkt_reduce) {
+			*(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+					DISP_SLOT_OD_SRAM_IDX) =	update_sram_idx;
+			cmdq_handle0 =
+				oddmr_data->od_data.od_sram_pkgs[updata_dram_idx][0];
+		} else {
+			cmdq_handle0 =
+				oddmr_data->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
+		}
 		cmdq_pkt_refinalize(cmdq_handle0);
 		CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle0, updata_dram_idx);
 		cmdq_pkt_flush(cmdq_handle0);
@@ -15568,8 +15685,12 @@ static void mtk_oddmr_update_table_handle(struct work_struct *work_item)
 			struct mtk_ddp_comp *comp1 = oddmr_data->companion;
 			struct mtk_disp_oddmr *oddmr1_data = comp_to_oddmr(comp1);
 
-			cmdq_handle1 =
-				oddmr1_data->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
+			if (oddmr_data->primary_data->od_sram_pkt_reduce)
+				cmdq_handle1 =
+					oddmr1_data->od_data.od_sram_pkgs[updata_dram_idx][0];
+			else
+				cmdq_handle1 =
+					oddmr1_data->od_data.od_sram_pkgs[updata_dram_idx][update_sram_idx];
 			cmdq_pkt_refinalize(cmdq_handle1);
 			CRTC_MMP_MARK(0, oddmr_ctl, 11, 0);
 			CRTC_MMP_MARK(0, oddmr_ctl, (unsigned long)cmdq_handle1, updata_dram_idx);
@@ -15733,6 +15854,8 @@ static int mtk_disp_oddmr_probe(struct platform_device *pdev)
 	oddmr_data->od_data.od_sram_read_sel = -1;
 	oddmr_data->od_data.od_sram_table_idx[0] = -1;
 	oddmr_data->od_data.od_sram_table_idx[1] = -1;
+	oddmr_data->primary_data->od_sram_auto_inc = true;
+	oddmr_data->primary_data->od_sram_pkt_reduce = true;
 
 	ret_scp = of_property_read_u32(dev->of_node, "dbi-support-scp-aod", &oddmr_data->dbi_data.support_scp);
 	if ((!ret_scp) && oddmr_data->dbi_data.support_scp)

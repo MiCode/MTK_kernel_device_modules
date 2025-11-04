@@ -793,6 +793,8 @@ struct mtk_disp_oddmr_primary {
 	uint32_t od_fps_mode;
 	/* 0: 1000/od_min_fps, >0: od_wait_time (ms) */
 	uint32_t od_wait_time;
+	bool od_sram_auto_inc;
+	bool od_sram_pkt_reduce;
 	uint32_t od_min_fps;
 	uint32_t od_max_fps;
 	ktime_t sof_time;
