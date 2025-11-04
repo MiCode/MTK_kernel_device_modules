@@ -129,14 +129,6 @@ struct pd_check_swcg afe_swcgs[] = {
 	SWCG("afe_etdm7_padtop"),
 	SWCG(NULL),
 };
-/* ufscfg_pdn */
-struct pd_check_swcg ufscfg_pdn_swcgs[] = {
-	SWCG("ufspdn_ufshci_ufs"),
-	SWCG("ufspdn_ufshci_aes"),
-	SWCG("ufspdn_ufshci_ufs_ahb"),
-	SWCG("ufspdn_ufshci_ufs_axi"),
-	SWCG(NULL),
-};
 /* mipi_csi_top_ctrl_0 */
 struct pd_check_swcg mipi_csi_top_ctrl_0_swcgs[] = {
 	SWCG("mipi_csi_ck0_en"),
@@ -448,7 +440,6 @@ struct subsys_cgs_check {
 
 struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6881_CHK_PD_AUDIO, PD_NULL, afe_swcgs, afe},
-	{MT6881_CHK_PD_UFS0, PD_NULL, ufscfg_pdn_swcgs, ufspdn},
 	{MT6881_CHK_PD_CSI_RX, PD_NULL, mipi_csi_top_ctrl_0_swcgs, mipi_csi_top_ctrl_0},
 	{MT6881_CHK_PD_DIS0, PD_NULL, dispsys_config_swcgs, mm},
 	{MT6881_CHK_PD_ISP_MAIN, MT6881_CHK_PD_ISP_VCORE, imgsys_main_swcgs, img},
@@ -503,9 +494,6 @@ static void dump_subsys_reg(unsigned int id)
 }
 
 unsigned int pd_list[] = {
-	MT6881_CHK_PD_CONN,
-	MT6881_CHK_PD_UFS0,
-	MT6881_CHK_PD_UFS0_PHY,
 	MT6881_CHK_PD_AUDIO,
 	MT6881_CHK_PD_ISP_MAIN,
 	MT6881_CHK_PD_ISP_DIP1,
@@ -520,7 +508,6 @@ unsigned int pd_list[] = {
 	MT6881_CHK_PD_MM_INFRA,
 	MT6881_CHK_PD_MM_PROC,
 	MT6881_CHK_PD_CSI_RX,
-	MT6881_CHK_PD_SSRSYS,
 	MT6881_CHK_PD_SSUSB,
 };
 
@@ -541,7 +528,8 @@ static bool is_in_pd_list(unsigned int id)
 
 static enum chk_sys_id debug_dump_id[] = { //FIXME
 	spm,
-	top,
+	cksys_reg,
+	infra_infracfg_ao_reg,
 	apmixed,
 	vlpcfg_reg_bus,
 	//vlp_top,
@@ -609,8 +597,6 @@ static void external_dump(void)
 
 static struct pd_sta pd_pwr_sta[] = {
 	{MT6881_CHK_PD_CONN, spm, 0x0E04, GENMASK(31, 30)},
-	{MT6881_CHK_PD_UFS0, spm, 0x0E10, GENMASK(31, 30)},
-	{MT6881_CHK_PD_UFS0_PHY, spm, 0x0E14, GENMASK(31, 30)},
 	{MT6881_CHK_PD_AUDIO, spm, 0x0E18, GENMASK(31, 30)},
 	{MT6881_CHK_PD_ISP_MAIN, spm, 0x0E28, GENMASK(31, 30)},
 	{MT6881_CHK_PD_ISP_DIP1, spm, 0x0E2C, GENMASK(31, 30)},
@@ -625,7 +611,6 @@ static struct pd_sta pd_pwr_sta[] = {
 	{MT6881_CHK_PD_MM_INFRA, spm, 0x0E78, GENMASK(31, 30)},
 	{MT6881_CHK_PD_MM_PROC, spm, 0x0E7C, GENMASK(31, 30)},
 	{MT6881_CHK_PD_CSI_RX, spm, 0x0E9C, GENMASK(31, 30)},
-	{MT6881_CHK_PD_SSRSYS, spm, 0x0EA0, GENMASK(31, 30)},
 	{MT6881_CHK_PD_SSUSB, spm, 0x0EA8, GENMASK(31, 30)},
 };
 
@@ -655,15 +640,7 @@ static int off_mtcmos_id[] = {
 	PD_NULL,
 };
 
-static int notice_mtcmos_id[] = { //FIXME
-	PD_NULL,
-};
-#else
-static int off_mtcmos_id[] = { //FIXME
-	MT6881_CHK_PD_CONN,
-	MT6881_CHK_PD_UFS0,
-	MT6881_CHK_PD_UFS0,
-	MT6881_CHK_PD_UFS0_PHY,
+static int notice_mtcmos_id[] = {
 	MT6881_CHK_PD_AUDIO,
 	MT6881_CHK_PD_ISP_MAIN,
 	MT6881_CHK_PD_ISP_DIP1,
@@ -678,13 +655,28 @@ static int off_mtcmos_id[] = { //FIXME
 	MT6881_CHK_PD_MM_INFRA,
 	MT6881_CHK_PD_MM_PROC,
 	MT6881_CHK_PD_CSI_RX,
-	MT6881_CHK_PD_SSRSYS,
 	MT6881_CHK_PD_SSUSB,
+	PD_NULL,
+};
+#else
+static int off_mtcmos_id[] = {
+	MT6881_CHK_PD_ISP_MAIN,
+	MT6881_CHK_PD_ISP_DIP1,
+	MT6881_CHK_PD_ISP_VCORE,
+	MT6881_CHK_PD_VDE0,
+	MT6881_CHK_PD_VEN0,
+	MT6881_CHK_PD_CAM_MAIN,
+	MT6881_CHK_PD_CAM_SUBA,
+	MT6881_CHK_PD_CAM_SUBB,
+	MT6881_CHK_PD_CAM_VCORE,
+	MT6881_CHK_PD_DIS0,
+	MT6881_CHK_PD_MM_INFRA,
+	MT6881_CHK_PD_MM_PROC,
+	MT6881_CHK_PD_CSI_RX,
 	PD_NULL,
 };
 
 static int notice_mtcmos_id[] = {
-	MT6881_CHK_PD_CONN,
 	MT6881_CHK_PD_AUDIO,
 	MT6881_CHK_PD_SSUSB,
 	PD_NULL,

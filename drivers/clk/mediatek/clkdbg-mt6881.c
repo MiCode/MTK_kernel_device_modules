@@ -452,7 +452,6 @@ const char * const *get_mt6881_all_clk_names(void)
 		"vlp_sspm_ulposc_sel",
 		"vlp_tia_ulposc_sel",
 		"vlp_apxgpt_26m_sel",
-		"vlp_kp_irq_gen_sel",
 
 		/* cam_main_r1a */
 		"cam_m_cam_main",

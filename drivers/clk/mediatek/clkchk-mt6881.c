@@ -777,15 +777,13 @@ void dump_clk_event(void)
 static struct regbase rb[] = {
 	[cksys_reg] = REGBASE_V(0x10000000, cksys_reg, PD_NULL, CLK_NULL),
 	[infra_infracfg_ao_reg] = REGBASE_V(0x10001000, infra_infracfg_ao_reg, PD_NULL, CLK_NULL),
-	[infra_infracfg_ao_reg_bus] = REGBASE_V(0x10001000, infra_infracfg_ao_reg_bus, PD_NULL, CLK_NULL),
 	[apmixed] = REGBASE_V(0x1000C000, apmixed, PD_NULL, CLK_NULL),
 	[pericfg_ao_reg] = REGBASE_V(0x11036000, pericfg_ao_reg, PD_NULL, CLK_NULL),
 	[afe] = REGBASE_V(0x11050000, afe, MT6881_CHK_PD_AUDIO, CLK_NULL),
-	[ufscfg_ao_bus] = REGBASE_V(0x112B8000, ufscfg_ao_bus, PD_NULL, CLK_NULL),
 	[ufsao] = REGBASE_V(0x112b8000, ufsao, PD_NULL, CLK_NULL),
-	[ufspdn] = REGBASE_V(0x112bb000, ufspdn, MT6881_CHK_PD_UFS0, CLK_NULL),
-	[imp_iic_top_wrap_s] = REGBASE_V(0x11D78000, imp_iic_top_wrap_s, PD_NULL, CLK_NULL),
-	[imp_iic_top_wrap_w] = REGBASE_V(0x11E05000, imp_iic_top_wrap_w, PD_NULL, CLK_NULL),
+	[ufspdn] = REGBASE_V(0x112bb000, ufspdn, PD_NULL, CLK_NULL),
+	[imp_iic_top_wrap_s] = REGBASE_V(0x11D78000, imp_iic_top_wrap_s, PD_NULL, "cksys_i2c_sel"),
+	[imp_iic_top_wrap_w] = REGBASE_V(0x11E05000, imp_iic_top_wrap_w, PD_NULL, "cksys_i2c_sel"),
 	[mipi_csi_top_ctrl_0] = REGBASE_V(0x11ca0000, mipi_csi_top_ctrl_0, MT6881_CHK_PD_CSI_RX, CLK_NULL),
 	[mm] = REGBASE_V(0x14000000, mm, MT6881_CHK_PD_DIS0, CLK_NULL),
 	[img] = REGBASE_V(0x15010000, img, MT6881_CHK_PD_ISP_MAIN, CLK_NULL),
@@ -802,7 +800,7 @@ static struct regbase rb[] = {
 	[spm] = REGBASE_V(0x1C001000, spm, PD_NULL, CLK_NULL),
 	[vlpcfg_reg_bus] = REGBASE_V(0x1C00C000, vlpcfg_reg_bus, PD_NULL, CLK_NULL),
 	[vlp_cksys_top] = REGBASE_V(0x1C012000, vlp_cksys_top, PD_NULL, CLK_NULL),
-	[ssr_top_bus] = REGBASE_V(0x1E200000, ssr_top_bus, PD_NULL, CLK_NULL),
+	[ssr_top] = REGBASE_V(0x1E200000, ssr_top, PD_NULL, CLK_NULL),
 	[cam_m] = REGBASE_V(0x1a010000, cam_m, MT6881_CHK_PD_CAM_MAIN, CLK_NULL),
 	[cam_mr] = REGBASE_V(0x1a680000, cam_mr, MT6881_CHK_PD_CAM_MAIN, CLK_NULL),
 	[cam_ra] = REGBASE_V(0x1a7d0000, cam_ra, MT6881_CHK_PD_CAM_SUBA, CLK_NULL),
@@ -812,7 +810,7 @@ static struct regbase rb[] = {
 	[camsys_rmsb] = REGBASE_V(0x1a9f0000, camsys_rmsb, MT6881_CHK_PD_CAM_SUBB, CLK_NULL),
 	[cam_yb] = REGBASE_V(0x1aa10000, cam_yb, MT6881_CHK_PD_CAM_SUBB, CLK_NULL),
 	[cam_v] = REGBASE_V(0x1b80d000, cam_v, MT6881_CHK_PD_CAM_VCORE, CLK_NULL),
-	[mminfra_config] = REGBASE_V(0x1e800000, mminfra_config, PD_NULL, CLK_NULL),
+	[mminfra_config] = REGBASE_V(0x1e800000, mminfra_config, MT6881_CHK_PD_MM_INFRA, CLK_NULL),
 	[mdp] = REGBASE_V(0x1f000000, mdp, MT6881_CHK_PD_DIS0, CLK_NULL),
 	[hwv] = REGBASE_V(0x10320000, hwv, PD_NULL, CLK_NULL),
 	{},
@@ -856,18 +854,18 @@ static struct regname rn[] = { //FIXME
 	REGNAME(infra_infracfg_ao_reg, 0xC8, MODULE_CG_3),
 	REGNAME(infra_infracfg_ao_reg, 0xE8, MODULE_CG_4),
 	/* INFRA_INFRACFG_AO_REG_BUS register */
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C50, INFRASYS_PROTECT_EN_STA_1),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C5C, INFRASYS_PROTECT_RDY_STA_1),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C90, MCU_CONNSYS_PROTECT_EN_STA_0),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C9C, MCU_CONNSYS_PROTECT_RDY_STA_0),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C40, INFRASYS_PROTECT_EN_STA_0),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C4C, INFRASYS_PROTECT_RDY_STA_0),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C80, PERISYS_PROTECT_EN_STA_0),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C8C, PERISYS_PROTECT_RDY_STA_0),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C10, MMSYS_PROTECT_EN_STA_0),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C1C, MMSYS_PROTECT_RDY_STA_0),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C20, MMSYS_PROTECT_EN_STA_1),
-	REGNAME(infra_infracfg_ao_reg_bus, 0x0C2C, MMSYS_PROTECT_RDY_STA_1),
+	REGNAME(infra_infracfg_ao_reg, 0x0C50, INFRASYS_PROTECT_EN_STA_1),
+	REGNAME(infra_infracfg_ao_reg, 0x0C5C, INFRASYS_PROTECT_RDY_STA_1),
+	REGNAME(infra_infracfg_ao_reg, 0x0C90, MCU_CONNSYS_PROTECT_EN_STA_0),
+	REGNAME(infra_infracfg_ao_reg, 0x0C9C, MCU_CONNSYS_PROTECT_RDY_STA_0),
+	REGNAME(infra_infracfg_ao_reg, 0x0C40, INFRASYS_PROTECT_EN_STA_0),
+	REGNAME(infra_infracfg_ao_reg, 0x0C4C, INFRASYS_PROTECT_RDY_STA_0),
+	REGNAME(infra_infracfg_ao_reg, 0x0C80, PERISYS_PROTECT_EN_STA_0),
+	REGNAME(infra_infracfg_ao_reg, 0x0C8C, PERISYS_PROTECT_RDY_STA_0),
+	REGNAME(infra_infracfg_ao_reg, 0x0C10, MMSYS_PROTECT_EN_STA_0),
+	REGNAME(infra_infracfg_ao_reg, 0x0C1C, MMSYS_PROTECT_RDY_STA_0),
+	REGNAME(infra_infracfg_ao_reg, 0x0C20, MMSYS_PROTECT_EN_STA_1),
+	REGNAME(infra_infracfg_ao_reg, 0x0C2C, MMSYS_PROTECT_RDY_STA_1),
 	/* APMIXEDSYS register */
 	REGNAME(apmixed, 0x0024, APLL1_TUNER_CON0),
 	REGNAME(apmixed, 0x0008, AP_PLL_CON3),
@@ -886,11 +884,10 @@ static struct regname rn[] = { //FIXME
 	REGNAME(afe, 0x10, AUDIO_TOP_4),
 	REGNAME(afe, 0x70, AUDIO_TOP_5),
 	REGNAME(afe, 0x1C5C, ETDM67_PADTOP),
-	/* UFSCFG_AO_BUS register */
-	REGNAME(ufscfg_ao_bus, 0x50, UFS_AO2FE_SLPPROT_EN),
-	REGNAME(ufscfg_ao_bus, 0x5c, UFS_AO2FE_SLPPROT_RDY_STA),
 	/* UFSCFG_AO register */
 	REGNAME(ufsao, 0x4, UFS_AO_CG_0),
+	REGNAME(ufsao, 0x50, UFS_AO2FE_SLPPROT_EN),
+	REGNAME(ufsao, 0x5c, UFS_AO2FE_SLPPROT_RDY_STA),
 	/* UFSCFG_PDN register */
 	REGNAME(ufspdn, 0x4, UFS_PDN_CG_0),
 	/* IMP_IIC_TOP_WRAP_S register */
@@ -960,8 +957,8 @@ static struct regname rn[] = { //FIXME
 	REGNAME(vlp_cksys_top, 0x0038, VLP_CLK_CFG_4),
 	REGNAME(vlp_cksys_top, 0x0044, VLP_CLK_CFG_5),
 	/* SSR_TOP_BUS register */
-	REGNAME(ssr_top_bus, 0x0090, SSR_TOP_PWR_PROTECT_EN),
-	REGNAME(ssr_top_bus, 0x0094, SSR_TOP_PWR_PROTECT_RDY),
+	REGNAME(ssr_top, 0x0090, SSR_TOP_PWR_PROTECT_EN),
+	REGNAME(ssr_top, 0x0094, SSR_TOP_PWR_PROTECT_RDY),
 	/* CAM_MAIN_R1A register */
 	REGNAME(cam_m, 0x0, CAM_MAIN_CG_0),
 	REGNAME(cam_m, 0x4C, CAM_MAIN_CG_1),
@@ -981,6 +978,8 @@ static struct regname rn[] = { //FIXME
 	REGNAME(cam_yb, 0x0, CAMSYS_CG),
 	/* CAM_VCORE_R1A register */
 	REGNAME(cam_v, 0x0, CAM_VCORE_CG_0),
+	/* SSR_TOP register */
+	REGNAME(ssr_top, 0x0, SSR_TOP_CLK_CFG),
 	/* MMINFRA_CONFIG register */
 	REGNAME(mminfra_config, 0x100, MMINFRA_CG_0),
 	REGNAME(mminfra_config, 0x110, MMINFRA_CG_1),
@@ -1244,6 +1243,7 @@ static struct pwr_data pvd_pwr_data[] = {
 	{"vencsys", ven1, spm, 0x0E40},
 	{"wpe_eis_dip1", wpe_eis_dip1, spm, 0x0E2C},
 	{"wpe_tnr_dip1", wpe_tnr_dip1, spm, 0x0E2C},
+	{"mminfra_config", mminfra_config, spm, 0x0E78},
 };
 
 static int get_pvd_pwr_data_idx(const char *pvdname)
@@ -1578,11 +1578,10 @@ void clkchk_debug_dump_mt6881(enum chk_sys_id id[],
 }
 EXPORT_SYMBOL_GPL(clkchk_debug_dump_mt6881);
 
-/* debug dump register FIXME */
+/* debug dump register */
 static enum chk_sys_id debug_dump_id[] = {
 	spm,
 	infra_infracfg_ao_reg,
-	infra_infracfg_ao_reg_bus,
 	vlpcfg_reg_bus,
 	cksys_reg,
 	apmixed,
@@ -1616,7 +1615,7 @@ static void clkchk_arm64_serror_panic_hook(void *data,
 }
 #endif
 
-#if BYPASS_SUSPEND_CLK_PWR_CHK //FIXME
+#if BYPASS_SUSPEND_CLK_PWR_CHK
 static const char * const off_pll_names[] = {
 	NULL
 };
@@ -1638,26 +1637,16 @@ static const char * const bypass_pll_name[] = {
 };
 #else
 static const char * const off_pll_names[] = {
-	"mainpll",
 	"univpll",
 	"msdcpll",
 	"mmpll",
-	"emipll",
-	"apll1",
-	"apll2",
 	"tvdpll",
 	NULL
 };
 
 static const char * const notice_pll_names[] = {
-	"mainpll",
-	"univpll",
-	"msdcpll",
-	"mmpll",
-	"emipll",
 	"apll1",
 	"apll2",
-	"tvdpll",
 	NULL
 };
 
@@ -1690,63 +1679,71 @@ static bool is_pll_chk_bug_on(void)
 	return false;
 }
 
-static const char * const off_mux_names[] = { //FIXME
-	"top_disp0_sel",
-	"top_mminfra_sel",
-	"top_mmup_sel",
-	"top_uart_sel",
-	"top_spi0_sel",
-	"top_spi1_sel",
-	"top_spi2_sel",
-	"top_spi3_sel",
-	"top_spi4_sel",
-	"top_spi5_sel",
-	"top_spi6_sel",
-	"top_spi7_sel",
-	"top_msdc_macro_1p_sel",
-	"top_msdc30_1_sel",
-	"top_msdc30_1_h_sel",
-	"top_aud_intbus_sel",
-	"top_disp_pwm_sel",
-	"top_i2c_sel",
-	"top_seninf_sel",
-	"top_seninf1_sel",
-	"top_seninf2_sel",
-	"top_aes_ufsfde_sel",
-	"top_ufs_sel",
-	"top_dpmaif_main_sel",
-	"top_venc_sel",
-	"top_vdec_sel",
-	"top_pwm_sel",
-	"top_dsi_occ_sel",
-	"top_img1_sel",
-	"top_ipe_sel",
-	"top_cam_sel",
-	"top_camtm_sel",
-	"top_unipll_ses_sel",
-	"top_usb_frmcnt_sel",
-	"vlp_pwrap_sel",
+static const char * const off_mux_names[] = {
+	"cksys_disp0_sel",
+	"cksys_mminfra_sel",
+	"cksys_mmup_sel",
+	"cksys_uart_sel",
+	"cksys_uart3_sel",
+	"cksys_spi0_sel",
+	"cksys_spi1_sel",
+	"cksys_spi2_sel",
+	"cksys_spi3_sel",
+	"cksys_spi4_sel",
+	"cksys_spi5_sel",
+	"cksys_spi6_sel",
+	"cksys_spi7_sel",
+	"cksys_msdc_macro_1p_sel",
+	"cksys_msdc30_1_sel",
+	"cksys_aud_intbus_sel",
+	"cksys_i2c_sel",
+	"cksys_i2c_5_sel",
+	"cksys_seninf_sel",
+	"cksys_seninf1_sel",
+	"cksys_seninf2_sel",
+	"cksys_seninf3_sel",
+	"cksys_aes_ufsfde_sel",
+	"cksys_ufs_sel",
+	"cksys_ufs_mbist_sel",
+	"cksys_dpmaif_main_sel",
+	"cksys_venc_sel",
+	"cksys_vdec_sel",
+	"cksys_pwm_sel",
+	"cksys_dsi_occ_sel",
+	"cksys_img1_sel",
+	"cksys_ipe_sel",
+	"cksys_cam_sel",
+	"cksys_camtm_sel",
+	"cksys_ssr_pka_sel",
+	"cksys_ssr_dma_sel",
+	"cksys_ssr_kdf_sel",
+	"cksys_ssr_rng_sel",
+	"cksys_ssr_pqc_sel",
+	"cksys_usb_frmcnt_sel",
+	"cksys_camtg0_sel",
+	"cksys_camtg1_sel",
+	"cksys_camtg2_sel",
+	"cksys_camtg3_sel",
+	"cksys_camtg4_sel",
+	"cksys_camtg5_sel",
+	"vlp_scp_sel",
 	"vlp_pwm_vlp_sel",
-	"vlp_camtg0_sel",
-	"vlp_camtg1_sel",
-	"vlp_camtg2_sel",
-	"vlp_camtg3_sel",
 	NULL
 };
 
 
 static const char * const notice_mux_names[] = {
-	"top_aud_1_sel",
-	"top_aud_2_sel",
-	"top_aud_engen1_sel",
-	"top_aud_engen2_sel",
-	"top_audio_h_sel",
+	"cksys_aud_engen1_sel",
+	"cksys_aud_engen2_sel",
+	"cksys_aud_1_sel",
+	"cksys_aud_2_sel",
+	"cksys_audio_h_sel",
 	NULL
 };
 
 static const char * const bypass_mux_name[] = {
-	"top_usb_sel",
-	"top_usb_xhci_sel",
+	"cksys_usb_sel",
+	"cksys_usb_xhci_sel",
 	NULL
 };
 

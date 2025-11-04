@@ -34,10 +34,6 @@
 #define MT6881_TOP_AXI_PROT_EN_INFRASYS_STA_1_CONN	(BIT(12))
 #define MT6881_TOP_AXI_PROT_EN_MCU_STA_0_CONN_2ND	(BIT(0))
 #define MT6881_TOP_AXI_PROT_EN_INFRASYS_STA_0_CONN	(BIT(8))
-#define MT6881_TOP_AXI_PROT_EN_PERISYS_STA_0_UFS0	(BIT(5))
-#define MT6881_VLP_AXI_PROT_EN_UFS0	(BIT(4) | BIT(5))
-#define MT6881_VLP_AXI_PROT_EN_UFS0_2ND	(BIT(6))
-#define MT6881_AXI_PROT_EN_UFS0_PHY	(BIT(0))
 #define MT6881_TOP_AXI_PROT_EN_PERISYS_STA_0_AUDIO	(BIT(6))
 #define MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_MAIN	(BIT(2))
 #define MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_MAIN_2ND	(BIT(3))
@@ -73,23 +69,18 @@
 #define MT6881_TOP_AXI_PROT_EN_INFRASYS_STA_0_MM_INFRA	(BIT(16))
 #define MT6881_VLP_AXI_PROT_EN_MM_PROC	(BIT(8))
 #define MT6881_VLP_AXI_PROT_EN_MM_PROC_2ND	(BIT(9) | BIT(10))
-#define MT6881_SSR_TOP_PROT_EN_SSR_SSRSYS	(BIT(4))
 #define MT6881_TOP_AXI_PROT_EN_PERISYS_STA_0_SSUSB	(BIT(7))
 
 enum regmap_type {
 	INVALID_TYPE = 0,
 	IFR_TYPE = 1,
 	VLP_TYPE = 2,
-	UFSCFG_AO_TYPE = 3,
-	SSR_TOP_TYPE = 4,
 	BUS_TYPE_NUM,
 };
 
 static const char *bus_list[BUS_TYPE_NUM] = {
 	[IFR_TYPE] = "infra-infracfg-ao-reg-bus",
 	[VLP_TYPE] = "vlpcfg-reg-bus",
-	[UFSCFG_AO_TYPE] = "ufscfg-ao-bus",
-	[SSR_TOP_TYPE] = "ssr-top-bus",
 };
 
 /*
@@ -110,38 +101,14 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C44, 0x0C48, 0x0C40, 0x0C4C,
 				MT6881_TOP_AXI_PROT_EN_INFRASYS_STA_0_CONN),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
-	},
-	[MT6881_POWER_DOMAIN_UFS0_SHUTDOWN] = {
-		.name = "ufs0-shutdown",
-		.ctl_offs = 0xE10,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.bp_table = {
-			BUS_PROT_IGN(IFR_TYPE, 0x0C84, 0x0C88, 0x0C80, 0x0C8C,
-				MT6881_TOP_AXI_PROT_EN_PERISYS_STA_0_UFS0),
-			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
-				MT6881_VLP_AXI_PROT_EN_UFS0),
-			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
-				MT6881_VLP_AXI_PROT_EN_UFS0_2ND),
-		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF
-				| default_cap,
-	},
-	[MT6881_POWER_DOMAIN_UFS0_PHY] = {
-		.name = "ufs0-phy",
-		.ctl_offs = 0xE14,
-		.bp_table = {
-			BUS_PROT_IGN(UFSCFG_AO_TYPE, 0x54, 0x58, 0x50, 0x5c,
-				MT6881_AXI_PROT_EN_UFS0_PHY),
-		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_BYPASS_INIT_ON,
 	},
 	[MT6881_POWER_DOMAIN_AUDIO] = {
 		.name = "audio",
 		.ctl_offs = 0xE18,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"audio_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C84, 0x0C88, 0x0C80, 0x0C8C,
 				MT6881_TOP_AXI_PROT_EN_PERISYS_STA_0_AUDIO),
@@ -153,6 +120,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.ctl_offs = 0xE28,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"img1_0", "ipe0_1"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_MAIN),
@@ -170,6 +138,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.ctl_offs = 0xE2C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"img1_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_DIP1),
@@ -181,6 +150,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 	[MT6881_POWER_DOMAIN_ISP_VCORE] = {
 		.name = "isp-vcore",
 		.ctl_offs = 0xE34,
+		//.basic_clk_name = {"img1_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_VCORE),
@@ -194,6 +164,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.ctl_offs = 0xE38,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"vde0_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_VDE0),
@@ -207,6 +178,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.ctl_offs = 0xE40,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"ven0_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_VEN0),
@@ -220,6 +192,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.ctl_offs = 0xE48,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"cam_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_MAIN),
@@ -233,6 +206,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.ctl_offs = 0xE50,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"cam_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_SUBA),
@@ -246,6 +220,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.ctl_offs = 0xE54,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"cam_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_SUBB),
@@ -257,6 +232,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 	[MT6881_POWER_DOMAIN_CAM_VCORE] = {
 		.name = "cam-vcore",
 		.ctl_offs = 0xE5C,
+		//.basic_clk_name = {"mm_infra_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_CAM_VCORE),
@@ -270,17 +246,20 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.ctl_offs = 0xE70,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"dis0_0"},
+		//.subsys_clk_prefix = "dis0",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_DIS0),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN] = {
 		.name = "mm-infra-shutdown",
 		.ctl_offs = 0xE78,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
+		//.basic_clk_name = {"mm_infra_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C24, 0x0C28, 0x0C20, 0x0C2C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_1_MM_INFRA),
@@ -291,20 +270,21 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C44, 0x0C48, 0x0C40, 0x0C4C,
 				MT6881_TOP_AXI_PROT_EN_INFRASYS_STA_0_MM_INFRA),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps =  MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6881_POWER_DOMAIN_MM_PROC_DORMANT] = {
 		.name = "mm-proc-dormant",
 		.ctl_offs = 0xE7C,
 		.sram_slp_bits = GENMASK(9, 9),
 		.sram_slp_ack_bits = GENMASK(13, 13),
+		//.basic_clk_name = {"mm_proc_0"},
 		.bp_table = {
 			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6881_VLP_AXI_PROT_EN_MM_PROC),
 			BUS_PROT_IGN(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6881_VLP_AXI_PROT_EN_MM_PROC_2ND),
 		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_SRAM_SLP | MTK_SCPD_IS_PWR_CON_ON | default_cap,
+		.caps = MTK_SCPD_SRAM_SLP | MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6881_POWER_DOMAIN_CSI_RX] = {
 		.name = "csi-rx",
@@ -312,19 +292,6 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
-	},
-	[MT6881_POWER_DOMAIN_SSRSYS_SHUTDOWN] = {
-		.name = "ssrsys-shutdown",
-		.ctl_offs = 0xEA0,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.bp_table = {
-			BUS_PROT_CON(SSR_TOP_TYPE, 0x0090, 0x0090, 0x0090, 0x0094,
-				MT6881_SSR_TOP_PROT_EN_SSR_SSRSYS,
-				MT6881_SSR_TOP_PROT_EN_SSR_SSRSYS),
-		},
-		.caps = MTK_SCPD_SRAM_ISO | MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF
-				| default_cap,
 	},
 	[MT6881_POWER_DOMAIN_SSUSB] = {
 		.name = "ssusb",
