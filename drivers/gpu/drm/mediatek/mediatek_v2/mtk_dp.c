@@ -393,6 +393,10 @@ bool mdrv_DPTx_AuxWrite_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 			usDPCDADDR, ubLength, pData);
 		ubRetryLimit--;
 		if (bReplyStatus) {
+			if (!mtk_dp->bPowerOn) {
+				DPTXMSG("DPTX power off and skip aux process");
+				return false;
+			}
 			udelay(50);
 			DPTXFUNC("Retry Num = %d\n", ubRetryLimit);
 			if ((ubCmd & 0x7) <= 5) { // only check edid cmd
@@ -474,11 +478,14 @@ bool mdrv_DPTx_AuxRead_Bytes(struct mtk_dp *mtk_dp, u8 ubCmd,
 		bReplyStatus = mhal_DPTx_AuxRead_Bytes(mtk_dp, ubCmd,
 					usDPCDADDR, ubLength, pData);
 		if (bReplyStatus) {
+			if (!mtk_dp->bPowerOn) {
+				DPTXMSG("DPTX power off and skip aux process");
+				return false;
+			}
 			udelay(50);
 			DPTXFUNC("Retry Num = %d\n", ubRetryLimit);
 		} else
 			return true;
-
 		ubRetryLimit--;
 	} while (ubRetryLimit > 0);
 
@@ -4149,7 +4156,7 @@ static ssize_t mtk_dp_aux_transfer(struct drm_dp_aux *mtk_aux,
 
 	if (!g_mtk_dp->bPowerOn) {
 		DPTXMSG("%s: dp not power on\n", __func__);
-		return ret;
+		return -ETIMEDOUT;
 	}
 
 	mtk_dp = container_of(mtk_aux, struct mtk_dp, aux);
@@ -4514,6 +4521,8 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 			mdrv_DPTx_InitPort(g_mtk_dp);
 			mhal_DPTx_USBC_HPD(g_mtk_dp, true);
 			g_mtk_dp->bPowerOn = true;
+			// DRM will enable all AUX processes
+			drm_dp_dpcd_set_powered(&g_mtk_dp->aux, g_mtk_dp->bPowerOn);
 
 			// Fake RX flow
 			if (g_mtk_dp->info.fakeRX_mode) {
@@ -4537,6 +4546,8 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 			}
 			mhal_DPTx_USBC_HPD(g_mtk_dp, false);
 			g_mtk_dp->bPowerOn = false;
+			// DRM will skip all AUX processes
+			drm_dp_dpcd_set_powered(&g_mtk_dp->aux, g_mtk_dp->bPowerOn);
 		}
 
 		mdrv_DPTx_USBC_HPD_Event(bstatus);
@@ -4928,7 +4939,7 @@ static int mtk_dp_suspend(struct device *dev)
 	if (mtk_dp->bPowerOn) {
 		mtk_dp->disp_status = DPTX_DISP_SUSPEND;
 		mtk_dp_HPDInterruptSet(HPD_DISCONNECT);
-		mdelay(5);
+		mdelay(60);
 	}
 	DP_HPD_UNLOCK(&dp_lock, __func__, __LINE__);
 
