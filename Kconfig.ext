@@ -118,9 +118,11 @@ source "$(KCONFIG_EXT_PREFIX)fs/f2fs/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)arch/arm/Kconfig"
 
-source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/guest/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/vm_uos/Kconfig"
 
-source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/host/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/sos/Kconfig"
+
+source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/yocto_uos/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/hypervisor/nebula/Kconfig"
 

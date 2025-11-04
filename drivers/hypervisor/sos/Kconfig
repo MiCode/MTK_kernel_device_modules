@@ -3,6 +3,14 @@
 # Virtualization yocto host support drivers
 #
 
+config HYPER_SOS
+	tristate "hypervisor host os"
+	help
+	  The hypervisor project is "m".
+	  Used for hypervisor host os.
+	  If your code is for hypervisor host os,
+	  you can use it to wrap your code.
+
 config DEVICE_MODULES_ACRN_HSM
 	tristate "ACRN Hypervisor Service Module"
 	select EVENTFD
@@ -66,14 +74,6 @@ config VHOST_VDMABUF
 	  The guest-os will share buf with host-os via buf-id. This driver
 	  import the buffer from guest-os and return a dmabuf fd to userspace.
 	  If unsure, say N.
-
-config GRT_HYPERVISOR
-	tristate "hypervisor driver config"
-	help
-	  This config enable hypervisor driver for hypervisor project, GRT_HYPERVISOR
-	  can be used to distinguish hypervisor yocto OS and yocto OS. This config
-	  is used in vhost OS(hypervisor yocto OS), default is n, to compile driver
-	  as a module, choose M here.
 
 config DEVICE_MODULES_VHOST_ADSP
 	tristate "Host kernel accelerator for virtio blk (EXPERIMENTAL)"

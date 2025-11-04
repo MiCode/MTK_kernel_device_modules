@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Virtualization yocto guest uos support drivers
+#
+
+config HYPER_YOCTO_UOS
+	tristate "hypervisor guest yocto os"
+	help
+	  The hypervisor project is "m".
+	  Used for hypervisor guest yocto os.
+	  If your code is for hypervisor yocto uos os,
+	  you can use it to wrap your code.
