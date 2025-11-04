@@ -618,17 +618,6 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 	if (memif->err_close_order)
 		dump_stack();
 
-	/* To prevent the audio server from unexpectedly terminating and leaving
-	 * the memory interface open, ensure that the memory interface is
-	 * disabled before it is freed.
-	 */
-	regmap_read(afe->regmap, memif->data->enable_reg, &reg);
-	if (reg & BIT(memif->data->enable_shift)) {
-		dev_err(afe->dev, "%s: %s(%d) was not disabled before being freed",
-			__func__, memif->data->name, cpu_dai->id);
-		mtk_memif_set_disable(afe, cpu_dai->id);
-	}
-
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
 	afe_pcm_ipi_to_dsp(AUDIO_DSP_TASK_PCM_HWFREE,
 			   substream, NULL, dai, afe);
@@ -655,6 +644,20 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 
 	if (memif->using_sram == 0 && afe->release_dram_resource)
 		afe->release_dram_resource(afe->dev);
+
+	/* This section must be placed after sending the IPI message to DSP/SCP:
+	 * To prevent the audio server from unexpectedly terminating and leaving
+	 * the memory interface open, ensure that the memory interface is
+	 * disabled before it is freed.
+	 */
+	if (is_afe_need_triggered(memif)) {
+		regmap_read(afe->regmap, memif->data->enable_reg, &reg);
+		if (reg & BIT(memif->data->enable_shift)) {
+			dev_err(afe->dev, "%s: %s(%d) was not disabled before being freed",
+				__func__, memif->data->name, cpu_dai->id);
+			mtk_memif_set_disable(afe, cpu_dai->id);
+		}
+	}
 
 #if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	// mmap do not free buffer
