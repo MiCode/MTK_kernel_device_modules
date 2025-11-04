@@ -18666,7 +18666,6 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.dsi_rx_data_rd_max_sz = 10,
 	.dsi_cmd_v2_en = true,
 	.support_rd_cmdq = 1,
-	.underrun_aee_mode = UDR_ONLY_CMD_MODE,
 	.reg_up_intsta = 0x14,
 	.esd_poll_microp = true,
 };
