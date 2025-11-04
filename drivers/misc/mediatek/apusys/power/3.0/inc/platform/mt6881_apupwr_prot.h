@@ -1,13 +1,13 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2020 MediaTek Inc.
+ * Copyright (c) 2025 MediaTek Inc.
  */
 
-#ifndef __MT6899_APUPWR_PROT_H__
-#define __MT6899_APUPWR_PROT_H__
+#ifndef __MT6881_APUPWR_PROT_H__
+#define __MT6881_APUPWR_PROT_H__
 
 #include "apu_top.h"
-#include "mt6899_apupwr.h"
+#include "mt6881_apupwr.h"
 #include <linux/thermal.h>
 
 
@@ -138,17 +138,17 @@ struct tiny_dvfs_opp_tbl {
 	struct tiny_dvfs_opp_entry opp[USER_MIN_OPP_VAL + 1];   // entry data
 };
 
-void mt6899_aputop_opp_limit(struct aputop_func_param *aputop,
+void mt6881_aputop_opp_limit(struct aputop_func_param *aputop,
 		enum apu_opp_limit_type type);
 
 #if IS_ENABLED(CONFIG_DEBUG_FS)
-int mt6899_apu_top_dbg_open(struct inode *inode, struct file *file);
-ssize_t mt6899_apu_top_dbg_write(
+int mt6881_apu_top_dbg_open(struct inode *inode, struct file *file);
+ssize_t mt6881_apu_top_dbg_write(
 		struct file *flip, const char __user *buffer,
 		size_t count, loff_t *f_pos);
 #endif
 
-int mt6899_init_remote_data_sync(void __iomem *reg_base);
-int mt6899_drv_cfg_remote_sync(struct aputop_func_param *aputop);
-int mt6899_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src);
+int mt6881_init_remote_data_sync(void __iomem *reg_base);
+int mt6881_drv_cfg_remote_sync(struct aputop_func_param *aputop);
+int mt6881_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src);
 #endif

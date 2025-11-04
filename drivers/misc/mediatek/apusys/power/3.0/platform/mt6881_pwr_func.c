@@ -8,8 +8,8 @@
 #include "apu_top.h"
 #include "aputop_log.h"
 #include "aputop_rpmsg.h"
-#include "mt6899_apupwr.h"
-#include "mt6899_apupwr_prot.h"
+#include "mt6881_apupwr.h"
+#include "mt6881_apupwr_prot.h"
 
 #define LOCAL_DBG	(1)
 #define SERROR_LIMIT	(1)
@@ -22,12 +22,13 @@ static struct tiny_dvfs_opp_tbl opp_tbl2;
 
 static struct apu_pwr_curr_info curr_info;
 static const char * const pll_name[] = {
-				"PLL_CONN", "PLL_RV33", "PLL_MVPU", "PLL_MDLA"};
+				"PLL_CONN", "PLL_MDLA"};
 static const char * const buck_name[] = {
 				"BUCK_VAPU", "BUCK_VSRAM", "BUCK_VCORE"};
 #if !SERROR_LIMIT
+
 static const char * const cluster_name[] = {
-				"D_ACX", "ACX0", "RCX"};
+				"D_ACX", "RCX"};
 #endif
 
 #define _OPP_LMT_TBL(_opp_lmt_reg) {    \
@@ -35,7 +36,6 @@ static const char * const cluster_name[] = {
 }
 static struct cluster_dev_opp_info opp_limit_tbl[CLUSTER_NUM] = {
 	_OPP_LMT_TBL(D_ACX_LIMIT_OPP_REG),
-	_OPP_LMT_TBL(ACX0_LIMIT_OPP_REG),
 };
 
 static inline int over_range_check(int opp)
@@ -103,7 +103,7 @@ static void limit_opp_to_all_devices(int opp)
 			_opp_limiter(opp, opp, opp, opp, OPP_LIMIT_DEBUG);
 }
 
-void mt6899_aputop_opp_limit(struct aputop_func_param *aputop,
+void mt6881_aputop_opp_limit(struct aputop_func_param *aputop,
 		enum apu_opp_limit_type type)
 {
 	int vpu_max, vpu_min, dla_max, dla_min;
@@ -352,7 +352,7 @@ static int aputop_show_curr_status(struct seq_file *s, void *unused)
 	 * limitation projects !
 	 */
 	for (i = 0 ; i < CLUSTER_NUM ; i++) {
-		mt6899_apu_dump_rpc_status(i, &cluster_dump[i]);
+		mt6881_apu_dump_rpc_status(i, &cluster_dump[i]);
 		seq_printf(s, "%s : rpc_status 0x%08x , conn_cg 0x%08x\n",
 				cluster_name[i],
 				cluster_dump[i].rpc_reg_status,
@@ -360,7 +360,7 @@ static int aputop_show_curr_status(struct seq_file *s, void *unused)
 	}
 
 	// for RCX
-	mt6899_apu_dump_rpc_status(RCX, &cluster_dump[CLUSTER_NUM]);
+	mt6881_apu_dump_rpc_status(RCX, &cluster_dump[CLUSTER_NUM]);
 	seq_printf(s,
 		"%s : rpc_status 0x%08x , conn_cg 0x%08x vcore_cg 0x%08x\n",
 			cluster_name[CLUSTER_NUM],
@@ -389,7 +389,7 @@ static int apu_top_dbg_show(struct seq_file *s, void *unused)
 	return ret;
 }
 
-int mt6899_apu_top_dbg_open(struct inode *inode, struct file *file)
+int mt6881_apu_top_dbg_open(struct inode *inode, struct file *file)
 {
 	pr_info("%s ++\n", __func__);
 
@@ -397,7 +397,7 @@ int mt6899_apu_top_dbg_open(struct inode *inode, struct file *file)
 }
 
 #define MAX_ARG 4
-ssize_t mt6899_apu_top_dbg_write(
+ssize_t mt6881_apu_top_dbg_write(
 		struct file *flip, const char __user *buffer,
 		size_t count, loff_t *f_pos)
 {
@@ -462,7 +462,7 @@ out:
 }
 #endif
 
-int mt6899_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
+int mt6881_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 {
 	int ret = 0;
 
@@ -504,7 +504,7 @@ int mt6899_apu_top_rpmsg_cb(int cmd, void *data, int len, void *priv, u32 src)
 	return ret;
 }
 
-int mt6899_drv_cfg_remote_sync(struct aputop_func_param *aputop)
+int mt6881_drv_cfg_remote_sync(struct aputop_func_param *aputop)
 {
 	struct drv_cfg_data cfg;
 	uint32_t reg_data = 0x0;
@@ -524,7 +524,7 @@ int mt6899_drv_cfg_remote_sync(struct aputop_func_param *aputop)
 	return 0;
 }
 
-int mt6899_init_remote_data_sync(void __iomem *reg_base)
+int mt6881_init_remote_data_sync(void __iomem *reg_base)
 {
 	int i;
 	uint32_t reg_offset = 0x0;

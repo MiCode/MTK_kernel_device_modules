@@ -50,6 +50,7 @@ apu_top_plat_srcs_list=\
 (["3.0/platform/mt6983_aputop.c"] if glob(["3.0/platform/mt6983_aputop.c"]) else []) +\
 (["3.0/platform/mt6878_aputop.c"] if glob(["3.0/platform/mt6878_aputop.c"]) else []) +\
 (["3.0/platform/mt6879_aputop.c"] if glob(["3.0/platform/mt6879_aputop.c"]) else []) +\
+(["3.0/platform/mt6881_aputop.c"] if glob(["3.0/platform/mt6881_aputop.c"]) else []) +\
 (["3.0/platform/mt6897_aputop.c"] if glob(["3.0/platform/mt6897_aputop.c"]) else []) +\
 (["3.0/platform/mt6895_aputop.c"] if glob(["3.0/platform/mt6895_aputop.c"]) else []) +\
 (["3.0/platform/mt6985_aputop.c"] if glob(["3.0/platform/mt6985_aputop.c"]) else []) +\
@@ -61,6 +62,7 @@ apu_top_plat_srcs_list=\
 (["3.0/platform/mt6983_pwr_func.c"] if glob(["3.0/platform/mt6983_pwr_func.c"]) else []) +\
 (["3.0/platform/mt6878_pwr_func.c"] if glob(["3.0/platform/mt6878_pwr_func.c"]) else []) +\
 (["3.0/platform/mt6879_pwr_func.c"] if glob(["3.0/platform/mt6879_pwr_func.c"]) else []) +\
+(["3.0/platform/mt6881_pwr_func.c"] if glob(["3.0/platform/mt6881_pwr_func.c"]) else []) +\
 (["3.0/platform/mt6897_pwr_func.c"] if glob(["3.0/platform/mt6897_pwr_func.c"]) else []) +\
 (["3.0/platform/mt6895_pwr_func.c"] if glob(["3.0/platform/mt6895_pwr_func.c"]) else []) +\
 (["3.0/platform/mt6985_pwr_func.c"] if glob(["3.0/platform/mt6985_pwr_func.c"]) else []) +\
@@ -71,6 +73,7 @@ apu_top_plat_srcs_list=\
 (["3.0/platform/mt6993_pwr_func.c"] if glob(["3.0/platform/mt6993_pwr_func.c"]) else []) +\
 (["3.0/platform/mt6985_ao.c"] if glob(["3.0/platform/mt6985_ao.c"]) else []) +\
 (["3.0/platform/mt6878_ao.c"] if glob(["3.0/platform/mt6878_ao.c"]) else []) +\
+(["3.0/platform/mt6881_ao.c"] if glob(["3.0/platform/mt6881_ao.c"]) else []) +\
 (["3.0/platform/mt6897_ao.c"] if glob(["3.0/platform/mt6897_ao.c"]) else []) +\
 (["3.0/platform/mt6989_ao.c"] if glob(["3.0/platform/mt6989_ao.c"]) else []) +\
 (["3.0/platform/mt6993_ao.c"] if glob(["3.0/platform/mt6993_ao.c"]) else []) +\
@@ -107,6 +110,7 @@ define_mgk_ddk_ko(
 		(["MT6983_PLAT_DATA"] if glob(["3.0/platform/mt6983_aputop.c"]) else []) +
 		(["MT6878_PLAT_DATA"] if glob(["3.0/platform/mt6878_aputop.c"]) else []) +
 		(["MT6879_PLAT_DATA"] if glob(["3.0/platform/mt6879_aputop.c"]) else []) +
+		(["MT6881_PLAT_DATA"] if glob(["3.0/platform/mt6881_aputop.c"]) else []) +
 		(["MT6897_PLAT_DATA"] if glob(["3.0/platform/mt6897_aputop.c"]) else []) +
 		(["MT6895_PLAT_DATA"] if glob(["3.0/platform/mt6895_aputop.c"]) else []) +
 		(["MT6985_PLAT_DATA"] if glob(["3.0/platform/mt6985_aputop.c"]) else []) +

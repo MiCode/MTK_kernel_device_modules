@@ -32,8 +32,8 @@
 #include "apu_top.h"
 #include "aputop_log.h"
 #include "apu_hw_sema.h"
-#include "mt6899_apupwr.h"
-#include "mt6899_apupwr_prot.h"
+#include "mt6881_apupwr.h"
+#include "mt6881_apupwr_prot.h"
 
 #define LOCAL_DBG	(1)
 #define RPC_ALIVE_DBG	(0)
@@ -41,11 +41,12 @@
 static const char *reg_name[APUPW_MAX_REGS] = {
 	"sys_vlp", "sys_spm", "apu_rcx", "apu_rcx_dla", "apu_are",
 	"apu_vcore", "apu_md32_mbox", "apu_rpc", "apu_pcu", "apu_ao_ctl",
-	"apu_acc", "apu_pll", "apu_rpctop_mdla", "apu_acx0", "apu_acx0_rpc_lite"
+	"apu_acc", "apu_pll", "apu_rpctop_mdla",
+	"apu_cmu_sram", "apu_md32_tcm", "apu_are_reg"
 };
 
 static struct apu_power apupw = {
-	.env = MP,
+	.env = AO,
 	.rcx = CE_FW,
 };
 
@@ -66,7 +67,7 @@ static int apu_throttle(struct apu_cooling_device *apu_cdev, unsigned long state
 		aputop.param3 = state; //dla_max
 	}
 
-	mt6899_aputop_opp_limit(&aputop, OPP_LIMIT_THERMAL);
+	mt6881_aputop_opp_limit(&aputop, OPP_LIMIT_THERMAL);
 	apu_cdev->target_state = state;
 	dev_info(dev, "%s: set state %ld done, para= %d\n", apu_cdev->name, state, aputop.param1);
 	return 0;
@@ -360,7 +361,7 @@ static void aputop_dump_pcu_data(struct device *dev)
 static void aputop_dump_pll_data(void)
 {
 	// need to 1-1 in order mapping with array in __apu_pll_init func
-	uint32_t pll_base_arr[] = {MNOC_PLL_BASE, UP_PLL_BASE};
+	uint32_t pll_base_arr[] = {MNOC_PLL_BASE};
 	uint32_t pll_offset_arr[] = {
 				PLL1CPLL_FHCTL_HP_EN, PLL1CPLL_FHCTL_RST_CON,
 				PLL1CPLL_FHCTL_CLK_CON, PLL1CPLL_FHCTL0_CFG,
@@ -369,6 +370,7 @@ static void aputop_dump_pll_data(void)
 	int offset_arr_size = ARRAY_SIZE(pll_offset_arr);
 	int pll_idx;
 	int ofs_idx;
+	uint32_t phy_addr = 0x0;
 	char buf[256];
 	int ret = 0;
 
@@ -377,6 +379,10 @@ static void aputop_dump_pll_data(void)
 		memset(buf, 0, sizeof(buf));
 
 		for (ofs_idx = 0 ; ofs_idx < offset_arr_size ; ofs_idx++) {
+
+			phy_addr = apupw.phy_addr[apu_pll] +
+				pll_base_arr[pll_idx] +
+				pll_offset_arr[ofs_idx];
 
 			ret = snprintf(buf + strlen(buf),
 					sizeof(buf) - strlen(buf),
@@ -399,13 +405,14 @@ static void aputop_dump_pll_data(void)
 static void aputop_dump_acc_data(void)
 {
 	// need to 1-1 in order mapping with array in __apu_acc_init func
-	uint32_t acc_base_arr[] = {MNOC_ACC_BASE, UP_ACC_BASE};
+	uint32_t acc_base_arr[] = {MNOC_ACC_BASE};
 	uint32_t acc_offset_arr[] = {
 				APU_ACC_CONFG_SET0, APU_ACC_CONFG_CLR0};
 	int base_arr_size = ARRAY_SIZE(acc_base_arr);
 	int offset_arr_size = ARRAY_SIZE(acc_offset_arr);
 	int acc_idx;
 	int ofs_idx;
+	uint32_t phy_addr = 0x0;
 	char buf[256];
 	int ret = 0;
 
@@ -414,6 +421,10 @@ static void aputop_dump_acc_data(void)
 		memset(buf, 0, sizeof(buf));
 
 		for (ofs_idx = 0 ; ofs_idx < offset_arr_size ; ofs_idx++) {
+
+			phy_addr = apupw.phy_addr[apu_acc] +
+				acc_base_arr[acc_idx] +
+				acc_offset_arr[ofs_idx];
 
 			ret = snprintf(buf + strlen(buf),
 					sizeof(buf) - strlen(buf),
@@ -441,16 +452,19 @@ static void mtk_clk_acc_get_rate(void)
 	bool timeout = false;
 	//uint32_t phy_confg_set;
 	//uint32_t phy_fm_confg_set, phy_fm_confg_clr, phy_fm_sel, phy_fm_cnt;
+	ulong confg_set;
 	ulong fm_confg_set, fm_confg_clr, fm_sel, fm_cnt;
 	uint32_t loop_ref = 0;  // 0 for Max freq  ~ 1074MHz
 	int32_t retry = 30;
 
-	uint32_t acc_base_arr[] = {MNOC_ACC_BASE, UP_ACC_BASE};
+	uint32_t acc_base_arr[] = {MNOC_ACC_BASE};
 	uint32_t acc_offset_arr[] = {
 				APU_ACC_CONFG_SET0, APU_ACC_FM_SEL, APU_ACC_FM_CONFG_SET,
 				APU_ACC_FM_CONFG_CLR, APU_ACC_FM_CNT};
+	int base_arr_size = ARRAY_SIZE(acc_base_arr);
 
-	for (j = 0 ; j < 2 ; j++) {
+	for (j = 0; j < base_arr_size; j++) {
+		confg_set = (ulong)apupw.regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[0];
 		fm_sel = (ulong)apupw.regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[1];
 		fm_confg_set = (ulong)apupw.regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[2];
 		fm_confg_clr = (ulong)apupw.regs[apu_acc] + acc_base_arr[j] + acc_offset_arr[3];
@@ -516,10 +530,9 @@ static int __apu_wake_rpc_rcx(struct device *dev)
 #if APUPW_DUMP_FROM_APMCU
 	apu_writel(0x00000100, apupw.regs[apu_rpc] + APU_RPC_TOP_CON);
 #else
-	/* wake up RPC */
+	/* wake up by mbox */
 	apusys_pwr_smc_call(dev,
-			MTK_APUSYS_KERNEL_OP_APUSYS_PWR_RCX,
-			SMC_RCX_PWR_WAKEUP_RPC);
+			MTK_APUSYS_KERNEL_OP_APUSYS_RV_PWR_CTRL, 1);
 #endif
 
 	ret = readl_relaxed_poll_timeout_atomic(
@@ -532,6 +545,11 @@ static int __apu_wake_rpc_rcx(struct device *dev)
 					 __func__,
 					 (u32)(apupw.phy_addr[apu_rpc] + APU_RPC_PWR_ACK),
 					 readl(apupw.regs[apu_rpc] + APU_RPC_PWR_ACK));
+		/* dump are config */
+		aputop_dump_reg(apu_are, 0x0, 0x100);
+		/* dump are rcx ce */
+		aputop_dump_reg(apu_are, 0x4400, 0x400);
+
 		goto out;
 	}
 
@@ -602,7 +620,7 @@ out:
 	return ret;
 }
 
-static int mt6899_apu_top_on(struct device *dev)
+static int mt6881_apu_top_on(struct device *dev)
 {
 	int ret = 0;
 
@@ -671,7 +689,7 @@ static int __apu_sleep_rpc_rcx(struct device *dev)
 }
 #endif
 
-static int mt6899_apu_top_off(struct device *dev)
+static int mt6881_apu_top_off(struct device *dev)
 {
 	int ret = 0, val = 0;
 	int rpc_timeout_val = 500000; // 500 ms
@@ -724,10 +742,10 @@ static int mt6899_apu_top_off(struct device *dev)
 	return 0;
 }
 
-static int mt6899_apu_top_pb(struct platform_device *pdev)
+static int mt6881_apu_top_pb(struct platform_device *pdev)
 {
 
-	int ret = 0;
+	int ret = 0, val = 0;
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
 	struct device *dev = &pdev->dev;
 	struct apu_cooling_device *apu_cdev;
@@ -747,15 +765,26 @@ static int mt6899_apu_top_pb(struct platform_device *pdev)
 
 	init_reg_base(pdev);
 	if (apupw.env < MP)
-		ret = mt6899_all_on(pdev, &apupw);
+		ret = mt6881_all_on(pdev, &apupw);
 
-	/* runtime wake up apu_top, let rv close it */
-	pm_runtime_get_sync(&pdev->dev);
-	mt6899_init_remote_data_sync(apupw.regs[apu_md32_mbox]);
+	mt6881_apu_top_on(&pdev->dev);
+
+	ret = readl_relaxed_poll_timeout_atomic(
+			(apupw.regs[apu_rpc] + APU_RPC_INTF_PWR_RDY),
+			val, (val & 0x1UL), 50, 10000);
+
+	if (!ret) {
+		/* release hw sema before smmu driver init */
+		pr_info("%s release hw sema before smmu driver init\n", __func__);
+		apu_writel(1 << 16, apupw.regs[apu_md32_mbox] + APU_MBOX_SEMA_CTRL0);
+	}
+
+	mt6881_init_remote_data_sync(apupw.regs[apu_md32_mbox]);
+
 	return ret;
 }
 
-static int mt6899_apu_top_rm(struct platform_device *pdev)
+static int mt6881_apu_top_rm(struct platform_device *pdev)
 {
 	int idx;
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_THERMAL)
@@ -770,7 +799,7 @@ static int mt6899_apu_top_rm(struct platform_device *pdev)
 	pr_info("%s +\n", __func__);
 
 	if (apupw.env < MP)
-		mt6899_all_off(pdev);
+		mt6881_all_off(pdev);
 
 #if APMCU_REQ_RPC_SLEEP
 	pm_runtime_put_sync(&pdev->dev);
@@ -781,17 +810,17 @@ static int mt6899_apu_top_rm(struct platform_device *pdev)
 	return 0;
 }
 
-static int mt6899_apu_top_suspend(struct device *dev)
+static int mt6881_apu_top_suspend(struct device *dev)
 {
 	return 0;
 }
 
-static int mt6899_apu_top_resume(struct device *dev)
+static int mt6881_apu_top_resume(struct device *dev)
 {
 	return 0;
 }
 
-static int mt6899_apu_top_func(struct platform_device *pdev,
+static int mt6881_apu_top_func(struct platform_device *pdev,
 		enum aputop_func_id func_id, struct aputop_func_param *aputop)
 {
 	pr_info("%s func_id : %d\n", __func__, aputop->func_id);
@@ -806,16 +835,16 @@ static int mt6899_apu_top_func(struct platform_device *pdev,
 		break;
 #endif
 	case APUTOP_FUNC_OPP_LIMIT_HAL:
-		mt6899_aputop_opp_limit(aputop, OPP_LIMIT_HAL);
+		mt6881_aputop_opp_limit(aputop, OPP_LIMIT_HAL);
 		break;
 	case APUTOP_FUNC_OPP_LIMIT_DBG:
-		mt6899_aputop_opp_limit(aputop, OPP_LIMIT_DEBUG);
+		mt6881_aputop_opp_limit(aputop, OPP_LIMIT_DEBUG);
 		break;
 	case APUTOP_FUNC_DUMP_REG:
 		aputop_dump_pwr_reg(&pdev->dev);
 		break;
 	case APUTOP_FUNC_DRV_CFG:
-		mt6899_drv_cfg_remote_sync(aputop);
+		mt6881_drv_cfg_remote_sync(aputop);
 		break;
 #if APU_POWER_BRING_UP
 	case APUTOP_FUNC_IPI_TEST:
@@ -839,8 +868,8 @@ static int mt6899_apu_top_func(struct platform_device *pdev,
 	return 0;
 }
 
-/* call by mt6899_pwr_func.c */
-void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump)
+/* call by mt6881_pwr_func.c */
+void mt6881_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump)
 {
 	uint32_t status1 = 0x0;
 	uint32_t status2 = 0x0;
@@ -852,14 +881,6 @@ void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump)
 		status2 = apu_readl(apupw.regs[apu_rcx_dla]
 				+ APU_RCX_MDLA0_CG_CON);
 		pr_info("%s D_ACX RPC_PWR_RDY:0x%08x APU_RCX_MDLA0_CG_CON:0x%08x\n",
-			__func__, status1, status2);
-
-	} else if (id == ACX0) {
-		status1 = apu_readl(apupw.regs[apu_acx0_rpc_lite]
-				+ APU_RPC_INTF_PWR_RDY);
-		status2 = apu_readl(apupw.regs[apu_acx0]
-				+ APU_ACX_CONN_CG_CON);
-		pr_info("%s ACX0 RPC_PWR_RDY:0x%08x APU_ACX_CONN_CG_CON:0x%08x\n",
 			__func__, status1, status2);
 
 	} else {
@@ -885,20 +906,20 @@ void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump)
 	}
 }
 
-const struct apupwr_plat_data mt6899_plat_data = {
-	.plat_name = "mt6899_apupwr",
-	.plat_aputop_on = mt6899_apu_top_on,
-	.plat_aputop_off = mt6899_apu_top_off,
-	.plat_aputop_pb = mt6899_apu_top_pb,
-	.plat_aputop_rm = mt6899_apu_top_rm,
-	.plat_aputop_suspend = mt6899_apu_top_suspend,
-	.plat_aputop_resume = mt6899_apu_top_resume,
-	.plat_aputop_func = mt6899_apu_top_func,
+const struct apupwr_plat_data mt6881_plat_data = {
+	.plat_name = "mt6881_apupwr",
+	.plat_aputop_on = mt6881_apu_top_on,
+	.plat_aputop_off = mt6881_apu_top_off,
+	.plat_aputop_pb = mt6881_apu_top_pb,
+	.plat_aputop_rm = mt6881_apu_top_rm,
+	.plat_aputop_suspend = mt6881_apu_top_suspend,
+	.plat_aputop_resume = mt6881_apu_top_resume,
+	.plat_aputop_func = mt6881_apu_top_func,
 #if IS_ENABLED(CONFIG_DEBUG_FS)
-	.plat_aputop_dbg_open = mt6899_apu_top_dbg_open,
-	.plat_aputop_dbg_write = mt6899_apu_top_dbg_write,
+	.plat_aputop_dbg_open = mt6881_apu_top_dbg_open,
+	.plat_aputop_dbg_write = mt6881_apu_top_dbg_write,
 #endif
-	.plat_rpmsg_callback = mt6899_apu_top_rpmsg_cb,
+	.plat_rpmsg_callback = mt6881_apu_top_rpmsg_cb,
 	.bypass_pwr_on = 0,
 	.bypass_pwr_off = 0,
 };

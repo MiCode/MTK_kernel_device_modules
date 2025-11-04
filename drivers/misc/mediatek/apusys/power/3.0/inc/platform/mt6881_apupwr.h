@@ -1,10 +1,10 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (c) 2020 MediaTek Inc.
+ * Copyright (c) 2025 MediaTek Inc.
  */
 
-#ifndef __MT6899_APUPWR_H__
-#define __MT6899_APUPWR_H__
+#ifndef __MT6881_APUPWR_H__
+#define __MT6881_APUPWR_H__
 
 #include <linux/io.h>
 #include <linux/clk.h>
@@ -48,21 +48,17 @@ enum smc_pwr_dump {
 
 enum t_acx_id {
 	D_ACX = 0,
-	ACX0,
 	CLUSTER_NUM,
 	RCX,
 };
 
 enum t_dev_id {
-	VPU0 = 0,
-	DLA0,
+	DLA0 = 0,
 	DEVICE_NUM,
 };
 
 enum apu_clksrc_id {
 	PLL_CONN = 0, // MNOC
-	PLL_UP,
-	PLL_VPU,
 	PLL_DLA,
 	PLL_NUM,
 };
@@ -88,8 +84,9 @@ enum apupw_reg {
 	apu_acc, /* 0xa */
 	apu_pll,
 	apu_rpctop_mdla,
-	apu_acx0,
-	apu_acx0_rpc_lite, /* 0xe */
+	apu_cmu_sram,
+	apu_md32_tcm,
+	apu_are_reg,
 	APUPW_MAX_REGS,
 };
 
@@ -123,11 +120,11 @@ struct rpc_status_dump {
  */
 enum rcx_ao_range {
 RCX_AO_BEGIN = 0,
-	PLL_ENTRY_BEGIN = 0, //4(pll)*6(steps) = 24
-	PLL_ENTRY_END = 23,
-	ACC_ENTRY_BEGIN = 24, //18 ARE entries, ARDCM(4*2=8) + ACC(2*2+3*2=10)
-	ACC_ENTRY_END = 41,
-RCX_AO_END = 41,
+	PLL_ENTRY_BEGIN = 0, //2(pll)*6(steps) = 12
+	PLL_ENTRY_END = 11,
+	ACC_ENTRY_BEGIN = 12, //13 ARE entries, mnoc(6) + mdla (7)
+	ACC_ENTRY_END = 24,
+RCX_AO_END = 25,
 };
 
 /* SW ARE entry i = (HW are entry i) + (HW are entry i+1) */
@@ -135,7 +132,7 @@ RCX_AO_END = 41,
 #define ARE_ENTRY(x) (((x) * 2) + 36)
 #define ARE_RCX_AO_CONFIG    0x0014
 
-void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
+void mt6881_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 
 /* RPC offset define */
 #define APU_RPC_TOP_CON           0x0000
@@ -146,11 +143,13 @@ void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 #define APU_RPC_TOP_SEL_1         0x0018
 #define APU_RPC_HW_CON            0x001C
 #define APU_RPC_LITE_CON          0x0020
+#define APU_CE_CTRL_RDATA          0x0028
 #define APU_RPC_HW_CON1           0x0030
 #define APU_RPC_STATUS_1            0x0034
 #define APU_RPC_INTF_PWR_RDY_REG  0x0040
 #define APU_RPC_INTF_PWR_RDY      0x0044
 #define APU_RPC_PWR_ACK           0x0048
+#define APU_RPC_PWR_CON0	  0x0100
 #define APU_RPC_MTCMOS_SW_CTRL0   0x0140
 
 #define RPC_TOP_SEL_HW_DEF	(0x012b0000) // cfg in hw default
@@ -159,19 +158,13 @@ void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 
 /* APU GRP offset define */
 #define APU_GRP_0_BASE         0x000  // mdla:0x190F3000, 0x190F6000
-#define APU_GRP_1_BASE         0x400  // mvpu:0x190F3400, 0x190F6400
 #define APU_GRP_2_BASE         0x800  // mnoc:0x190F3800, 0x190F6800
-#define APU_GRP_3_BASE         0xC00  // up:0x190F3C00, 0x190F6C00
 
 #define MDLA_PLL_BASE       APU_GRP_0_BASE
-#define MVPU_PLL_BASE       APU_GRP_1_BASE
 #define MNOC_PLL_BASE       APU_GRP_2_BASE
-#define UP_PLL_BASE         APU_GRP_3_BASE
 
 #define MDLA_ACC_BASE       APU_GRP_0_BASE
-#define MVPU_ACC_BASE       APU_GRP_1_BASE
 #define MNOC_ACC_BASE       APU_GRP_2_BASE
-#define UP_ACC_BASE         APU_GRP_3_BASE
 
 // ACC offset
 #define APU_ACC_CONFG_SET0        0x000
@@ -195,7 +188,14 @@ void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 #define PLL1CPLL_FHCTL0_DDS       0x31C
 
 /* ARE offset define */
+#define APU_ACE_CE_CTRL_STATUS_0     0x0530
 #define APU_ACE_HW_FLAG_DIS	0x05D4
+#define APU_CE0_RUN_STATUS      0x0628
+#define APU_CE0_RUN_PC          0x062c
+#define APU_CE0_RUN_INSTR       0x0630
+#define APU_CE0_RUN_INSTR_63_32 0x0634
+
+
 
 /* vcore offset define */
 #define APUSYS_VCORE_CG_CON     0x0000
@@ -204,6 +204,9 @@ void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 #define APUSYS_VCORE_SW_RST     0x000C
 
 /* APU_ARE_REG */
+#define APU_ACE_HW_CONFIG_0     0x0050
+#define APU_ACE_HW_CONFIG_7     0x006C
+
 #define APU_ARE_GCONFIG         0x10000
 #define APU_ARE_STATUS          0x10004
 #define APU_CE_IF_PC            0x10620
@@ -218,18 +221,6 @@ void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 #define APU_RCX_MDLA0_CG_CON    0x0000
 #define APU_RCX_MDLA0_CG_CLR    0x0008
 
-/* acx 0/1 offset define */
-#define APU_ACX_CONN_CG_CON     0x3C000
-#define APU_ACX_CONN_CG_CLR     0x3C008
-#define APU_ACX_MVPU_CG_CON     0x2B000
-#define APU_ACX_MVPU_CG_CLR     0x2B008
-#define APU_ACX_MVPU_SW_RST     0x2B00C
-#define APU_ACX_MVPU_RV55_CTRL0 0x2B018
-#define APU_ACX_MDLA0_CG_CON    0x30000
-#define APU_ACX_MDLA0_CG_CLR    0x30008
-#define APU_ACX_MDLA1_CG_CON    0x34000
-#define APU_ACX_MDLA1_CG_CLR    0x34008
-
 // vlp offset define
 #define APUSYS_AO_CTRL_ADDR   (0x200)
 #define APUSYS_AO_SRAM_CONFIG (0x70)
@@ -241,22 +232,22 @@ void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 #define SPM_SEMA_M0			(0x69C)
 #define SPM_HW_SEMA_MASTER		SPM_SEMA_M0
 
-// mt6368_vbuck2 (in mt6899 for vapu)
-#define MT6368_SLAVE_ID                         (0x5)
-#define MT6368_PMIC_RG_BUCK_VBUCK2_EN_ADDR      (0x240)
-#define MT6368_PMIC_RG_BUCK_VBUCK2_EN_SET       (0x241) // for buck on
-#define MT6368_PMIC_RG_BUCK_VBUCK2_EN_CLR       (0x242) // for buck off
-#define MT6368_PMIC_RG_BUCK_VBUCK2_EN_SHIFT     (2)
-#define MT6368_PMIC_RG_BUCK_VBUCK2_VOSEL_ADDR   (0x24E) // for voltage change
+// mt6368_vbuck3 (in mt6881 for vapu)
+#define MT6368_SLAVE_ID                         (0x6)
+#define MT6368_PMIC_RG_BUCK_VBUCK3_EN_ADDR      (0x1440)
+#define MT6368_PMIC_RG_BUCK_VBUCK3_EN_SET       (0x1441) // for buck on
+#define MT6368_PMIC_RG_BUCK_VBUCK3_EN_CLR       (0x1442) // for buck off
+#define MT6368_PMIC_RG_BUCK_VBUCK3_EN_SHIFT     (2)
+#define MT6368_PMIC_RG_BUCK_VBUCK3_VOSEL_ADDR   (0x144d) // for voltage change
 
 #define BUCK_VAPU_PMIC_ID               MT6368_SLAVE_ID
-#define BUCK_VAPU_PMIC_REG_EN_ADDR      MT6368_PMIC_RG_BUCK_VBUCK2_EN_ADDR
-#define BUCK_VAPU_PMIC_REG_EN_SET_ADDR  MT6368_PMIC_RG_BUCK_VBUCK2_EN_SET
-#define BUCK_VAPU_PMIC_REG_EN_CLR_ADDR  MT6368_PMIC_RG_BUCK_VBUCK2_EN_CLR
-#define BUCK_VAPU_PMIC_REG_EN_SHIFT     MT6368_PMIC_RG_BUCK_VBUCK2_EN_SHIFT
-#define BUCK_VAPU_PMIC_REG_VOSEL_ADDR   MT6368_PMIC_RG_BUCK_VBUCK2_VOSEL_ADDR
+#define BUCK_VAPU_PMIC_REG_EN_ADDR      MT6368_PMIC_RG_BUCK_VBUCK3_EN_ADDR
+#define BUCK_VAPU_PMIC_REG_EN_SET_ADDR  MT6368_PMIC_RG_BUCK_VBUCK3_EN_SET
+#define BUCK_VAPU_PMIC_REG_EN_CLR_ADDR  MT6368_PMIC_RG_BUCK_VBUCK3_EN_CLR
+#define BUCK_VAPU_PMIC_REG_EN_SHIFT     MT6368_PMIC_RG_BUCK_VBUCK3_EN_SHIFT
+#define BUCK_VAPU_PMIC_REG_VOSEL_ADDR   MT6368_PMIC_RG_BUCK_VBUCK3_VOSEL_ADDR
 
-// mt6363_vsram_apu (in mt6899 for vsram_apu)
+// mt6363_vsram_apu (in mt6881 for vsram_apu)
 #define MT6363_SLAVE_ID                         (0x4)
 #define MT6363_PMIC_RG_LDO_VSRAM_APU_EN_ADDR    (0x1e9d)
 #define MT6363_PMIC_RG_LDO_VSRAM_APU_EN_SHIFT   (0)
@@ -299,6 +290,9 @@ void mt6899_apu_dump_rpc_status(enum t_acx_id id, struct rpc_status_dump *dump);
 #define APU_PCU_SEMA_CTRL0             0x0200
 #define APU_HW_SEMA_PWR_CTL            APU_PCU_SEMA_CTRL0
 
-int mt6899_all_on(struct platform_device *pdev, struct apu_power *papw);
-void mt6899_all_off(struct platform_device *pdev);
-#endif // __mt6899_APUPWR_H__
+// apu hw sema (in MBOX)
+#define APU_MBOX_SEMA_CTRL0             0x0900
+
+int mt6881_all_on(struct platform_device *pdev, struct apu_power *papw);
+void mt6881_all_off(struct platform_device *pdev);
+#endif // __mt6881_APUPWR_H__
