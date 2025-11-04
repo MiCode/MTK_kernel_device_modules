@@ -5204,7 +5204,7 @@ static int mtk_mipi_tx_pll_prepare_mt6858(struct clk_hw *hw)
 
 	/* BG_LPF_EN / BG_CORE_EN */
 	writel(0x3FFF0080, mipi_tx->regs + MIPITX_LANE_CON);
-	usleep_range(500, 600);
+	udelay(1); /* 1us */
 	writel(0x3FFF00C0, mipi_tx->regs + MIPITX_LANE_CON);
 
 #ifdef IF_ONE
@@ -5224,7 +5224,7 @@ static int mtk_mipi_tx_pll_prepare_mt6858(struct clk_hw *hw)
 	/* step 1: SDM_RWR_ON / SDM_ISO_EN */
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_PWR,
 				FLD_AD_DSI_PLL_SDM_PWR_ON, 1);
-	usleep_range(30, 100);
+	udelay(10);
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_PWR,
 				FLD_AD_DSI_PLL_SDM_ISO_EN, 0);
 
@@ -5236,7 +5236,7 @@ static int mtk_mipi_tx_pll_prepare_mt6858(struct clk_hw *hw)
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1,
 			       mipi_tx->driver_data->dsi_pll_en);
 
-	usleep_range(50, 100);
+	udelay(50);
 
 	/* TODO: should write bit8 to set SW_ANA_CK_EN here */
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_SW_CTRL_CON4, 1);
@@ -5305,14 +5305,14 @@ static int mtk_mipi_tx_pll_cphy_prepare_mt6858(struct clk_hw *hw)
 	/* BG_LPF_EN / BG_CORE_EN */
 	/* BG_LPF_EN=0 BG_CORE_EN=1 */
 	writel(0x3FFF0088, mipi_tx->regs + MIPITX_LANE_CON);
-	usleep_range(1, 2); /* 1us */
+	udelay(1); /* 1us */
 	/* BG_LPF_EN=1 */
 	writel(0x3FFF00C8, mipi_tx->regs + MIPITX_LANE_CON);
 
 	/* step 1: SDM_RWR_ON / SDM_ISO_EN */
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_PWR,
 				FLD_AD_DSI_PLL_SDM_PWR_ON, 1);
-	usleep_range(30, 100);
+	udelay(10);
 	mtk_mipi_tx_update_bits(mipi_tx, MIPITX_PLL_PWR,
 				FLD_AD_DSI_PLL_SDM_ISO_EN, 0);
 
@@ -5324,7 +5324,7 @@ static int mtk_mipi_tx_pll_cphy_prepare_mt6858(struct clk_hw *hw)
 	mtk_mipi_tx_set_bits(mipi_tx, MIPITX_PLL_CON1,
 			       RG_DSI_PLL_EN);
 
-	usleep_range(50, 100);
+	udelay(50);
 
 #endif
 	DDPDBG("%s-\n", __func__);
