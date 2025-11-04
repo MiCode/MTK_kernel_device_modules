@@ -610,7 +610,7 @@ static void fstb_delete_policy_cmd(int mode, struct fstb_policy_cmd *iter)
 	}
 
 	hlist_for_each_entry_safe(tmp_iter, h, &fstb_policy_cmd_list, hlist) {
-		if (tmp_iter->mode == mode && tmp_iter->ts < min_ts) {
+		if (tmp_iter->ts < min_ts) {
 			min_ts = tmp_iter->ts;
 			min_iter = tmp_iter;
 		}
