@@ -1066,9 +1066,6 @@ static s32 cmdq_mdp_consume_handle(void)
 			break;
 		}
 
-		CMDQ_LOG("%s get handle:0x%p engine:0x%llx\n",
-			__func__, handle, handle->engineFlag);
-
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 		if (handle->secData.is_secure) {
 			task_cnt = ctx->thread[(u32)cmdq_mdp_get_sec_thread(handle->engineFlag)].handle_count;
