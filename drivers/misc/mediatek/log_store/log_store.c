@@ -37,6 +37,7 @@
 #include <linux/printk.h>
 #include <linux/sched.h>
 #include <linux/sched/clock.h>
+#include <linux/spinlock.h>
 
 extern void register_bootprof_write_log(void (*fn)(char *str, size_t str_len));
 
@@ -44,6 +45,8 @@ extern void register_bootprof_write_log(void (*fn)(char *str, size_t str_len));
 #define BOOT_BUFF_SIZE (64*1024)
 #define BOOT_LOG_LEN 290
 #define READ_KERNEL_LOG_SIZE 0x20000
+
+static DEFINE_SPINLOCK(bootbuffer_lock);
 #endif
 
 /* make sure 'sizeof(log_emmc_header) + MAX_LOG_INDEX_NUM * sizeof(emmc_log) < block_size' */
@@ -517,29 +520,31 @@ static void write_to_logstore(char *str, size_t str_len)
 	u64 time_ms_high = sched_clock();
 	u64 time_ms_low = 0;
 
-	if (str_len <= 0 || expdb_logstore == NULL || expdb_logstore->bootbuff == NULL)
-		return;
+	scoped_guard(spinlock, &bootbuffer_lock) {
+		if (str_len <= 0 || expdb_logstore == NULL || expdb_logstore->bootbuff == NULL)
+			return;
 
-	memset(textbuff, 0, sizeof(textbuff));
-	time_ms_low = do_div(time_ms_high, 1000000);
-	new_str_len = scnprintf(textbuff, sizeof(textbuff), "%10llu.%06llu :%5d-%-16s: %s\n",
+		memset(textbuff, 0, sizeof(textbuff));
+		time_ms_low = do_div(time_ms_high, 1000000);
+		new_str_len = scnprintf(textbuff, sizeof(textbuff), "%10llu.%06llu :%5d-%-16s: %s\n",
 				time_ms_high, time_ms_low, current->pid, current->comm, str);
 
-	if (expdb_logstore->log_offset > BOOT_BUFF_SIZE)
-		expdb_logstore->log_offset = 0;
+		if (expdb_logstore->log_offset > BOOT_BUFF_SIZE)
+			expdb_logstore->log_offset = 0;
 
-	reserver_memory = BOOT_BUFF_SIZE - expdb_logstore->log_offset;
-	if(new_str_len > reserver_memory) {
-		if (reserver_memory < sizeof(textbuff)) {
-			memcpy_toio(expdb_logstore->bootbuff + expdb_logstore->log_offset,
-				textbuff, reserver_memory);
-			memcpy_toio(expdb_logstore->bootbuff, textbuff + reserver_memory,
-				new_str_len - reserver_memory);
-			expdb_logstore->log_offset = new_str_len - reserver_memory;
+		reserver_memory = BOOT_BUFF_SIZE - expdb_logstore->log_offset;
+		if(new_str_len > reserver_memory) {
+			if (reserver_memory < sizeof(textbuff)) {
+				memcpy_toio(expdb_logstore->bootbuff + expdb_logstore->log_offset,
+					textbuff, reserver_memory);
+				memcpy_toio(expdb_logstore->bootbuff, textbuff + reserver_memory,
+					new_str_len - reserver_memory);
+				expdb_logstore->log_offset = new_str_len - reserver_memory;
+			}
+		} else {
+			memcpy_toio(expdb_logstore->bootbuff + expdb_logstore->log_offset, textbuff, new_str_len);
+			expdb_logstore->log_offset += new_str_len;
 		}
-	} else {
-		memcpy_toio(expdb_logstore->bootbuff + expdb_logstore->log_offset, textbuff, new_str_len);
-		expdb_logstore->log_offset += new_str_len;
 	}
 }
 
@@ -596,6 +601,13 @@ static int write_expdb_thread_fn(void *data)
 			break;
 		bootlog_to_partition();
 	}
+
+	scoped_guard(spinlock, &bootbuffer_lock) {
+		if(expdb_logstore->bootbuff != NULL) {
+			kfree(expdb_logstore->bootbuff);
+			expdb_logstore->bootbuff = NULL;
+		}
+	}
 	return 0;
 }
 
@@ -608,11 +620,6 @@ void close_monitor_thread(void)
 		kthread_stop(write_expdb_thread);
 		write_expdb_thread = NULL;
 		pr_info("update partition thread is stopped!\n");
-
-		if(expdb_logstore->bootbuff != NULL) {
-			kfree(expdb_logstore->bootbuff);
-			expdb_logstore->bootbuff = NULL;
-		}
 	}
 }
 EXPORT_SYMBOL_GPL(close_monitor_thread);
