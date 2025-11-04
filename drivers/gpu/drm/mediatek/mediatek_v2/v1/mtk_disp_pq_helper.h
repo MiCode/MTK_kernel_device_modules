@@ -8,6 +8,11 @@
 
 #include "mtk_disp_pq_device.h"
 #include "mtk_disp_vidle.h"
+#ifndef DRM_CMDQ_DISABLE
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#else
+#include "mtk-cmdq-ext.h"
+#endif
 
 #define PQ_MAX_REG_NUM 0x800
 #define PQ_MAX_DATA_SIZE 0x2000
@@ -77,5 +82,6 @@ int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data);
 int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data);
 int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data);
 void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+struct cmdq_client *disp_pq_get_cfg_clt(struct drm_crtc *crtc);
 
 #endif /* _MTK_DISP_PQ_HELPER_H_ */

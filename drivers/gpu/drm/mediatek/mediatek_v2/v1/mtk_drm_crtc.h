@@ -663,7 +663,7 @@ enum MTK_CRTC_COLOR_FMT {
 	EXPR(CLIENT_SUB_CFG)                                                   \
 	EXPR(CLIENT_DSI_CFG)                                                   \
 	EXPR(CLIENT_SEC_CFG)                                                   \
-	EXPR(CLIENT_PQ_EOF)                                                        \
+	EXPR(CLIENT_PQ_CFG)                                                        \
 	EXPR(CLIENT_PQ)                                                    \
 	EXPR(CLIENT_BWM_LOOP)                                                    \
 	EXPR(CLIENT_BWM)                                                    \
@@ -1070,6 +1070,7 @@ struct pq_common_data {
 	bool opt_bypass_pq;
 	wait_queue_head_t cfg_done_wq;
 	atomic_t cfg_done;
+	unsigned int led_type;
 };
 
 struct mtk_vblank_config_rec {

@@ -4290,7 +4290,7 @@ int mtk_crtc_user_cmd_impl(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 		goto err;
 	}
 
-	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	cmdq_handle = cmdq_pkt_create(disp_pq_get_cfg_clt(crtc));
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		ret = -EINVAL;

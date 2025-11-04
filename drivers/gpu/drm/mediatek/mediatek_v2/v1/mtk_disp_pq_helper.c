@@ -11,6 +11,7 @@
 #include <linux/of_platform.h>
 #include <linux/platform_device.h>
 
+#include <linux/leds-mtk.h>
 #ifndef DRM_CMDQ_DISABLE
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
 #else
@@ -613,7 +614,7 @@ int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data)
 		return -EFAULT;
 	}
 
-	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	cmdq_handle = cmdq_pkt_create(disp_pq_get_cfg_clt(crtc));
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return -EFAULT;
@@ -1005,7 +1006,7 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 	if (is_atomic_commit)
 		pq_cmdq_handle = cmdq_handle;
 	else {
-		pq_cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		pq_cmdq_handle = cmdq_pkt_create(disp_pq_get_cfg_clt(crtc));
 		if (!pq_cmdq_handle) {
 			DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 			mtk_drm_trace_end();
@@ -1426,7 +1427,7 @@ int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data)
 	DDPMSG("%s: crtc_index: %d, relay: %d, wait: %d, engine: 0x%x\n",
 		__func__, index, relay, wait_config_done, relay_engines);
 
-	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	cmdq_handle = cmdq_pkt_create(disp_pq_get_cfg_clt(crtc));
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return -EFAULT;
@@ -1523,7 +1524,7 @@ int disp_pq_proxy_virtual_set_hw_relay(struct drm_crtc *crtc, void *data, int si
 	DDPMSG("%s: crtc_index: %d, relay: %d, wait: %d, pq_types: 0x%x\n",
 		__func__, index, relay, wait_config_done, pq_types);
 
-	cmdq_handle = cmdq_pkt_create(mtk_crtc->gce_obj.client[CLIENT_CFG]);
+	cmdq_handle = cmdq_pkt_create(disp_pq_get_cfg_clt(crtc));
 	if (!cmdq_handle) {
 		DDPPR_ERR("%s:%d NULL cmdq handle\n", __func__, __LINE__);
 		return -EFAULT;
@@ -1610,4 +1611,22 @@ int disp_pq_proxy_virtual_get_pq_caps(struct drm_crtc *crtc,
 			mtk_ddp_comp_io_cmd(comp, NULL, GET_PQ_CAPS, pq_caps);
 	}
 	return 0;
+}
+
+struct cmdq_client *disp_pq_get_cfg_clt(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_ddp_comp *output_comp = NULL;
+	struct cmdq_client *client = NULL;
+
+
+	// VDO + AMOLED(led atomic)
+	if (!mtk_crtc_is_frame_trigger_mode(crtc) && mtk_crtc->pq_data &&
+		mtk_crtc->pq_data->led_type == LED_TYPE_ATOMIC) {
+		client = mtk_crtc->gce_obj.client[CLIENT_PQ_CFG];
+		DDPINFO("%s pq use CLIENT_PQ_CFG\n", __func__);
+	} else
+		client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+
+	return client;
 }

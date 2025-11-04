@@ -594,6 +594,7 @@ int led_brightness_changed_event_to_pq(struct notifier_block *nb, unsigned long 
 		struct mtk_disp_ccorr *ccorr_data = comp_to_ccorr(comp);
 		struct mtk_disp_ccorr_primary *primary_data = ccorr_data->primary_data;
 		primary_data->led_type = (unsigned int)led_conf->led_type;
+		mtk_crtc->pq_data->led_type = (unsigned int)led_conf->led_type;
 		break;
 	default:
 		break;

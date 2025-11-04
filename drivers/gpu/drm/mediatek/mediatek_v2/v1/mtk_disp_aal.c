@@ -651,6 +651,7 @@ int led_brightness_changed_event_to_aal(struct notifier_block *nb, unsigned long
 
 		aal_data = comp_to_aal(comp);
 		aal_data->primary_data->led_type = (unsigned int)led_conf->led_type;
+		mtk_crtc->pq_data->led_type = (unsigned int)led_conf->led_type;
 
 		// force set aal_enable to 1 for ELVSS
 		if (led_conf->led_type == LED_TYPE_ATOMIC)
