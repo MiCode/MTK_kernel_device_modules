@@ -7136,6 +7136,46 @@
 			};
 		};
 
+		pcie: pcie@112f0000 {
+			device_type = "pci";
+			compatible = "mediatek,mt6881-pcie";
+			reg = <0 0x112f0000 0 0x4000>;
+			reg-names = "pcie-mac";
+			#address-cells = <3>;
+			#size-cells = <2>;
+			interrupts = <GIC_SPI 800 IRQ_TYPE_LEVEL_HIGH 0>;
+			bus-range = <0x00 0xff>;
+			ranges = <0x82000000 0 0x30000000
+				  0x0 0x30000000 0 0x10000000>;
+			status = "disabled";
+			linux,pci-domain = <0>;
+			mediatek,peri-reset-dis;
+			mediatek,dvfs-req-dis;
+
+			phys = <&pciephy>;
+			phy-names = "pcie-phy";
+
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0 0 0 7>;
+			interrupt-map = <0 0 0 1 &pcie_intc 0>,
+					<0 0 0 2 &pcie_intc 1>,
+					<0 0 0 3 &pcie_intc 2>,
+					<0 0 0 4 &pcie_intc 3>;
+			pcie_intc: interrupt-controller {
+				interrupt-controller;
+				#address-cells = <0>;
+				#interrupt-cells = <1>;
+			};
+		};
+
+		pciephy: phy@11100000 {
+			compatible = "mediatek,mt6881-pcie-phy";
+			#phy-cells = <0>;
+			reg = <0 0x11100000 0 0x10000>;
+			reg-names = "sif";
+			status = "disabled";
+		};
+
 		gpueb: gpueb@3d000000 {
 			compatible = "mediatek,gpueb";
 			gpueb-support = <0>;
