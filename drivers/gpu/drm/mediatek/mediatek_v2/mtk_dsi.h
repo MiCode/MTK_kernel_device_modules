@@ -121,6 +121,7 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_rx_trig_sta;
 	const u32 dsi_rx_con;
 	const u32 con_offset;
+	const u32 reg_up_intsta;
 	const u32 dsi_cmdq_size;
 	const u32 dsi_cmdq_page;
 	const u32 dsi_cmdq_rd_max_sz_cpu;
@@ -128,6 +129,7 @@ struct mtk_dsi_driver_data {
 	const u32 dsi_rx_data_rd_max_sz;
 	bool support_pu_con;
 	bool support_frame_tb_v5;
+	bool esd_poll_microp;
 	enum UDR_AEE_MODE underrun_aee_mode;
 };
 

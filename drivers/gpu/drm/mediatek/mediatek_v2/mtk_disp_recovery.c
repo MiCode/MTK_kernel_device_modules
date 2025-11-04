@@ -1044,8 +1044,7 @@ void mtk_disp_chk_recover_init(struct drm_crtc *crtc)
 	bool mode = true;
 
 	output_comp = (mtk_crtc) ? mtk_ddp_comp_request_output(mtk_crtc) : NULL;
-	if (priv && (priv->data->mmsys_id == MMSYS_MT6991 ||
-		priv->data->mmsys_id == MMSYS_MT6993) && output_comp &&
+	if (priv && priv->data->mmsys_id == MMSYS_MT6991 && output_comp &&
 		mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)
 		mode = mtk_dsi_is_cmd_mode(output_comp);
 

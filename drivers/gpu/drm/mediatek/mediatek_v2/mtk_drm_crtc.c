@@ -11461,8 +11461,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 
 		if ((ext_lye_id) &&
 			(plane_state->pending.enable) && (!need_skip)) {
-			if (priv->data->mmsys_id == MMSYS_MT6991 ||
-				priv->data->mmsys_id == MMSYS_MT6993) {
+			if ((priv->data->mmsys_id == MMSYS_MT6991 ||
+				priv->data->mmsys_id == MMSYS_MT6993) && mtk_crtc_is_frame_trigger_mode(crtc)) {
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_avg_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
@@ -11524,8 +11524,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			cmdq_pkt_write_indriect(state->cmdq_handle, comp->cmdq_base,
 				avg_slot, CMDQ_THR_SPR_IDX1, ~0);
 
-			if (priv->data->mmsys_id == MMSYS_MT6991 ||
-				priv->data->mmsys_id == MMSYS_MT6993) {
+			if ((priv->data->mmsys_id == MMSYS_MT6991 ||
+				priv->data->mmsys_id == MMSYS_MT6993) && mtk_crtc_is_frame_trigger_mode(crtc)) {
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
@@ -11590,8 +11590,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 				peak_slot, CMDQ_THR_SPR_IDX1, ~0);
 
 		} else if (plane_state->pending.enable && (!need_skip)) {
-			if (priv->data->mmsys_id == MMSYS_MT6991 ||
-				priv->data->mmsys_id == MMSYS_MT6993) {
+			if ((priv->data->mmsys_id == MMSYS_MT6991 ||
+				priv->data->mmsys_id == MMSYS_MT6993) && mtk_crtc_is_frame_trigger_mode(crtc)) {
 				/* (phy_lye + ext_lye * 3) * (evg + peak) */
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
@@ -11654,8 +11654,8 @@ static void mtk_drm_ovl_bw_monitor_ratio_get(struct drm_crtc *crtc,
 			cmdq_pkt_write_indriect(state->cmdq_handle, comp->cmdq_base,
 				avg_slot, CMDQ_THR_SPR_IDX1, ~0);
 
-			if (priv->data->mmsys_id == MMSYS_MT6991 ||
-				priv->data->mmsys_id == MMSYS_MT6993) {
+			if ((priv->data->mmsys_id == MMSYS_MT6991 ||
+				priv->data->mmsys_id == MMSYS_MT6993) && mtk_crtc_is_frame_trigger_mode(crtc)) {
 				comp_idx = plane_state->comp_state.comp_id -
 					DDP_COMPONENT_OVL_EXDMA2;
 				pre_peak_slot = mtk_get_gce_backup_slot_pa(mtk_crtc,
@@ -11918,6 +11918,12 @@ void mtk_crtc_start_bwm_ratio_loop(struct drm_crtc *crtc)
 		return;
 	}
 
+	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
+		DDPDBG("%s:%d start fail,not cmd mode\n",
+			__func__, __LINE__);
+		return;
+	}
+
 	if (mtk_crtc->bwm_loop_cmdq_handle) {
 		DDPDBG("exist bwm loop, skip %s\n", __func__);
 		return;
@@ -11992,6 +11998,12 @@ void mtk_crtc_stop_bwm_ratio_loop(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
 	DDPDBG_BWM("%s +\n", __func__);
+
+	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
+		DDPDBG("%s:%d stop fail,not cmd mode\n",
+			__func__, __LINE__);
+		return;
+	}
 
 	if (!mtk_crtc->bwm_loop_cmdq_handle) {
 		DDPDBG("%s: bwm_loop already stopped\n", __func__);

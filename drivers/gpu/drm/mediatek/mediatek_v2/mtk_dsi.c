@@ -13521,6 +13521,9 @@ cmd_mode_transfer:
 					DISP_SLOT_READ_DSI_DBG_BASE + (esd_dbg_idx * DBG_DSI_NUM + 3) * 0x4),
 					CMDQ_THR_SPR_IDX3);
 		}
+		if (mtk_dsi->driver_data->esd_poll_microp)
+			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + mtk_dsi->driver_data->reg_up_intsta,
+					0x0, 0x1);
 
 		mtk_dsi_send_cmd_trigger(mtk_dsi, handle, total_cmdq_size);
 
@@ -13556,8 +13559,16 @@ cmd_mode_transfer:
 			rd_total_sz = mtk_dsi_read_data_by_cpu(index, mtk_dsi, cmd_msg->cmd_msg);
 			mtk_dsi_mask(mtk_dsi, DSI_RACK(mtk_dsi->driver_data), RACK, RACK);
 		} else {
-			mtk_dsi_cmdq_poll(comp, handle, comp->regs_pa + DSI_INTSTA, 0x1, 0x1);
-			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_INTSTA, 0x0, 0x1);
+			if (mtk_dsi->driver_data->esd_poll_microp) {
+				mtk_dsi_cmdq_poll(comp, handle,
+					comp->regs_pa + mtk_dsi->driver_data->reg_up_intsta, 0x1, 0x1);
+				cmdq_pkt_write(handle, comp->cmdq_base,
+					comp->regs_pa + mtk_dsi->driver_data->reg_up_intsta, 0x0, 0x1);
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_INTSTA, 0x0, 0x1);
+			} else {
+				mtk_dsi_cmdq_poll(comp, handle, comp->regs_pa + DSI_INTSTA, 0x1, 0x1);
+				cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_INTSTA, 0x0, 0x1);
+			}
 			mtk_dsi_read_data_to_slot(mtk_dsi, handle, rd_total_sz, cmd_msg->slot_idx,
 				cmd_msg->read_scn);
 			cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + DSI_RACK(mtk_dsi->driver_data),
@@ -16907,8 +16918,12 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			return 0;
 		}
 
+		/*
+		 * rd_rdy don't clear and wait for ESD &
+		 * Read LCM will clear the bit.
+		 */
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DSI_INTSTA, 0x0, ~0);
+			comp->regs_pa + DSI_INTSTA, 0x0, 0xfffffffe);
 
 		if (atomic_read(&comp->mtk_crtc->force_high_step) == 1) {
 			DDPMSG("IRQ_LEVEL_NORMAL force_high_step = 1, skip underrun irq\n");
