@@ -1945,6 +1945,8 @@ static void mtk_dbi_count_unprepare(struct mtk_ddp_comp *comp)
 	DBI_COUNT_INFO("%s +++\n", mtk_dump_comp_str(comp));
 	_mtk_dbi_count_clean_irq_mask(comp, 0);
 	mtk_ddp_comp_clk_unprepare(comp);
+	*(unsigned int *)mtk_get_gce_backup_slot_va(comp->mtk_crtc,
+		DISP_SLOT_DBI_COUNT_SW_TRIGGER) = 0;
 
 }
 
