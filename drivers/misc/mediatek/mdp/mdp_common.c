@@ -942,9 +942,9 @@ static s32 cmdq_mdp_get_sec_thread(u64 engine_flag)
 {
 #if defined(ISP_GCE_M_SEC_SUPPORT)
 	if (engine_flag & cmdq_mdp_get_func()->mdpGetIspFlag()) {
-		CMDQ_LOG("CMDQ_THREAD_SEC_ISP engineFlag:0x%llx thread:%d\n",
-			engine_flag, CMDQ_THREAD_SEC_ISP);
-		return CMDQ_THREAD_SEC_ISP;
+		CMDQ_LOG("CMDQ_THREAD_SEC_ISP_2 engineFlag:0x%llx thread:%d\n",
+			engine_flag, CMDQ_THREAD_SEC_ISP_2);
+		return CMDQ_THREAD_SEC_ISP_2;
 	}
 #endif
 	return CMDQ_THREAD_SEC_MDP;

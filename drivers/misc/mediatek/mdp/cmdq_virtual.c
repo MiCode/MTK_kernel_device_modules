@@ -216,7 +216,7 @@ int cmdq_virtual_get_thread_index(u64 engine_flag, enum CMDQ_SCENARIO_ENUM scena
 #if defined(ISP_GCE_M_SEC_SUPPORT)
 		/* CMDQ_MIN_SECURE_THREAD_ID */
 		if (engine_flag & cmdq_mdp_get_func()->mdpGetIspFlag())
-			return CMDQ_THREAD_SEC_ISP;
+			return CMDQ_THREAD_SEC_ISP_2;
 #endif
 		/* because there is one input engine for MDP, reserve one
 		 * secure thread is enough
