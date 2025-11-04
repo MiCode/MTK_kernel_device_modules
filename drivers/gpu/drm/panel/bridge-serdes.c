@@ -31,6 +31,7 @@
 #include <linux/of_irq.h>
 #endif
 #include "bridge-serdes.h"
+#include "../mediatek/mediatek_v2/mtk_panel_ext.h"
 
 #define ENABLE_HOTPLUG_INT 0
 #define ENALBE_INIT_WORK   1

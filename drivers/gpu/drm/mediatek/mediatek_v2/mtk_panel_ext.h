@@ -717,6 +717,11 @@ struct mtk_oddmr_panelid {
 	uint8_t data[16];
 };
 
+struct priv_panel_data {
+	struct drm_panel panel;
+	struct mtk_panel_params ext_params;
+};
+
 struct mtk_panel_funcs {
 	int (*set_bl_elvss_cmdq)(void *dsi_drv, dcs_grp_write_gce cb,
 		void *handle, struct mtk_bl_ext_config *bl_ext_config);

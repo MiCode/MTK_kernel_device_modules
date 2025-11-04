@@ -14,7 +14,6 @@
 #include <linux/of_platform.h>
 #include <linux/of_graph.h>
 #include <linux/platform_device.h>
-#include "../mediatek/mediatek_v2/mtk_panel_ext.h"
 
 struct vdo_timing {
 	u32 width;
@@ -30,11 +29,6 @@ struct vdo_timing {
 	u32 prefetch;
 	u32 physcial_w;
 	u32 physcial_h;
-};
-
-struct priv_panel_data {
-	struct drm_panel panel;
-	struct mtk_panel_params ext_params;
 };
 
 #endif
