@@ -2,11 +2,104 @@
 /*
  * Copyright (c) 2025 MediaTek Inc.
  */
+
+/*******************************************************************************
+ * Includes
+ ******************************************************************************/
 #include <asm/kvm_pkvm_module.h>
 #include <linux/arm-smccc.h>
 
 #include "pkvm_p1_hyp.h"
 
+
+/*******************************************************************************
+ * PKVM Utility Functions
+ ******************************************************************************/
+static inline bool is_valid_offset(uint32_t offset)
+{
+	/* Currently, the maximum IO_SIZE is 124K in TF-A */
+	if (offset >= (IO_OFFSET_LIMIT * 0x1F))
+		return false;
+
+	if ((offset % IO_ACCESS_SIZE) != 0)
+		return false;
+
+	return true;
+}
+
+static inline bool is_valid_secio_type(uint32_t type)
+{
+	if ((type > SECIO_INVALID) && (type < SECIO_MAX))
+		return true;
+	return false;
+}
+
+#define IS_NULL(p) (p == NULL)
+static TZ_RESULT SECIO_ACCESS(uint32_t io_type, uint32_t dir, uint32_t offset,
+	uint32_t write_val, uint32_t *read_val)
+{
+	struct arm_smccc_res res;
+
+	if (!is_valid_offset(offset))
+		return TZ_RESULT_ERROR_BAD_FORMAT;
+
+	if (!is_valid_secio_type(io_type))
+		return TZ_RESULT_ERROR_ACCESS_DENIED;
+
+	if ((dir == SIO_READ) && IS_NULL(read_val))
+		return TZ_RESULT_ERROR_BAD_PARAMETERS;
+
+	if (dir == SIO_READ)
+		arm_smccc_1_1_smc(MTK_SIP_HYP_SECIO_READ,
+			io_type, offset, 0, 0, 0, 0, 0, &res);
+	else
+		arm_smccc_1_1_smc(MTK_SIP_HYP_SECIO_WRITE,
+			io_type, offset, write_val, 0, 0, 0, 0, &res);
+
+	if (dir == SIO_READ && !IS_NULL(read_val))
+		*read_val = res.a1;
+
+	return (TZ_RESULT)res.a0;
+}
+
+static TZ_RESULT __SECIO_WRITE(uint32_t io_type, uint32_t reg_offset, uint32_t write_val)
+{
+	return SECIO_ACCESS(io_type, SIO_WRITE, reg_offset, write_val, NULL);
+}
+
+static TZ_RESULT __SECIO_READ(uint32_t io_type, uint32_t reg_offset, uint32_t *read_val)
+{
+	return SECIO_ACCESS(io_type, SIO_READ, reg_offset, 0, read_val);
+}
+
+static inline TZ_RESULT devapc_request(enum devapc_sip_cmd cmd, enum devapc_hyp_module_req_type module,
+	enum devapc_protect_on_off onoff, uint32_t param)
+{
+	struct arm_smccc_res res;
+
+	arm_smccc_1_1_smc(MTK_SIP_HYP_DEVAPC_CTRL,
+		cmd, module, onoff, param, 0, 0, 0, &res);
+
+	return (TZ_RESULT)res.a0;
+}
+
+static TZ_RESULT __APC_CamIspProtEnable(uint32_t param)
+{
+	return devapc_request(
+		SIP_APC_MODULE_SET,
+		DEVAPC_HYP_MODULE_REQ_CAMERA_ISP,
+		DEVAPC_PROTECT_ENABLE,
+		param);
+}
+
+static TZ_RESULT __APC_CamIspProtDisable(uint32_t param)
+{
+	return devapc_request(
+		SIP_APC_MODULE_SET,
+		DEVAPC_HYP_MODULE_REQ_CAMERA_ISP,
+		DEVAPC_PROTECT_DISABLE,
+		param);
+}
 
 const struct pkvm_module_ops *pkvm_p1_ops;
 
@@ -46,7 +139,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 		union REG_CAMDMATOP2_R1_CAMDMATOP2_SECURE_SMI_PORT_IMGO_R1  imgo_secure_port;
 
 		CALL_FROM_OPS(puts, PFX "config_port_array: imgo\n");
-		ret |= SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_IMGO_R1_OFFSET, &imgo_secure_port.Raw);
+		ret |= __SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_IMGO_R1_OFFSET, &imgo_secure_port.Raw);
 		if (bSecure) {
 			imgo_secure_port.Bits.CAMDMATOP2_IMGO_R1_GDOMAIN = 0x7;
 			imgo_secure_port.Bits.CAMDMATOP2_IMGO_R1_GSECURE = 1;
@@ -54,7 +147,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 			imgo_secure_port.Bits.CAMDMATOP2_IMGO_R1_GDOMAIN = 0;
 			imgo_secure_port.Bits.CAMDMATOP2_IMGO_R1_GSECURE = 0;
 		}
-		ret |= SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_IMGO_R1_OFFSET, imgo_secure_port.Raw);
+		ret |= __SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_IMGO_R1_OFFSET, imgo_secure_port.Raw);
 		port_sec_enable[dma_port] = bSecure;
 
 		if (ret != TZ_RESULT_SUCCESS)
@@ -68,7 +161,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 		union REG_CAMDMATOP2_R1_CAMDMATOP2_SECURE_SMI_PORT_RRZO_R1  rrzo_secure_port;
 
 		CALL_FROM_OPS(puts, PFX "config_port_array: rrzo\n");
-		ret |= SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_RRZO_R1_OFFSET, &rrzo_secure_port.Raw);
+		ret |= __SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_RRZO_R1_OFFSET, &rrzo_secure_port.Raw);
 		if (bSecure) {
 			rrzo_secure_port.Bits.CAMDMATOP2_RRZO_R1_GDOMAIN = 0x7;
 			rrzo_secure_port.Bits.CAMDMATOP2_RRZO_R1_GSECURE = 1;
@@ -76,7 +169,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 			rrzo_secure_port.Bits.CAMDMATOP2_RRZO_R1_GDOMAIN = 0;
 			rrzo_secure_port.Bits.CAMDMATOP2_RRZO_R1_GSECURE = 0;
 		}
-		ret |= SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_RRZO_R1_OFFSET, rrzo_secure_port.Raw);
+		ret |= __SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_RRZO_R1_OFFSET, rrzo_secure_port.Raw);
 		port_sec_enable[dma_port] = bSecure;
 
 		if (ret != TZ_RESULT_SUCCESS)
@@ -90,7 +183,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 		union REG_CAMDMATOP2_R1_CAMDMATOP2_SECURE_SMI_PORT_YUVO_R1  yuv_secure_port;
 
 		CALL_FROM_OPS(puts, PFX "config_port_array: yuvo\n");
-		ret |= SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_YUVO_R1_OFFSET, &yuv_secure_port.Raw);
+		ret |= __SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_YUVO_R1_OFFSET, &yuv_secure_port.Raw);
 		if (bSecure) {
 			yuv_secure_port.Bits.CAMDMATOP2_YUVO_R1_GDOMAIN  = 0x7;
 			yuv_secure_port.Bits.CAMDMATOP2_YUVBO_R1_GDOMAIN = 0x7;
@@ -106,7 +199,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 			yuv_secure_port.Bits.CAMDMATOP2_YUVBO_R1_GSECURE = 0;
 			yuv_secure_port.Bits.CAMDMATOP2_YUVCO_R1_GSECURE = 0;
 		}
-		ret |= SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_YUVO_R1_OFFSET, yuv_secure_port.Raw);
+		ret |= __SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_YUVO_R1_OFFSET, yuv_secure_port.Raw);
 		port_sec_enable[dma_port] = bSecure;
 
 		if (ret != TZ_RESULT_SUCCESS)
@@ -120,7 +213,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 		union REG_CAMDMATOP2_R1_CAMDMATOP2_SECURE_SMI_PORT_CRZO_R1  crzo_secure_port;
 
 		CALL_FROM_OPS(puts, PFX "config_port_array: crzo\n");
-		ret |= SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_CRZO_R1_OFFSET, &crzo_secure_port.Raw);
+		ret |= __SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_CRZO_R1_OFFSET, &crzo_secure_port.Raw);
 		if (bSecure) {
 			crzo_secure_port.Bits.CAMDMATOP2_CRZO_R1_GDOMAIN  = 0x7;
 			crzo_secure_port.Bits.CAMDMATOP2_CRZO_R1_GSECURE  = 1;
@@ -136,7 +229,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 			crzo_secure_port.Bits.CAMDMATOP2_CRZO_R2_GDOMAIN  = 0;
 			crzo_secure_port.Bits.CAMDMATOP2_CRZO_R2_GSECURE  = 0;
 		}
-		ret |= SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_CRZO_R1_OFFSET, crzo_secure_port.Raw);
+		ret |= __SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_CRZO_R1_OFFSET, crzo_secure_port.Raw);
 		port_sec_enable[dma_port] = bSecure;
 
 		if (ret != TZ_RESULT_SUCCESS)
@@ -150,7 +243,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 		union REG_CAMDMATOP2_R1_CAMDMATOP2_SECURE_SMI_PORT_UFDI_R2  ufdi_secure_port;
 
 		CALL_FROM_OPS(puts, PFX "config_port_array: ufdi_r2\n");
-		ret |= SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_UFDI_R2_OFFSET, &ufdi_secure_port.Raw);
+		ret |= __SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_UFDI_R2_OFFSET, &ufdi_secure_port.Raw);
 		if (bSecure) {
 			ufdi_secure_port.Bits.CAMDMATOP2_UFDI_R2_GDOMAIN = 0x7;
 			ufdi_secure_port.Bits.CAMDMATOP2_UFDI_R2_GSECURE = 1;
@@ -158,7 +251,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 			ufdi_secure_port.Bits.CAMDMATOP2_UFDI_R2_GDOMAIN = 0;
 			ufdi_secure_port.Bits.CAMDMATOP2_UFDI_R2_GSECURE = 0;
 		}
-		ret |= SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_UFDI_R2_OFFSET, ufdi_secure_port.Raw);
+		ret |= __SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_UFDI_R2_OFFSET, ufdi_secure_port.Raw);
 		port_sec_enable[dma_port] = bSecure;
 
 		if (ret != TZ_RESULT_SUCCESS)
@@ -172,7 +265,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 		union REG_CAMDMATOP2_R1_CAMDMATOP2_SECURE_SMI_PORT_RAWI_R2  rawi_r2_secure_port;
 
 		CALL_FROM_OPS(puts, PFX "config_port_array: rawi_r2\n");
-		ret |= SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_RAWI_R2_OFFSET, &rawi_r2_secure_port.Raw);
+		ret |= __SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_RAWI_R2_OFFSET, &rawi_r2_secure_port.Raw);
 		if (bSecure) {
 			rawi_r2_secure_port.Bits.CAMDMATOP2_RAWI_R2_GDOMAIN = 0x7;
 			rawi_r2_secure_port.Bits.CAMDMATOP2_RAWI_R2_GSECURE = 1;
@@ -180,7 +273,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 			rawi_r2_secure_port.Bits.CAMDMATOP2_RAWI_R2_GDOMAIN = 0;
 			rawi_r2_secure_port.Bits.CAMDMATOP2_RAWI_R2_GSECURE = 0;
 		}
-		ret |= SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_RAWI_R2_OFFSET, rawi_r2_secure_port.Raw);
+		ret |= __SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_RAWI_R2_OFFSET, rawi_r2_secure_port.Raw);
 		port_sec_enable[dma_port] = bSecure;
 
 		if (ret != TZ_RESULT_SUCCESS)
@@ -194,7 +287,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 		union REG_CAMDMATOP2_R1_CAMDMATOP2_SECURE_SMI_PORT_RAWI_R3  rawi_r3_secure_port;
 
 		CALL_FROM_OPS(puts, PFX "config_port_array: rawi_r3\n");
-		ret |= SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_RAWI_R3_OFFSET, &rawi_r3_secure_port.Raw);
+		ret |= __SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_RAWI_R3_OFFSET, &rawi_r3_secure_port.Raw);
 		if (bSecure) {
 			rawi_r3_secure_port.Bits.CAMDMATOP2_RAWI_R3_GDOMAIN = 0x7;
 			rawi_r3_secure_port.Bits.CAMDMATOP2_RAWI_R3_GSECURE = 1;
@@ -202,7 +295,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 			rawi_r3_secure_port.Bits.CAMDMATOP2_RAWI_R3_GDOMAIN = 0;
 			rawi_r3_secure_port.Bits.CAMDMATOP2_RAWI_R3_GSECURE = 0;
 		}
-		ret |= SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_RAWI_R3_OFFSET, rawi_r3_secure_port.Raw);
+		ret |= __SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_RAWI_R3_OFFSET, rawi_r3_secure_port.Raw);
 		port_sec_enable[dma_port] = bSecure;
 
 		if (ret != TZ_RESULT_SUCCESS)
@@ -216,7 +309,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 		union REG_CAMDMATOP2_R1_CAMDMATOP2_SECURE_SMI_PORT_RSSO_R1  rsso_secure_port;
 
 		CALL_FROM_OPS(puts, PFX "config_port_array: rsso\n");
-		ret |= SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_RSSO_R1_OFFSET, &rsso_secure_port.Raw);
+		ret |= __SECIO_READ(pkvm_register_tag, SECURE_SMI_PORT_RSSO_R1_OFFSET, &rsso_secure_port.Raw);
 		if (bSecure) {
 			rsso_secure_port.Bits.CAMDMATOP2_RSSO_R1_GDOMAIN = 0x7;
 			rsso_secure_port.Bits.CAMDMATOP2_RSSO_R1_GSECURE = 1;
@@ -229,7 +322,7 @@ int Cam_Pkvm_Config_DMA_Sec(int bM4UEn, int bSecure, int domain, int dma_port)
 			rsso_secure_port.Bits.CAMDMATOP2_RSSO_R2_GDOMAIN = 0;
 			rsso_secure_port.Bits.CAMDMATOP2_RSSO_R2_GSECURE = 0;
 		}
-		ret |= SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_RSSO_R1_OFFSET, rsso_secure_port.Raw);
+		ret |= __SECIO_WRITE(pkvm_register_tag, SECURE_SMI_PORT_RSSO_R1_OFFSET, rsso_secure_port.Raw);
 		port_sec_enable[dma_port] = bSecure;
 
 		if (ret != TZ_RESULT_SUCCESS)
@@ -440,19 +533,19 @@ void pkvm_p1_hyp_set_dapc_reg(struct user_pt_regs *regs)
 		CALL_FROM_OPS(putx64, offset);
 		CALL_FROM_OPS(putx64, dapc_val);
 		CALL_FROM_OPS(puts, "-------------------------");
-		ret |= SECIO_WRITE(SECIO_ISP_CAM_A, offset, dapc_val);
+		ret |= __SECIO_WRITE(SECIO_ISP_CAM_A, offset, dapc_val);
 	} else if (CamModule == TG_B) {
 		regBase = ISP_DRV_REG_BASE_B;
 		offset = gisp_drv_reg_addr[index];
-		ret |= SECIO_WRITE(SECIO_ISP_CAM_B, offset, dapc_val);
+		ret |= __SECIO_WRITE(SECIO_ISP_CAM_B, offset, dapc_val);
 	} else {
 		CALL_FROM_OPS(puts, PFX "ERROR: Not supported CamModule!!\n");
 	}
 
 	/* Move write secure_en bit here for CCU load code */
-	ret |= SECIO_READ(SECIO_ISP_CAM_SYS, CAM_CAMSYS_SECURE, &secure_reg);
+	ret |= __SECIO_READ(SECIO_ISP_CAM_SYS, CAM_CAMSYS_SECURE, &secure_reg);
 	secure_reg |= 0x1;
-	ret |= SECIO_WRITE(SECIO_ISP_CAM_SYS, CAM_CAMSYS_SECURE, secure_reg);
+	ret |= __SECIO_WRITE(SECIO_ISP_CAM_SYS, CAM_CAMSYS_SECURE, secure_reg);
 
 	if (ret != TZ_RESULT_SUCCESS) {
 		CALL_FROM_OPS(puts, PFX "ERROR: set_dapc_reg FAILED\n");
@@ -484,9 +577,9 @@ void pkvm_p1_hyp_APC_CamIspProtCtl(struct user_pt_regs *regs)
 		CALL_FROM_OPS(putx64, CamModule);
 
 		if (CamModule == TG_A)
-			APC_CamIspProtEnable(1);
+			__APC_CamIspProtEnable(1);
 		else if (CamModule == TG_B)
-			APC_CamIspProtEnable(2);
+			__APC_CamIspProtEnable(2);
 		else
 			CALL_FROM_OPS(puts, PFX "Not supported CamModule!");
 	} else {
@@ -495,9 +588,9 @@ void pkvm_p1_hyp_APC_CamIspProtCtl(struct user_pt_regs *regs)
 		CALL_FROM_OPS(putx64, CamModule);
 
 		if (CamModule == TG_A)
-			APC_CamIspProtDisable(1);
+			__APC_CamIspProtDisable(1);
 		else if (CamModule == TG_B)
-			APC_CamIspProtDisable(2);
+			__APC_CamIspProtDisable(2);
 		else
 			CALL_FROM_OPS(puts, PFX "Not supported CamModule!");
 	}
@@ -555,13 +648,13 @@ void pkvm_p1_hyp_uninit(struct user_pt_regs *regs)
 	}
 
 	/* Disable secure: CAMSYS_SECURE */
-	ret |= SECIO_READ(SECIO_ISP_CAM_SYS, CAM_CAMSYS_SECURE, &secure_reg);
+	ret |= __SECIO_READ(SECIO_ISP_CAM_SYS, CAM_CAMSYS_SECURE, &secure_reg);
 	secure_reg |= 0x0;
-	ret |= SECIO_WRITE(SECIO_ISP_CAM_SYS, CAM_CAMSYS_SECURE, secure_reg);
+	ret |= __SECIO_WRITE(SECIO_ISP_CAM_SYS, CAM_CAMSYS_SECURE, secure_reg);
 
 	/* Disable DAPC for all cams */
 	for (int i = 0; i < CAM_NUM; i++)
-		APC_CamIspProtDisable(i);
+		__APC_CamIspProtDisable(i);
 
 	if (ret != TZ_RESULT_SUCCESS) {
 		CALL_FROM_OPS(puts, PFX "ERROR: uninit FAILED\n");
