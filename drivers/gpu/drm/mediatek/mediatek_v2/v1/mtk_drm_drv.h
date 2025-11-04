@@ -390,6 +390,7 @@ struct mtk_drm_private {
 	struct clk *pwr_clks[CLK_MAX_NUM];
 
 	bool enable_dual_disp_dynamic_ovl;
+	unsigned int plane0_updated_vote; //bit0 crtc0,bit1 crtc1,bit2 crtc2,bit3 crtc3
 };
 
 struct mtk_drm_property {

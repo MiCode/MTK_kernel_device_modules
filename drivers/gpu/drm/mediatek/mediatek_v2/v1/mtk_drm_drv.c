@@ -10300,6 +10300,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	 */
 	/* TODO: temprorary solution for MT6989 enable full OVL path,*/
 	/* remove it after MT6989 MML DLO switch ready */
+	private->plane0_updated_vote = 1;
 	if (of_property_read_bool(private->mmsys_dev->of_node, "enable-main-full-ovl-path"))
 		ret = mtk_drm_crtc_create(drm, private->data->ext_alter_path_data);
 	else if (of_property_read_bool(private->mmsys_dev->of_node,
@@ -10346,6 +10347,7 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 			if (of_property_read_bool(private->mmsys_dev->of_node,
 				"enable-secondary-path")) {
 				private->is_dual_disp = true;
+				private->plane0_updated_vote += 1 << 3;
 				if (!private->enable_dual_disp_dynamic_ovl)
 					ret = mtk_drm_crtc_create(drm,
 					private->data->fourth_path_data_secondary);

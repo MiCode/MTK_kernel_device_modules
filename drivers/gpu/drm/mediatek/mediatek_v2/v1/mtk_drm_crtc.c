@@ -8317,7 +8317,7 @@ static void mtk_crtc_frame_buffer_release(struct drm_crtc *crtc,
 		if (already_free == true || IS_ERR_OR_NULL(crtc))
 			return;
 
-		if (index == 0 && hrt_valid == true && mtk_crtc->is_plane0_updated == true) {
+		if (index == 0 && hrt_valid == true && priv->plane0_updated_vote == 0) {
 			/*free fb buf after the 1st valid input buffer is unused*/
 			DDPMSG("%s, free frame buffer\n", __func__);
 			dev = crtc->dev;
@@ -19096,18 +19096,8 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		mtk_fence_get_present_timeline_id(mtk_get_session_id(crtc)), cur_fence - 1);
 #endif
 #endif
-	if (plane_index == 0 && priv->data->mmsys_id != MMSYS_MT6878){
-		mtk_crtc->is_plane0_updated = true;
-		return ;
-	} else if(priv->data->mmsys_id == MMSYS_MT6878){
-		if(plane_index == 0 && !priv->is_dual_disp){
-			mtk_crtc->is_plane0_updated = true;
-			return ;
-		} else if(plane_index == 1 && priv->is_dual_disp){
-			mtk_crtc->is_plane0_updated = true;
-			return ;
-		}
-	}
+	if (priv->plane0_updated_vote)
+		priv->plane0_updated_vote &=~(0x1 << drm_crtc_index(crtc));
 }
 
 static void mtk_crtc_wb_comp_config(struct drm_crtc *crtc,
