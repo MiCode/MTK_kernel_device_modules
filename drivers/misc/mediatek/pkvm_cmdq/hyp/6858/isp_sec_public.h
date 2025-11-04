@@ -44,18 +44,18 @@ struct isp_meta_fd {
 	uint32_t FDResultBuf_MVA;
 	uint32_t LearningData_MVA[18];
 	uint32_t ExtraLearningData_MVA[18];
-	uint32_t ImgSrcY_VA;
-	uint32_t ImgSrcUV_VA;
-	uint32_t YUVConfig_VA;
-	uint32_t YUVOutBuf_VA;
-	uint32_t RSConfig_VA;
-	uint32_t RSOutBuf_VA;
-	uint32_t FDConfig_VA;
-	uint32_t FD_Pose_Config_VA;
-	uint32_t FDOutBuf_VA;
+	uint64_t ImgSrcY_VA;
+	uint64_t ImgSrcUV_VA;
+	uint64_t YUVConfig_VA;
+	uint64_t YUVOutBuf_VA;
+	uint64_t RSConfig_VA;
+	uint64_t RSOutBuf_VA;
+	uint64_t FDConfig_VA;
+	uint64_t FD_Pose_Config_VA;
+	uint64_t FDOutBuf_VA;
 	uint64_t FDResultBuf_VA;
-	uint32_t LearningData_VA[18];
-	uint32_t ExtraLearningData_VA[18];
+	uint64_t LearningData_VA[18];
+	uint64_t ExtraLearningData_VA[18];
 };
 
 struct isp_exec_metadata {
@@ -151,6 +151,14 @@ struct FDVTSecureMeta {
 	bool CarvedOutResult;
 	bool isReleased;
 };
+
+void Get_RSConfig_IOVA(uint32_t *iova);
+
+void Get_FDConfig_IOVA(uint32_t *iova);
+
+void Get_YUVConfig_IOVA(uint32_t *iova);
+
+void Get_FDPOSE_IOVA(uint32_t *iova);
 
 int32_t cmdq_drv_isp_setup_task_fd(void *data, uint32_t size,
 	struct isp_exec_metadata *isp_execmeta,

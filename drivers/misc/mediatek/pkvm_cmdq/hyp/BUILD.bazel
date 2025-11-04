@@ -19,7 +19,8 @@ PLATFORMS = [
 
 [define_mgk_ddk_library(
     name = "hyp_mt{}".format(p),
-    srcs = [
+    srcs = (
+	[
         "cmdq_errno.h",
         "list.h",
         "pkvm_cmdq_hyp.c",
@@ -38,7 +39,12 @@ PLATFORMS = [
         "{}/isp_sec_public.h".format(p),
         "haM4uApi.h",
         "mtk-memory-port.h",
-    ],
+    ]
+	+ glob(["{}/inc_fdvt/*.h".format(p)])
+    + glob(["{}/inc_fdvt/pic/*.h".format(p)])
+    + glob(["{}/inc_fdvt/kernel/*.h".format(p)])
+    + glob(["{}/inc_fdvt/config/*.h".format(p)])
+	),
     pkvm_el2 = True,
     header_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version)],
     copts = [
@@ -49,6 +55,10 @@ PLATFORMS = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_cmdq/hyp",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_cmdq/hyp/{}".format(p),
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_cmdq/hyp/{}/inc_fdvt".format(p),
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_cmdq/hyp/{}/inc_fdvt/pic".format(p),
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_cmdq/hyp/{}/inc_fdvt/kernel".format(p),
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_cmdq/hyp/{}/inc_fdvt/config".format(p),
     ],
     local_defines = [
         "CMDQ_IOVA",

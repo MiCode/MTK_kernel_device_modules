@@ -40,7 +40,7 @@
 #include <linux/suspend.h>
 #include <linux/rtc.h>
 #include <soc/mediatek/mmdvfs_v3.h>
-
+#include "public/trusted_mem_api.h"
 /*#include <linux/xlog.h>		 For xlog_printk(). */
 /*  */
 /*#include <mach/hardware.h>*/
@@ -89,7 +89,6 @@
 #include <linux/met_drv.h>
 #include <linux/mtk_ftrace.h>
 #endif /* __FDVT_KERNEL_PERFORMANCE_MEASURE__ */
-
 
 #include <linux/atomic.h>
 //static atomic_t m4u_gz_init = ATOMIC_INIT(0);
@@ -418,7 +417,10 @@ static struct FDVT_CONFIG_STRUCT fdvt_deq_req;
 static struct FDVT_ONETIME_MEM_RECORD fdvt_sec_dma;
 static struct cmdq_client *fdvt_clt;
 static struct cmdq_client *fdvt_secure_clt;
+static u32 fdvt_sec_set;
+static u32 fdvt_sec_wait;
 static s32 fdvt_event_id;
+struct cmdq_pkt *g_sec_pkt;
 
 /*****************************************************************************
  *
@@ -1258,38 +1260,81 @@ static inline void fdvt_reset_every_frame(void)
 static void fdvt_sec_fd2handler(struct fdvt_config *basic_config,
 				 struct FDVT_MEM_RECORD *dmabuf)
 {
-	//struct dma_buf * dmabuf;
+
 	if (fdvt_sec_dma.handler_first_time == 0) {
 		fdvt_sec_dma.YUVConfig.dmabuf =
 				dma_buf_get(basic_config->FDVT_METADATA_TO_GCE.YUVConfig_Handler);
 		fdvt_sec_dma.YUVConfig_Handler =
 				dmabuf_to_secure_handle(fdvt_sec_dma.YUVConfig.dmabuf);
-
+		log_inf("[%s] YUV CONFIG secure handle: 0x%llx\n", __func__,
+				fdvt_sec_dma.YUVConfig_Handler);
+		if (is_protected_kvm_enabled()) {
+			trusted_mem_api_query_pa(0, 0, 0, 0,
+						(u64 *)&fdvt_sec_dma.YUVConfig_Handler,
+						0, 0, 0, &fdvt_sec_dma.YUVConfig.pa);
+			log_inf("[%s] pa: 0x%llx\n", __func__, fdvt_sec_dma.YUVConfig.pa);
+		}
 		fdvt_sec_dma.RSConfig.dmabuf =
 				dma_buf_get(basic_config->FDVT_METADATA_TO_GCE.RSConfig_Handler);
 		fdvt_sec_dma.RSConfig_Handler =
 				dmabuf_to_secure_handle(fdvt_sec_dma.RSConfig.dmabuf);
-
+		log_inf("[%s] RS CONFIG secure handle: 0x%llx\n", __func__,
+				fdvt_sec_dma.RSConfig_Handler);
+		if (is_protected_kvm_enabled()) {
+			trusted_mem_api_query_pa(0, 0, 0, 0,
+						(u64 *)&fdvt_sec_dma.RSConfig_Handler,
+						0, 0, 0, &fdvt_sec_dma.RSConfig.pa);
+			log_inf("[%s] pa: 0x%llx\n", __func__, fdvt_sec_dma.RSConfig.pa);
+		}
 		fdvt_sec_dma.RSOutBuf.dmabuf =
 				dma_buf_get(basic_config->FDVT_METADATA_TO_GCE.RSOutBuf_Handler);
 		fdvt_sec_dma.RSOutBuf_Handler =
 				dmabuf_to_secure_handle(fdvt_sec_dma.RSOutBuf.dmabuf);
-
+		log_inf("[%s] RS OUT secure handle: 0x%llx\n", __func__,
+				fdvt_sec_dma.RSOutBuf_Handler);
+		if (is_protected_kvm_enabled()) {
+			trusted_mem_api_query_pa(0, 0, 0, 0,
+						(u64 *)&fdvt_sec_dma.RSOutBuf_Handler,
+						0, 0, 0, &fdvt_sec_dma.RSOutBuf.pa);
+			log_inf("[%s] pa: 0x%llx\n", __func__, fdvt_sec_dma.RSOutBuf.pa);
+		}
 		fdvt_sec_dma.FDConfig.dmabuf =
 				dma_buf_get(basic_config->FDVT_METADATA_TO_GCE.FDConfig_Handler);
 		fdvt_sec_dma.FDConfig_Handler =
 				dmabuf_to_secure_handle(fdvt_sec_dma.FDConfig.dmabuf);
-
+		log_inf("[%s] FD CONFIG secure handle: 0x%llx\n", __func__,
+				fdvt_sec_dma.FDConfig_Handler);
+		if (is_protected_kvm_enabled()) {
+			trusted_mem_api_query_pa(0, 0, 0, 0,
+						(u64 *)&fdvt_sec_dma.FDConfig_Handler,
+						0, 0, 0, &fdvt_sec_dma.FDConfig.pa);
+			log_inf("[%s] pa: 0x%llx\n", __func__, fdvt_sec_dma.FDConfig.pa);
+		}
 		fdvt_sec_dma.FDOutBuf.dmabuf =
 				dma_buf_get(basic_config->FDVT_METADATA_TO_GCE.FDOutBuf_Handler);
 		fdvt_sec_dma.FDOutBuf_Handler =
 				dmabuf_to_secure_handle(fdvt_sec_dma.FDOutBuf.dmabuf);
-
+		log_inf("[%s] FD OUT secure handle: 0x%llx\n", __func__,
+				fdvt_sec_dma.FDOutBuf_Handler);
+		if (is_protected_kvm_enabled()) {
+			trusted_mem_api_query_pa(0, 0, 0, 0,
+						(u64 *)&fdvt_sec_dma.FDOutBuf_Handler,
+						0, 0, 0,&fdvt_sec_dma.FDOutBuf.pa);
+			log_inf("[%s] pa: 0x%llx\n", __func__, fdvt_sec_dma.FDOutBuf.pa);
+		}
 		if (basic_config->FDVT_METADATA_TO_GCE.FD_POSE_Config_Handler) {
 			fdvt_sec_dma.FD_POSE.dmabuf =
 			dma_buf_get(basic_config->FDVT_METADATA_TO_GCE.FD_POSE_Config_Handler);
 			fdvt_sec_dma.FD_POSE_Config_Handler =
 				dmabuf_to_secure_handle(fdvt_sec_dma.FD_POSE.dmabuf);
+		    log_inf("[%s] FD POSEvsecure handle: 0x%llx\n", __func__,
+				fdvt_sec_dma.FD_POSE_Config_Handler);
+			if (is_protected_kvm_enabled()) {
+				trusted_mem_api_query_pa(0, 0, 0, 0,
+							(u64 *)&fdvt_sec_dma.FD_POSE_Config_Handler,
+							0, 0, 0, &fdvt_sec_dma.FD_POSE.pa);
+				log_inf("[%s] pa: 0x%llx\n", __func__, fdvt_sec_dma.FD_POSE.pa);
+			}
 		}
 
 		fdvt_sec_dma.FDResultBuf_MVA.dmabuf =
@@ -1299,14 +1344,36 @@ static void fdvt_sec_fd2handler(struct fdvt_config *basic_config,
 
 	dmabuf->ImgSrcY.dmabuf =
 				dma_buf_get(basic_config->FDVT_METADATA_TO_GCE.ImgSrcY_Handler);
-	basic_config->FDVT_METADATA_TO_GCE.ImgSrcY_Handler =
+	if (is_protected_kvm_enabled()) {
+		fdvt_sec_dma.ImgY_Handler =
+					dmabuf_to_secure_handle(dmabuf->ImgSrcY.dmabuf);
+		log_inf("[%s] FD IMGY handle: 0x%llx\n", __func__,
+				fdvt_sec_dma.ImgY_Handler);
+		trusted_mem_api_query_pa(0, 0, 0, 0,
+				(u64 *)&fdvt_sec_dma.ImgY_Handler,
+				0, 0, 0, &dmabuf->ImgSrcY.pa);
+		log_inf("[%s] pa: 0x%llx\n", __func__, dmabuf->ImgSrcY.pa);
+	} else {
+		basic_config->FDVT_METADATA_TO_GCE.ImgSrcY_Handler =
 				dmabuf_to_secure_handle(dmabuf->ImgSrcY.dmabuf);
+	}
 	if (basic_config->FDVT_METADATA_TO_GCE.ImgSrcUV_Handler) {
 		dmabuf->ImgSrcUV.dmabuf =
 				dma_buf_get(basic_config->FDVT_METADATA_TO_GCE.ImgSrcUV_Handler);
-		basic_config->FDVT_METADATA_TO_GCE.ImgSrcUV_Handler =
+		if (is_protected_kvm_enabled()) {
+			fdvt_sec_dma.ImgUV_Handler =
+					dmabuf_to_secure_handle(dmabuf->ImgSrcUV.dmabuf);
+			log_inf("[%s] FD IMGUV handle: 0x%llx\n", __func__,
+				fdvt_sec_dma.ImgUV_Handler);
+			trusted_mem_api_query_pa(0, 0, 0, 0,
+				(u64 *)&fdvt_sec_dma.ImgUV_Handler,
+				0, 0, 0, &dmabuf->ImgSrcUV.pa);
+			log_inf("[%s] pa: 0x%llx\n", __func__, dmabuf->ImgSrcUV.pa);
+		} else {
+			basic_config->FDVT_METADATA_TO_GCE.ImgSrcUV_Handler =
 				dmabuf_to_secure_handle(dmabuf->ImgSrcUV.dmabuf);
 	}
+}
 }
 
 static bool config_fdvt_request(signed int req_idx)
@@ -2035,17 +2102,37 @@ static signed int config_fdvt_hw(struct fdvt_config *basic_config)
 }
 #endif
 
+static void FdvtSecPktCB(struct cmdq_cb_data data)
+{
+	log_inf("AIE SEC THREAD PKT CMDQ CB\n");
+
+	cmdq_pkt_destroy(g_sec_pkt);
+	g_sec_pkt = NULL;
+
+}
+
 static void fdvt_tzmp2(struct fdvt_config *basic_config, struct FDVT_MEM_RECORD *dmabuf,
 			struct FDVT_SEC_MetaDataToGCE *dmabuf_metadata)
 {
-	dmabuf_metadata->ImgSrcY_Handler = basic_config->FDVT_METADATA_TO_GCE.ImgSrcY_Handler;
-	dmabuf_metadata->ImgSrcUV_Handler = basic_config->FDVT_METADATA_TO_GCE.ImgSrcUV_Handler;
-	dmabuf_metadata->YUVConfig_Handler = fdvt_sec_dma.YUVConfig_Handler;
-	dmabuf_metadata->RSConfig_Handler = fdvt_sec_dma.RSConfig_Handler;
-	dmabuf_metadata->RSOutBuf_Handler = fdvt_sec_dma.RSOutBuf_Handler;
-	dmabuf_metadata->FDConfig_Handler = fdvt_sec_dma.FDConfig_Handler;
-	dmabuf_metadata->FDOutBuf_Handler = fdvt_sec_dma.FDOutBuf_Handler;
-	dmabuf_metadata->FD_POSE_Config_Handler = fdvt_sec_dma.FD_POSE_Config_Handler;
+	if (is_protected_kvm_enabled()) {
+		dmabuf_metadata->ImgSrcY_Handler = dmabuf->ImgSrcY.pa;
+		dmabuf_metadata->ImgSrcUV_Handler = dmabuf->ImgSrcUV.pa;
+		dmabuf_metadata->YUVConfig_Handler = fdvt_sec_dma.YUVConfig.pa;
+		dmabuf_metadata->RSConfig_Handler = fdvt_sec_dma.RSConfig.pa;
+		dmabuf_metadata->RSOutBuf_Handler = fdvt_sec_dma.RSOutBuf.pa;
+		dmabuf_metadata->FDConfig_Handler = fdvt_sec_dma.FDConfig.pa;
+		dmabuf_metadata->FDOutBuf_Handler = fdvt_sec_dma.FDOutBuf.pa;
+		dmabuf_metadata->FD_POSE_Config_Handler = fdvt_sec_dma.FD_POSE.pa;
+	} else {
+		dmabuf_metadata->ImgSrcY_Handler = basic_config->FDVT_METADATA_TO_GCE.ImgSrcY_Handler;
+		dmabuf_metadata->ImgSrcUV_Handler = basic_config->FDVT_METADATA_TO_GCE.ImgSrcUV_Handler;
+		dmabuf_metadata->YUVConfig_Handler = fdvt_sec_dma.YUVConfig_Handler;
+		dmabuf_metadata->RSConfig_Handler = fdvt_sec_dma.RSConfig_Handler;
+		dmabuf_metadata->RSOutBuf_Handler = fdvt_sec_dma.RSOutBuf_Handler;
+		dmabuf_metadata->FDConfig_Handler = fdvt_sec_dma.FDConfig_Handler;
+		dmabuf_metadata->FDOutBuf_Handler = fdvt_sec_dma.FDOutBuf_Handler;
+		dmabuf_metadata->FD_POSE_Config_Handler = fdvt_sec_dma.FD_POSE_Config_Handler;
+	}
 	dmabuf_metadata->ImgSrcY_IOVA = fdvt_get_sec_iova(dmabuf->ImgSrcY.dmabuf,
 							&dmabuf->ImgSrcY, normal_memory);
 	if (dmabuf_metadata->ImgSrcUV_Handler) {
@@ -2056,25 +2143,43 @@ static void fdvt_tzmp2(struct fdvt_config *basic_config, struct FDVT_MEM_RECORD 
 		dmabuf_metadata->YUVConfig_IOVA =
 			fdvt_get_sec_iova(fdvt_sec_dma.YUVConfig.dmabuf,
 					  &fdvt_sec_dma.YUVConfig, normal_memory);
+		log_inf("YUVConfig_IOVA:0x%llx!\n", dmabuf_metadata->YUVConfig_IOVA);
 		dmabuf_metadata->RSConfig_IOVA =
 			fdvt_get_sec_iova(fdvt_sec_dma.RSConfig.dmabuf,
 					  &fdvt_sec_dma.RSConfig, normal_memory);
+		log_inf("RSConfig_IOVA:0x%llx!\n", dmabuf_metadata->RSConfig_IOVA);
 		dmabuf_metadata->RSOutBuf_IOVA =
 			fdvt_get_sec_iova(fdvt_sec_dma.RSOutBuf.dmabuf,
 					  &fdvt_sec_dma.RSOutBuf, normal_memory);
+		log_inf("RSOutBuf_IOVA:0x%llx!\n", dmabuf_metadata->RSOutBuf_IOVA);
 		dmabuf_metadata->FDConfig_IOVA =
 			fdvt_get_sec_iova(fdvt_sec_dma.FDConfig.dmabuf,
 					  &fdvt_sec_dma.FDConfig, normal_memory);
+		log_inf("FDConfig_IOVA:0x%llx!\n", dmabuf_metadata->FDConfig_IOVA);
 		dmabuf_metadata->FDOutBuf_IOVA =
 			fdvt_get_sec_iova(fdvt_sec_dma.FDOutBuf.dmabuf,
 					  &fdvt_sec_dma.FDOutBuf, normal_memory);
+		log_inf("FDOutBuf_IOVA:0x%llx!\n", dmabuf_metadata->FDOutBuf_IOVA);
 		dmabuf_metadata->FDPOSE_IOVA =
 			fdvt_get_sec_iova(fdvt_sec_dma.FD_POSE.dmabuf,
 					  &fdvt_sec_dma.FD_POSE, normal_memory);
+		log_inf("FDPOSE_IOVA:0x%llx!\n", dmabuf_metadata->FDPOSE_IOVA);
 		dmabuf_metadata->FDResultBuf_MVA =
 			fdvt_get_sec_iova(fdvt_sec_dma.FDResultBuf_MVA.dmabuf,
 					  &fdvt_sec_dma.FDResultBuf_MVA, normal_memory);
+		log_inf("FDResultBuf_MVA:0x%llx!\n", dmabuf_metadata->FDResultBuf_MVA);
 		fdvt_sec_dma.iova_first_time++;
+
+		if (is_protected_kvm_enabled()) {
+			g_sec_pkt = cmdq_pkt_create(fdvt_secure_clt);
+			cmdq_sec_pkt_set_payload(g_sec_pkt, 1, sizeof(struct FDVT_SEC_MetaDataToGCE),
+						(unsigned int *)dmabuf_metadata);
+			cmdq_sec_pkt_set_data(g_sec_pkt, 0, 0, CMDQ_SEC_DEBUG, CMDQ_METAEX_FD_IOVA);
+			cmdq_sec_pkt_set_mtee(g_sec_pkt, true);
+			cmdq_pkt_finalize_loop(g_sec_pkt);
+			cmdq_pkt_flush_threaded(g_sec_pkt, FdvtSecPktCB, (void *)g_sec_pkt);
+		}
+		//sec loop thread
 	} else {
 		dmabuf_metadata->YUVConfig_IOVA = fdvt_sec_dma.YUVConfig.iova;
 		dmabuf_metadata->RSConfig_IOVA = fdvt_sec_dma.RSConfig.iova;
@@ -2119,12 +2224,23 @@ static void fdvt_tzmp2(struct fdvt_config *basic_config, struct FDVT_MEM_RECORD 
 	dmabuf_metadata->isReleased = basic_config->FDVT_METADATA_TO_GCE.isReleased;
 }
 
+static void FDVTCmdqErrCB(struct cmdq_cb_data data)
+{
+	cmdq_sec_mbox_stop(fdvt_secure_clt);
+	log_inf("FDVT Cmdq Err CB, pkt: 0x%p, err:0X%d\n", data.data, data.err);
+}
+
+static void FDVTCmdqNorCB(struct cmdq_cb_data data)
+{
+	log_inf("FDVT NORMAL CMDQ CB\n");
+}
+
 static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
 					struct FDVT_MEM_RECORD *dmabuf)
 #if !BYPASS_REG
 {
 #ifdef FDVT_USE_GCE
-	struct cmdq_pkt *pkt;
+	struct cmdq_pkt *sec_pkt;
 	struct FDVT_SEC_MetaDataToGCE dmabuf_metadata;
 #endif /* FDVT_USE_GCE */
 	if (FDVT_DBG_DBGLOG == (FDVT_DBG_DBGLOG & fdvt_info.debug_mask)) {
@@ -2149,28 +2265,20 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
 #ifdef __FDVT_KERNEL_PERFORMANCE_MEASURE__
 	mt_kernel_trace_begin("config_secure_fdvt_hw");
 #endif
-	pkt = cmdq_pkt_create(fdvt_secure_clt);
 
-
-#if CHECK_SERVICE_IF_0
-	if (basic_config->FDVT_IS_SECURE != 0)
-		cmdq_sec_pkt_set_data(pkt,
-			1LL << CMDQ_SEC_FDVT,
-			1LL << CMDQ_SEC_FDVT,
-			CMDQ_SEC_ISP_FDVT,
-			CMDQ_METAEX_FD);
-#else
-	if (basic_config->FDVT_IS_SECURE != 0) {
-		cmdq_sec_pkt_set_data(pkt,
+	if (!is_protected_kvm_enabled()) {
+		sec_pkt = cmdq_pkt_create(fdvt_secure_clt);
+		if (basic_config->FDVT_IS_SECURE != 0) {
+			cmdq_sec_pkt_set_data(sec_pkt,
 			1LL << CMDQ_SEC_FDVT,
 			1LL << CMDQ_SEC_FDVT,
 			CMDQ_SEC_ISP_FDVT,
 			CMDQ_METAEX_FD);
 
-		cmdq_sec_pkt_set_mtee(pkt, true);
-		cmdq_sec_pkt_set_secid(pkt, 0);
+			cmdq_sec_pkt_set_mtee(sec_pkt, true);
+			cmdq_sec_pkt_set_secid(sec_pkt, 0);
+		}
 	}
-#endif
 
 #if CHECK_SERVICE_IF_0
 	cmdqRecWrite(handle, FDVT_WRA_0_CON3_HW, 0x0, CMDQ_REG_MASK);
@@ -2260,94 +2368,128 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
 								fdvt_sec_dma.FDResultBuf_MVA.iova;
 	}
 
-
-	if (basic_config->FD_MODE == 0) {
-		cmdq_pkt_write(pkt, NULL, FDVT_ENABLE_HW, 0x00000111,
+	if (!is_protected_kvm_enabled()) {
+		if (basic_config->FD_MODE == 0) {
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_ENABLE_HW, 0x00000111,
 			       CMDQ_REG_MASK);
-		cmdq_pkt_write(pkt, NULL, FDVT_LOOP_HW, 0x00006002,
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_LOOP_HW, 0x00006002,
 			       CMDQ_REG_MASK);
-		cmdq_pkt_write(pkt, NULL, FDVT_INT_EN_HW, 0x0, CMDQ_REG_MASK);
-		if (basic_config->FDVT_METADATA_TO_GCE.SecMemType == 3) {
-			cmdq_pkt_write(pkt, NULL,
-			FDVT_RS_CON_BASE_ADR_HW, dmabuf_metadata.RSConfig_IOVA, CMDQ_REG_MASK);
-			cmdq_pkt_write(pkt, NULL,
-			FDVT_FD_CON_BASE_ADR_HW, dmabuf_metadata.FDConfig_IOVA, CMDQ_REG_MASK);
-			cmdq_pkt_write(pkt, NULL,
-			FDVT_YUV2RGB_CON_BASE_ADR_HW, dmabuf_metadata.YUVConfig_IOVA,
-			CMDQ_REG_MASK);
-			cmdq_sec_pkt_set_payload(pkt, 1, sizeof(dmabuf_metadata),
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_INT_EN_HW, 0x0, CMDQ_REG_MASK);
+			if (basic_config->FDVT_METADATA_TO_GCE.SecMemType == 3) {
+				cmdq_pkt_write(sec_pkt, NULL,
+						FDVT_RS_CON_BASE_ADR_HW,
+						dmabuf_metadata.RSConfig_IOVA,
+						CMDQ_REG_MASK);
+				cmdq_pkt_write(sec_pkt, NULL,
+						FDVT_FD_CON_BASE_ADR_HW,
+						dmabuf_metadata.FDConfig_IOVA,
+						CMDQ_REG_MASK);
+				cmdq_pkt_write(sec_pkt, NULL,
+						FDVT_YUV2RGB_CON_BASE_ADR_HW,
+						dmabuf_metadata.YUVConfig_IOVA,
+						CMDQ_REG_MASK);
+				cmdq_sec_pkt_set_payload(sec_pkt, 1, sizeof(dmabuf_metadata),
 					(unsigned int *)&dmabuf_metadata);
-		} else {
-			cmdq_sec_pkt_write_reg(pkt,
-			FDVT_RS_CON_BASE_ADR_HW,
-			basic_config->FDVT_RSCON_BASE_ADR,
-			CMDQ_IWC_PH_2_MVA,
-			0,
-			basic_config->FDVT_RSCON_BUFSIZE,
-				0x280);
-			cmdq_sec_pkt_write_reg(pkt,
-			FDVT_FD_CON_BASE_ADR_HW,
-			basic_config->FDVT_FD_CON_BASE_ADR,
-			CMDQ_IWC_PH_2_MVA,
-			0,
-			basic_config->FDVT_FD_CON_BUFSIZE,
-				0x280);
-			cmdq_sec_pkt_write_reg(pkt,
-			FDVT_YUV2RGB_CON_BASE_ADR_HW,
-			basic_config->FDVT_YUV2RGBCON_BASE_ADR,
-			CMDQ_IWC_PH_2_MVA,
-			0,
-			basic_config->FDVT_YUV2RGBCON_BUFSIZE,
-				0x280);
-			cmdq_sec_pkt_set_payload(pkt, 1, sizeof(basic_config->FDVT_METADATA_TO_GCE),
+			} else {
+				cmdq_sec_pkt_write_reg(sec_pkt,
+						FDVT_RS_CON_BASE_ADR_HW,
+						basic_config->FDVT_RSCON_BASE_ADR,
+						CMDQ_IWC_PH_2_MVA,
+						0,
+						basic_config->FDVT_RSCON_BUFSIZE,
+						0x280);
+				cmdq_sec_pkt_write_reg(sec_pkt,
+						FDVT_FD_CON_BASE_ADR_HW,
+						basic_config->FDVT_FD_CON_BASE_ADR,
+						CMDQ_IWC_PH_2_MVA,
+						0,
+						basic_config->FDVT_FD_CON_BUFSIZE,
+						0x280);
+				cmdq_sec_pkt_write_reg(sec_pkt,
+						FDVT_YUV2RGB_CON_BASE_ADR_HW,
+						basic_config->FDVT_YUV2RGBCON_BASE_ADR,
+						CMDQ_IWC_PH_2_MVA,
+						0,
+						basic_config->FDVT_YUV2RGBCON_BUFSIZE,
+						0x280);
+				cmdq_sec_pkt_set_payload(sec_pkt, 1, sizeof(basic_config->FDVT_METADATA_TO_GCE),
 					(unsigned int *)&basic_config->FDVT_METADATA_TO_GCE);
 
+			}
+
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_START_HW, 0x1, CMDQ_REG_MASK);
+
+			cmdq_pkt_wfe(sec_pkt, fdvt_event_id);
+			/*cmdqRecWait(handle, CMDQ_EVENT_IPE_EVENT_TX_FRAME_DONE_0);*/
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_START_HW, 0x0, CMDQ_REG_MASK);
+
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_ENABLE_HW, 0x00000100,
+			       CMDQ_REG_MASK);
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_LOOP_HW, 0x00000300,
+			       CMDQ_REG_MASK);
+
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_INT_EN_HW, 0x1, CMDQ_REG_MASK);
+
+			if (basic_config->FDVT_METADATA_TO_GCE.SecMemType == 3) {
+				cmdq_pkt_write(sec_pkt, NULL, FDVT_FD_CON_BASE_ADR_HW,
+					dmabuf_metadata.FDPOSE_IOVA, CMDQ_REG_MASK);
+			} else {
+				cmdq_sec_pkt_write_reg(sec_pkt,
+						FDVT_FD_CON_BASE_ADR_HW,
+						basic_config->FDVT_FD_POSE_CON_BASE_ADR,
+						CMDQ_IWC_PH_2_MVA,
+						0,
+						basic_config->FDVT_FD_POSE_CON_BUFSIZE,
+						0x280);
+
+			}
+
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_START_HW, 0x1, CMDQ_REG_MASK);
+
+			cmdq_pkt_wfe(sec_pkt, fdvt_event_id);
+		/*cmdqRecWait(handle, CMDQ_EVENT_IPE_EVENT_TX_FRAME_DONE_0);*/
+			cmdq_pkt_write(sec_pkt, NULL, FDVT_START_HW, 0x0, CMDQ_REG_MASK);
+		} else
+			log_err("Not support mode(%x)\n", basic_config->FD_MODE);
+
+		log_dbg("FDVT CMDQ Task flush\n");
+		cmdq_pkt_flush(sec_pkt);
+		cmdq_pkt_destroy(sec_pkt);
+	} else {
+		sec_pkt = cmdq_pkt_create(fdvt_secure_clt);
+
+		if (basic_config->FDVT_IS_SECURE != 0) {
+			cmdq_sec_pkt_set_data(sec_pkt,
+				1LL << CMDQ_SEC_FDVT,
+				1LL << CMDQ_SEC_FDVT,
+				CMDQ_SEC_ISP_FDVT,
+				CMDQ_METAEX_FD_NO_SUBMIT);
+
+			cmdq_sec_pkt_set_mtee(sec_pkt, true);
+			cmdq_sec_pkt_set_secid(sec_pkt, 0);
 		}
 
+		log_dbg("FDVT CMDQ Task flush\n");
+		cmdq_sec_pkt_set_payload(sec_pkt, 1, sizeof(dmabuf_metadata),
+					(unsigned int *)&dmabuf_metadata);
+		cmdq_pkt_flush(sec_pkt); // only flush meta
+		cmdq_pkt_destroy(sec_pkt);
 
-		cmdq_pkt_write(pkt, NULL, FDVT_START_HW, 0x1, CMDQ_REG_MASK);
+		struct cmdq_pkt *normal_pkt = cmdq_pkt_create(fdvt_clt);
 
-		cmdq_pkt_wfe(pkt, fdvt_event_id);
-		/*cmdqRecWait(handle, CMDQ_EVENT_IPE_EVENT_TX_FRAME_DONE_0);*/
-		cmdq_pkt_write(pkt, NULL, FDVT_START_HW, 0x0, CMDQ_REG_MASK);
-
-		cmdq_pkt_write(pkt, NULL, FDVT_ENABLE_HW, 0x00000100,
-			       CMDQ_REG_MASK);
-		cmdq_pkt_write(pkt, NULL, FDVT_LOOP_HW, 0x00000300,
-			       CMDQ_REG_MASK);
-
-		cmdq_pkt_write(pkt, NULL, FDVT_INT_EN_HW, 0x1, CMDQ_REG_MASK);
-		if (basic_config->FDVT_METADATA_TO_GCE.SecMemType == 3) {
-			cmdq_pkt_write(pkt, NULL, FDVT_FD_CON_BASE_ADR_HW,
-			dmabuf_metadata.FDPOSE_IOVA, CMDQ_REG_MASK);
-		} else {
-			cmdq_sec_pkt_write_reg(pkt,
-			FDVT_FD_CON_BASE_ADR_HW,
-			basic_config->FDVT_FD_POSE_CON_BASE_ADR,
-			CMDQ_IWC_PH_2_MVA,
-			0,
-			basic_config->FDVT_FD_POSE_CON_BUFSIZE,
-			0x280);
-
-		}
-
-		cmdq_pkt_write(pkt, NULL, FDVT_START_HW, 0x1, CMDQ_REG_MASK);
-
-		cmdq_pkt_wfe(pkt, fdvt_event_id);
-		/*cmdqRecWait(handle, CMDQ_EVENT_IPE_EVENT_TX_FRAME_DONE_0);*/
-		cmdq_pkt_write(pkt, NULL, FDVT_START_HW, 0x0, CMDQ_REG_MASK);
-
-	} else
-		log_err("Not support mode(%x)\n", basic_config->FD_MODE);
-
-
-	/* non-blocking API, Please use cmdqRecFlushAsync() */
-	log_dbg("FDVT CMDQ Task flush\n");
-
-	cmdq_pkt_flush(pkt);
+		normal_pkt->err_cb.cb = FDVTCmdqErrCB;
+		cmdq_pkt_set_event(normal_pkt, fdvt_sec_wait);
+		cmdq_pkt_wfe(normal_pkt, fdvt_sec_set);
+		//cmdq_dump_pkt(normal_pkt, 0, true);
+		log_dbg("[NORMAL THREAD] cmdq_pkt_flush_async+\n");
+		cmdq_pkt_flush_async(normal_pkt, FDVTCmdqNorCB, NULL);	/* flush and destry in cmdq*/
+		log_dbg("[NORMAL THREAD] cmdq_pkt_flush_async-: %d\n");
+		cmdq_pkt_wait_complete(normal_pkt);
+		cmdq_pkt_destroy(normal_pkt);
 	/* cmdq_dump_pkt(pkt, 0, true); */
 	/* release resource */
-	cmdq_pkt_destroy(pkt);
+	}
+
 
 #ifdef __FDVT_KERNEL_PERFORMANCE_MEASURE__
 	mt_kernel_trace_end();
@@ -4100,7 +4242,6 @@ static signed int FDVT_open(struct inode *pInode, struct file *pFile)
 
 	if (fdvt_secure_clt)
 		cmdq_sec_mbox_enable(fdvt_secure_clt->chan);
-
 	fdvt_count = 0;
 	log_dbg("FDVT open clock_enable_count: %d", clock_enable_count);
 	/*  */
@@ -4189,9 +4330,11 @@ static signed int FDVT_release(struct inode *pInode, struct file *pFile)
 
 	cmdq_mbox_disable(fdvt_clt->chan);
 
-	if (fdvt_secure_clt)
+	if (fdvt_secure_clt) {
+		if (is_protected_kvm_enabled())
+			cmdq_sec_mbox_stop(fdvt_secure_clt);
 		cmdq_sec_mbox_disable(fdvt_secure_clt->chan);
-
+	}
 	fdvt_enable_clock(MFALSE);
 	log_dbg("FDVT release clock_enable_count: %d", clock_enable_count);
 	/*  */
@@ -4550,6 +4693,14 @@ static signed int FDVT_probe(struct platform_device *pDev)
 		of_property_read_u32(pDev->dev.of_node, "fdvt_frame_done",
 				     &fdvt_event_id);
 		log_inf("fdvt event id is %d\n", fdvt_event_id);
+		if (is_protected_kvm_enabled()) {
+			of_property_read_u32(pDev->dev.of_node, "sw-sync-token-tzmp-aie-wait",
+					&fdvt_sec_wait);
+			log_inf("fdvt_sec_wait is %d\n", fdvt_sec_wait);
+			of_property_read_u32(pDev->dev.of_node, "sw-sync-token-tzmp-aie-set",
+					&fdvt_sec_set);
+			log_inf("fdvt_sec_set is %d\n", fdvt_sec_set);
+		}
 		/* Register char driver */
 		ret = FDVT_RegCharDev();
 		if (ret) {

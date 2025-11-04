@@ -2087,7 +2087,7 @@ int cmdq_hyp_init(const struct pkvm_module_ops *ops)
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "enter");
 	cmdq_set_plat_ops(ops);
 	cmdq_set_isp_ops(ops);
-
+	cmdq_set_fdvt_ops(ops);
 	return 0;
 }
 

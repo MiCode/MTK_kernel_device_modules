@@ -340,6 +340,7 @@ void cmdq_tz_assign_tzmp_command(struct TaskStruct *pTask);
 void cmdq_task_cb(struct TaskStruct *pTask);
 void cmdq_set_plat_ops(const struct pkvm_module_ops *ops);
 void cmdq_set_isp_ops(const struct pkvm_module_ops *ops);
+void cmdq_set_fdvt_ops(const struct pkvm_module_ops *ops);
 int32_t cmdq_tz_set_dapc_security_reg(struct TaskStruct *task, bool enable, bool use_cmdq);
 int32_t cmdq_tz_set_port_security_reg(struct TaskStruct *pTask, bool enable, bool useCmdq);
 void cmdqUtilPrintHexDump(const char *prefix_str, uint32_t *buf,
