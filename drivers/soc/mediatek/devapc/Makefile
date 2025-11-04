@@ -62,6 +62,11 @@ subdir-ccflags-$(CONFIG_MTK_ENG_BUILD) += -DDBG_ENABLE
 #device-apc-mt6879-$(CONFIG_DEVAPC_MT6879) += devapc-mt6879.o
 #endif
 #
+#ifneq ($(wildcard $(src)/devapc-mt6881.c),)
+#obj-$(CONFIG_DEVAPC_MT6881) += device-apc-mt6881.o
+#device-apc-mt6881-$(CONFIG_DEVAPC_MT6881) += devapc-mt6881.o
+#endif
+#
 #ifneq ($(wildcard $(src)/devapc-mt6886.c),)
 #obj-$(CONFIG_DEVAPC_MT6886) += device-apc-mt6886.o
 #device-apc-mt6886-$(CONFIG_DEVAPC_MT6886) += devapc-mt6886.o
