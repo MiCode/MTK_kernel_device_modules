@@ -2355,6 +2355,31 @@ static const struct dvfsrc_soc_data mt6858_data = {
 	.dis_ddr_check = true,
 };
 
+static const struct dvfsrc_opp dvfsrc_opp_mt6881[] = {
+	{0, 0}, {1, 0}, {2, 0}, {3, 0}, {4, 0},
+	{0, 1}, {1, 1}, {2, 1}, {3, 1}, {4, 1},
+	{0, 2}, {1, 2}, {2, 2}, {3, 2}, {4, 2},
+	{1, 3}, {2, 3}, {3, 3}, {4, 3},
+	{2, 4}, {3, 4}, {4, 4},
+	{3, 5}, {4, 5},
+	{3, 6}, {4, 6},
+	{4, 7},
+};
+
+static const struct dvfsrc_opp_desc dvfsrc_opp_mt6881_desc[] = {
+	DVFSRC_OPP_DESC(dvfsrc_opp_mt6881),
+};
+
+static const struct dvfsrc_soc_data mt6881_data = {
+	DVFSRC_MT6983_SERIES_OPS,
+	.opps_desc = dvfsrc_opp_mt6881_desc,
+	.num_opp_desc = ARRAY_SIZE(dvfsrc_opp_mt6881_desc),
+	.regs = mt6983_regs,
+#ifdef DVFSRC_FORCE_OPP_SUPPORT
+	.set_force_opp_level = mt6985_set_force_opp_level,
+#endif
+};
+
 static const struct dvfsrc_opp_desc dvfsrc_opp_mt6991_desc[] = {
 	{
 		.opps = NULL,
@@ -2503,6 +2528,9 @@ static const struct of_device_id mtk_dvfsrc_of_match[] = {
 	}, {
 		.compatible = "mediatek,mt6858-dvfsrc",
 		.data = &mt6858_data,
+	}, {
+		.compatible = "mediatek,mt6881-dvfsrc",
+		.data = &mt6881_data,
 	}, {
 		/* sentinel */
 	},
