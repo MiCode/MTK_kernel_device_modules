@@ -13769,33 +13769,26 @@ VDO_MODE:
 	GCE_COND_ASSIGN(cmdq_handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
 
 	if ((priv->mtk_dbgtp_sta.fifo_mon_en[0]) && (crtc_id == 0)) {
+		dma_addr_t slot_addr;
+
 		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_VDO_SOF]);
+		/* gce if (A || B) start */
+		slot_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_BIF_CONDITION);
+		/* clear result */
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, 0, ~0);
+
+		/* condition A */
 		lop.reg = true;
 		lop.idx = var1;
 		rop.reg = false;
-		rop.idx = 0;
+		rop.idx = 1;
 		slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
 		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
 		GCE_IF(lop, R_CMDQ_EQUAL, rop);
-		/* Enable trace top funnel */
-		cmdq_pkt_write(cmdq_handle, NULL, 0x0d070000, 0xAC, BIT(7) | BIT(5) | BIT(3) | BIT(2));
-		if (!priv->mtk_dbgtp_sta.is_validation_mode)
-			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
-		GCE_FI;
-		DDPMSG("wait gce event vact start\n");
-		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_VDO_TRIG_START]);
-		lop.reg = true;
-		lop.idx = var1;
-		rop.reg = false;
-		rop.idx = 0;
-		slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_UNDERRUNED);
-		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
-		GCE_IF(lop, R_CMDQ_EQUAL, rop);
-		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
-		mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, 1, ~0);
 		GCE_FI;
 
-		/* If BIF enable, disable dbgtp and fifo mon */
+		/* condition B */
 		lop.reg = true;
 		lop.idx = var1;
 		rop.reg = false;
@@ -13803,12 +13796,25 @@ VDO_MODE:
 		slot_src_addr = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_BIF_EN);
 		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, var1);
 		GCE_IF(lop, R_CMDQ_EQUAL, rop);
-		mtk_dbgtp_fifo_mon_config(mtk_crtc, cmdq_handle);
+		cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, 1, ~0);
+		GCE_FI;
+
+		/* result */
+		lop.reg = true;
+		lop.idx = var1;
+		rop.reg = false;
+		rop.idx = 0;
+		cmdq_pkt_read(cmdq_handle, mtk_crtc->gce_obj.base, slot_addr, var1);
+		GCE_IF(lop, R_CMDQ_EQUAL, rop);
+		/* Enable trace top funnel */
+		cmdq_pkt_write(cmdq_handle, NULL, 0x0d070000, 0xAC, BIT(7) | BIT(5) | BIT(3) | BIT(2));
 		if (!priv->mtk_dbgtp_sta.is_validation_mode)
-			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, false);
-		/* Disable trace top funnel */
-		cmdq_pkt_write(cmdq_handle, NULL, 0x0d070000,
-				0x0, BIT(7) | BIT(5) | BIT(3) | BIT(2));
+			mtk_dbgtp_switch(mtk_crtc, cmdq_handle, true);
+		/* Wait Vdo trigger start */
+		cmdq_pkt_wfe(cmdq_handle, mtk_crtc->gce_obj.event[EVENT_VDO_TRIG_START]);
+		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 6);
+		/* Set fifo mon trigger threshold */
+		mtk_dbgtp_fifo_mon_set_trig_threshold(mtk_crtc, cmdq_handle);
 		GCE_FI;
 	}
 
