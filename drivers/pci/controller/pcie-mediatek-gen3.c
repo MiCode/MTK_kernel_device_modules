@@ -3489,55 +3489,8 @@ static const struct mtk_pcie_data mt6991_data = {
 	.ipm_version = IPM_VERSION_TRUNK_90,
 };
 
-/*
- * mtk_pcie_switch_to_lpclk() - switch low power clock flow
- * @port: PCIe port information
- * @enable: means to change the clock to low power clock
- *
- * true means switch to low power clock, false means exit low power clock
- */
-static int mtk_pcie_switch_to_lpclk(struct mtk_pcie_port *port, bool enable)
-{
-	int err;
-	u32 val;
-
-	/* force mac sleep to 0 when switch lowpower clk */
-	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
-	val |= PCIE_MAC_SLP_DIS;
-	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
-
-	err = readl_poll_timeout(port->base + PCIE_RES_STATUS, val,
-				 ((val & ALL_RES_ACK) == ALL_RES_ACK),
-				 20, 1000);
-	if (err)
-		dev_info(port->dev, "Polling resource ack fail\n");
-
-	if (port->chipid == CHIP_VER_B0) {
-		val = readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON);
-		if (enable)
-			/* PCIe lowpower clock sel to 32K */
-			val |= P0_LOWPOWER_CK_SEL;
-		else
-			/* PCIe lowpower clock sel to 26M */
-			val &= ~P0_LOWPOWER_CK_SEL;
-
-		writel_relaxed(val, port->pextpcfg + PEXTP_CLOCK_CON);
-	}
-
-	dev_info(port->dev, "%s mode Switch clock sel to %#x\n",
-		 enable ? "suspend" : "resume",
-		 readl_relaxed(port->pextpcfg + PEXTP_CLOCK_CON));
-
-	val = readl_relaxed(port->base + PCIE_MISC_CTRL_REG);
-	val &= ~PCIE_MAC_SLP_DIS;
-	writel_relaxed(val, port->base + PCIE_MISC_CTRL_REG);
-
-	return 0;
-}
-
 static int mtk_pcie_suspend_l12_6993(struct mtk_pcie_port *port)
 {
-	mtk_pcie_switch_to_lpclk(port, true);
 	if (port->pcidev->state_saved)
 		port->pcidev->state_saved = false;
 
@@ -3547,8 +3500,6 @@ static int mtk_pcie_suspend_l12_6993(struct mtk_pcie_port *port)
 static int mtk_pcie_resume_l12_6993(struct mtk_pcie_port *port)
 {
 	int val;
-
-	mtk_pcie_switch_to_lpclk(port, false);
 
 	val = readl_relaxed(port->base + PCIE_RST_CTRL_REG);
 	val &= PCIE_PE_RSTB;
