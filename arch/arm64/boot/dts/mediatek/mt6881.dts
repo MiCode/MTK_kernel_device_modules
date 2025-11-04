@@ -8873,6 +8873,10 @@
 	regulator-read-only;
 };
 
+&mt6363_vbuck1 {
+	regulator-always-on;
+};
+
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
