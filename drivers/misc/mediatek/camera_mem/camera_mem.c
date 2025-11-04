@@ -23,8 +23,10 @@
 #include <linux/uaccess.h>
 #include <linux/fs.h>
 #include <soc/mediatek/smi.h>
-#include <linux/proc_fs.h>
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+#include <linux/debugfs.h>
 #include <linux/seq_file.h>
+#endif
 #include <linux/suspend.h>
 
 #include "camera_mem.h"
@@ -691,63 +693,9 @@ static long cam_mem_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Pa
 		break;
 
 	case CAM_MEM_ION_GET_PA:
-		if (copy_from_user(&IonNode, (void *)Param,
-			sizeof(struct CAM_MEM_DEV_ION_NODE_STRUCT)) == 0) {
-			struct list_head *pos;
-			struct ION_BUFFER_LIST *entry;
-			bool bMapped = false;
-			int bucketID = 0;
+		LOG_NOTICE("CAM_MEM_ION_GET_PA is NOT supported\n");
+		Ret = -EFAULT;
 
-			if (IonNode.memID <= 0) {
-				LOG_NOTICE(
-					"CAM_MEM_ION_GET_PA: invalid memID(%d)\n",
-					IonNode.memID);
-				Ret = -EFAULT;
-				break;
-			}
-			LOG_NOTICE("CAM_MEM_ION_GET_PA: IonNode.memID(%d)\n",
-				IonNode.memID);
-
-			bucketID = IonNode.memID % HASH_BUCKET_NUM;
-			mutex_lock(&cam_mem_ion_mutex[bucketID]);
-
-			if (list_empty(&g_ion_buf_list[bucketID].list)) {
-				LOG_NOTICE(
-					"CAM_MEM_ION_GET_PA: no mapped PA for memID(%d)\n",
-					IonNode.memID);
-				mutex_unlock(&cam_mem_ion_mutex[bucketID]);
-				break;
-			}
-
-			list_for_each(pos, &g_ion_buf_list[bucketID].list) {
-				entry = list_entry(pos, struct ION_BUFFER_LIST, list);
-				if (entry->memID == IonNode.memID) {
-					IonNode.dma_pa = entry->dmaAddr;
-					bMapped = true;
-					break;
-				}
-			}
-
-			if (!bMapped) {
-				IonNode.dma_pa = 0;
-				LOG_NOTICE("GET_PA: never mapped for memID(%d),name(%s)\n",
-					IonNode.memID, IonNode.username);
-			} else
-				LOG_NOTICE("GET_PA: memID(%d) get pa(0x%lx), name(%s)\n",
-					IonNode.memID, (unsigned long)IonNode.dma_pa, IonNode.username);
-
-			mutex_unlock(&cam_mem_ion_mutex[bucketID]);
-
-			if (copy_to_user((void *)Param, &IonNode,
-				sizeof(struct CAM_MEM_DEV_ION_NODE_STRUCT)) != 0) {
-				LOG_NOTICE("copy to user fail\n");
-				Ret = -EFAULT;
-			}
-		} else {
-			LOG_NOTICE(
-				"[CAM_MEM_ION_GET_PA]copy_from_user failed\n");
-			Ret = -EFAULT;
-		}
 		break;
 
 	case CAM_MEM_POWER_CTRL:
@@ -863,6 +811,10 @@ EXIT:
 /*******************************************************************************
  *
  ******************************************************************************/
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+static struct dentry *cam_mem_dbgfs_dir;
+static struct dentry *cam_mem_dbgfs_file;
+
 static int cam_mem_buf_list_read(struct seq_file *m, void *v)
 {
 	struct ION_BUFFER_LIST *entry;
@@ -911,15 +863,19 @@ static int cam_mem_buf_list_read(struct seq_file *m, void *v)
 	return 0;
 };
 
-static int proc_open_cam_mem_buf_list(struct inode *inode, struct file *file)
+static int cam_mem_dbgfs_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, cam_mem_buf_list_read, NULL);
-};
+}
 
-static const struct proc_ops fcam_mem_proc_fops = {
-	.proc_open = proc_open_cam_mem_buf_list,
-	.proc_read = seq_read,
+static const struct file_operations fcam_mem_dbgfs_fops = {
+	.owner   = THIS_MODULE,
+	.open    = cam_mem_dbgfs_open,
+	.read    = seq_read,
+	.llseek  = seq_lseek,
+	.release = single_release,
 };
+#endif
 
 /*******************************************************************************
  *
@@ -981,7 +937,17 @@ static int cam_mem_probe(struct platform_device *pDev)
 
 	spin_lock_init(&(CamMemInfo.SpinLock_CamMemRef));
 
-	proc_create("driver/cam_mem_buf_list", 0000, NULL, &fcam_mem_proc_fops);
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	cam_mem_dbgfs_dir = debugfs_create_dir("cam_mem", NULL);
+	if (!cam_mem_dbgfs_dir)
+		LOG_NOTICE("Unable to create debugfs dir\n");
+	else {
+		cam_mem_dbgfs_file = debugfs_create_file("cam_mem_buf_list",
+				0444, cam_mem_dbgfs_dir, NULL, &fcam_mem_dbgfs_fops);
+		if (!cam_mem_dbgfs_file)
+			LOG_NOTICE("Unable to create debugfs file\n");
+	}
+#endif
 
 EXIT:
 	if (Ret < 0)
@@ -1008,7 +974,9 @@ static void cam_mem_remove(struct platform_device *pDev)
 	class_destroy(pCamMemClass);
 	pCamMemClass = NULL;
 
-	remove_proc_entry("driver/cam_mem_buf_list", NULL);
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+	debugfs_remove_recursive(cam_mem_dbgfs_dir);
+#endif
 }
 
 /*******************************************************************************
