@@ -58,7 +58,14 @@ enum MTK_DSI_CMD_V2_SCN_OPS {
 	DSI_CMD_V2_SCN_NUM
 };
 
+enum MTK_UNDERRUN_RECOVERY_LEVEL {
+	MTK_UNDERRUN_RECOVERY_NONE = 0,
+	MTK_UNDERRUN_RECOVERY_RESET_DDP,
+	MTK_UNDERRUN_RECOVERY_ESD,
+};
+
 extern int mtk_disp_hrt_bw_dbg(void);
+extern bool g_mobile_log_bak;
 
 struct cb_data_store {
 	struct cmdq_cb_data data;
@@ -185,5 +192,6 @@ enum GCE_COND_REVERSE_COND {
 #define GCE_SLEEP(us) cmdq_pkt_sleep(_cond_pkt, us, _gpr)
 int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
+// #define DISP_UNDERRUN_RECOVERY
 
 #endif

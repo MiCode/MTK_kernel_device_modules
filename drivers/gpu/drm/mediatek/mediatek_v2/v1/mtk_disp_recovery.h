@@ -35,6 +35,6 @@ void mtk_disp_chk_recover_init(struct drm_crtc *crtc);
 long disp_dts_gpio_init(struct device *dev, struct mtk_drm_private *private);
 long _set_state(struct drm_crtc *crtc, const char *name);
 int _mtk_esd_check_read(struct drm_crtc *crtc);
-static int mtk_drm_esd_recover(struct drm_crtc *crtc);
+int mtk_drm_esd_recover(struct drm_crtc *crtc);
 
 #endif

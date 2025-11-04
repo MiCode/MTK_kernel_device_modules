@@ -51,6 +51,14 @@ void mtk_dump_cur_pos(struct mtk_ddp_comp *comp)
 	case DDP_COMPONENT_OVL0_BLENDER1:
 		mtk_ovl_blender_cur_pos_dump(comp);
 		break;
+	case DDP_COMPONENT_RDMA0:
+	case DDP_COMPONENT_RDMA1:
+	case DDP_COMPONENT_RDMA2:
+	case DDP_COMPONENT_RDMA3:
+	case DDP_COMPONENT_RDMA4:
+	case DDP_COMPONENT_RDMA5:
+		mtk_rdma_cur_pos_dump(comp);
+		break;
 	case DDP_COMPONENT_DSI0:
 	case DDP_COMPONENT_DSI1:
 		mtk_dsi_cur_pos_dump(comp);

@@ -546,6 +546,19 @@ static void mtk_rdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 				  &en);
 }
 
+static void mtk_rdma_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
+{
+	DDPINFO("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
+
+	mtk_ddp_write_mask(comp, RDMA_SOFT_RESET,
+			DISP_REG_RDMA_GLOBAL_CON, RDMA_SOFT_RESET, handle);
+	mtk_ddp_write_mask(comp, 0,
+			DISP_REG_RDMA_GLOBAL_CON, RDMA_SOFT_RESET, handle);
+	mtk_ddp_write_mask(comp, 0,
+			DISP_REG_RDMA_GLOBAL_CON, RDMA_SOFT_RESET, handle);
+	DDPINFO("%s -\n", __func__);
+}
+
 static void mtk_rdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	bool en = 0;
@@ -1418,6 +1431,17 @@ int mtk_rdma_dump(struct mtk_ddp_comp *comp)
 	return 0;
 }
 
+void mtk_rdma_cur_pos_dump(struct mtk_ddp_comp *comp)
+{
+	DDPDUMP("%s INTSTA:0x%x, cur_pos:in(%d,%d)out(%d,%d)\n",
+		mtk_dump_comp_str(comp),
+		readl(comp->regs + DISP_REG_RDMA_INT_STATUS),
+		readl(DISP_REG_RDMA_IN_P_CNT +comp->regs),
+		readl(DISP_REG_RDMA_IN_LINE_CNT + comp->regs),
+		readl(DISP_REG_RDMA_OUT_P_CNT + comp->regs),
+		readl(DISP_REG_RDMA_OUT_LINE_CNT + comp->regs));
+}
+
 int mtk_rdma_analysis(struct mtk_ddp_comp *comp)
 {
 	void __iomem *baddr = comp->regs;
@@ -1652,6 +1676,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_rdma_funcs = {
 	.config = mtk_rdma_config,
 	.start = mtk_rdma_start,
 	.stop = mtk_rdma_stop,
+	.reset = mtk_rdma_reset,
 #ifdef IF_ZERO
 	.enable_vblank = mtk_rdma_enable_vblank,
 	.disable_vblank = mtk_rdma_disable_vblank,

@@ -627,7 +627,7 @@ done:
 	return ret;
 }
 
-static int mtk_drm_esd_recover(struct drm_crtc *crtc)
+int mtk_drm_esd_recover(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *output_comp;

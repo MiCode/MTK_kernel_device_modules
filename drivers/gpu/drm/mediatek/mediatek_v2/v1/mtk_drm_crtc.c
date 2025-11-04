@@ -7310,6 +7310,8 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			mtk_drm_set_mmclk(crtc, step_size - 1, false, __func__);
 		} else {
 			en = 1;
+			if (!g_mobile_log_bak && g_mobile_log)
+				g_mobile_log = 0;
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 			if (output_comp) {
 				DDPMSG("set MMCLK back, and enable underrun irq\n");
@@ -18184,6 +18186,21 @@ static void update_frame_weight(struct drm_crtc *crtc,
 	mutex_unlock(&mtk_drm->lyeblob_list_mutex);
 }
 
+#ifdef DISP_UNDERRUN_RECOVERY
+static void mtk_ddp_sw_reset(struct cmdq_pkt *cmdq_handle,
+		struct mtk_drm_crtc *mtk_crtc)
+{
+	int i, j;
+	struct mtk_ddp_comp *comp = NULL;
+	int recovery_level = atomic_read(&mtk_crtc->underrun_recovery_level);
+
+	if (recovery_level == MTK_UNDERRUN_RECOVERY_RESET_DDP) {
+		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, i, j)
+			mtk_ddp_comp_reset(comp, cmdq_handle);
+	}
+}
+#endif
+
 static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 				      struct drm_atomic_state *atomic_state)
 {
@@ -18359,7 +18376,9 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		DDPINFO("%s %d skip reset ovl due to still opening\n", __func__, crtc_idx);
 	else
 		cmdq_pkt_reset_ovl(mtk_crtc_state->cmdq_handle, mtk_crtc);
-
+#ifdef DISP_UNDERRUN_RECOVERY
+	mtk_ddp_sw_reset(mtk_crtc_state->cmdq_handle, mtk_crtc);
+#endif
 	/* BW monitor: Read and Save BW info */
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(crtc_idx == 0)) {

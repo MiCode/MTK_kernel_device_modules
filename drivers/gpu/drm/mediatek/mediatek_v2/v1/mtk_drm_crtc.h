@@ -1366,6 +1366,8 @@ struct mtk_drm_crtc {
 
 	bool capturing;
 	bool recovery_flg;
+	atomic_t underrun_recovery_level;
+	wait_queue_head_t signal_underrun_recovery_wq;
 
 	int dli_relay_1tnp;
 

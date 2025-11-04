@@ -17,6 +17,7 @@
 #include <linux/proc_fs.h>
 #endif
 #include <linux/sched/clock.h>
+#include <uapi/linux/sched/types.h>
 #include <linux/of_address.h>
 #include <drm/drm_mipi_dsi.h>
 #include <drm/drm_framebuffer.h>
@@ -54,6 +55,7 @@
 #include <clk-fmeter.h>
 #include <linux/pm_domain.h>
 #include "mtk_mipi_tx.h"
+#include "mtk_disp_recovery.h"
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 #include "mtk_virt_output_guest.h"
@@ -106,6 +108,7 @@ bool g_dsi_cmd_v2_log;
 EXPORT_SYMBOL(g_dsi_cmd_v2_log);
 bool g_mobile_log;
 EXPORT_SYMBOL(g_mobile_log);
+bool g_mobile_log_bak;
 bool g_fence_log;
 bool g_mmclk_log;
 bool g_detail_log;
@@ -3180,6 +3183,7 @@ static void process_dbg_opt(const char *opt)
 			g_mobile_log = 1;
 		else if (strncmp(opt + 7, "off", 3) == 0)
 			g_mobile_log = 0;
+		g_mobile_log_bak = g_mobile_log;
 	} else if (strncmp(opt, "dsi_cmd:", 8) == 0) {
 		if (strncmp(opt + 8, "on", 2) == 0)
 			g_dsi_cmd_v2_log = 1;
@@ -6776,6 +6780,65 @@ out:
 	return;
 }
 
+#ifdef DISP_UNDERRUN_RECOVERY
+static int mtk_disp_underrun_recovery_kthread(void *data)
+{
+	int ret = 0;
+	struct sched_param param = {.sched_priority = 87};
+	struct drm_crtc *crtc = (struct drm_crtc *)data;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *private = crtc->dev->dev_private;
+
+	sched_setscheduler(current, SCHED_RR, &param);
+
+	while (!kthread_should_stop()) {
+		ret = wait_event_interruptible(
+			mtk_crtc->signal_underrun_recovery_wq,
+			atomic_read(&mtk_crtc->underrun_recovery_level)
+					== MTK_UNDERRUN_RECOVERY_ESD);
+
+		atomic_set(&mtk_crtc->underrun_recovery_level, MTK_UNDERRUN_RECOVERY_NONE);
+
+		DDP_COMMIT_LOCK(&private->commit.lock, __func__, __LINE__);
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+
+		mtk_drm_esd_recover(crtc);
+
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, __LINE__);
+
+		msleep(1000);
+		if (!g_mobile_log_bak && g_mobile_log)
+			g_mobile_log = 0;
+	}
+	return 0;
+}
+
+void disp_underrun_recovery_thd_init(struct drm_device *dev)
+{
+	struct drm_crtc *crtc;
+	struct mtk_drm_crtc *mtk_crtc;
+	static struct task_struct *underrun_recovery_task;
+	char *name = "underrun_recovery";
+
+	if (IS_ERR_OR_NULL(drm_dev))
+		return;
+
+	crtc = list_first_entry(&(drm_dev)->mode_config.crtc_list,
+				typeof(*crtc), head);
+
+	if (IS_ERR_OR_NULL(crtc))
+		return;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	underrun_recovery_task = kthread_create(
+		mtk_disp_underrun_recovery_kthread, crtc, "%s", name);
+	init_waitqueue_head(&mtk_crtc->signal_underrun_recovery_wq);
+	atomic_set(&mtk_crtc->underrun_recovery_level, 0);
+	wake_up_process(underrun_recovery_task);
+}
+#endif
+
 void disp_dbg_init(struct drm_device *dev)
 {
 	int i;
@@ -6812,6 +6875,10 @@ void disp_dbg_init(struct drm_device *dev)
 #endif
 	for (i = 0; i < MAX_CRTC; ++i)
 		INIT_LIST_HEAD(&cb_data_list[i]);
+	g_mobile_log_bak = g_mobile_log;
+#ifdef DISP_UNDERRUN_RECOVERY
+	disp_underrun_recovery_thd_init(drm_dev);
+#endif
 }
 
 void disp_dbg_deinit(void)
