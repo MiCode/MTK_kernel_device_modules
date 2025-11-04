@@ -7326,19 +7326,20 @@
 			};
 		};
 
+#if 0
 		seninf_top: seninf-top@3a400000 {
 			compatible = "mediatek,seninf-core";
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
 
-			cam-main-csi-afifo-addr = <0x3a0107dc>;
+			cam-main-csi-afifo-addr = <0x1a0107dc>;
 
 			hwccf-apply;
-			reg = <0 0x3a400000 0 0x1000>,
-				<0 0x3a401000 0 0x1000>,
-				<0 0x3a402000 0 0x1000>,
-				<0 0x138b0000 0 0x1000>;
+			reg = <0 0x1a400000 0 0x1000>,
+				<0 0x1a401000 0 0x1000>,
+				<0 0x1a402000 0 0x1000>,
+				<0 0x11ca0000 0 0x1000>;
 
 			reg-names = "seninf-top",
 				"seninf-async-top",
@@ -7366,34 +7367,24 @@
 			 * [5]: step-voltage-4d1c (lowest)
 			 * [6]: step-voltage-2d1c (lowest)
 			 */
-			cdphy-dvfs-step0 = <8000 5400>, <9000 9000>, <312>, <575000 575000>;
-			cdphy-dvfs-step1 = <8000 6000>, <9000 9000>, <364>, <600000 600000>;
-			cdphy-dvfs-step2 = <8000 7280>, <9000 9000>, <416>, <650000 650000>;
-			cdphy-dvfs-step3 = <8000 8000>, <9000 9000>, <499>, <725000 725000>;
+			cdphy-dvfs-step0 = <4500 4500>, <4500 4500>, <312>, <550000 550000>;
 
-			clocks = <&cam_main_r1a_clk CAM_M_SENINF_CAM_MAIN>,
-				<&cam_main_r1a_clk CAM_M_CAM_CAM_MAIN>,
-				<&cam_main_r1a_clk CAM_M_CAMTG_CAM_MAIN>,
-				<&cksys_mm_clk CKSYS_MM_SENINF0_SEL>,
-				<&cksys_mm_clk CKSYS_MM_SENINF1_SEL>,
-				<&cksys_mm_clk CKSYS_MM_SENINF2_SEL>,
-				<&cksys_mm_clk CKSYS_MM_SENINF3_SEL>,
-				<&cksys_mm_clk CKSYS_MM_SENINF4_SEL>,
-				<&cksys_mm_clk CKSYS_MM_SENINF5_SEL>,
-				<&cksys_mm_clk CKSYS_MM_CAMTM_SEL>,
+			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_RAW>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MAIN_CAM_RAW>,
+				<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAM_RAW>,
+				<&cksys_reg_clk CLK_CKSYS_REG_SENINF_SEL>,
+				<&cksys_reg_clk CLK_CKSYS_REG_SENINF1_SEL>,
+				<&cksys_reg_clk CLK_CKSYS_REG_SENINF2_SEL>,
+				<&cksys_reg_clk CLK_CKSYS_REG_SENINF3_SEL>,
+				<&cksys_reg_clk CLK_CKSYS_REG_CAMTM_SEL>,
 
-				<&cksys_top_clk CKSYS_TOP_OSC_D4>,
-				<&cksys_mm_clk CKSYS_MM_UNIVPLL2_D4_D2>,
-				<&cksys_mm_clk CKSYS_MM_MAINPLL2_D6>,
-				<&cksys_mm_clk CKSYS_MM_UNIVPLL2_D6>,
-				<&cksys_mm_clk CKSYS_MM_UNIVPLL2_D5>,
+				<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D4_D2>;
 
 				/* for power domain hw ccf */
-				//<&mm_pd_clk CLK_PD_CAM_MAIN_CAM_MAIN>,
-				<&mm_pd_clk CLK_PD_CSI_BS_RX_SENINF>,
+				power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_VCORE>,
+								<&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>,
+								<&scpsys MT6881_POWER_DOMAIN_CSI_RX>;
 
-				/* for adjust isp clk node */
-				<&mmdvfs_mux MMDVFS_USER_CAM>;
 
 			clock-names = "clk_cam_seninf",
 				"clk_cam_cam",
@@ -7402,15 +7393,8 @@
 				 "clk_top_seninf1",
 				 "clk_top_seninf2",
 				 "clk_top_seninf3",
-				 "clk_top_seninf4",
-				 "clk_top_seninf5",
 				 "clk_top_camtm",
-				 "clk_top_aov_step0",
 				 "clk_top_ap_step0",
-				 "clk_top_ap_step1",
-				 "clk_top_ap_step2",
-				 "clk_top_ap_step3",
-				 //"clk_hw_ccf_cam_main",
 				 "clk_hw_ccf_csi_bs",
 				 "mmdvfs_mux";
 
@@ -7421,14 +7405,14 @@
 
 				seninf_csi_0: seninf-csi@13880000 {
 					compatible = "mediatek,seninf-csi";
-					reg = <0 0x13880000 0 0xf00>,
-						<0 0x13881000 0 0x1000>,
-						<0 0x13882000 0 0x1000>,
-						<0 0x13883000 0 0x1000>,
-						<0 0x13884000 0 0x1000>,
-						<0 0x13885000 0 0x1000>,
-						<0 0x13886000 0 0x1000>,
-						<0 0x13887000 0 0x1000>;
+					reg = <0 0x11c80000 0 0xf00>,
+						<0 0x11c81000 0 0x1000>,
+						<0 0x11c82000 0 0x1000>,
+						<0 0x11c83000 0 0x1000>,
+						<0 0x11c84000 0 0x1000>,
+						<0 0x11c85000 0 0x1000>,
+						<0 0x11c86000 0 0x1000>,
+						<0 0x11c87000 0 0x1000>;
 
 					reg-names = "seninf-csi-rxana-csia",
 						"seninf-csi-rxana-csib",
@@ -7445,14 +7429,14 @@
 
 				seninf_csi_1: seninf-csi@13888000 {
 					compatible = "mediatek,seninf-csi";
-					reg = <0 0x13888000 0 0xf00>,
-						<0 0x13889000 0 0x1000>,
-						<0 0x1388a000 0 0x1000>,
-						<0 0x1388b000 0 0x1000>,
-						<0 0x1388c000 0 0x1000>,
-						<0 0x1388d000 0 0x1000>,
-						<0 0x1388e000 0 0x1000>,
-						<0 0x1388f000 0 0x1000>;
+					reg = <0 0x11c88000 0 0xf00>,
+						<0 0x11c89000 0 0x1000>,
+						<0 0x11c8a000 0 0x1000>,
+						<0 0x11c8b000 0 0x1000>,
+						<0 0x11c8c000 0 0x1000>,
+						<0 0x11c8d000 0 0x1000>,
+						<0 0x11c8e000 0 0x1000>,
+						<0 0x11c8f000 0 0x1000>;
 
 					reg-names = "seninf-csi-rxana-csia",
 						"seninf-csi-rxana-csib",
@@ -7469,14 +7453,14 @@
 
 				seninf_csi_2: seninf-csi@13890000 {
 					compatible = "mediatek,seninf-csi";
-					reg = <0 0x13890000 0 0xf00>,
-						<0 0x13891000 0 0x1000>,
-						<0 0x13892000 0 0x1000>,
-						<0 0x13893000 0 0x1000>,
-						<0 0x13894000 0 0x1000>,
-						<0 0x13895000 0 0x1000>,
-						<0 0x13896000 0 0x1000>,
-						<0 0x13897000 0 0x1000>;
+					reg = <0 0x11c90000 0 0xf00>,
+						<0 0x11c91000 0 0x1000>,
+						<0 0x11c92000 0 0x1000>,
+						<0 0x11c93000 0 0x1000>,
+						<0 0x11c94000 0 0x1000>,
+						<0 0x11c95000 0 0x1000>,
+						<0 0x11c96000 0 0x1000>,
+						<0 0x11c97000 0 0x1000>;
 					reg-names = "seninf-csi-rxana-csia",
 						"seninf-csi-rxana-csib",
 						"seninf-csi-dphy",
@@ -7492,14 +7476,14 @@
 
 				seninf_csi_3: seninf-csi@13898000 {
 					compatible = "mediatek,seninf-csi";
-					reg = <0 0x13898000 0 0xf00>,
-						<0 0x13899000 0 0x1000>,
-						<0 0x1389a000 0 0x1000>,
-						<0 0x1389b000 0 0x1000>,
-						<0 0x1389c000 0 0x1000>,
-						<0 0x1389d000 0 0x1000>,
-						<0 0x1389e000 0 0x1000>,
-						<0 0x1389f000 0 0x1000>;
+					reg = <0 0x11c98000 0 0xf00>,
+						<0 0x11c99000 0 0x1000>,
+						<0 0x11c9a000 0 0x1000>,
+						<0 0x11c9b000 0 0x1000>,
+						<0 0x11c9c000 0 0x1000>,
+						<0 0x11c9d000 0 0x1000>,
+						<0 0x11c9e000 0 0x1000>,
+						<0 0x11c9f000 0 0x1000>;
 					reg-names = "seninf-csi-rxana-csia",
 						"seninf-csi-rxana-csib",
 						"seninf-csi-dphy",
@@ -7512,52 +7496,6 @@
 					csi-port = <3>;
 					connect-to-seninf-async = <3>;
 				};
-
-				seninf_csi_4: seninf-csi@138a0000 {
-					compatible = "mediatek,seninf-csi";
-					reg = <0 0x138a0000 0 0xf00>,
-						<0 0x138a1000 0 0x1000>,
-						<0 0x138a2000 0 0x1000>,
-						<0 0x138a3000 0 0x1000>,
-						<0 0x138a4000 0 0x1000>,
-						<0 0x138a5000 0 0x1000>,
-						<0 0x138a6000 0 0x1000>,
-						<0 0x138a7000 0 0x1000>;
-					reg-names = "seninf-csi-rxana-csia",
-						"seninf-csi-rxana-csib",
-						"seninf-csi-dphy",
-						"seninf-csi-cphy",
-						"seninf-csi-mac-top",
-						"seninf-csi-mac-csia",
-						"seninf-csi-mac-csib",
-						"seninf-csi-mac-sw-ppi";
-
-					csi-port = <4>;
-					connect-to-seninf-async = <4>;
-				};
-
-				seninf_csi_5: seninf-csi@138a8000 {
-					compatible = "mediatek,seninf-csi";
-					reg = <0 0x138a8000 0 0xf00>,
-						<0 0x138a9000 0 0x1000>,
-						<0 0x138aa000 0 0x1000>,
-						<0 0x138ab000 0 0x1000>,
-						<0 0x138ac000 0 0x1000>,
-						<0 0x138ad000 0 0x1000>,
-						<0 0x138ae000 0 0x1000>,
-						<0 0x138af000 0 0x1000>;
-					reg-names = "seninf-csi-rxana-csia",
-						"seninf-csi-rxana-csib",
-						"seninf-csi-dphy",
-						"seninf-csi-cphy",
-						"seninf-csi-mac-top",
-						"seninf-csi-mac-csia",
-						"seninf-csi-mac-csib",
-						"seninf-csi-mac-sw-ppi";
-
-					csi-port = <5>;
-					connect-to-seninf-async = <5>;
-				};
 			};
 
 			tsrecs {
@@ -7567,9 +7505,9 @@
 
 				tsrec-no-max = <12>;
 
-				tsrec-top@3a410000 {
+				tsrec-top@1a410000 {
 					compatible = "mediatek,seninf-tsrec-top";
-					reg = <0 0x3a410000 0 0x1000>;
+					reg = <0 0x1a410000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x10000>;
 					interrupts = <GIC_SPI 644 IRQ_TYPE_LEVEL_HIGH 0>,
@@ -7578,89 +7516,61 @@
 						<GIC_SPI 647 IRQ_TYPE_LEVEL_HIGH 0>;
 				};
 
-				tsrec-a@3a420000 {
+				tsrec-a@1a420000 {
 					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a420000 0 0x1000>;
+					reg = <0 0x1a420000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x10000>;
 					tsrec-no = <0>;
 				};
-				tsrec-b@3a430000 {
+				tsrec-b@1a430000 {
 					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a430000 0 0x1000>;
+					reg = <0 0x1a430000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x20000>;
 					tsrec-no = <1>;
 				};
-				tsrec-c@3a440000 {
+				tsrec-c@1a440000 {
 					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a440000 0 0x1000>;
+					reg = <0 0x1a440000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x30000>;
 					tsrec-no = <2>;
 				};
-				tsrec-d@3a450000 {
+				tsrec-d@1a450000 {
 					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a450000 0 0x1000>;
+					reg = <0 0x1a450000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x40000>;
 					tsrec-no = <3>;
 				};
-				tsrec-e@3a460000 {
+				tsrec-e@1a460000 {
 					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a460000 0 0x1000>;
+					reg = <0 0x1a460000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x50000>;
 					tsrec-no = <4>;
 				};
-				tsrec-f@3a470000 {
+				tsrec-f@1a470000 {
 					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a470000 0 0x1000>;
+					reg = <0 0x1a470000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x60000>;
 					tsrec-no = <5>;
 				};
-				tsrec-g@3a480000 {
+				tsrec-g@1a480000 {
 					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a480000 0 0x1000>;
+					reg = <0 0x1a480000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x70000>;
 					tsrec-no = <6>;
 				};
-				tsrec-h@3a490000 {
+				tsrec-h@1a490000 {
 					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a490000 0 0x1000>;
+					reg = <0 0x1a490000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x80000>;
 					tsrec-no = <7>;
-				};
-				tsrec-i@3a4a0000 {
-					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a4a0000 0 0x1000>;
-					reg-names = "base";
-					base-shift = <0x90000>;
-					tsrec-no = <8>;
-				};
-				tsrec-j@3a4b0000 {
-					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a4b0000 0 0x1000>;
-					reg-names = "base";
-					base-shift = <0xa0000>;
-					tsrec-no = <9>;
-				};
-				tsrec-k@3a4c0000 {
-					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a4c0000 0 0x1000>;
-					reg-names = "base";
-					base-shift = <0xb0000>;
-					tsrec-no = <10>;
-				};
-				tsrec-l@3a4d0000 {
-					compatible = "mediatek,seninf-tsrec";
-					reg = <0 0x3a4d0000 0 0x1000>;
-					reg-names = "base";
-					base-shift = <0xc0000>;
-					tsrec-no = <11>;
 				};
 			};
 
@@ -7669,104 +7579,54 @@
 				#size-cells = <2>;
 				ranges;
 
-				seninf_outmux_0: seninf-outmux@3a200000 {
+				seninf_outmux_0: seninf-outmux@1a200000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a200000 0 0x1000>,
-						  <0 0x3a208000 0 0x1000>;
+					reg = <0 0x1a200000 0 0x1000>,
+						  <0 0x1a208000 0 0x1000>;
 					reg-names = "base",
 								"base-inner";
 
 					connected-cam-type = "camsv";
 				};
 
-				seninf_outmux_1: seninf-outmux@3a210000 {
+				seninf_outmux_1: seninf-outmux@1a210000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a210000 0 0x1000>,
-						  <0 0x3a218000 0 0x1000>;
+					reg = <0 0x1a210000 0 0x1000>,
+						  <0 0x1a218000 0 0x1000>;
 					reg-names = "base",
 								"base-inner";
 
 					connected-cam-type = "camsv";
 				};
 
-				seninf_outmux_2: seninf-outmux@3a220000 {
+				seninf_outmux_2: seninf-outmux@1a220000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a220000 0 0x1000>,
-						  <0 0x3a228000 0 0x1000>;
+					reg = <0 0x1a220000 0 0x1000>,
+						  <0 0x1a228000 0 0x1000>;
 					reg-names = "base",
 								"base-inner";
 
 					connected-cam-type = "camsv";
 				};
 
-				seninf_outmux_3: seninf-outmux@3a230000 {
+				seninf_outmux_6: seninf-outmux@1a260000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a230000 0 0x1000>,
-						  <0 0x3a238000 0 0x1000>;
-					reg-names = "base",
-								"base-inner";
-
-					connected-cam-type = "camsv";
-				};
-
-				seninf_outmux_4: seninf-outmux@3a240000 {
-					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a240000 0 0x1000>,
-						  <0 0x3a248000 0 0x1000>;
-					reg-names = "base",
-								"base-inner";
-
-					connected-cam-type = "camsv";
-				};
-
-				seninf_outmux_5: seninf-outmux@3a250000 {
-					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a250000 0 0x1000>,
-						  <0 0x3a258000 0 0x1000>;
-					reg-names = "base",
-								"base-inner";
-
-					connected-cam-type = "camsv";
-				};
-
-				seninf_outmux_6: seninf-outmux@3a260000 {
-					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a260000 0 0x1000>,
-						  <0 0x3a268000 0 0x1000>;
+					reg = <0 0x1a260000 0 0x1000>,
+						  <0 0x1a268000 0 0x1000>;
 					reg-names = "base",
 								"base-inner";
 
 					connected-cam-type = "raw";
 				};
 
-				seninf_outmux_7: seninf-outmux@3a270000 {
+				seninf_outmux_7: seninf-outmux@1a270000 {
 					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a270000 0 0x1000>,
-						  <0 0x3a278000 0 0x1000>;
+					reg = <0 0x1a270000 0 0x1000>,
+						  <0 0x1a278000 0 0x1000>;
 					reg-names = "base",
 								"base-inner";
 
 					connected-cam-type = "raw";
-				};
-
-				seninf_outmux_8: seninf-outmux@3a280000 {
-					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a280000 0 0x1000>,
-						  <0 0x3a288000 0 0x1000>;
-					reg-names = "base",
-								"base-inner";
-
-					connected-cam-type = "raw";
-				};
-
-				seninf_outmux_9: seninf-outmux@3a290000 {
-					compatible = "mediatek,seninf-outmux";
-					reg = <0 0x3a290000 0 0x1000>,
-						  <0 0x3a298000 0 0x1000>;
-					reg-names = "base",
-								"base-inner";
-
-					connected-cam-type = "uisp";
 				};
 			};
 		};
@@ -7776,6 +7636,20 @@
 			mediatek,seninf-eint = <&eint>;
 			systimer-leftshift-bits = <7>;
 		};
+
+		csi_efuse0: csi-data0@1d0 {
+			reg = <0x1d0 0x4>;
+		};
+		csi_efuse1: csi-data1@1d4 {
+			reg = <0x1d4 0x4>;
+		};
+		csi_efuse2: csi-data2@1d8 {
+			reg = <0x1d8 0x4>;
+		};
+		csi_efuse3: csi-data3@1dc {
+			reg = <0x1dc 0x4>;
+		};
+#endif
 
 		apu_top_3: apu-top-3@190f0000 {
 			compatible = "mt6881,apu_top_3";
