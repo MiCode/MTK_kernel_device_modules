@@ -3847,9 +3847,8 @@
 			reg = <0 0x11e00000 0 0x1000>,
 				<0 0x11300300 0 0x80>;
 			interrupts = <GIC_SPI 528 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C0_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_w_clk CLK_IMP_IIC_TOP_WRAP_W_I2C0_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11e05e00 0x1>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3862,9 +3861,8 @@
 			reg = <0 0x11e01000 0 0x1000>,
 				<0 0x11300380 0 0x80>;
 			interrupts = <GIC_SPI 529 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C1_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_w_clk CLK_IMP_IIC_TOP_WRAP_W_I2C1_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11e05e00 0x2>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3877,9 +3875,8 @@
 			reg = <0 0x11d70000 0 0x1000>,
 				<0 0x11300400 0 0x100>;
 			interrupts = <GIC_SPI 530 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C2_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C2_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11d78e00 0x1>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3892,9 +3889,8 @@
 			reg = <0 0x11e02000 0 0x1000>,
 				<0 0x11300500 0 0x80>;
 			interrupts = <GIC_SPI 531 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C3_I2C>, */
-			/* <&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_w_clk CLK_IMP_IIC_TOP_WRAP_W_I2C3_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11e05e00 0x4>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3907,9 +3903,8 @@
 			reg = <0 0x11d71000 0 0x1000>,
 				<0 0x11300580 0 0x100>;
 			interrupts = <GIC_SPI 532 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_es_clk CLK_IMPES_I2C4_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C4_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11d78e00 0x2>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3922,9 +3917,8 @@
 			reg = <0 0x11e03000 0 0x1000>,
 				<0 0x11300680 0 0x80>;
 			interrupts = <GIC_SPI 533 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C5_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_w_clk CLK_IMP_IIC_TOP_WRAP_W_I2C5_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11e05e00 0x8>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3937,9 +3931,8 @@
 			reg = <0 0x11e04000 0 0x1000>,
 				<0 0x11300700 0 0x80>;
 			interrupts = <GIC_SPI 534 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C6_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_w_clk CLK_IMP_IIC_TOP_WRAP_W_I2C6_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11e05e00 0x10>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3954,9 +3947,8 @@
 			reg = <0 0x11d72000 0 0x1000>,
 				<0 0x11300780 0 0x100>;
 			interrupts = <GIC_SPI 535 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_es_clk CLK_IMPES_I2C7_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C7_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11d78e00 0x4>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3969,9 +3961,8 @@
 			reg = <0 0x11d73000 0 0x1000>,
 				<0 0x11300880 0 0x100>;
 			interrupts = <GIC_SPI 536 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_es_clk CLK_IMPES_I2C8_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C8_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11d78e00 0x8>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3984,9 +3975,8 @@
 			reg = <0 0x11d74000 0 0x1000>,
 				<0 0x11300980 0 0x100>;
 			interrupts = <GIC_SPI 537 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C9_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C9_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11d78e00 0x10>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -3999,9 +3989,8 @@
 			reg = <0 0x11d75000 0 0x1000>,
 				<0 0x11300a80 0 0x80>;
 			interrupts = <GIC_SPI 538 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C10_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C10_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11d78e00 0x20>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -4014,9 +4003,8 @@
 			reg = <0 0x11d76000 0 0x1000>,
 				<0 0x11300b00 0 0x80>;
 			interrupts = <GIC_SPI 539 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_s_clk CLK_IMPS_I2C11_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C11_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11d78e00 0x40>;    /* *reg*  *value* */
 			clock-div = <1>;
@@ -4029,9 +4017,8 @@
 			reg = <0 0x11d77000 0 0x1000>,
 				<0 0x11300b80 0 0x80>;
 			interrupts = <GIC_SPI 540 IRQ_TYPE_LEVEL_HIGH 0>;
-			/* clocks = <&imp_iic_wrap_c_clk CLK_IMPC_I2C12_I2C>, */
-			/*	<&pericfg_ao_clk CLK_PERAO_P_DMA_B_I2C>; */
-			clocks = <&clk26m>, <&clk26m>;
+			clocks = <&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C12_I2C>,
+				<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DMA_B_I2C>;
 			clock-names = "main", "dma";
 			i2c-clock-info = <0x11d78e00 0x80>;    /* *reg*  *value* */
 			clock-div = <1>;
