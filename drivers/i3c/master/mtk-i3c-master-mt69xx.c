@@ -1659,10 +1659,6 @@ clk_div_exit:
 		return -EINVAL;
 
 	cal_reg->clock_div_reg = ((clk_div - 1) << 8) | (clk_div - 1);
-	if (target_speed > I3C_BUS_I2C_FM_PLUS_SCL_RATE)
-		cal_reg->io_config_reg = I3C_IOCFG_PUSH_PULL;
-	else
-		cal_reg->io_config_reg = I3C_IOCFG_OPEN_DRAIN;
 
 	return 0;
 }
@@ -1678,6 +1674,7 @@ static int mtk_i3c_init_speed(struct mtk_i3c_master *i3c, unsigned long parent_c
 		i3c->base.bus.scl_rate.i3c = I3C_BUS_I2C_FM_PLUS_SCL_RATE;
 
 	i3c->i2c_speed.speed_hz = i3c->base.bus.scl_rate.i2c;
+	i3c->i2c_speed.io_config_reg = I3C_IOCFG_OPEN_DRAIN;
 	ret = mtk_i3c_set_speed(i3c, &(i3c->i2c_speed), parent_clk, false);
 	if (ret < 0) {
 		dev_info(i3c->dev, "[%s]ret=%d,scl_rate.i2c=%lu,clk=%u,cal_i2c_speed_fail\n",
@@ -1686,6 +1683,7 @@ static int mtk_i3c_init_speed(struct mtk_i3c_master *i3c, unsigned long parent_c
 	}
 
 	i3c->b_ccc_speed.speed_hz = i3c->b_ccc_speed_hz;
+	i3c->b_ccc_speed.io_config_reg = I3C_IOCFG_PUSH_PULL;
 	ret = mtk_i3c_set_speed(i3c, &(i3c->b_ccc_speed), parent_clk, true);
 	if (ret < 0) {
 		dev_info(i3c->dev, "[%s]ret=%d,b_ccc_speed_hz=%u,clk=%u,cal_ccc_speed_fail\n",
@@ -1694,6 +1692,7 @@ static int mtk_i3c_init_speed(struct mtk_i3c_master *i3c, unsigned long parent_c
 	}
 
 	i3c->with7e_speed.speed_hz = i3c->base.bus.scl_rate.i3c;
+	i3c->with7e_speed.io_config_reg = I3C_IOCFG_PUSH_PULL;
 	ret = mtk_i3c_set_speed(i3c, &(i3c->with7e_speed), parent_clk, true);
 	if (ret < 0) {
 		dev_info(i3c->dev, "[%s]ret=%d,with7e_speed=%lu,clk=%u,cal_i3c_speed_fail\n",
@@ -1702,6 +1701,7 @@ static int mtk_i3c_init_speed(struct mtk_i3c_master *i3c, unsigned long parent_c
 	}
 
 	i3c->without7e_speed.speed_hz = i3c->base.bus.scl_rate.i3c;
+	i3c->without7e_speed.io_config_reg = I3C_IOCFG_PUSH_PULL;
 	ret = mtk_i3c_set_speed(i3c, &(i3c->without7e_speed), parent_clk, false);
 	if (ret < 0) {
 		dev_info(i3c->dev, "[%s]ret=%d,without7e_speed=%lu,clk=%u,cal_i3c_speed_fail\n",
@@ -1729,6 +1729,7 @@ int mtk_i3c_master_change_i3c_speed(struct i3c_master_controller *master,
 	parent_clk = (unsigned int)clk_get_rate(i3c->clk_main);
 
 	i3c->with7e_speed.speed_hz = scl_rate_i3c;
+	i3c->with7e_speed.io_config_reg = I3C_IOCFG_PUSH_PULL;
 	ret = mtk_i3c_set_speed(i3c, &(i3c->with7e_speed), parent_clk, true);
 	if (ret < 0) {
 		dev_info(i3c->dev, "[%s]ret=%d,with7e_speed=%u,clk=%u,cal_i3c_speed_fail\n",
@@ -1739,6 +1740,7 @@ int mtk_i3c_master_change_i3c_speed(struct i3c_master_controller *master,
 	}
 
 	i3c->without7e_speed.speed_hz = scl_rate_i3c;
+	i3c->without7e_speed.io_config_reg = I3C_IOCFG_PUSH_PULL;
 	ret = mtk_i3c_set_speed(i3c, &(i3c->without7e_speed), parent_clk, false);
 	if (ret < 0) {
 		dev_info(i3c->dev, "[%s]ret=%d,without7e_speed=%u,clk=%u,cal_i3c_speed_fail\n",
