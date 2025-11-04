@@ -21,7 +21,7 @@ filegroup(
 
 define_mgk_ddk_ko(
     name = "pkvm_mgmt",
-    srcs = ["pkvm_mgmt_host.c", "pkvm_mgmt_host.h"],
+    srcs = ["pkvm_mgmt_host.c", "pkvm_mgmt_host.h","debug_protection.c","debug_protection.h"],
     out = "pkvm_mgmt.ko",
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",

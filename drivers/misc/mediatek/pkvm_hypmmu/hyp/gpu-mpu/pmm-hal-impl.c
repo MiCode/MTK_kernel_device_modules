@@ -1316,6 +1316,7 @@ void register_gpumpu_pmm_hal(const struct user_pt_regs *regs)
 #endif
 
 	pmm_ops.name = pmm_hal_name;
+	pmm_ops.is_enabled = true;
 
 	pmm_pre_init();
 

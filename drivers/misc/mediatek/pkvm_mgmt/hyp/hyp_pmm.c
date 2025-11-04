@@ -21,6 +21,8 @@ static void *pmm_hals[MAX_PMM_HALS];
 #define cmpxchg64_release	__lse__cmpxchg_case_rel_64
 //#define cmpxchg64_release	__ll_sc__cmpxchg_case_rel_64
 
+#define DEBUG_DYNAMIC_PROTECT	1
+
 #define DEBUG_HYP_PMM	0
 
 /*
@@ -197,6 +199,9 @@ static int secure_pages_v2(u64 ipc_pfn, u32 attr, u32 count, bool lock)
 		pmm_poison_pages(ipc_va, count);
 
 	for_each_pmm_hal(hal, i) {
+		if (!hal->is_enabled)
+			continue;
+
 		ret = hal_secure_pages_v2(hal, ipc_va, attr, count, lock);
 		if (ret) {
 			pkvm_ops->puts("hal_secure_pages_v2 failed");
@@ -275,13 +280,90 @@ void hyp_pmm_defragment(struct user_pt_regs *regs)
 	regs->regs[1] = 0;
 }
 
+#if (DEBUG_DYNAMIC_PROTECT == 1)
+static int check_by_pass(const char *s1, const char *s2)
+{
+	while (*s1 != '\0' && *s1 == *s2) {
+		s1++;
+		s2++;
+	}
+	return (int)(*(unsigned char *)s1) - (int)(*(unsigned char *)s2);
+}
+
+void hyp_pmm_debug_hypmmu(struct user_pt_regs *regs)
+{
+	unsigned int cmd = regs->regs[1];
+	char *dis_name;
+	struct pmm_hal *hal;
+	int i;
+	bool enabled;
+
+	switch (cmd) {
+	case DISABLE_CPU_PROTECTION:
+		dis_name = "cpu";
+		enabled = false;
+		break;
+	case ENABLE_CPU_PROTECTION:
+		dis_name = "cpu";
+		enabled = true;
+		break;
+	case DISABLE_GPU_PROTECTION:
+		dis_name = "gpu-mpu";
+		enabled = false;
+		break;
+	case ENABLE_GPU_PROTECTION:
+		dis_name = "gpu-mpu";
+		enabled = true;
+		break;
+	case DISABLE_INFRA_MPU_PROTECTION:
+		dis_name = "infra-mpu";
+		enabled = false;
+		break;
+	case ENABLE_INFRA_MPU_PROTECTION:
+		dis_name = "infra-mpu";
+		enabled = true;
+		break;
+	case DUMP_PROTECTION_STATUS:
+		dis_name = "";
+		break;
+	default:
+		pkvm_ops->puts("pmm_debug_hypmmu: No match");
+		dis_name = "";
+		break;
+	}
+
+	for_each_pmm_hal(hal, i) {
+		pkvm_ops->puts(hal->name);
+		if (!check_by_pass(hal->name, dis_name))
+			hal->is_enabled = enabled;
+
+		if (cmd == DUMP_PROTECTION_STATUS) {
+			pkvm_ops->puts("Protection Status:");
+			pkvm_ops->puts(hal->name);
+			pkvm_ops->putx64(hal->is_enabled);
+		}
+	}
+	regs->regs[0] = SMCCC_RET_SUCCESS;
+	regs->regs[1] = 0;
+}
+#else
+void hyp_pmm_debug_hypmmu(struct user_pt_regs *regs)
+{
+	regs->regs[0] = SMCCC_RET_INVALID_PARAMETER;
+}
+#endif
+
 static void secure_range(u64 pa, u64 size, u8 attr, bool lock)
 {
 	struct pmm_hal *hal;
 	int i;
 
 	for_each_pmm_hal(hal, i) {
+		if (!hal->is_enabled)
+			continue;
+
 		pkvm_ops->puts(hal->name);
+
 #if (DEBUG_HYP_PMM == 1)
 		if (lock)
 			pkvm_ops->puts("secure range pa size attr lock");
@@ -322,6 +404,9 @@ static void kvm_secure_pages_common(u32 *ipc, u32 count, u8 attr)
 	for_each_pmm_hal(hal, i) {
 		/* skip cpu hal, only non-cpu for kvm iommu */
 		if (i == 0)
+			continue;
+
+		if (!hal->is_enabled)
 			continue;
 
 		if (hal->prepare)

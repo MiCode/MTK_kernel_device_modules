@@ -1,13 +1,9 @@
-/* SPDX-License-Identifier: GPL-2.0-only */
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
- * Copyright (C) 2024 MediaTek Inc.
+ * Copyright (c) 2025 MediaTek Inc.
  */
 
-#ifndef __HYP_PMM_H__
-#define __HYP_PMM_H__
-
-#include <asm/kvm_pkvm_module.h>
-#include "hyp_pmm_struct.h"
+extern unsigned long mod_token;
 
 enum mgmt_command {
 	DISABLE_CPU_PROTECTION       = 0,
@@ -20,8 +16,11 @@ enum mgmt_command {
 	INVALID_COMMAND              = 8,
 };
 
-int hyp_pmm_init(void);
-/* register cpu hal for hyp-pmm */
-int register_cpu_hal(void);
+enum protection_type {
+	CPU_PROTECTION       = 0,
+	GPU_PROTECTION       = 1,
+	INFRA_MPU_PROTECTION = 2,
+	TOTAL_PROTECTION     = 3,
+};
 
-#endif
+int debug_protection_init(void);

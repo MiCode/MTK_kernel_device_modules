@@ -28,4 +28,7 @@ struct pmm_hal {
 
     int (*sync)(void);
     int (*defragment)(void);
+
+	/* protection status */
+	bool is_enabled;
 };

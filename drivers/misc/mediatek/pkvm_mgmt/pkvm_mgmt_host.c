@@ -11,6 +11,7 @@
 #include <asm/kvm_pkvm_module.h>
 #include <pkvm_mgmt/pkvm_mgmt.h>
 #include "pkvm_mgmt_host.h"
+#include "debug_protection.h"
 
 #undef pr_fmt
 #define pr_fmt(fmt) "[PKVM_MGMT]: " fmt
@@ -28,7 +29,8 @@ EXPORT_SYMBOL(kvm_nvhe_sym(APC_CamIspProtDisable));
 EXPORT_SYMBOL(kvm_nvhe_sym(SECIO_WRITE));
 EXPORT_SYMBOL(kvm_nvhe_sym(SECIO_READ));
 
-static unsigned long mod_token;
+unsigned long mod_token;
+
 static int hyp_pmm_assign_buffer_v2_hcall;
 static int hyp_pmm_unassign_buffer_v2_hcall;
 static int hyp_pmm_defragment_hcall;
@@ -78,6 +80,12 @@ static int __init pkvm_mgmt_nvhe_init(void)
 	ret = setup_hvc_call();
 	if (ret) {
 		pr_err("setup_hvc_call failed\n");
+		return ret;
+	}
+
+	ret = debug_protection_init();
+	if (ret) {
+		pr_err("protection_debug_init failed\n");
 		return ret;
 	}
 

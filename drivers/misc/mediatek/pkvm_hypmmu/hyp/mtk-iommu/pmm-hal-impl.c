@@ -105,6 +105,7 @@ void register_mtkiommu_pmm_hal(void)
 	MOD_PUTS("register_mtkiommu_pmm_hal");
 
 	pmm_ops.name = pmm_hal_name;
+	pmm_ops.is_enabled = true;
 
 	pmm_pre_init();
 
