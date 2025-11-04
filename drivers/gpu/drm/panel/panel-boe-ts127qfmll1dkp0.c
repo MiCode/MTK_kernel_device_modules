@@ -85,7 +85,7 @@ static enum RES_SWITCH_TYPE res_switch_type = RES_SWITCH_ON_AP;
 
 static int current_fps = 144;
 #define SUPPORT_90Hz 0
-#define PREFETCH_TIME 150
+#define PREFETCH_TIME 0
 
 struct panel_desc {
 	const struct drm_display_mode *modes;
