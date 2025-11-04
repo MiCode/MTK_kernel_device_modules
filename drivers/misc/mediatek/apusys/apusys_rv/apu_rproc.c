@@ -423,9 +423,9 @@ static int apu_probe(struct platform_device *pdev)
 			apu->apusys_sec_info = (struct apusys_secure_info_t *)
 				(apu->apu_sec_mem_base + up_code_buf_sz);
 
-			apu_drv_debug("up_fw_ofs = 0x%x, up_fw_sz = 0x%x\n",
-				apu->apusys_sec_info->up_fw_ofs,
-				apu->apusys_sec_info->up_fw_sz);
+			apu_drv_debug("up_code_buf_ofs = 0x%x, up_code_buf_sz = 0x%x\n",
+				apu->apusys_sec_info->up_code_buf_ofs,
+				apu->apusys_sec_info->up_code_buf_sz);
 
 			apu_drv_debug("up_xfile_ofs = 0x%x, up_xfile_sz = 0x%x\n",
 				apu->apusys_sec_info->up_xfile_ofs,
@@ -675,6 +675,9 @@ const struct mtk_apu_platdata mt6878_platdata;
 #ifndef MT6879_APUSYS_RV_PLAT_DATA
 const struct mtk_apu_platdata mt6879_platdata;
 #endif
+#ifndef MT6881_APUSYS_RV_PLAT_DATA
+const struct mtk_apu_platdata mt6881_platdata;
+#endif
 #ifndef MT6886_APUSYS_RV_PLAT_DATA
 const struct mtk_apu_platdata mt6886_platdata;
 #endif
@@ -709,6 +712,7 @@ const struct mtk_apu_platdata mt6993_platdata;
 static const struct of_device_id mtk_apu_of_match[] = {
 	{ .compatible = "mediatek,mt6878-apusys_rv", .data = &mt6878_platdata},
 	{ .compatible = "mediatek,mt6879-apusys_rv", .data = &mt6879_platdata},
+	{ .compatible = "mediatek,mt6881-apusys_rv", .data = &mt6881_platdata},
 	{ .compatible = "mediatek,mt6886-apusys_rv", .data = &mt6886_platdata},
 	{ .compatible = "mediatek,mt6893-apusys_rv", .data = &mt6893_platdata},
 	{ .compatible = "mediatek,mt6895-apusys_rv", .data = &mt6895_platdata},
