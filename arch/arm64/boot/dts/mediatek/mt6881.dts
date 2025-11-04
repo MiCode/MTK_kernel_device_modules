@@ -424,6 +424,21 @@
 		#address-cells = <2>;
 		#size-cells = <2>;
 		ranges;
+
+		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
+			compatible = "mediatek,dpmaif-resv-cache-mem";
+			size = <0 0x00190000>; /* 1638400 Bytes for 1rxq */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
+
+		dpmaif_resv_nocache_mem: ccci-dpmaif-nocache-memory {
+			compatible = "mediatek,dpmaif-resv-nocache-mem";
+			no-map;
+			size = <0 0x0050000>; /* 327680 Bytes */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
 	};
 
 	clk_ao: clk-ao {
@@ -5874,6 +5889,36 @@
 				"infra-ccif1-md",
 				"infra-ccif4-md",
 				"infra-ccif5-md";
+		};
+
+		dpmaif:dpmaif@10014000 {
+			compatible = "mediatek,dpmaif";
+			reg = <0 0x10014000 0 0x1000>, /*ao_ul*/
+				<0 0x1022d000 0 0x1000>, /*pd_ul*/
+				<0 0x1022c000 0 0x1000>, /*pd_md_misc*/
+				<0 0x1022e000 0 0x1000>; /*sram*/
+			/* rxq0 irq: 238 366 398，rxq1 irq: 259 387 419 */
+			interrupts = <GIC_SPI 366 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 387 IRQ_TYPE_LEVEL_HIGH 0>;
+			mediatek,dpmaif-ver = <3>;
+			/*0-napi,1-txbusystop,2-sgio,3-hwchksum,4-lro,5-2rxq,6-rsvmem,7-maxbat,8-udpgro*/
+			mediatek,dpmaif-cap = <0x0000004a>;
+			mediatek,plat-info = <6881>;
+			clocks = <&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_DPMAIF_MAIN>,
+				<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CLDMA_BCLK>,
+				<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_RG_MMW_DPMAIF26M_CK>;
+			clock-names = "infra-dpmaif-clk",
+				    "infra-dpmaif-blk-clk",
+				    "infra-dpmaif-rg-mmw-clk";
+#if 0
+			interconnects = <&dvfsrc MT6873_MASTER_NETSYS &dvfsrc MT6873_SLAVE_DDR_EMI>;
+			interconnect-names = "icc-mdspd-bw";
+			required-opps = <&dvfsrc_freq_opp0>,
+					<&dvfsrc_freq_opp1>;
+#endif
+			net-spd-ver = <2>;
+			hw-reset-ver = <1>;
+			dpmaif-infracfg = <&infra_infracfg_ao_reg_clk>;
 		};
 
 		mddriver:mddriver@d180000 {
