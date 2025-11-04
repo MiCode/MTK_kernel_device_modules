@@ -1353,6 +1353,7 @@ s32 cmdq_mdp_handle_sec_setup(struct cmdqSecDataStruct *secData,
 	struct cmdq_client *cl = NULL;
 	bool is_sec_meta_data_support;
 	int cmdq_mtee;
+	int ret = 0;
 
 	is_sec_meta_data_support =
 		cmdq_mdp_get_func()->mdpSvpSupportMetaData();
@@ -1441,8 +1442,14 @@ s32 cmdq_mdp_handle_sec_setup(struct cmdqSecDataStruct *secData,
 			kfree(addr_meta);
 			return -EFAULT;
 		}
-		cmdq_mdp_init_secure_id(addr_meta, secData->addrMetadataCount,
-			cmdq_mdp_get_func()->mdpIsMtee(handle));
+		ret = cmdq_mdp_init_secure_id(addr_meta, secData->addrMetadataCount,
+				cmdq_mdp_get_func()->mdpIsMtee(handle));
+
+		if (ret != 0) {
+			CMDQ_MSG("%s error in secure_id init\n", __func__);
+			return -EFAULT;
+		}
+
 		cmdq_sec_pkt_assign_metadata(handle->pkt,
 			secData->addrMetadataCount,
 			addr_meta);
@@ -1527,7 +1534,7 @@ void cmdq_mdp_cmdqSecIspMeta_fd_to_handle(struct cmdqSecIspMeta *ispMeta)
 #endif
 }
 
-void cmdq_mdp_init_secure_id(void *meta_array, u32 count, bool mtee)
+s32 cmdq_mdp_init_secure_id(void *meta_array, u32 count, bool mtee)
 {
 #ifdef CMDQ_SECURE_PATH_SUPPORT
 	u32 i;
@@ -1548,7 +1555,7 @@ void cmdq_mdp_init_secure_id(void *meta_array, u32 count, bool mtee)
 		if (IS_ERR(buf)) {
 			CMDQ_ERR("%s: fail to get dma_buf:%ld, baseHandle:0x%#llx\n",
 				__func__, PTR_ERR(buf), secMetadatas[i].baseHandle);
-			return;
+			return -EFAULT;
 		}
 #if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
 		if (mtee)
@@ -1558,7 +1565,7 @@ void cmdq_mdp_init_secure_id(void *meta_array, u32 count, bool mtee)
 		if (sec_id < 0) {
 			CMDQ_ERR("%s: fail to get sec_id:%d\n", __func__, sec_id);
 			dma_buf_put(buf);
-			return;
+			return -EFAULT;
 		}
 #endif
 		secMetadatas[i].sec_id = sec_id;
@@ -1571,6 +1578,7 @@ void cmdq_mdp_init_secure_id(void *meta_array, u32 count, bool mtee)
 		dma_buf_put(buf);
 	}
 #endif
+	return 0;
 }
 
 s32 cmdq_mdp_update_sec_addr_index(struct cmdqRecStruct *handle,
