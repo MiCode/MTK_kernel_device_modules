@@ -276,3 +276,6 @@ define_v2_platform_clkmgr_ko("mt6878", "bus")
 define_v2_platform_clkmgr_ko("mt6878", "mdpsys")
 define_v2_platform_clkmgr_ko("mt6878", "vlp")
 define_v2_platform_clkmgr_ko("mt6878", "vcodec")
+define_v2_platform_clkmgr_ko("mt6881", None)
+define_v2_platform_clkmgr_ko("mt6881", "cg")
+
