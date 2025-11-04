@@ -7706,7 +7706,43 @@
 	};
 };
 
+&i2c2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	rt6160@75 {
+		/* richtek,rt6160-vbb compatbile is for is-existed property */
+		compatible = "richtek,rt6160",
+			     "richtek,rt6160-vbb";
+		reg = <0x75>;
+		//enable-gpios = <&gpio124 2 0>;
+		regulator-name = "rt6160-buckboost-vbb3";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-always-on;
+		richtek,vsel-active-low;
+
+		dbg {
+			compatible = "richtek,rt6160-dbg";
+		};
+	};
+};
+
 &i2c5 {
+	rt6160@75 {
+		/* richtek,rt6160-vbb compatbile is for is-existed property */
+		compatible = "richtek,rt6160",
+			     "richtek,rt6160-vbb";
+		reg = <0x75>;
+		regulator-name = "rt6160-buckboost";
+		regulator-min-microvolt = <2025000>;
+		regulator-max-microvolt = <5200000>;
+		regulator-always-on;
+
+		dbg {
+			compatible = "richtek,rt6160-dbg";
+		};
+	};
+
 	rt5133: rt5133@18 {
 		status = "ok";
 		compatible = "richtek,rt5133";
