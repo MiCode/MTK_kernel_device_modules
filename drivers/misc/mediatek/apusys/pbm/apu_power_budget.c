@@ -130,6 +130,11 @@ __MODULE_PARM_TYPE(apu_pbm_func_sel, "int");
 module_param_cb(apu_pbm_func_sel, &apu_pbm_func_ops, &apu_pbm_func_sel, 0644);
 MODULE_PARM_DESC(apu_pbm_func_sel, "trigger apu pbm func by parameter");
 
+void __weak kicker_ppb_request_power(enum ppb_kicker kicker, unsigned int power)
+{
+	pr_notice("%s#%d not ready\n", __func__, __LINE__);
+}
+
 static int soc_pbm_request(int budget)
 {
 #if UPDATE_APU_MBOX
