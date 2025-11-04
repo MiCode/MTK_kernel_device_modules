@@ -1737,9 +1737,12 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6789:mt6789-mt6366".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6895:snd-soc-mt6895-afe".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/sound/soc/mediatek/mt6895:mt6895-mt6368".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6881:snd-soc-mt6881-afe".format(kernel_version): "mt6881",
+    "//kernel_device_modules-{}/sound/soc/mediatek/mt6881:mt6881-mt6368".format(kernel_version): "mt6881",
 
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6366".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6369".format(kernel_version): "mt6855 mt6858 mt6878",
+    "//kernel_device_modules-{}/sound/soc/codecs:snd-soc-mt6368".format(kernel_version): "mt6881",
     "//kernel_device_modules-{}/drivers/input/touchscreen/hxchipset:hxchipset".format(kernel_version): "mt6789",
 
     "//kernel_device_modules-{}/drivers/regulator:fan53870-ldo".format(kernel_version): "mt6789",
