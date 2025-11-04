@@ -29,14 +29,20 @@ arm64.nopauth arm64.nosme arm64.nosve";
 &mtkfb {
 	pinctrl-names = "lcd_bias_enp0_gpio",
 		"lcd_bias_enn0_gpio",
+		"lcm_vddi_out0_gpio",
+		"lcm_vci_out0_gpio",
+		"lcm_vddr_out0_gpio",
 		"lcm_rst_out0_gpio",
 		"mode_te_te",
 		"lcm_led_en0_gpio";
 	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp0>;
 	pinctrl-1 = <&mtkfb_pins_lcd_bias_enn0>;
-	pinctrl-2 = <&mtkfb_pins_lcm_rst_out0_gpio>;
-	pinctrl-3 = <&mtkfb_pins_lcm_dsi_te>;
-	pinctrl-4 = <&mtkfb_pins_lcm_led_en0>;
+	pinctrl-2 = <&mtkfb_pins_lcm_vddi_out0_gpio>;
+	pinctrl-3 = <&mtkfb_pins_lcm_vci_out0_gpio>;
+	pinctrl-4 = <&mtkfb_pins_lcm_vddr_out0_gpio>;
+	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-7 = <&mtkfb_pins_lcm_led_en0>;
 
 	status = "okay";
 };
@@ -59,6 +65,30 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_vddi_out0_gpio: lcd-vddi-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_vci_out0_gpio: lcd-vci-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO61__FUNC_GPIO61>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_vddr_out0_gpio: lcd-vddr-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO141__FUNC_GPIO141>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -93,9 +123,10 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	panel1@0 {
 		compatible = "vtdr6126a,vdo";
 		reg = <0>;
-		pm-enable-gpios = <&pio 135 0>;
+		vddi-gpios = <&pio 135 0>;
+		vci-gpios = <&pio 61 0>;
+		vddr-gpios = <&pio 141 0>;
 		reset-gpios = <&pio 60 0>;
-		gate-ic = <4831>;
 		pinctrl-names = "default";
 		port {
 			panel_in1: endpoint {
