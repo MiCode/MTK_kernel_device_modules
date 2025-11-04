@@ -17,7 +17,11 @@
 #include <dt-bindings/clock/mmdvfs-clk.h>
 #include <dt-bindings/spmi/spmi.h>
 #include <dt-bindings/memory/mt6881-larb-port.h>
-
+#include <dt-bindings/power/mtk-charger.h>
+#include <dt-bindings/iio/adc/mediatek,mt6379_auxadc.h>
+#include <dt-bindings/iio/adc/mediatek,mt6720_adc.h>
+#include <dt-bindings/mfd/mt6720.h>
+#include <dt-bindings/power/mt6375-gauge.h>
 
 / {
 	model = "MT6881";
@@ -387,6 +391,27 @@
 	memory@40000000 {
 		device_type = "memory";
 		reg = <0 0x40000000 0 0x40000000>;
+	};
+
+	rt-pd-manager {
+		compatible = "mediatek,rt-pd-manager";
+		nr-port = <1>;
+		//en-wd0-port0;
+		tcpc-supply = <&mt6720_typec>;
+	};
+
+	mtk_ctd: mtk-ctd {
+		compatible = "mediatek,mtk_ctd";
+		nr-port = <1>;
+		chg-name-port0 = "primary_chg";
+		bc12-sel-port0 = <MTK_CTD_BY_SUBPMIC>;
+		bc12-psy-port0 = <&mt6720_chg>;
+		tcpc-supply = <&mt6720_typec>;
+		chg-supply = <&mt6720_chg>;
+	};
+
+	subpmic_pmu_eint: subpmic-pmu-eint {
+
 	};
 
 	odm: odm {
@@ -863,6 +888,39 @@
 	ged: ged {
 		compatible = "mediatek,ged";
 		gpufreq-supply = <&gpufreq>;
+	};
+
+	rt5133_eint: rt5133-eint {
+	};
+
+	rt5133_gpio1: rt5133-gpio1 {
+		compatible = "regulator-fixed";
+		regulator-name = "rt5133-gpio1";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		vin-supply = <&rt5133_ldo1>;
+		enable-active-high;
+		gpio = <&rt5133 0 0x0>;
+	};
+
+	rt5133_gpio2: rt5133-gpio2 {
+		compatible = "regulator-fixed";
+		regulator-name = "rt5133-gpio2";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		vin-supply = <&rt5133_ldo1>;
+		enable-active-high;
+		gpio = <&rt5133 1 0x0>;
+	};
+
+	rt5133_gpio3: rt5133-gpio3 {
+		compatible = "regulator-fixed";
+		regulator-name = "rt5133-gpio3";
+		regulator-min-microvolt = <2800000>;
+		regulator-max-microvolt = <2800000>;
+		vin-supply = <&rt5133_ldo1>;
+		enable-active-high;
+		gpio = <&rt5133 2 0x0>;
 	};
 
 	gpufreq_wrapper: gpufreq-wrapper {
@@ -7255,6 +7313,443 @@
 				regulator-enable-ramp-delay = <256>;
 				regulator-allowed-modes = <0 1 2>;
 				regulator-always-on;
+			};
+		};
+	};
+};
+
+&spmi {
+	mt6720: mt6720@7 {
+		compatible = "mediatek,mt6720";
+		reg = <0x7 SPMI_USID>;
+		status = "okay";
+		/* ----- For using GPIO IRQB ----- */
+		interrupt-parent = <&pio>;
+		interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+		/* ------------------------------- */
+
+		/* ----- For using RCS ----- */
+		//interrupts = <7>;
+		/* ------------------------- */
+		interrupt-controller;
+		#interrupt-cells = <1>;
+		wakeup-source;
+
+		dbg {
+			compatible = "richtek,subpmic-dbg";
+			dbg-bus = "SPMI";
+			dbg-name = "MT6720";
+		};
+
+		mt6720_chg: chg {
+			compatible = "mediatek,mt6720-charger";
+			interrupts = <MT6720_EVT_PWR_RDY>, <MT6720_EVT_DETACH>,
+				     <MT6720_EVT_VBUS_OV>, <MT6720_EVT_CHG_TOUT>,
+				     <MT6720_EVT_AICC_DONE>, <MT6720_EVT_PE_DONE>,
+				     <MT6720_EVT_WDT>, <MT6720_EVT_BATRPO_DONE>,
+				     <MT6720_EVT_BC12_DN>, <MT6720_EVT_ADC_VBAT_MON_OV>,
+				     <MT6720_EVT_BASE_OTP0>,
+				     <MT6720_EVT_BASE_OTP1>, <MT6720_EVT_BASE_OTP2>,
+				     <MT6720_EVT_BUS_CHG_RDY>, <MT6720_EVT_CHG_SYSOV>;
+			interrupt-names = "fl_pwr_rdy", "fl_detach",
+					  "fl_vbus_ov", "fl_chg_tout",
+					  "fl_aicc_done", "fl_pe_done",
+					  "fl_wdt", "fl_batpro_done",
+					  "fl_bc12_dn", "adc_vbat_mon_ov",
+					  "otp0", "otp1", "otp2",
+					  "fl_bus_chg_rdy", "fl_chg_sysov";
+			gauge = <&mtk_gauge>;
+			/* mt6720 point VBATMON to VBATMON2, make driver compatible */
+			io-channels = <&mt6720_adc MT6720_ADC_VBATMON>,
+				      <&mt6720_adc MT6720_ADC_CHGVIN>,
+				      <&mt6720_adc MT6720_ADC_USBDP>,
+				      <&mt6720_adc MT6720_ADC_VSYS>,
+				      <&mt6720_adc MT6720_ADC_VBAT>,
+				      <&mt6720_adc MT6720_ADC_IBUS>,
+				      <&mt6720_adc MT6720_ADC_IBAT>,
+				      <&mt6720_adc MT6720_ADC_USBDM>,
+				      <&mt6720_adc MT6720_ADC_TEMPJC>,
+				      <&mt6720_adc MT6720_ADC_SBU2>,
+				      <&mt6720_adc MT6720_ADC_VBATMON>,
+				      <&mt6720_adc MT6720_ADC_ZCV>;
+			chgdev-name = "primary_chg";
+			chg-tmr = <10>;
+			chg-tmr-en;
+			/* 0~3, 8s, 40s, 80s, 160s */
+			wdt-time = <1>;
+			//wdt-en;
+			te-en;
+			mivr = <4400000>;	/* uV */
+			aicr = <500000>;	/* uA */
+			ichg = <2000000>;	/* uA */
+			ieoc = <150000>;	/* uA */
+			cv = <4200000>;		/* uV */
+			vrec = <100000>;	/* uV */
+			bc12-sel = <MTK_CTD_BY_SUBPMIC>;
+			nr-port = <1>;
+			boot-mode = <&chosen>;
+			phys = <&u2port0 PHY_TYPE_USB2>;
+			phy-names = "usb2-phy";
+			usb = <&ssusb>;
+			//usb-killer-detect;
+			enable-fsw-control = <0>; // fsw-control default is enable
+			/*
+			 * fon-osc-enable : force wakeup clock for preoc
+			 * set true will enable fon_osc when resume
+			 */
+			// fon-osc-enable;
+			//pmic-uvlo = <&mt6363_dynamic_loading_throttling>;
+			otg-supply = <&mt6720_otg_vbus>;
+			mt6720_otg_vbus: usb-otg-vbus-regulator {
+				regulator-name = "mt6720-usb-otg-vbus";
+				regulator-min-microvolt = <4850000>;
+				regulator-max-microvolt = <5500000>;
+				regulator-min-microamp = <500000>;
+				regulator-max-microamp = <2600000>;
+			};
+		};
+
+		mt6720_div2: div2 {
+			compatible = "mediatek,mt6720-div2";
+			interrupts = <MT6720_EVT_DIV2_VAC_PD> ,<MT6720_EVT_DIV2_VBUS_PD>,
+				     <MT6720_EVT_DIV2_VBAT_OVP>, <MT6720_EVT_DIV2_IBUS_OCP>,
+				     <MT6720_EVT_DIV2_IBUS_UCP_RISE>, <MT6720_EVT_DIV2_IBUS_UCP_FALL>,
+				     <MT6720_EVT_DIV2_IBUS_OCP_H>, <MT6720_EVT_DIV2_VBUS_LOW_ERR>,
+				     <MT6720_EVT_DIV2_VBUS_HIGH_ERR>, <MT6720_EVT_DIV2_VAC_POR>,
+				     <MT6720_EVT_DIV2_VBUS_INSERT>, <MT6720_EVT_DIV2_VBAT_INSERT>,
+				     <MT6720_EVT_DIV2_WDT>, <MT6720_EVT_DIV2_VAC_UVLO>,
+				     <MT6720_EVT_DIV2_VBUS_UVLO>, <MT6720_EVT_DIV2_IBUS_UCP_TO>,
+				     <MT6720_EVT_DIV2_CON_SWITCHING>, <MT6720_EVT_DIV2_CFLY_DIAG>;
+			interrupt-names = "div2_fl_vac_pd" ,"div2_fl_vbus_pd",
+					  "div2_fl_vbat_ovp", "div2_fl_ibus_ocp",
+					  "div2_fl_ibus_ucp_rise", "div2_fl_ibus_ucp_fall",
+					  "div2_fl_ibus_ocp_h", "div2_fl_vbus_low_err",
+					  "div2_fl_vbus_high_err", "div2_fl_vac_por",
+					  "div2_fl_vbus_insert", "div2_fl_vbat_insert",
+					  "div2_fl_wdt", "div2_fl_vac_uvlo",
+					  "div2_fl_vbus_uvlo", "div2_fl_ibus_ucp_to",
+					  "div2_fl_con_switching", "div2_fl_cfly_diag";
+			io-channels = <&mt6720_adc MT6720_ADC_CHGVIN>,
+				      <&mt6720_adc MT6720_ADC_VBAT>,
+				      <&mt6720_adc MT6720_ADC_IBUS>,
+				      <&mt6720_adc MT6720_ADC_IBAT>,
+				      <&mt6720_adc MT6720_ADC_TEMPJC>,
+				      <&mt6720_adc MT6720_ADC_DIV2>;
+			chgdev-name = "primary_dvchg";
+			wdt-dis;
+			vbatovp = <4350000>;
+			vbusovp = <8900000>;
+			ibusocp = <1000000>;
+			fsw = <500000>;
+			wdt-timer = <0>;
+		};
+
+		mt6720_auxadc: auxadc {
+			compatible = "mediatek,pmic-auxadc",
+				     "mediatek,mt6720-auxadc";
+			interrupts = <MT6720_EVT_GM_HK1>;
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			#address-cells = <1>;
+			#io-channel-cells = <1>;
+			io-channels = <&mt6720_adc MT6720_ADC_VBAT>,
+				      <&mt6720_auxadc MT6379_AUXADC_BATSNS_DBG>;
+			io-channel-names = "chg_vbat", "auxadc_vbat";
+			charger = <&mt6720_chg>;
+			gauge = <&mtk_gauge>;
+		};
+
+		mtk_gauge: mtk-gauge {
+			compatible = "mediatek,mt6720-gauge";
+			interrupt-controller;
+			#interrupt-cells = <1>;
+			#address-cells = <1>;
+			bootmode = <&chosen>;
+			charger = <&mt6720_chg>;
+			io-channels = <&mt6720_auxadc MT6379_AUXADC_BATSNS>,
+				      <&mt6720_auxadc MT6379_AUXADC_BATON>,
+				      <&mt6720_auxadc MT6379_AUXADC_IMP>,
+				      <&mt6720_auxadc MT6379_AUXADC_IMIX_R>,
+				      <&mt6720_auxadc MT6379_AUXADC_VREF>,
+				      <&mt6720_adc MT6720_ADC_VBATMON>;
+			io-channel-names = "bat_volt", "bat_temp", "ptim_bat_volt",
+					   "ptim_r", "vref", "adc_vbatmon";
+			interrupts-extended = <&mt6720 MT6720_EVT_GM_BM1>,
+					      <&mtk_gauge RG_INT_STATUS_FG_BAT_H>,
+					      <&mtk_gauge RG_INT_STATUS_FG_BAT_L>,
+					      <&mt6720_auxadc RG_INT_STATUS_BAT2_H>,
+					      <&mt6720_auxadc RG_INT_STATUS_BAT2_L>,
+					      <&mt6720_auxadc RG_INT_STATUS_NAG_C_DLTV>,
+					      <&mtk_gauge RG_INT_STATUS_BATON_BAT_IN>,
+					      <&mtk_gauge RG_INT_STATUS_BATON_BAT_OUT>,
+					      <&mtk_gauge RG_INT_STATUS_FG_ZCV>,
+					      <&mtk_gauge RG_INT_STATUS_FG_N_CHARGE_L>,
+					      <&mtk_gauge RG_INT_STATUS_FG_IAVG_H>,
+					      <&mtk_gauge RG_INT_STATUS_FG_IAVG_L>,
+					      <&mt6720_auxadc RG_INT_STATUS_BAT_TEMP_H>,
+					      <&mt6720_auxadc RG_INT_STATUS_BAT_TEMP_L>;
+			interrupt-names = "GM30_EVT", "COULOMB_H", "COULOMB_L",
+					  "VBAT2_H", "VBAT2_L", "NAFG", "BAT_IN", "BAT_OUT", "ZCV",
+					  "FG_N_CHARGE_L", "FG_IAVG_H", "FG_IAVG_L", "BAT_TMP_H",
+					  "BAT_TMP_L";
+			//nvmem-cells = <&fg_init>, <&fg_soc>;
+			//nvmem-cell-names = "initialization", "state-of-charge";
+		};
+
+		mt6720_adc: mt6720-adc {
+			compatible = "mediatek,mt6720-adc";
+			#io-channel-cells = <1>;
+		};
+
+		mt6720-ufcs {
+			compatible = "mediatek,mt6720-ufcs";
+			interrupts = <MT6720_EVT_DPDM_UFCS>;
+		};
+
+		mt6720_lbat_service: lbat-service {
+			compatible = "mediatek,mt6720-lbat-service";
+			interrupts-extended = <&mt6720_auxadc RG_INT_STATUS_BAT_H>,
+					      <&mt6720_auxadc RG_INT_STATUS_BAT_L>;
+			interrupt-names = "bat_h", "bat_l";
+			resistance-ratio = <4 1>;
+		};
+
+		mt6720_batoc_throttle: mtk-battery-oc-throttling {
+			compatible = "mediatek,mt6720-battery-oc-throttling";
+			interrupts-extended = <&mtk_gauge RG_INT_STATUS_FG_CUR_H>,
+					      <&mtk_gauge RG_INT_STATUS_FG_CUR_L>;
+			interrupt-names = "fg_cur_h", "fg_cur_l";
+			oc-thd = <6000 7000 8000>;
+		};
+
+		mt6720_typec: mt6720-tcpc {
+			compatible = "mediatek,mt6720-tcpc";
+			interrupts = <MT6720_EVT_TYPEC_PD>;
+			interrupt-names = "pd_evt";
+			/* tcpc_device's name */
+			tcpc,name = "type_c_port0";
+			/* 0: Unknown, 1: SNK, 2: SRC, 3: DRP, 4: Try.SRC, 5: Try.SNK */
+			tcpc,role-def = <5>;
+			/* 0: Default, 1: 1.5, 2: 3.0 */
+			tcpc,rp-level = <1>;
+			/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
+			tcpc,vconn-supply = <1>;
+			io-channels = <&mt6720_adc MT6720_ADC_SBU1>,
+				      <&mt6720_adc MT6720_ADC_SBU2>;
+			charger = <&mt6720_chg>;
+			boot-mode = <&chosen>;
+			tcpc,en-wd;
+			// tcpc,en-wd-dual-port;
+			tcpc,en-ctd;
+			/* hw not support fod */
+			//tcpc,en-fod;
+			tcpc,en-typec-otp;
+			// tcpc,en-floatgnd;
+			wd,sbu-calib-init = <1200>;	/* mV */
+			wd,sbu-pl-bound = <200>;	/* mV */
+			wd,sbu-pl-lbound-c2c = <1100>;	/* mV */
+			wd,sbu-pl-ubound-c2c = <2600>;	/* mV */
+			wd,sbu-ph-auddev = <100>;	/* mV */
+			wd,sbu-ph-lbound = <888>;	/* mV */
+			wd,sbu-ph-lbound1-c2c = <2850>;	/* mV */
+			wd,sbu-ph-ubound1-c2c = <3150>;	/* mV */
+			wd,sbu-ph-ubound2-c2c = <3800>;	/* mV */
+			wd,sbu-aud-ubound = <1600>;	/* mV */
+			/* 0:16x, 1:128x, 2:512x, 3:1024x */
+			wd,wd0-tsleep = <1>;
+			/* 0:400us, 1:1ms, 2:2ms, 3:4ms, 4:10ms, 5:40ms, 6:100ms, 7:400ms */
+			wd,wd0-tdet = <3>;
+			/* example wd0-tsleep = 512x, wd0-tdet = 4ms, wd0 polling time = 512*4ms */
+			pd-data {
+				pd,vid = <0x29cf>;
+				pd,pid = <0x6720>;
+				pd,source-cap-ext = /bits/ 8 <0xcf 0x29 0x20 0x67
+							      0x00 0x00 0x00 0x00
+							      0x00 0x00 0x00 0x00
+							      0x00 0x00 0x00 0x00
+							      0x00 0x00 0x00 0x00
+							      0x00 0x00 0x01 0x07
+							      0x00>;
+				pd,sink-cap-ext = /bits/ 8 <0xcf 0x29 0x20 0x67
+							    0x00 0x00 0x00 0x00
+							    0x00 0x00 0x01 0x00
+							    0x00 0x00 0x00 0x00
+							    0x01 0x0b 0x01 0x0a
+							    0x0a 0x00 0x00 0x00>;
+				pd,mfrs = "RichtekTCPC";
+
+				/*
+				 *	VSAFE5V = 0, MAX_POWER = 1, CUSTOM = 2,
+				 *	MAX_POWER_LV = 0x21, MAX_POWER_LVIC = 0x31
+				 *	MAX_POWER_HV = 0x41, MAX_POWER_HVIC = 0x51
+				 */
+				pd,charging-policy = <0x31>;
+
+				pd,source-pdo-size = <1>;
+				pd,source-pdo-data = <0x00019096>; /* 5V, 1500 mA */
+				pd,sink-pdo-size = <1>;
+				pd,sink-pdo-data = <0x000190c8>;
+
+				/*
+				 * No DP, host + device
+				 *	pd,id-vdo-size = <6>;
+				 *	pd,id-vdo-data = <0xd14029cf 0x0 0x63790000
+							  0x61000000 0x0 0x41000000>;
+				 * With DP Sink capability
+				 *	pd,id-vdo-size = <6>;
+				 *	pd,id-vdo-data = <0xd54029cf 0x0 0x63790000
+							  0x61000000 0x0 0x41000000>;
+				 */
+
+				pd,id-vdo-size = <6>;
+				pd,id-vdo-data = <0xd14029cf 0x0 0x67200000
+						  0x61000000 0x0 0x41000000>;
+
+				bat,nr = <1>;
+				bat-info0 {
+					bat,vid = <0x29cf>;
+					bat,pid = <0x6720>;
+					bat,mfrs = "bat1";
+					bat,design-cap = <3000>;
+				};
+			};
+			dpm-caps {
+				local-dr-power;
+				local-dr-data;
+				// local-ext-power;
+				local-usb-comm;
+				// local-usb-suspend;
+				// local-high-cap;
+				// local-give-back;
+				local-no-suspend;
+
+				/* With DP Source capability */
+				attempt-enter-dp-mode;
+				// attempt-discover-cable;
+				// attempt-discover-id;
+				// attempt-discover-svids;
+
+				/* 0: disable, 1: prefer-snk, 2: prefer-src */
+				pr-check = <0>;
+				// pr-reject-as-source;
+				// pr-reject-as-sink;
+				// pr-check-gp-source;
+				// pr-check-gp-sink;
+
+				/* 0: disable, 1: prefer-ufp, 2: prefer-dfp */
+				dr-check = <0>;
+				// dr-reject-as-dfp;
+				// dr-reject-as-ufp;
+			};
+			displayport {
+				/* connection type = "both", "ufp-d", "dfp-d" */
+				1st-connection = "dfp-d";
+				2nd-connection = "dfp-d";
+				// usbr20-not-used;
+				typec,receptacle;
+				ufp-d {
+					// pin-assignment,mode-c;
+					// pin-assignment,mode-d;
+					// pin-assignment,mode-e;
+				};
+				dfp-d {
+					pin-assignment,mode-c;
+					pin-assignment,mode-d;
+					pin-assignment,mode-e;
+				};
+			};
+		};
+	};
+};
+
+&i2c5 {
+	rt5133: rt5133@18 {
+		status = "ok";
+		compatible = "richtek,rt5133";
+		reg = <0x18>;
+		wakeup-source;
+		interrupts-extended = <&pio 5 IRQ_TYPE_EDGE_FALLING>;
+		enable-gpio = <&pio 95 0x0>;
+		gpio-supply = <&rt5133_ldo1>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		regulators {
+			rt5133_base: BASE {
+				regulator-name = "rt5133,base";
+				oc-shutdown-all = <0>;
+				pgb-shutdown-all = <0>;
+			};
+			rt5133_ldo1: LDO1 {
+				regulator-name = "rt5133-ldo1";
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <2800000>;
+				regulator-active-discharge;
+				oc-ptsel = <1>;
+				pgb-ptsel = <1>;
+				soft-start-time-sel = <1>;
+			};
+			rt5133_ldo2: LDO2 {
+				regulator-name = "rt5133-ldo2";
+				regulator-min-microvolt = <1800000>;
+				regulator-max-microvolt = <3200000>;
+				regulator-active-discharge;
+				oc-ptsel = <1>;
+				pgb-ptsel = <1>;
+				soft-start-time-sel = <1>;
+			};
+			rt5133_ldo3: LDO3 {
+				regulator-name = "rt5133-ldo3";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-active-discharge;
+				oc-ptsel = <1>;
+				pgb-ptsel = <1>;
+				soft-start-time-sel = <1>;
+			};
+			rt5133_ldo4: LDO4 {
+				regulator-name = "rt5133-ldo4";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-active-discharge;
+				oc-ptsel = <1>;
+				pgb-ptsel = <1>;
+				soft-start-time-sel = <1>;
+			};
+			rt5133_ldo5: LDO5 {
+				regulator-name = "rt5133-ldo5";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-active-discharge;
+				oc-ptsel = <1>;
+				pgb-ptsel = <1>;
+				soft-start-time-sel = <1>;
+			};
+			rt5133_ldo6: LDO6 {
+				regulator-name = "rt5133-ldo6";
+				regulator-min-microvolt = <1700000>;
+				regulator-max-microvolt = <3000000>;
+				regulator-active-discharge;
+				oc-ptsel = <1>;
+				pgb-ptsel = <1>;
+				soft-start-time-sel = <1>;
+			};
+			rt5133_ldo7: LDO7 {
+				regulator-name = "rt5133-ldo7";
+				regulator-min-microvolt = <900000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-active-discharge;
+				oc-ptsel = <1>;
+				pgb-ptsel = <1>;
+				soft-start-time-sel = <1>;
+			};
+			rt5133_ldo8: LDO8 {
+				regulator-name = "rt5133-ldo8";
+				regulator-min-microvolt = <855000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-active-discharge;
+				oc-ptsel = <1>;
+				pgb-ptsel = <1>;
+				soft-start-time-sel = <1>;
 			};
 		};
 	};
