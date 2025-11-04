@@ -675,14 +675,26 @@ static void mutex_debug_dump(struct mml_comp *comp)
 static void mutex_reset(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe)
 {
 	struct mml_mutex *mutex = comp_to_mutex(comp);
-	struct mml_pipe_cache *cache = &cfg->cache[pipe];
-	struct mml_comp_config *ccfg = cache->cfg;
-	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 	void __iomem *base = comp->base;
-	struct mutex_frame_data *mutex_frm = mutex_frm_data(ccfg);
+	struct mml_pipe_cache *cache = &cfg->cache[pipe];
+	const struct mml_topology_path *path = cfg->path[pipe];
+	struct mml_comp_config *ccfg = NULL;
+	struct mutex_frame_data *mutex_frm;
 	const u32 rst_off = mutex->data->rst_offset;
 	s32 mutex_id = -1;
 	u32 i;
+
+	if (comp->id == path->mutex->id)
+		ccfg = &cache->cfg[path->mutex_idx];
+	else if (comp->id == path->mutex2->id)
+		ccfg = &cache->cfg[path->mutex2_idx];
+	else {
+		mml_err("%s not found mutex ccfg comp id %d", __func__,
+			comp->id);
+		return;
+	}
+
+	mutex_frm = mutex_frm_data(ccfg);
 
 	if (mutex->data->sofgrp_assign) {
 		for (i = 0; i < path->node_cnt; i++) {
