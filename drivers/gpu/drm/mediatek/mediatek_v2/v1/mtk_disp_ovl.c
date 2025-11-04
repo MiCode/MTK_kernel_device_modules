@@ -288,6 +288,14 @@ int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
 #define FLD_OVL_PQ_OUT_SRC_W REG_FLD_MSB_LSB(12, 0)
 #define FLD_OVL_PQ_OUT_SRC_H REG_FLD_MSB_LSB(28, 16)
 
+#define DISP_REG_OVL_UNDO_ALPHA (0x400UL)
+#define DISP_REG_OVL_UNDO_ALPHA_1 (0x404UL)
+#define MT6881_OVL_LX_UNDO_OFFSET 0x8
+#define MT6881_OVL_LC_UNDO_OFFSET 0x16
+#define MT6881_OVL_LX_UNDO_APPLY_OFFSET 0x4
+#define DISP_REG_OVL_UNDO_ALPHA_OFFSET (0x408UL)
+#define DISP_REG_OVL_UNDO_ALPHA_OFFSET_1 (0x40CUL)
+
 /* OVL Bandwidth monitor */
 #define DISP_REG_OVL_BURST_MON_CFG (0x97CUL)
 #define FLD_OVL_BURST_ACC_EN REG_FLD_MSB_LSB(0, 0)
@@ -3060,6 +3068,15 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			       comp->regs_pa + DISP_REG_OVL_SMI_2ND_CFG,
 			       (val << (id + 4)), (1 << (id + 4)));
 		}
+
+		if (ovl->data->support_undo_alpha) {
+			unsigned int set_bit = id * MT6881_OVL_LX_UNDO_OFFSET;
+
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_UNDO_ALPHA_1,
+				(modifier & MTK_FMT_PREMULTIPLIED) ? ~0 : 0,
+				BIT(set_bit) | BIT(set_bit + MT6881_OVL_LX_UNDO_APPLY_OFFSET));
+		}
 	} else {
 		SET_VAL_MASK(value, mask, fmt_ex, FLD_Ln_CLRFMT_NB(lye_idx));
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -3088,6 +3105,15 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			cmdq_pkt_write(handle, comp->cmdq_base,
 			       comp->regs_pa + DISP_REG_OVL_SMI_2ND_CFG,
 			       (val << lye_idx), (1 << lye_idx));
+		}
+
+		if (ovl->data->support_undo_alpha) {
+			unsigned int set_bit = lye_idx * MT6881_OVL_LX_UNDO_OFFSET;
+
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_UNDO_ALPHA,
+				(modifier & MTK_FMT_PREMULTIPLIED) ? ~0 : 0,
+				BIT(set_bit) | BIT(set_bit + MT6881_OVL_LX_UNDO_APPLY_OFFSET));
 		}
 	}
 
@@ -3131,6 +3157,13 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		SET_VAL_MASK(value, mask, 1, FLD_OVL_LC_DRGB_SEL_EXT);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_OVL_LC_SRC_SEL, value, mask);
+
+		if (ovl->data->support_undo_alpha)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_REG_OVL_UNDO_ALPHA,
+				(modifier & MTK_FMT_PREMULTIPLIED) ? ~0 : 0,
+				BIT(MT6881_OVL_LC_UNDO_OFFSET) |
+				BIT(MT6881_OVL_LC_UNDO_OFFSET + MT6881_OVL_LX_UNDO_APPLY_OFFSET));
 	}
 
 #define _LAYER_CONFIG_FMT \
@@ -7059,7 +7092,7 @@ static const struct mtk_disp_ovl_data mt6881_ovl_driver_data = {
 	.support_shadow = false,
 	.need_bypass_shadow = true,
 	.preultra_th_dc = 0xe0,
-	.fifo_size = 288,
+	.fifo_size = 768,
 	.issue_req_th_dl = 191,
 	.issue_req_th_dc = 15,
 	.issue_req_th_urg_dl = 95,
@@ -7070,9 +7103,8 @@ static const struct mtk_disp_ovl_data mt6881_ovl_driver_data = {
 	.aid_per_layer_setting = false,
 	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6878,
 	.source_bpc = 10,
-	/* mt6881 not support pq self loop ??? */
-	/* but can set pq out and input back to ufod in to constant lye */
 	.pqout_ufodin_loop = true,
+	.support_undo_alpha = false,
 	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6878,
 };
 

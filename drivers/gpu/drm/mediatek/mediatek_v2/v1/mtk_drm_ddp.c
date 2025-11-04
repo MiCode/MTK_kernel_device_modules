@@ -887,6 +887,7 @@
 #define MT6878_DISP_CCORR2_SEL_IN					0xE34
 	#define MT6878_CCORR2_SEL_IN_FROM_C3D1			0x0
 	#define MT6878_CCORR2_SEL_IN_FROM_TDSHP1		0x1
+	#define MT6881_CCORR2_SEL_IN_FROM_AAL1		0x2
 #define MT6878_DISP_CCORR3_SOUT_SEL					0xE38
 	#define MT6878_CCORR3_SOUT_SEL_TO_C3D1			0x0
 	#define MT6878_CCORR3_SOUT_SEL_TO_GAMMA1		0x1
@@ -899,6 +900,7 @@
 #define MT6878_DISP_TDSHP1_SOUT_SEL					0xE48
 	#define MT6878_TDSHP1_SOUT_SEL_TO_C3D1			0x0
 	#define MT6878_TDSHP1_SOUT_SEL_TO_CCORR2		0x1
+	#define MT6881_TDSHP1_SOUT_SEL_TO_AAL1		0x2
 
 #define MT6878_DISP_MUTEX0_MOD0 0x30
 #define MT6878_DISP_MUTEX0_SOF 0x2C
@@ -927,12 +929,28 @@
 #define MT6878_MUTEX_MOD0_DISP_DITHER1 BIT(21)
 #define MT6878_MUTEX_MOD0_DISP_SPLITTER0 BIT(22)
 #define MT6878_MUTEX_MOD0_DISP_DSC0 BIT(23)
+#define MT6881_MUTEX_MOD1_DISP_DSC_WRAP0_CORE0 BIT(23)
 #define MT6878_MUTEX_MOD0_DISP_DSC1 BIT(24)
+#define MT6881_MUTEX_MOD1_DISP_DSC_WRAP0_CORE1 BIT(24)
 #define MT6878_MUTEX_MOD0_DISP_DSI0 BIT(25)
 #define MT6878_MUTEX_MOD0_DISP_DSI1 BIT(26)
 #define MT6878_MUTEX_MOD0_DISP_WDMA1 BIT(27)
 #define MT6878_MUTEX_MOD0_DISP_PWM0 BIT(28)
 #define MT6878_MUTEX_MOD0_DISP_PWM1 BIT(29)
+#define MT6881_MUTEX_MOD0_DISP_OVL0_1L BIT(30)
+#define MT6881_MUTEX_MOD0_DISP_OVL1_1L BIT(31)
+
+#define MT6881_MUTEX_MOD1_DISP_DSC_WRAP1_CORE0 (BIT(0) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_DSC_WRAP1_CORE1 (BIT(1) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_TTC0 (BIT(2) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_TTC1 (BIT(3) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_AAL1 (BIT(4) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_TTC_RELAY0 (BIT(5) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_TTC_RELAY1 (BIT(6) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_OVL0_1L_RELAY0 (BIT(7) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_OVL1_1L_RELAY0 (BIT(8) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_TTC2 (BIT(9) | BIT(31))
+#define MT6881_MUTEX_MOD1_DISP_TTC3 (BIT(10) | BIT(31))
 
 #define MT6878_MUTEX_SOF_SINGLE_MODE 0
 #define MT6878_MUTEX_SOF_DSI0 1
@@ -945,6 +963,18 @@
 
 #define MT6878_DISP_REG_CONFIG_SMI_LARB0_GREQ 0x8DC
 #define MT6878_DISP_REG_CONFIG_SMI_LARB1_GREQ 0x8E0
+
+#define MT6881_DISP_REG_CONFIG_MMSYS_CG_CON1 0x110
+
+#define MT6881_DISP_REG_CONFIG_DL_VALID_0 0xBD0
+#define MT6881_DISP_REG_CONFIG_DL_VALID_1 0xBD4
+#define MT6881_DISP_REG_CONFIG_DL_VALID_2 0xBD8
+#define MT6881_DISP_REG_CONFIG_DL_VALID_3 0xBDC
+
+#define MT6881_DISP_REG_CONFIG_DL_READY_0 0xBE0
+#define MT6881_DISP_REG_CONFIG_DL_READY_1 0xBE4
+#define MT6881_DISP_REG_CONFIG_DL_READY_2 0xBE8
+#define MT6881_DISP_REG_CONFIG_DL_READY_3 0xBEC
 
 /*For MT6983*/
 #define MT6983_BYPASS_MUX_SHADOW	0xF00
@@ -7598,6 +7628,42 @@ static const unsigned int mt6878_mutex_mod[DDP_COMPONENT_ID_MAX] = {
 	[DDP_COMPONENT_PWM1] = MT6878_MUTEX_MOD0_DISP_PWM1,
 };
 
+static const unsigned int mt6881_mutex_mod[DDP_COMPONENT_ID_MAX] = {
+	[DDP_COMPONENT_OVL0_2L] = MT6878_MUTEX_MOD0_DISP_OVL0_2L,
+	[DDP_COMPONENT_OVL1_2L] = MT6878_MUTEX_MOD0_DISP_OVL1_2L,
+	[DDP_COMPONENT_OVL2_2L] = MT6878_MUTEX_MOD0_DISP_OVL2_2L,
+	[DDP_COMPONENT_OVL3_2L] = MT6878_MUTEX_MOD0_DISP_OVL3_2L,
+	[DDP_COMPONENT_UFBC_WDMA0] = MT6878_MUTEX_MOD0_DISP_UFBC_WDMA0,
+	[DDP_COMPONENT_RSZ1] = MT6878_MUTEX_MOD0_DISP_RSZ1,
+	[DDP_COMPONENT_RSZ0] = MT6878_MUTEX_MOD0_DISP_RSZ0,
+	[DDP_COMPONENT_TDSHP0] = MT6878_MUTEX_MOD0_DISP_TDSHP0,
+	[DDP_COMPONENT_C3D0] = MT6878_MUTEX_MOD0_DISP_C3D0,
+	[DDP_COMPONENT_COLOR0] = MT6878_MUTEX_MOD0_DISP_COLOR0,
+	[DDP_COMPONENT_CCORR0] = MT6878_MUTEX_MOD0_DISP_CCORR0,
+	[DDP_COMPONENT_CCORR1] = MT6878_MUTEX_MOD0_DISP_CCORR1,
+	[DDP_COMPONENT_AAL0] = MT6878_MUTEX_MOD0_DISP_AAL0,
+	[DDP_COMPONENT_GAMMA0] = MT6878_MUTEX_MOD0_DISP_GAMMA0,
+	[DDP_COMPONENT_POSTMASK0] = MT6878_MUTEX_MOD0_DISP_POSTMASK0,
+	[DDP_COMPONENT_DITHER0] = MT6878_MUTEX_MOD0_DISP_DITHER0,
+	[DDP_COMPONENT_TDSHP1] = MT6878_MUTEX_MOD0_DISP_TDSHP1,
+	[DDP_COMPONENT_C3D1] = MT6878_MUTEX_MOD0_DISP_C3D1,
+	[DDP_COMPONENT_CCORR2] = MT6878_MUTEX_MOD0_DISP_CCORR2,
+	[DDP_COMPONENT_CCORR3] = MT6878_MUTEX_MOD0_DISP_CCORR3,
+	[DDP_COMPONENT_GAMMA1] = MT6878_MUTEX_MOD0_DISP_GAMMA1,
+	[DDP_COMPONENT_DITHER1] = MT6878_MUTEX_MOD0_DISP_DITHER1,
+	[DDP_COMPONENT_SPLITTER0] = MT6878_MUTEX_MOD0_DISP_SPLITTER0,
+	[DDP_COMPONENT_DSC0] = MT6878_MUTEX_MOD0_DISP_DSC0, //DSC WAP0_0
+	[DDP_COMPONENT_DSC1] = MT6878_MUTEX_MOD0_DISP_DSC1, //DSC WAP0_1
+	[DDP_COMPONENT_DSI0] = MT6878_MUTEX_MOD0_DISP_DSI0,
+	[DDP_COMPONENT_DSI1] = MT6878_MUTEX_MOD0_DISP_DSI1,
+	[DDP_COMPONENT_WDMA1] = MT6878_MUTEX_MOD0_DISP_WDMA1,
+	[DDP_COMPONENT_PWM0] = MT6878_MUTEX_MOD0_DISP_PWM0,
+	[DDP_COMPONENT_PWM1] = MT6878_MUTEX_MOD0_DISP_PWM1,
+	[DDP_COMPONENT_DSC2] = MT6881_MUTEX_MOD1_DISP_DSC_WRAP1_CORE0, //DSC WAP1_0
+	[DDP_COMPONENT_DSC3] = MT6881_MUTEX_MOD1_DISP_DSC_WRAP1_CORE1, //DSC WAP1_1
+	[DDP_COMPONENT_AAL1] = MT6881_MUTEX_MOD1_DISP_AAL1,
+};
+
 static const unsigned int mt6983_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 /* DISPSYS0 */
 		[DDP_COMPONENT_DMDP_AAL0] = 0,
@@ -9743,6 +9809,75 @@ static const unsigned int mt6878_dispsys_map[DDP_COMPONENT_ID_MAX] = {
 		[DDP_COMPONENT_COMP0_OUT_CB4] = DISPSYS0,
 };
 
+static const unsigned int mt6881_dispsys_map[DDP_COMPONENT_ID_MAX] = {
+/* dispsys0 only */
+		[DDP_COMPONENT_OVL0_2L] = DISPSYS0,
+		[DDP_COMPONENT_OVL1_2L] = DISPSYS0,
+		[DDP_COMPONENT_OVL2_2L] = DISPSYS0,
+		[DDP_COMPONENT_OVL3_2L] = DISPSYS0,
+		[DDP_COMPONENT_RSZ0] = DISPSYS0,
+		[DDP_COMPONENT_RSZ1] = DISPSYS0,
+		[DDP_COMPONENT_TDSHP0] = DISPSYS0,
+		[DDP_COMPONENT_TDSHP1] = DISPSYS0,
+		[DDP_COMPONENT_COLOR0] = DISPSYS0,
+		[DDP_COMPONENT_CCORR0] = DISPSYS0,
+		[DDP_COMPONENT_CCORR1] = DISPSYS0,
+		[DDP_COMPONENT_CCORR2] = DISPSYS0,
+		[DDP_COMPONENT_CCORR3] = DISPSYS0,
+		[DDP_COMPONENT_C3D0] = DISPSYS0,
+		[DDP_COMPONENT_C3D1] = DISPSYS0,
+		[DDP_COMPONENT_AAL0] = DISPSYS0,
+		[DDP_COMPONENT_AAL1] = DISPSYS0,
+		[DDP_COMPONENT_GAMMA0] = DISPSYS0,
+		[DDP_COMPONENT_GAMMA1] = DISPSYS0,
+		[DDP_COMPONENT_DITHER0] = DISPSYS0,
+		[DDP_COMPONENT_DITHER1] = DISPSYS0,
+		[DDP_COMPONENT_POSTMASK0] = DISPSYS0,
+		[DDP_COMPONENT_SPLITTER0] = DISPSYS0,
+		[DDP_COMPONENT_DSC0] = DISPSYS0,
+		[DDP_COMPONENT_DSC1] = DISPSYS0,
+		[DDP_COMPONENT_WDMA1] = DISPSYS0,
+		[DDP_COMPONENT_UFBC_WDMA0] = DISPSYS0,
+		[DDP_COMPONENT_PWM0] = DISPSYS0,
+		[DDP_COMPONENT_DSI0] = DISPSYS0,
+		[DDP_COMPONENT_DSI1] = DISPSYS0,
+/* crossbar */
+		[DDP_COMPONENT_OVL0_BLEND_CB0] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BLEND_CB1] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BLEND_CB2] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BLEND_CB3] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BG_CB0] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BG_CB1] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BG_CB2] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_BG_CB3] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_OUT_CB0] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_OUT_CB1] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_OUT_CB2] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_OUT_CB3] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_IN_CB0] = DISPSYS0,
+		[DDP_COMPONENT_OVL0_PQ_IN_CB1] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_IN_CB0] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_IN_CB1] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_IN_CB2] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB0] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB1] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB2] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB3] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB4] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB5] = DISPSYS0,
+		[DDP_COMPONENT_PQ0_OUT_CB6] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB0] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB1] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB2] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB3] = DISPSYS0,
+		[DDP_COMPONENT_SPLIT_OUT_CB4] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB0] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB1] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB2] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB3] = DISPSYS0,
+		[DDP_COMPONENT_COMP0_OUT_CB4] = DISPSYS0,
+};
+
 /* TODO-check : mutex sof */
 static const unsigned int mt2701_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 		[DDP_MUTEX_SOF_SINGLE_MODE] = MUTEX_SOF_SINGLE_MODE,
@@ -10023,6 +10158,14 @@ static const unsigned int mt6878_mutex_sof[DDP_MUTEX_SOF_MAX] = {
 			MT6878_MUTEX_SOF_DSI1 | MT6878_MUTEX_EOF_DSI1,
 };
 
+static const unsigned int mt6881_mutex_sof[DDP_MUTEX_SOF_MAX] = {
+		[DDP_MUTEX_SOF_SINGLE_MODE] = MT6878_MUTEX_SOF_SINGLE_MODE,
+		[DDP_MUTEX_SOF_DSI0] =
+			MT6878_MUTEX_SOF_DSI0 | MT6878_MUTEX_EOF_DSI0,
+		[DDP_MUTEX_SOF_DSI1] =
+			MT6878_MUTEX_SOF_DSI1 | MT6878_MUTEX_EOF_DSI1,
+};
+
 static const struct mtk_disp_ddp_data mt2701_ddp_driver_data = {
 	.mutex_mod = mt2701_mutex_mod,
 	.mutex_sof = mt2701_mutex_sof,
@@ -10274,11 +10417,11 @@ static const struct mtk_disp_ddp_data mt6878_ddp_driver_data = {
 };
 
 static const struct mtk_disp_ddp_data mt6881_ddp_driver_data = {
-	.mutex_mod = mt6878_mutex_mod,
-	.mutex_sof = mt6878_mutex_sof,
+	.mutex_mod = mt6881_mutex_mod,
+	.mutex_sof = mt6881_mutex_sof,
 	.mutex_mod_reg = MT6878_DISP_MUTEX0_MOD0,
 	.mutex_sof_reg = MT6878_DISP_MUTEX0_SOF,
-	.dispsys_map = mt6878_dispsys_map,
+	.dispsys_map = mt6881_dispsys_map,
 	.wakeup_pf_wq = 1,
 	.wakeup_esd_wq = 1,
 };
@@ -10439,7 +10582,7 @@ const struct mtk_mmsys_reg_data mt6878_mmsys_reg_data = {
 
 const struct mtk_mmsys_reg_data mt6881_mmsys_reg_data = {
 	// To-Do
-	.dispsys_map = mt6878_dispsys_map,
+	.dispsys_map = mt6881_dispsys_map,
 };
 
 struct ddp_signal_t {
@@ -15760,6 +15903,417 @@ static char *ddp_signal_1_mt6855(int bit)
 	}
 }
 
+static char *ddp_signal_0_mt6881(int bit)
+{
+	switch (bit) {
+	case 0:
+		return
+			"comp_out_crossbar_out0__to__disp_dsi0";
+	case 1:
+		return
+			"comp_out_crossbar_out1__to__disp_dsi1";
+	case 2:
+		return
+			"comp_out_crossbar_out2__to__disp_wdma1";
+	case 3:
+		return
+			"disp_aal0__to__disp_aal0_sout";
+	case 4:
+		return
+			"disp_aal0_sel__to__disp_aal0";
+	case 5:
+		return
+			"disp_aal0_sout_out0__to__disp_color0_sel_in2";
+	case 6:
+		return
+			"disp_aal0_sout_out1__to__disp_ccorr0_sel_in1";
+	case 7:
+		return
+			"disp_aal0_sout_out2__to__disp_c3d0_sel_in2";
+	case 8:
+		return
+			"disp_aal0_sout_out3__to__disp_gamma0_sel_in2";
+	case 9:
+		return
+			"disp_aal1__to__disp_ccorr2_sel_in2";
+	case 10:
+		return
+			"disp_c3d0__to__disp_c3d0_sout";
+	case 11:
+		return
+			"disp_c3d0_sel__to__disp_c3d0";
+	case 12:
+		return
+			"disp_c3d0_sout_out0__to__disp_color0_sel_in0";
+	case 13:
+		return
+			"disp_c3d0_sout_out1__to__disp_gamma0_sel_in0";
+	case 14:
+		return
+			"disp_c3d0_sout_out2__to__disp_aal0_sel_in0";
+	case 15:
+		return
+			"disp_c3d1__to__disp_c3d1_sout";
+	case 16:
+		return
+			"disp_c3d1_sel__to__disp_c3d1";
+	case 17:
+		return
+			"disp_c3d1_sout_out0__to__disp_ccorr2_sel_in0";
+	case 18:
+		return
+			"disp_c3d1_sout_out1__to__disp_gamma1_sel_in0";
+	case 19:
+		return
+			"disp_ccorr0__to__disp_ccorr1";
+	case 20:
+		return
+			"disp_ccorr0_sel__to__disp_ccorr0";
+	case 21:
+		return
+			"disp_ccorr1__to__disp_ccorr1_sout";
+	case 22:
+		return
+			"disp_ccorr1_sout_out0__to__disp_c3d0_sel_in1";
+	case 23:
+		return
+			"disp_ccorr1_sout_out1__to__disp_gamma0_sel_in1";
+	case 24:
+		return
+			"disp_ccorr1_sout_out2__to__disp_aal0_sel_in1";
+	case 25:
+		return
+			"disp_ccorr2__to__disp_ccorr3";
+	case 26:
+		return
+			"disp_ccorr2_sel__to__disp_ccorr2";
+	case 27:
+		return
+			"disp_ccorr3__to__disp_ccorr3_sout";
+	case 28:
+		return
+			"disp_ccorr3_sout_out0__to__disp_c3d1_sel_in1";
+	case 29:
+		return
+			"disp_ccorr3_sout_out1__to__disp_gamma1_sel_in1";
+	case 30:
+		return
+			"disp_color0__to__disp_color0_sout";
+	case 31:
+		return
+			"disp_color0_sel__to__disp_color0";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_signal_1_mt6881(int bit)
+{
+	switch (bit) {
+	case 0:
+		return
+			"disp_color0_sout_out0__to__disp_ccorr0_sel_in0";
+	case 1:
+		return
+			"disp_color0_sout_out1__to__disp_aal0_sel_in2";
+	case 2:
+		return
+			"disp_dither0__to__pq_out_crossbar_in0";
+	case 3:
+		return
+			"disp_dither1__to__pq_out_crossbar_in2";
+	case 4:
+		return
+			"disp_dsc_wrap0_out0__to__comp_out_crossbar_in0";
+	case 5:
+		return
+			"disp_dsc_wrap0_out1__to__comp_out_crossbar_in1";
+	case 6:
+		return
+			"disp_dsc_wrap1_out0__to__comp_out_crossbar_in5";
+	case 7:
+		return
+			"disp_dsc_wrap1_out1__to__comp_out_crossbar_in6";
+	case 8:
+		return
+			"disp_gamma0__to__disp_postmask0";
+	case 9:
+		return
+			"disp_gamma0_sel__to__disp_gamma0";
+	case 10:
+		return
+			"disp_gamma1__to__disp_gamma1_sout";
+	case 11:
+		return
+			"disp_gamma1_sel__to__disp_gamma1";
+	case 12:
+		return
+			"disp_gamma1_sout_out0__to__disp_dither1";
+	case 13:
+		return
+			"disp_gamma1_sout_out1__to__pq_out_crossbar_in3";
+	case 14:
+		return
+			"disp_ovl0_1l_mout_out0__to__split_out_crossbar_in7";
+	case 15:
+		return
+			"disp_ovl0_1l_mout_out1__to__disp_ovl1_1l_in2";
+	case 16:
+		return
+			"disp_ovl0_1l_out0__to__disp_ovl0_1l_mout";
+	case 17:
+		return
+			"disp_ovl0_1l_out1__to__disp_ovl1_1l_sel_in0";
+	case 18:
+		return
+			"disp_ovl0_1l_relay0__to__disp_ovl0_1l";
+	case 19:
+		return
+			"disp_ovl0_2l_out0__to__ovl_blend_crossbar_in0";
+	case 20:
+		return
+			"disp_ovl0_2l_out1__to__ovl_bg_crossbar_in0";
+	case 21:
+		return
+			"disp_ovl0_2l_out2__to__ovl_pq_out_crossbar_in0";
+	case 22:
+		return
+			"disp_ovl1_1l__to__split_out_crossbar_in8";
+	case 23:
+		return
+			"disp_ovl1_1l_relay0__to__disp_ovl1_1l_sel_in1";
+	case 24:
+		return
+			"disp_ovl1_1l_sel__to__disp_ovl1_1l_in0";
+	case 25:
+		return
+			"disp_ovl1_2l_out0__to__ovl_blend_crossbar_in1";
+	case 26:
+		return
+			"disp_ovl1_2l_out1__to__ovl_bg_crossbar_in1";
+	case 27:
+		return
+			"disp_ovl1_2l_out2__to__ovl_pq_out_crossbar_in1";
+	case 28:
+		return
+			"disp_ovl2_2l_out0__to__ovl_blend_crossbar_in2";
+	case 29:
+		return
+			"disp_ovl2_2l_out1__to__ovl_bg_crossbar_in2";
+	case 30:
+		return
+			"disp_ovl2_2l_out2__to__ovl_pq_out_crossbar_in2";
+	case 31:
+		return
+			"disp_ovl3_2l_out0__to__ovl_blend_crossbar_in3";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_signal_2_mt6881(int bit)
+{
+	switch (bit) {
+	case 0:
+		return
+			"disp_ovl3_2l_out1__to__ovl_bg_crossbar_in3";
+	case 1:
+		return
+			"disp_ovl3_2l_out2__to__ovl_pq_out_crossbar_in3";
+	case 2:
+		return
+			"disp_postmask0__to__disp_postmask0_sout";
+	case 3:
+		return
+			"disp_postmask0_sout_out0__to__disp_dither0";
+	case 4:
+		return
+			"disp_postmask0_sout_out1__to__pq_out_crossbar_in1";
+	case 5:
+		return
+			"disp_rsz0__to__disp_tdshp0";
+	case 6:
+		return
+			"disp_rsz1__to__ovl_pq_in_crossbar_in0";
+	case 7:
+		return
+			"disp_splitter0_out0__to__split_out_crossbar_in0";
+	case 8:
+		return
+			"disp_splitter0_out1__to__split_out_crossbar_in1";
+	case 9:
+		return
+			"disp_tdshp0__to__disp_tdshp0_sout";
+	case 10:
+		return
+			"disp_tdshp0_sout_out0__to__disp_c3d0_sel_in0";
+	case 11:
+		return
+			"disp_tdshp0_sout_out1__to__disp_color0_sel_in1";
+	case 12:
+		return
+			"disp_tdshp0_sout_out2__to__disp_aal0_sel_in3";
+	case 13:
+		return
+			"disp_tdshp1__to__disp_tdshp1_sout";
+	case 14:
+		return
+			"disp_tdshp1_sout_out0__to__disp_c3d1_sel_in0";
+	case 15:
+		return
+			"disp_tdshp1_sout_out1__to__disp_ccorr2_sel_in1";
+	case 16:
+		return
+			"disp_tdshp1_sout_out2__to__disp_aal1";
+	case 17:
+		return
+			"disp_ttc_relay0__to__split_out_crossbar_in5";
+	case 18:
+		return
+			"disp_ttc_relay1__to__split_out_crossbar_in6";
+	case 19:
+		return
+			"ovl_bg_crossbar_out0__to__disp_ovl0_2l_in0";
+	case 20:
+		return
+			"ovl_bg_crossbar_out1__to__disp_ovl1_2l_in0";
+	case 21:
+		return
+			"ovl_bg_crossbar_out2__to__disp_ovl2_2l_in0";
+	case 22:
+		return
+			"ovl_bg_crossbar_out3__to__disp_ovl3_2l_in0";
+	case 23:
+		return
+			"ovl_blend_crossbar_out0__to__pq_in_crossbar_in0";
+	case 24:
+		return
+			"ovl_blend_crossbar_out1__to__pq_in_crossbar_in1";
+	case 25:
+		return
+			"ovl_blend_crossbar_out2__to__pq_in_crossbar_in2";
+	case 26:
+		return
+			"ovl_blend_crossbar_out3__to__disp_ufbc_wdma0";
+	case 27:
+		return
+			"ovl_pq_in_crossbar_out0__to__disp_ovl0_2l_in1";
+	case 28:
+		return
+			"ovl_pq_in_crossbar_out1__to__disp_ovl1_2l_in1";
+	case 29:
+		return
+			"ovl_pq_in_crossbar_out2__to__disp_ovl2_2l_in1";
+	case 30:
+		return
+			"ovl_pq_in_crossbar_out3__to__disp_ovl3_2l_in1";
+	case 31:
+		return
+			"ovl_pq_in_crossbar_out4__to__disp_ovl0_2l_in2";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_signal_3_mt6881(int bit)
+{
+	switch (bit) {
+	case 0:
+		return
+			"ovl_pq_in_crossbar_out5__to__disp_ovl1_2l_in2";
+	case 1:
+		return
+			"ovl_pq_in_crossbar_out6__to__disp_ovl2_2l_in2";
+	case 2:
+		return
+			"ovl_pq_in_crossbar_out7__to__disp_ovl3_2l_in2";
+	case 3:
+		return
+			"ovl_pq_out_crossbar_out0__to__disp_rsz1";
+	case 4:
+		return
+			"ovl_pq_out_crossbar_out1__to__ovl_pq_in_crossbar_in1";
+	case 5:
+		return
+			"pq_in_crossbar_out0__to__disp_rsz0";
+	case 6:
+		return
+			"pq_in_crossbar_out1__to__disp_tdshp1";
+	case 7:
+		return
+			"pq_in_crossbar_out2__to__pq_out_crossbar_in4";
+	case 8:
+		return
+			"pq_in_crossbar_out3__to__pq_out_crossbar_in5";
+	case 9:
+		return
+			"pq_in_crossbar_out4__to__pq_out_crossbar_in6";
+	case 10:
+		return
+			"pq_out_crossbar_out0__to__disp_splitter0";
+	case 11:
+		return
+			"pq_out_crossbar_out1__to__split_out_crossbar_in2";
+	case 12:
+		return
+			"pq_out_crossbar_out2__to__split_out_crossbar_in3";
+	case 13:
+		return
+			"pq_out_crossbar_out3__to__split_out_crossbar_in4";
+	case 14:
+		return
+			"pq_out_crossbar_out4__to__disp_ttc_relay0";
+	case 15:
+		return
+			"pq_out_crossbar_out5__to__disp_ttc_relay1";
+	case 16:
+		return
+			"pq_out_crossbar_out6__to__disp_ovl0_1l_relay0";
+	case 17:
+		return
+			"pq_out_crossbar_out7__to__disp_ovl1_1l_relay0";
+	case 18:
+		return
+			"split_out_crossbar_out0__to__disp_dsc_wrap0_in0";
+	case 19:
+		return
+			"split_out_crossbar_out1__to__disp_dsc_wrap0_in1";
+	case 20:
+		return
+			"split_out_crossbar_out2__to__comp_out_crossbar_in2";
+	case 21:
+		return
+			"split_out_crossbar_out3__to__comp_out_crossbar_in3";
+	case 22:
+		return
+			"split_out_crossbar_out4__to__comp_out_crossbar_in4";
+	case 23:
+		return
+			"split_out_crossbar_out5__to__disp_dsc_wrap1_in0";
+	case 24:
+		return
+			"split_out_crossbar_out6__to__disp_dsc_wrap1_in1";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_signal_mt6881(int idx, int bit)
+{
+	switch (idx) {
+	case 0:
+		return ddp_signal_0_mt6881(bit);
+	case 1:
+		return ddp_signal_1_mt6881(bit);
+	case 2:
+		return ddp_signal_2_mt6881(bit);
+	case 3:
+		return ddp_signal_3_mt6881(bit);
+	default:
+		return NULL;
+	}
+}
+
 static char *ddp_greq_name_mt6885(int bit)
 {
 	switch (bit) {
@@ -19333,6 +19887,38 @@ static const char *ddp_clock_0_mt6878(int bit)
 		return "disp_mutex0, ";
 	case 31:
 		return "smi_sub_comm0, ";
+	default:
+		return NULL;
+	}
+}
+
+static const char *ddp_clock_1_mt6881(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "disp_ovl0_1l, ";
+	case 1:
+		return "disp_ovl1_1l, ";
+	case 2:
+		return "disp_dsc_wrap1, ";
+	case 3:
+		return "disp_ttc0, ";
+	case 4:
+		return "disp_ttc1, ";
+	case 5:
+		return "disp_aal1, ";
+	case 6:
+		return "disp_ttc_relay0, ";
+	case 7:
+		return "disp_ttc_relay1, ";
+	case 8:
+		return "disp_ovl0_1l_relay0, ";
+	case 9:
+		return "disp_ovl1_1l_relay0, ";
+	case 10:
+		return "disp_ttc2, ";
+	case 11:
+		return "disp_ttc3, ";
 	default:
 		return NULL;
 	}
@@ -34145,6 +34731,797 @@ static int mtk_ddp_sel_in_MT6878(const struct mtk_mmsys_reg_data *data,
 	return value;
 }
 
+static int mtk_ddp_ovl_con_MT6881(enum mtk_ddp_comp_id cur,
+			   enum mtk_ddp_comp_id next, unsigned int *addr)
+{
+	int value = 0;
+	bool next_is_ovl;
+
+	*addr = MT6878_MMSYS_OVL_CON;
+
+	if (next == DDP_COMPONENT_RSZ1)
+		return -1;
+
+	next_is_ovl = (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL);
+	if (cur == DDP_COMPONENT_OVL0_2L) {
+		if (next_is_ovl)
+			value = MT6878_DISP_OVL0_2L_TO_BG_CROSSBAR0;
+		else
+			value = MT6878_DISP_OVL0_2L_TO_BLEND_CROSSBAR0;
+	} else if (cur == DDP_COMPONENT_OVL1_2L) {
+		if (next_is_ovl)
+			value = MT6878_DISP_OVL1_2L_TO_BG_CROSSBAR1;
+		else
+			value = MT6878_DISP_OVL1_2L_TO_BLEND_CROSSBAR1;
+	} else if (cur == DDP_COMPONENT_OVL2_2L) {
+		if (next_is_ovl)
+			value = MT6878_DISP_OVL2_2L_TO_BG_CROSSBAR2;
+		else
+			value = MT6878_DISP_OVL2_2L_TO_BLEND_CROSSBAR2;
+	} else if (cur == DDP_COMPONENT_OVL3_2L) {
+		if (next_is_ovl)
+			value = MT6878_DISP_OVL3_2L_TO_BG_CROSSBAR3;
+		else
+			value = MT6878_DISP_OVL3_2L_TO_BLEND_CROSSBAR3;
+	} else {
+		value = -1;
+	}
+
+	return value;
+}
+
+static int mtk_ddp_ovl_bg_cb_MT6881(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+				unsigned int *addr)
+{
+	/* Aware this function can't detect cross OVLSYS path description,
+	 * like DDP_COMPONENT_OVL0_2L -> DDP_COMPONENT_OVL5_2L.
+	 * And can't detect OVL module self connect,
+	 * like DDP_COMPONENT_OVL0_2L -> DDP_COMPONENT_OVL0_2L.
+	 */
+	int value = -1;
+
+	/* set addr from current comp */
+	switch (cur) {
+	case DDP_COMPONENT_OVL0_2L:
+		*addr = MT6878_OVL_BG_CROSSBAR0_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL1_2L:
+		*addr = MT6878_OVL_BG_CROSSBAR1_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL2_2L:
+		*addr = MT6878_OVL_BG_CROSSBAR2_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL3_2L:
+		*addr = MT6878_OVL_BG_CROSSBAR3_MOUT_EN;
+		break;
+	default:
+		value = -1;
+		DDPPR_ERR("%s, error, cur=%s->next=%s not found in BG_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+
+	/* set value according to dst comp */
+	switch (next) {
+	case DDP_COMPONENT_OVL0_2L:
+		value = BIT(0);
+		break;
+	case DDP_COMPONENT_OVL1_2L:
+		value = BIT(1);
+		break;
+	case DDP_COMPONENT_OVL2_2L:
+		value = BIT(2);
+		break;
+	case DDP_COMPONENT_OVL3_2L:
+		value = BIT(3);
+		break;
+	default:
+		value = -1;
+		DDPPR_ERR("%s, error, cur=%s->next=%s not found in BG_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+	return value;
+}
+
+static int mtk_ddp_ovl_blend_cb_MT6881(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+				unsigned int *addr)
+{
+	int value = -1;
+
+	switch (cur) {
+	case DDP_COMPONENT_OVL0_2L:
+		*addr = MT6878_OVL_BLEND_CROSSBAR0_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL1_2L:
+		*addr = MT6878_OVL_BLEND_CROSSBAR1_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL2_2L:
+		*addr = MT6878_OVL_BLEND_CROSSBAR2_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL3_2L:
+		*addr = MT6878_OVL_BLEND_CROSSBAR3_MOUT_EN;
+		break;
+	default:
+		value = -1;
+		DDPPR_ERR("%s, error, cur=%s->next=%s not found in BLEND_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+
+	/* set value according to dst comp */
+	switch (next) {
+	case DDP_COMPONENT_PQ0_IN_CB0:
+		value = BIT(0);
+		break;
+	case DDP_COMPONENT_PQ0_IN_CB1:
+		value = BIT(1);
+		break;
+	case DDP_COMPONENT_PQ0_IN_CB2:
+		value = BIT(2);
+		break;
+	case DDP_COMPONENT_UFBC_WDMA0:
+		value = BIT(3);
+		break;
+	default:
+		value = -1;
+		DDPPR_ERR("%s, error, cur=%s->next=%s not found in BLEND_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+
+	}
+	return value;
+}
+
+static int mtk_ddp_ovl_pq_out_cb_MT6881(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+				unsigned int *addr)
+{
+	int value = -1;
+
+	switch (cur) {
+	case DDP_COMPONENT_OVL0_2L:
+		*addr = MT6878_OVL_PQ_OUT_CROSSBAR0_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL1_2L:
+		*addr = MT6878_OVL_PQ_OUT_CROSSBAR1_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL2_2L:
+		*addr = MT6878_OVL_PQ_OUT_CROSSBAR2_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL3_2L:
+		*addr = MT6878_OVL_PQ_OUT_CROSSBAR3_MOUT_EN;
+		break;
+	default:
+		value = -1;
+		DDPMSG("%s, cur=%s->next=%s not found in PQ_OUT_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+
+	/* set value according to dst comp */
+	switch (next) {
+	case DDP_COMPONENT_RSZ1:
+		value = BIT(0);
+		break;
+	case DDP_COMPONENT_OVL0_PQ_IN_CB1:
+		value = BIT(1);
+		break;
+	default:
+		value = -1;
+		DDPMSG("%s, cur=%s->next=%s not found in PQ_OUT_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+	return value;
+}
+
+static int mtk_ddp_ovl_pq_in_cb_MT6881(enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+				unsigned int *addr)
+{
+	int value = -1;
+	bool ufod = 1; // (mtk_ddp_comp_get_type(cur) == MTK_DISP_VIRTUAL);
+
+	switch (cur) {
+	case DDP_COMPONENT_RSZ1:
+		*addr = MT6878_OVL_PQ_IN_CROSSBAR0_MOUT_EN;
+		break;
+	case DDP_COMPONENT_OVL0_PQ_IN_CB1:
+		*addr = MT6878_OVL_PQ_IN_CROSSBAR1_MOUT_EN;
+		break;
+	default:
+		value = -1;
+		DDPMSG("%s, cur=%s->next=%s not found in PQ_IN_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+
+	/* set value according to dst comp */
+	switch (next) {
+	case DDP_COMPONENT_OVL0_2L:
+		value = (ufod ? BIT(4) : BIT(0));
+		break;
+	case DDP_COMPONENT_OVL1_2L:
+		value = (ufod ? BIT(5) : BIT(1));
+		break;
+	case DDP_COMPONENT_OVL2_2L:
+		value = (ufod ? BIT(6) : BIT(2));
+		break;
+	case DDP_COMPONENT_OVL3_2L:
+		value = (ufod ? BIT(7) : BIT(3));
+		break;
+	default:
+		value = -1;
+		DDPMSG("%s, cur=%s->next=%s not found in PQ_IN_cb\n", __func__,
+			mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+		return value;
+	}
+	return value;
+}
+
+static int mtk_ddp_mout_en_MT6881(const struct mtk_mmsys_reg_data *data,
+			   enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+			   unsigned int *addr)
+{
+	int value = -1;
+
+	if (mtk_ddp_comp_get_type(cur) == MTK_DISP_OVL) {
+		if (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL) {
+			value = mtk_ddp_ovl_bg_cb_MT6881(cur, next, addr);
+		} else if (next == DDP_COMPONENT_PQ0_IN_CB0 ||
+			   next == DDP_COMPONENT_PQ0_IN_CB1 ||
+			   next == DDP_COMPONENT_PQ0_IN_CB2 ||
+			   next == DDP_COMPONENT_UFBC_WDMA0) {
+			value = mtk_ddp_ovl_blend_cb_MT6881(cur, next, addr);
+		} else if (next == DDP_COMPONENT_RSZ1 ||
+			   next == DDP_COMPONENT_OVL0_PQ_IN_CB1) {
+			value = mtk_ddp_ovl_pq_out_cb_MT6881(cur, next, addr);
+		}
+
+		if (value != -1)
+			return value;
+	}
+
+	if (mtk_ddp_comp_get_type(next) == MTK_DISP_OVL &&
+		(cur == DDP_COMPONENT_RSZ1 ||
+		 cur == DDP_COMPONENT_OVL0_PQ_IN_CB1)) {
+		value = mtk_ddp_ovl_pq_in_cb_MT6881(cur, next, addr);
+		return value;
+	}
+
+	if (cur == DDP_COMPONENT_PQ0_IN_CB0 &&
+		next == DDP_COMPONENT_RSZ0) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR0_MOUT_EN;
+		value = PQ0_IN_CB_TO_RSZ0;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB0 &&
+		next == DDP_COMPONENT_TDSHP1) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR0_MOUT_EN;
+		value = PQ0_IN_CB_TO_TDSHP1;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB0 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB4) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR0_MOUT_EN;
+		value = PQ0_IN_CB_TO_PQ_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB0 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB5) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR0_MOUT_EN;
+		value = PQ0_IN_CB_TO_PQ_OUT_CB5;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB0 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB6) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR0_MOUT_EN;
+		value = PQ0_IN_CB_TO_PQ_OUT_CB6;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB1 &&
+		next == DDP_COMPONENT_RSZ0) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR1_MOUT_EN;
+		value = PQ0_IN_CB_TO_RSZ0;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB1 &&
+		next == DDP_COMPONENT_TDSHP1) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR1_MOUT_EN;
+		value = PQ0_IN_CB_TO_TDSHP1;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB1 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB4) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR1_MOUT_EN;
+		value = PQ0_IN_CB_TO_PQ_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB1 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB5) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR1_MOUT_EN;
+		value = PQ0_IN_CB_TO_PQ_OUT_CB5;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB1 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB6) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR1_MOUT_EN;
+		value = PQ0_IN_CB_TO_PQ_OUT_CB6;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB2 &&
+		next == DDP_COMPONENT_RSZ0) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR2_MOUT_EN;
+		value = PQ0_IN_CB_TO_RSZ0;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB2 &&
+		next == DDP_COMPONENT_TDSHP1) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR2_MOUT_EN;
+		value = PQ0_IN_CB_TO_TDSHP1;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB2 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB4) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR2_MOUT_EN;
+		value = PQ0_IN_CB_TO_PQ_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB2 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB5) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR2_MOUT_EN;
+		value = PQ0_IN_CB_TO_PQ_OUT_CB5;
+	} else if (cur == DDP_COMPONENT_PQ0_IN_CB2 &&
+		next == DDP_COMPONENT_PQ0_OUT_CB6) {
+		/* PQ_IN_CROSSBAR */
+		*addr = MT6878_PQ_IN_CROSSBAR2_MOUT_EN;
+		value = PQ0_IN_CB_TO_PQ_OUT_CB6;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB0 &&
+		next == DDP_COMPONENT_SPLITTER0) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR0_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLITTER0;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB0 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB2) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR0_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB0 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB3) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR0_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB0 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB4) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR0_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB1 &&
+		next == DDP_COMPONENT_SPLITTER0) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR1_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLITTER0;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB1 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB2) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR1_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB1 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB3) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR1_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB1 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB4) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR1_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB2 &&
+		next == DDP_COMPONENT_SPLITTER0) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR2_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLITTER0;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB2 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB2) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR2_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB2 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB3) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR2_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB2 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB4) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR2_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_DITHER1 &&
+		next == DDP_COMPONENT_SPLITTER0) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR2_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLITTER0;
+	} else if (cur == DDP_COMPONENT_DITHER1 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB2) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR2_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_DITHER1 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB3) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR2_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_DITHER1 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB4) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR2_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB3 &&
+		next == DDP_COMPONENT_SPLITTER0) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR3_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLITTER0;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB3 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB2) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR3_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB3 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB3) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR3_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB3 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB4) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR3_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB4 &&
+		next == DDP_COMPONENT_SPLITTER0) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR4_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLITTER0;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB4 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB2) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR4_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB4 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB3) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR4_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB4 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB4) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR4_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB5 &&
+		next == DDP_COMPONENT_SPLITTER0) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR5_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLITTER0;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB5 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB2) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR5_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB5 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB3) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR5_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB5 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB4) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR5_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB6 &&
+		next == DDP_COMPONENT_SPLITTER0) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR6_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLITTER0;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB6 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB2) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR6_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB6 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB3) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR6_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_PQ0_OUT_CB6 &&
+		next == DDP_COMPONENT_SPLIT_OUT_CB4) {
+		/* PQ_OUT_CROSSBAR */
+		*addr = MT6878_PQ_OUT_CROSSBAR6_MOUT_EN;
+		value = PQ0_OUT_CB_TO_SPLIT_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB2 &&
+		next == DDP_COMPONENT_DSC0) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR2_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_DSC0_0;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB2 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB2) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR2_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_COMP0_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB2 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB3) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR2_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_COMP0_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB2 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB4) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR2_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_COMP0_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB3 &&
+		next == DDP_COMPONENT_DSC0) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR3_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_DSC0_0;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB3 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB2) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR3_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_COMP0_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB3 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB3) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR3_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_COMP0_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB3 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB4) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR3_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_COMP0_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB4 &&
+		next == DDP_COMPONENT_DSC0) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR4_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_DSC0_0;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB4 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB2) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR4_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_COMP0_OUT_CB2;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB4 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB3) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR4_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_COMP0_OUT_CB3;
+	} else if (cur == DDP_COMPONENT_SPLIT_OUT_CB4 &&
+		next == DDP_COMPONENT_COMP0_OUT_CB4) {
+		/* SPLIT_OUT_CROSSBAR */
+		*addr = MT6878_SPLIT_OUT_CROSSBAR4_MOUT_EN;
+		value = SPLIT_OUT_CB_TO_COMP0_OUT_CB4;
+	} else if (cur == DDP_COMPONENT_DSC0 &&
+		next == DDP_COMPONENT_DSI0) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR0_MOUT_EN;
+		value = COMP0_OUT_CB_TO_DSI0;
+	} else if (cur == DDP_COMPONENT_DSC0 &&
+		next == DDP_COMPONENT_DSI1) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR0_MOUT_EN;
+		value = COMP0_OUT_CB_TO_DSI1;
+	} else if (cur == DDP_COMPONENT_DSC0 &&
+		next == DDP_COMPONENT_WDMA1) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR0_MOUT_EN;
+		value = COMP0_OUT_CB_TO_WDMA1;
+	} else if (cur == DDP_COMPONENT_COMP0_OUT_CB2 &&
+		next == DDP_COMPONENT_DSI0) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR2_MOUT_EN;
+		value = COMP0_OUT_CB_TO_DSI0;
+	} else if (cur == DDP_COMPONENT_COMP0_OUT_CB2 &&
+		next == DDP_COMPONENT_DSI1) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR2_MOUT_EN;
+		value = COMP0_OUT_CB_TO_DSI1;
+	} else if (cur == DDP_COMPONENT_COMP0_OUT_CB2 &&
+		next == DDP_COMPONENT_WDMA1) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR2_MOUT_EN;
+		value = COMP0_OUT_CB_TO_WDMA1;
+	} else if (cur == DDP_COMPONENT_COMP0_OUT_CB3 &&
+		next == DDP_COMPONENT_DSI0) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR3_MOUT_EN;
+		value = COMP0_OUT_CB_TO_DSI0;
+	} else if (cur == DDP_COMPONENT_COMP0_OUT_CB3 &&
+		next == DDP_COMPONENT_DSI1) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR3_MOUT_EN;
+		value = COMP0_OUT_CB_TO_DSI1;
+	} else if (cur == DDP_COMPONENT_COMP0_OUT_CB3 &&
+		next == DDP_COMPONENT_WDMA1) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR3_MOUT_EN;
+		value = COMP0_OUT_CB_TO_WDMA1;
+	} else if (cur == DDP_COMPONENT_COMP0_OUT_CB4 &&
+		next == DDP_COMPONENT_DSI0) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR4_MOUT_EN;
+		value = COMP0_OUT_CB_TO_DSI0;
+	} else if (cur == DDP_COMPONENT_COMP0_OUT_CB4 &&
+		next == DDP_COMPONENT_DSI1) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR4_MOUT_EN;
+		value = COMP0_OUT_CB_TO_DSI1;
+	} else if (cur == DDP_COMPONENT_COMP0_OUT_CB4 &&
+		next == DDP_COMPONENT_WDMA1) {
+		/* COMP_OUT_CROSSBAR */
+		*addr = MT6878_COMP_OUT_CROSSBAR4_MOUT_EN;
+		value = COMP0_OUT_CB_TO_WDMA1;
+	} else {
+		value = -1;
+		// DDPINFO("%s, cur=%s->next=%s not found in MOUT_EN\n", __func__,
+			// mtk_dump_comp_str_id(cur), mtk_dump_comp_str_id(next));
+	}
+
+	return value;
+}
+
+static int mtk_ddp_sout_sel_MT6881(const struct mtk_mmsys_reg_data *data,
+			    enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+			    unsigned int *addr)
+{
+	int value = -1;
+
+	if (cur == DDP_COMPONENT_TDSHP0 && next == DDP_COMPONENT_C3D0) {
+		*addr = MT6878_DISP_TDSHP0_SOUT_SEL;
+		value = MT6878_TDSHP0_SOUT_SEL_TO_C3D0;
+	} else if (cur == DDP_COMPONENT_TDSHP0 && next == DDP_COMPONENT_COLOR0) {
+		*addr = MT6878_DISP_TDSHP0_SOUT_SEL;
+		value = MT6878_TDSHP0_SOUT_SEL_TO_COLOR0;
+	} else if (cur == DDP_COMPONENT_TDSHP0 && next == DDP_COMPONENT_AAL0) {
+		*addr = MT6878_DISP_TDSHP0_SOUT_SEL;
+		value = MT6878_TDSHP0_SOUT_SEL_TO_AAL0;
+	} else if (cur == DDP_COMPONENT_COLOR0 && next == DDP_COMPONENT_CCORR0) {
+		*addr = MT6878_DISP_COLOR0_SOUT_SEL;
+		value = MT6878_COLOR0_SOUT_SEL_TO_CCORR0;
+	} else if (cur == DDP_COMPONENT_COLOR0 && next == DDP_COMPONENT_AAL0) {
+		*addr = MT6878_DISP_COLOR0_SOUT_SEL;
+		value = MT6878_COLOR0_SOUT_SEL_TO_AAL0;
+	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_C3D0) {
+		*addr = MT6878_DISP_CCORR1_SOUT_SEL;
+		value = MT6878_CCORR1_SOUT_SEL_TO_C3D0;
+	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_GAMMA0) {
+		*addr = MT6878_DISP_CCORR1_SOUT_SEL;
+		value = MT6878_CCORR1_SOUT_SEL_TO_GAMMA0;
+	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_AAL0) {
+		*addr = MT6878_DISP_CCORR1_SOUT_SEL;
+		value = MT6878_CCORR1_SOUT_SEL_TO_AAL0;
+	} else if (cur == DDP_COMPONENT_C3D0 && next == DDP_COMPONENT_COLOR0) {
+		*addr = MT6878_DISP_C3D0_SOUT_SEL;
+		value = MT6878_C3D0_SOUT_SEL_TO_COLOR0;
+	} else if (cur == DDP_COMPONENT_C3D0 && next == DDP_COMPONENT_GAMMA0) {
+		*addr = MT6878_DISP_C3D0_SOUT_SEL;
+		value = MT6878_C3D0_SOUT_SEL_TO_GAMMA0;
+	} else if (cur == DDP_COMPONENT_C3D0 && next == DDP_COMPONENT_AAL0) {
+		*addr = MT6878_DISP_C3D0_SOUT_SEL;
+		value = MT6878_C3D0_SOUT_SEL_TO_AAL0;
+	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_COLOR0) {
+		*addr = MT6878_DISP_AAL0_SOUT_SEL;
+		value = MT6878_AAL0_SOUT_SEL_TO_COLOR0;
+	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_CCORR0) {
+		*addr = MT6878_DISP_AAL0_SOUT_SEL;
+		value = MT6878_AAL0_SOUT_SEL_TO_CCORR0;
+	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_C3D0) {
+		*addr = MT6878_DISP_AAL0_SOUT_SEL;
+		value = MT6878_AAL0_SOUT_SEL_TO_C3D0;
+	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_GAMMA0) {
+		*addr = MT6878_DISP_AAL0_SOUT_SEL;
+		value = MT6878_AAL0_SOUT_SEL_TO_GAMMA0;
+	} else if (cur == DDP_COMPONENT_POSTMASK0 && next == DDP_COMPONENT_DITHER0) {
+		*addr = MT6878_DISP_POSTMASK0_SOUT_SEL;
+		value = MT6878_POSTMASK0_SOUT_SEL_TO_DITHER0;
+	} else if (cur == DDP_COMPONENT_POSTMASK0 && next == DDP_COMPONENT_PQ0_OUT_CB1) {
+		*addr = MT6878_DISP_POSTMASK0_SOUT_SEL;
+		value = MT6878_POSTMASK0_SOUT_SEL_TO_PQ_OUT_CB1;
+	} else if (cur == DDP_COMPONENT_TDSHP1 && next == DDP_COMPONENT_C3D1) {
+		*addr = MT6878_DISP_TDSHP1_SOUT_SEL;
+		value = MT6878_TDSHP1_SOUT_SEL_TO_C3D1;
+	} else if (cur == DDP_COMPONENT_TDSHP1 && next == DDP_COMPONENT_CCORR2) {
+		*addr = MT6878_DISP_TDSHP1_SOUT_SEL;
+		value = MT6878_TDSHP1_SOUT_SEL_TO_CCORR2;
+	} else if (cur == DDP_COMPONENT_TDSHP1 && next == DDP_COMPONENT_AAL1) {
+		*addr = MT6878_DISP_TDSHP1_SOUT_SEL;
+		value = MT6881_TDSHP1_SOUT_SEL_TO_AAL1;
+	} else if (cur == DDP_COMPONENT_CCORR3 && next == DDP_COMPONENT_C3D1) {
+		*addr = MT6878_DISP_CCORR3_SOUT_SEL;
+		value = MT6878_CCORR3_SOUT_SEL_TO_C3D1;
+	} else if (cur == DDP_COMPONENT_CCORR3 && next == DDP_COMPONENT_GAMMA1) {
+		*addr = MT6878_DISP_CCORR3_SOUT_SEL;
+		value = MT6878_CCORR3_SOUT_SEL_TO_GAMMA1;
+	} else if (cur == DDP_COMPONENT_C3D1 && next == DDP_COMPONENT_CCORR2) {
+		*addr = MT6878_DISP_C3D1_SOUT_SEL;
+		value = MT6878_C3D1_SOUT_SEL_TO_CCORR2;
+	} else if (cur == DDP_COMPONENT_C3D1 && next == DDP_COMPONENT_GAMMA1) {
+		*addr = MT6878_DISP_C3D1_SOUT_SEL;
+		value = MT6878_C3D1_SOUT_SEL_TO_GAMMA1;
+	} else if (cur == DDP_COMPONENT_GAMMA1 && next == DDP_COMPONENT_DITHER1) {
+		*addr = MT6878_DISP_GAMMA1_SOUT_SEL;
+		value = MT6878_GAMMA1_SOUT_SEL_TO_DITHER1;
+	} else if (cur == DDP_COMPONENT_GAMMA1 && next == DDP_COMPONENT_PQ0_OUT_CB3) {
+		*addr = MT6878_DISP_GAMMA1_SOUT_SEL;
+		value = MT6878_GAMMA1_SOUT_SEL_TO_PQ_OUT_CB3;
+	} else {
+		value = -1;
+	}
+
+	return value;
+}
+
+static int mtk_ddp_sel_in_MT6881(const struct mtk_mmsys_reg_data *data,
+			  enum mtk_ddp_comp_id cur, enum mtk_ddp_comp_id next,
+			  unsigned int *addr)
+{
+	int value = -1;
+
+	if (cur == DDP_COMPONENT_C3D0 && next == DDP_COMPONENT_COLOR0) {
+		*addr = MT6878_DISP_COLOR0_SEL_IN;
+		value = MT6878_COLOR0_SEL_IN_FROM_C3D0;
+	} else if (cur == DDP_COMPONENT_TDSHP0 && next == DDP_COMPONENT_COLOR0) {
+		*addr = MT6878_DISP_COLOR0_SEL_IN;
+		value = MT6878_COLOR0_SEL_IN_FROM_TDSHP0;
+	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_COLOR0) {
+		*addr = MT6878_DISP_COLOR0_SEL_IN;
+		value = MT6878_COLOR0_SEL_IN_FROM_AAL0;
+	} else if (cur == DDP_COMPONENT_COLOR0 && next == DDP_COMPONENT_CCORR0) {
+		*addr = MT6878_DISP_CCORR0_SEL_IN;
+		value = MT6878_CCORR0_SEL_IN_FROM_COLOR0;
+	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_CCORR0) {
+		*addr = MT6878_DISP_CCORR0_SEL_IN;
+		value = MT6878_CCORR0_SEL_IN_FROM_AAL0;
+	} else if (cur == DDP_COMPONENT_TDSHP0 && next == DDP_COMPONENT_C3D0) {
+		*addr = MT6878_DISP_C3D0_SEL_IN;
+		value = MT6878_C3D0_SEL_IN_FROM_TDSHP0;
+	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_C3D0) {
+		*addr = MT6878_DISP_C3D0_SEL_IN;
+		value = MT6878_C3D0_SEL_IN_FROM_CCORR1;
+	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_C3D0) {
+		*addr = MT6878_DISP_C3D0_SEL_IN;
+		value = MT6878_C3D0_SEL_IN_FROM_AAL0;
+	} else if (cur == DDP_COMPONENT_C3D0 && next == DDP_COMPONENT_AAL0) {
+		*addr = MT6878_DISP_AAL0_SEL_IN;
+		value = MT6878_AAL0_SEL_IN_FROM_C3D0;
+	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_AAL0) {
+		*addr = MT6878_DISP_AAL0_SEL_IN;
+		value = MT6878_AAL0_SEL_IN_FROM_CCORR1;
+	} else if (cur == DDP_COMPONENT_COLOR0 && next == DDP_COMPONENT_AAL0) {
+		*addr = MT6878_DISP_AAL0_SEL_IN;
+		value = MT6878_AAL0_SEL_IN_FROM_COLOR0;
+	} else if (cur == DDP_COMPONENT_TDSHP0 && next == DDP_COMPONENT_AAL0) {
+		*addr = MT6878_DISP_AAL0_SEL_IN;
+		value = MT6878_AAL0_SEL_IN_FROM_TDSHP0;
+	} else if (cur == DDP_COMPONENT_C3D0 && next == DDP_COMPONENT_GAMMA0) {
+		*addr = MT6878_DISP_GAMMA0_SEL_IN;
+		value = MT6878_GAMMA0_SEL_IN_FROM_C3D0;
+	} else if (cur == DDP_COMPONENT_CCORR1 && next == DDP_COMPONENT_GAMMA0) {
+		*addr = MT6878_DISP_GAMMA0_SEL_IN;
+		value = MT6878_GAMMA0_SEL_IN_FROM_CCORR1;
+	} else if (cur == DDP_COMPONENT_AAL0 && next == DDP_COMPONENT_GAMMA0) {
+		*addr = MT6878_DISP_GAMMA0_SEL_IN;
+		value = MT6878_GAMMA0_SEL_IN_FROM_AAL0;
+	} else if (cur == DDP_COMPONENT_C3D1 && next == DDP_COMPONENT_CCORR2) {
+		*addr = MT6878_DISP_CCORR2_SEL_IN;
+		value = MT6878_CCORR2_SEL_IN_FROM_C3D1;
+	} else if (cur == DDP_COMPONENT_TDSHP1 && next == DDP_COMPONENT_CCORR2) {
+		*addr = MT6878_DISP_CCORR2_SEL_IN;
+		value = MT6878_CCORR2_SEL_IN_FROM_TDSHP1;
+	} else if (cur == DDP_COMPONENT_AAL1 && next == DDP_COMPONENT_CCORR2) {
+		*addr = MT6878_DISP_CCORR2_SEL_IN;
+		value = MT6881_CCORR2_SEL_IN_FROM_AAL1;
+	} else if (cur == DDP_COMPONENT_TDSHP1 && next == DDP_COMPONENT_C3D1) {
+		*addr = MT6878_DISP_C3D1_SEL_IN;
+		value = MT6878_C3D1_SEL_IN_FROM_TDSHP1;
+	} else if (cur == DDP_COMPONENT_CCORR3 && next == DDP_COMPONENT_C3D1) {
+		*addr = MT6878_DISP_C3D1_SEL_IN;
+		value = MT6878_C3D1_SEL_IN_FROM_CCORR3;
+	} else if (cur == DDP_COMPONENT_C3D1 && next == DDP_COMPONENT_GAMMA1) {
+		*addr = MT6878_DISP_GAMMA1_SEL_IN;
+		value = MT6878_GAMMA1_SEL_IN_FROM_C3D1;
+	} else if (cur == DDP_COMPONENT_CCORR3 && next == DDP_COMPONENT_GAMMA1) {
+		*addr = MT6878_DISP_GAMMA1_SEL_IN;
+		value = MT6878_GAMMA1_SEL_IN_FROM_CCORR3;
+	} else {
+		value = -1;
+	}
+
+	return value;
+}
+
 void mtk_disp_ultra_offset(void __iomem *config_regs,
 			enum mtk_ddp_comp_id comp, bool is_dc)
 {
@@ -35201,25 +36578,25 @@ void mtk_ddp_add_comp_to_path(struct mtk_drm_crtc *mtk_crtc,
 			addr1) | reg1;
 		writel_relaxed(reg1, config_regs + addr1);
 
-		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
+		value = mtk_ddp_ovl_con_MT6881(cur, next, &addr);
 		if (value >= 0) {
 			reg = readl_relaxed(config_regs + addr) |
 					(unsigned int)value;
 			writel_relaxed(reg, config_regs + addr);
 		}
 
-		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
+		value = mtk_ddp_mout_en_MT6881(reg_data, cur, next, &addr);
 		if (value >= 0) {
 			reg = readl_relaxed(config_regs + addr) |
 					(unsigned int)value;
 			writel_relaxed(reg, config_regs + addr);
 		}
 
-		value = mtk_ddp_sout_sel_MT6878(reg_data, cur, next, &addr);
+		value = mtk_ddp_sout_sel_MT6881(reg_data, cur, next, &addr);
 		if (value >= 0)
 			writel_relaxed(value, config_regs + addr);
 
-		value = mtk_ddp_sel_in_MT6878(reg_data, cur, next, &addr);
+		value = mtk_ddp_sel_in_MT6881(reg_data, cur, next, &addr);
 		if (value >= 0)
 			writel_relaxed(value, config_regs + addr);
 
@@ -36098,25 +37475,25 @@ void mtk_ddp_add_comp_to_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 		cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 			config_regs_pa + addr1, reg1, reg1);
 
-		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
+		value = mtk_ddp_ovl_con_MT6881(cur, next, &addr);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa
 				+ addr, value, value);
 
-		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
+		value = mtk_ddp_mout_en_MT6881(reg_data, cur, next, &addr);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa
 				+ addr, value, value);
 
-		value = mtk_ddp_sout_sel_MT6878(reg_data, cur, next, &addr);
+		value = mtk_ddp_sout_sel_MT6881(reg_data, cur, next, &addr);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa
 				+ addr, value, ~0);
 
-		value = mtk_ddp_sel_in_MT6878(reg_data, cur, next, &addr);
+		value = mtk_ddp_sel_in_MT6881(reg_data, cur, next, &addr);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 				config_regs_pa
@@ -36537,13 +37914,13 @@ void mtk_ddp_remove_comp_from_path(struct mtk_drm_crtc *mtk_crtc,
 			break;
 		}
 
-		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
+		value = mtk_ddp_ovl_con_MT6881(cur, next, &addr);
 		if (value >= 0) {
 			reg = readl_relaxed(config_regs + addr) & ~(unsigned int)value;
 			writel_relaxed(reg, config_regs + addr);
 		}
 
-		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
+		value = mtk_ddp_mout_en_MT6881(reg_data, cur, next, &addr);
 		if (value >= 0) {
 			reg = readl_relaxed(config_regs + addr) & ~(unsigned int)value;
 			writel_relaxed(reg, config_regs + addr);
@@ -36946,13 +38323,13 @@ void mtk_ddp_remove_comp_from_path_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 					   ~(unsigned int)value, value);
 		break;
 	case MMSYS_MT6881:
-		value = mtk_ddp_ovl_con_MT6878(cur, next, &addr);
+		value = mtk_ddp_ovl_con_MT6881(cur, next, &addr);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 					   config_regs_pa + addr,
 					   ~(unsigned int)value, value);
 
-		value = mtk_ddp_mout_en_MT6878(reg_data, cur, next, &addr);
+		value = mtk_ddp_mout_en_MT6881(reg_data, cur, next, &addr);
 		if (value >= 0)
 			cmdq_pkt_write(handle, mtk_crtc->gce_obj.base,
 					   config_regs_pa + addr,
@@ -38127,6 +39504,7 @@ unsigned int mtk_ddp_ovlsys_path(struct mtk_drm_private *priv, unsigned int **ov
 	case MMSYS_MT6985:
 	case MMSYS_MT6897:
 	case MMSYS_MT6878:
+	case MMSYS_MT6881:
 #define OVLSYS_PATH_MT6985 4
 		if (_ovlsys_path) {
 			*ovl_list = _ovlsys_path;
@@ -38281,6 +39659,7 @@ unsigned int mtk_ddp_ovl_resource_list(struct mtk_drm_private *priv, unsigned in
 	case MMSYS_MT6991:
 	case MMSYS_MT6993:
 	case MMSYS_MT6878:
+	case MMSYS_MT6881:
 		if (_ovl_list) {
 			*ovl_list = _ovl_list;
 			return ovl_list_size;
@@ -47920,6 +49299,169 @@ void mmsys_config_dump_analysis_mt6878(struct drm_crtc *crtc)
 #endif
 }
 
+void mmsys_config_dump_analysis_mt6881(struct drm_crtc *crtc)
+{
+	unsigned int idx = 0, bit = 0;
+	int len = 0;
+	unsigned int reg = 0;
+	char clock_on[512] = {'\0'};
+	char *pos = NULL;
+	const char *name = NULL;
+	unsigned int valid[4] = {0};
+	unsigned int ready[4] = {0};
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	void __iomem *config_regs = mtk_crtc->config_regs;
+	unsigned int greq0 =
+		readl_relaxed(config_regs +
+				MT6878_DISP_REG_CONFIG_SMI_LARB0_GREQ);
+	unsigned int greq1 =
+		readl_relaxed(config_regs +
+				MT6878_DISP_REG_CONFIG_SMI_LARB1_GREQ);
+	char ovl_source0[512] = {'\0'};
+	char ovl_source1[512] = {'\0'};
+	unsigned int misc =
+		readl_relaxed(config_regs +
+			MT6878_DISP_REG_CONFIG_MMSYS_MISC);
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	enum mtk_ddp_comp_id comp_id;
+	struct mtk_ddp_comp *comp;
+	void __iomem *baddr;
+
+	valid[0] =
+		readl_relaxed(config_regs + MT6881_DISP_REG_CONFIG_DL_VALID_0);
+	valid[1] =
+		readl_relaxed(config_regs + MT6881_DISP_REG_CONFIG_DL_VALID_1);
+	valid[2] =
+		readl_relaxed(config_regs + MT6881_DISP_REG_CONFIG_DL_VALID_2);
+	valid[3] =
+		readl_relaxed(config_regs + MT6881_DISP_REG_CONFIG_DL_VALID_3);
+
+	ready[0] =
+		readl_relaxed(config_regs + MT6881_DISP_REG_CONFIG_DL_READY_0);
+	ready[1] =
+		readl_relaxed(config_regs + MT6881_DISP_REG_CONFIG_DL_READY_1);
+	ready[2] =
+		readl_relaxed(config_regs + MT6881_DISP_REG_CONFIG_DL_READY_2);
+	ready[3] =
+		readl_relaxed(config_regs + MT6881_DISP_REG_CONFIG_DL_READY_3);
+
+	reg = readl_relaxed(config_regs + MT6878_DISP_REG_CONFIG_MMSYS_CG_CON0);
+	for (bit = 0; bit < 32; bit++) {
+		if ((reg & (1 << bit)) == 0) {
+			name = ddp_clock_0_mt6878(bit);
+			if (name)
+				strncat(clock_on, name, (sizeof(clock_on) -
+							 strlen(clock_on) - 1));
+		}
+	}
+
+	reg = readl_relaxed(config_regs + MT6881_DISP_REG_CONFIG_MMSYS_CG_CON1);
+	for (bit = 0; bit < 32; bit++) {
+		if ((reg & (1 << bit)) == 0) {
+			name = ddp_clock_1_mt6881(bit);
+			if (name)
+				strncat(clock_on, name, (sizeof(clock_on) -
+							 strlen(clock_on) - 1));
+		}
+	}
+
+	for (bit = 0; bit < 32; bit++) {
+		if (((misc >> bit) & 1) == 0) {
+			name = ddp_mmsys_misc_mt6878(bit);
+			if (name)
+				strncat(ovl_source0, name, (sizeof(ovl_source0) -
+						strlen(ovl_source0) - 1));
+		} else if (((misc >> bit) & 1) == 1) {
+			name = ddp_mmsys_misc_mt6878(bit);
+			if (name)
+				strncat(ovl_source1, name, (sizeof(ovl_source1) -
+						strlen(ovl_source1) - 1));
+		}
+	}
+
+	DDPDUMP("clock on modules:%s\n", clock_on);
+	DDPDUMP("OVL SODI DSI0 Source modules:%s\n", ovl_source0);
+	DDPDUMP("OVL SODI DSI1 Source modules:%s\n", ovl_source1);
+
+	DDPDUMP("greq0=0x%x greq1=0x%x\n", greq0, greq1);
+	for (idx = 0; idx < 6; idx++) {
+		for (bit = 0; bit < 32; bit++) {
+			name = ddp_signal_mt6881(idx, bit);
+			if (!name)
+				continue;
+			pos = clock_on;
+
+			if ((valid[idx] & (1 << bit)))
+				len = sprintf(pos, "%s,", "v");
+			else
+				len = sprintf(pos, "%s,", "n");
+
+			if (len >= 0)
+				pos += len;
+
+			if ((ready[idx] & (1 << bit)))
+				len = sprintf(pos, "%s", "r");
+			else
+				len = sprintf(pos, "%s", "n");
+			if (len >= 0)
+				pos += len;
+
+			len = sprintf(pos, ": %s", name);
+			if (len >= 0)
+				pos += len;
+
+			if ((valid[idx] & (1 << bit)) | (ready[idx] & (1 << bit)))
+				DDPDUMP("%s\n", clock_on);
+		}
+	}
+
+	/* greq: 1 means SMI dose not grant, maybe SMI hang */
+	if (greq0) {
+		DDPDUMP("smi larb0 greq not grant module:\n");
+		DDPDUMP(
+		"(greq0: 1 means SMI dose not grant, maybe SMI larb0 hang)\n");
+	}
+	if (greq1) {
+		DDPDUMP("smi larb1 greq not grant module:\n");
+		DDPDUMP(
+		"(greq1: 1 means SMI dose not grant, maybe SMI larb1 hang)\n");
+	}
+
+	clock_on[0] = '\0';
+	for (bit = 0; bit < 32; bit++) {
+		if (greq0 & (1 << bit)) {
+			name = ddp_greq_name_larb0_mt6878(bit);
+			if (!name)
+				continue;
+			strncat(clock_on, name,
+				(sizeof(clock_on) -
+				strlen(clock_on) - 1));
+		}
+	}
+
+	for (bit = 0; bit < 32; bit++) {
+		if (greq1 & (1 << bit)) {
+			name = ddp_greq_name_larb1_mt6878(bit);
+			if (!name)
+				continue;
+			strncat(clock_on, name,
+				(sizeof(clock_on) -
+				strlen(clock_on) - 1));
+		}
+	}
+
+	DDPDUMP("%s\n", clock_on);
+
+#ifdef CONFIG_MTK_SMI_EXT
+	if (greq0 || greq1) {
+		if (!in_interrupt())
+			smi_debug_bus_hang_detect(false, "DISP");
+		else
+			DDPDUMP("%s, Can't smi dump in IRQ\n", __func__);
+	}
+#endif
+}
+
 void mtk_ddp_disable_merge_irq(struct drm_device *drm)
 {
 	struct mtk_drm_private *priv = drm->dev_private;
@@ -47985,6 +49527,7 @@ void mtk_ddp_clean_ovl_pq_crossbar(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pk
 		break;
 	}
 	case MMSYS_MT6878:
+	case MMSYS_MT6881:
 	{
 		unsigned int addr[] = {MT6878_OVL_PQ_OUT_CROSSBAR0_MOUT_EN,
 				       MT6878_OVL_PQ_OUT_CROSSBAR1_MOUT_EN,

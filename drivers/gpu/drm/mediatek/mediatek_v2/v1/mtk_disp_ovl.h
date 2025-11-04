@@ -42,6 +42,7 @@ struct mtk_disp_ovl_data {
 	unsigned int source_bpc;
 	bool support_pq_selfloop;
 	bool pqout_ufodin_loop;
+	bool support_undo_alpha;
 	bool (*is_right_ovl_comp)(struct mtk_ddp_comp *comp);
 	unsigned int (*frame_done_event)(struct mtk_ddp_comp *comp);
 	unsigned int (*ovlsys_mapping)(struct mtk_ddp_comp *comp);

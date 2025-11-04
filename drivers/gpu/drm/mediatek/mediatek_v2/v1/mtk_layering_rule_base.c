@@ -3035,7 +3035,8 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 			priv->data->mmsys_id == MMSYS_MT6897 ||
 			priv->data->mmsys_id == MMSYS_MT6989 ||
 			priv->data->mmsys_id == MMSYS_MT6858 ||
-			priv->data->mmsys_id == MMSYS_MT6878) {
+			priv->data->mmsys_id == MMSYS_MT6878 ||
+			priv->data->mmsys_id == MMSYS_MT6881) {
 			if (HRT_GET_FIRST_SET_BIT(ovl_mapping_tb -
 				HRT_GET_FIRST_SET_BIT(ovl_mapping_tb)) >=
 				layer_map_idx) {
@@ -4510,7 +4511,8 @@ static int RPO_rule(struct drm_crtc *crtc,
 			&& (private->data->mmsys_id != MMSYS_MT6991)
 			&& (private->data->mmsys_id != MMSYS_MT6993)
 			&& (private->data->mmsys_id != MMSYS_MT6858)
-			&& (private->data->mmsys_id != MMSYS_MT6878))
+			&& (private->data->mmsys_id != MMSYS_MT6878)
+			&& (private->data->mmsys_id != MMSYS_MT6881))
 			continue;
 
 		if (scale_cnt >= l_rule_info->rpo_scale_num)

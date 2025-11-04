@@ -679,7 +679,8 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 			priv->data->mmsys_id == MMSYS_MT6897 ||
 			priv->data->mmsys_id == MMSYS_MT6989 ||
 			priv->data->mmsys_id == MMSYS_MT6858 ||
-			priv->data->mmsys_id == MMSYS_MT6878)
+			priv->data->mmsys_id == MMSYS_MT6878 ||
+			priv->data->mmsys_id == MMSYS_MT6881)
 			if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH))
 				map = get_dynamic_mapping_table(dev, disp_idx, disp_list,
 						DISP_HW_OVL_TB, addon_data->hrt_type);
@@ -713,7 +714,8 @@ static uint16_t get_mapping_table(struct drm_device *dev, int disp_idx, int disp
 				priv->data->mmsys_id == MMSYS_MT6897 ||
 				priv->data->mmsys_id == MMSYS_MT6989 ||
 				priv->data->mmsys_id == MMSYS_MT6858 ||
-				priv->data->mmsys_id == MMSYS_MT6878)
+				priv->data->mmsys_id == MMSYS_MT6878 ||
+				priv->data->mmsys_id == MMSYS_MT6881)
 				if (get_layering_opt(LYE_OPT_SPDA_OVL_SWITCH))
 					tmp_map = get_dynamic_mapping_table(dev, disp_idx,
 						disp_list, DISP_HW_LAYER_TB, addon_data->hrt_type);
@@ -799,7 +801,8 @@ void mtk_layering_rule_init(struct drm_device *dev)
 			private->data->mmsys_id != MMSYS_MT6989 &&
 			private->data->mmsys_id != MMSYS_MT6993 &&
 			private->data->mmsys_id != MMSYS_MT6858 &&
-			private->data->mmsys_id != MMSYS_MT6878) {
+			private->data->mmsys_id != MMSYS_MT6878 &&
+			private->data->mmsys_id != MMSYS_MT6881) {
 			comp = private->ddp_comp[module_data->attach_comp];
 			if (!comp) {
 				DDPPR_ERR("RPO attached comp is NULL %d\n", module_data->attach_comp);

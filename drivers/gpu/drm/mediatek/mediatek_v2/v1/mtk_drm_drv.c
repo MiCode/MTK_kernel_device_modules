@@ -4219,8 +4219,8 @@ static const enum mtk_ddp_comp_id mt6881_mtk_ddp_main[] = {
 #endif
 #else
 	DDP_COMPONENT_OVL0_2L,
-	DDP_COMPONENT_OVL1_2L,
-	DDP_COMPONENT_OVL2_2L,
+	// DDP_COMPONENT_OVL1_2L,
+	// DDP_COMPONENT_OVL2_2L,
 	DDP_COMPONENT_PQ0_IN_CB0,
 #ifdef IF_ONE // DRM_BYPASS_PQ
 	DDP_COMPONENT_PQ0_OUT_CB4,
@@ -7811,7 +7811,6 @@ static const struct mtk_mmsys_driver_data mt6881_mmsys_driver_data = {
 	.need_seg_id = true,
 	.need_rpo_ratio_for_mmclk = true,
 	.need_emi_eff = true,
-	.not_support_csc = true,
 	.pf_ts_type = IRQ_CMDQ_CB,
 };
 

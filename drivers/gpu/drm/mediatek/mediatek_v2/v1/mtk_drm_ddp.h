@@ -407,6 +407,7 @@ void mmsys_config_dump_analysis_mt6989(void __iomem *config_regs, int sys_id);
 void ovlsys_config_dump_analysis_mt6989(void __iomem *config_regs);
 void mmsys_config_dump_analysis_mt6858(struct drm_crtc *crtc);
 void mmsys_config_dump_analysis_mt6878(struct drm_crtc *crtc);
+void mmsys_config_dump_analysis_mt6881(struct drm_crtc *crtc);
 void mmsys_config_dump_analysis_mt6768(void __iomem *config_regs);
 void mutex_dump_analysis_mt6768(struct mtk_disp_mutex *mutex);
 void mmsys_config_dump_analysis_mt6761(void __iomem *config_regs);
