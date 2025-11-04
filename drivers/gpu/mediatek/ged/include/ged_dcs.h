@@ -26,14 +26,31 @@ struct dcs_virtual_opp {
 
 // supported notify target
 typedef enum {
-	GOV_MASK_FORCE, // force setting core
 	GOV_MASK_DEBUG, // debug cmd ipi
-	GOV_MASK_AP_DCS_POLICY, // runtime user ipi
-	GOV_MASK_DCS_POLICY,
+	GOV_MASK_DCS_CONTROL_V2,
 	GOV_MASK_RESTORE,// restore GOV_MASK_CONFIG_COUNT for mfgsys
 
 	GOV_MASK_CONFIG_NUM,
 } gov_mask_config_t;
+
+enum core_num_config_t {
+	CORE_NUM_DCS,
+	CORE_NUM_LOWPWR,
+	CORE_NUM_FIX_VIRTUAL,
+	CORE_NUM_G_DEBUG,
+	CORE_NUM_PREUVLO,
+	CORE_NUM_CTT,
+	CORE_NUM_IPI_1,
+	CORE_NUM_CONFIG_NUM,
+};
+
+
+struct core_num_ex_data {
+	unsigned int core_mask;
+	unsigned int core_num;
+	unsigned int valid;
+	unsigned int enable;
+};
 
 GED_ERROR ged_dcs_init_platform_info(void);
 void ged_dcs_exit(void);
@@ -50,6 +67,7 @@ int is_dcs_enable(void);
 void dcs_enable(int enable);
 int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask);
 int dcs_set_fix_num(unsigned int core_num);
+int dcs_set_fix_num_ex(enum core_num_config_t config, unsigned int core_num);
 void dcs_fix_reset(void);
 unsigned int dcs_get_fix_num(void);
 unsigned int dcs_get_fix_mask(void);
@@ -87,5 +105,12 @@ ssize_t get_get_gov_support_dump(char *buf, int sz, ssize_t pos);
 
 int dcs_get_lowpwr(void);
 void dcs_set_lowpwr(int enable);
+
+// mask debug config group
+int dcs_query_fix_num(enum core_num_config_t config);
+void dcs_set_debug_num(enum core_num_config_t config, int num);
+unsigned int dcs_get_debug(enum core_num_config_t config);
+void dcs_set_debug(enum core_num_config_t config, int enable);
+void dcs_check_debug_config(int is_fix_dvfs, int in_min_opp, unsigned int silence);
 
 #endif /* __GED_DCS_H__ */

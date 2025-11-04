@@ -274,6 +274,7 @@ void ged_eb_dvfs_trace_dump(void)
 	int freq_id = ged_get_cur_oppidx();
 	unsigned int is_offscreen = 0;
 	unsigned int is_silence = 0;
+	unsigned int is_gpu_debug_ex_valid = 0;
 	static int pre_eb_policy_state;
 	static int pre_ged_policy_state;
 	static int pre_freq_id;
@@ -379,6 +380,11 @@ void ged_eb_dvfs_trace_dump(void)
 				trace_tracing_mark_write(5566, "silence", is_silence);
 				pre_is_silence = is_silence;
 			}
+
+			is_gpu_debug_ex_valid = mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_DEBUG_EX_VALID].addr);
+			tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_DEBUG_EX_ENABLE].addr);
+			trace_GPU_DVFS__G_DEBUG_EX(is_gpu_debug_ex_valid, tmp_multi.value,
+				mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_MASK].addr));
 		}
 	}
 
@@ -476,6 +482,7 @@ void ged_eb_dvfs_frame_done_dump(void)
 	struct cmd_info custom_boost_info ={0};
 	int ui32CeilingID = ged_get_cur_limit_idx_ceil();
 	int ui32FloorID = ged_get_cur_limit_idx_floor();
+	unsigned int is_gpu_debug_ex_valid = 0;
 	static unsigned int gpu_counter, pre_gpu_counter,last_gpu_npu_hint_ms;
 	static int ultra_loading_flag, pre_ultra_loading_flag;
 
@@ -625,6 +632,11 @@ void ged_eb_dvfs_frame_done_dump(void)
 		tmp_multi_async.fourVar.var3,
 		tmp_multi_async.fourVar.var4,
 		tmp_multi_async.fourVar.var1);
+
+	is_gpu_debug_ex_valid = mtk_gpueb_sysram_read(fdvfs_v2_table[GPU_DEBUG_EX_VALID].addr);
+	tmp_multi = mtk_gpueb_sysram_multi_read(fdvfs_v2_table[GPU_DEBUG_EX_ENABLE].addr);
+	trace_GPU_DVFS__G_DEBUG_EX(is_gpu_debug_ex_valid, tmp_multi.value,
+		mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_MASK].addr));
 #endif
 }
 

@@ -2359,6 +2359,25 @@ TRACE_EVENT(GPU_DVFS__EB_LOWPWR,
 		__entry->silence, __entry->dcs, __entry->fix_in_min, __entry->low_pwr)
 );
 
+TRACE_EVENT(GPU_DVFS__G_DEBUG_EX,
+	TP_PROTO(unsigned int g_debug_ex_valid, unsigned int g_debug_ex_enable, unsigned int show),
+	TP_ARGS(g_debug_ex_valid, g_debug_ex_enable, show),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, g_debug_ex_valid)
+		__field(unsigned int, g_debug_ex_enable)
+		__field(unsigned int, show)
+	),
+
+	TP_fast_assign(
+		__entry->g_debug_ex_valid = g_debug_ex_valid;
+		__entry->g_debug_ex_enable = g_debug_ex_enable;
+		__entry->show = show;
+	),
+
+	TP_printk("g_debug_ex_valid=%u g_debug_ex_enable=%u show=%x", __entry->g_debug_ex_valid,
+			  __entry->g_debug_ex_enable, __entry->show)
+);
 
 TRACE_EVENT(GPU_DVFS__EBRB_DCS_DATA,
 	TP_PROTO(const unsigned int *arg, const unsigned int *arg2, const unsigned int *arg3,

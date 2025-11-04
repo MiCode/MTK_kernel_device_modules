@@ -40,6 +40,11 @@ bool g_setting_dirty;
 
 int g_lowpwr_mode;
 
+unsigned int g_fix_ex_valid_flag;
+unsigned int g_fix_ex_enable_flag;
+unsigned int g_fix_ex_final_mask;
+struct core_num_ex_data g_core_num_ex_data[CORE_NUM_CONFIG_NUM];
+
 // adjust dcs_performance
 static unsigned int g_adjust_dcs_support;
 static unsigned int g_adjust_dcs_ratio_th; //freq max/min threshold (ex:20(2 times))
@@ -321,12 +326,10 @@ int dcs_get_dcs_opp_setting(void)
 int dcs_get_cur_core_num(void)
 {
 	if (is_fdvfs_enable() & POLICY_MODE_V2) {
-		if (dcs_get_gov_enable()) {
-			unsigned int gov_mask_num = mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_NUM].addr);
+		unsigned int gov_mask_num = mtk_gpueb_sysram_read(fdvfs_v2_table[DCS_GOV_CORE_NUM].addr);
 
-			if (gov_mask_num > 0)
-				return gov_mask_num;
-		}
+		if (gov_mask_num > 0)
+			return gov_mask_num;
 	}
 	return g_cur_core_num;
 }
@@ -393,8 +396,7 @@ int dcs_set_fix_core_mask(gov_mask_config_t config, unsigned int core_mask)
 {
 	int ret = GED_OK;
 
-	if (dcs_get_gov_enable() && (is_fdvfs_enable() & POLICY_MODE_V2) &&
-		config != GOV_MASK_FORCE)
+	if (dcs_get_gov_enable() && (is_fdvfs_enable() & POLICY_MODE_V2))
 		return ret;
 
 	mutex_lock(&g_DCS_lock);
@@ -859,6 +861,108 @@ void dcs_set_lowpwr(int enable)
 	}
 
 done_unlock:
+	mutex_unlock(&g_DCS_lock);
+}
+
+
+// g_debug_ex series
+static void _set_bit_flag(unsigned int config, unsigned int *flag, int enable)
+{
+	if (enable == 1)
+		*flag |= (1U << config);
+	else if (enable == 0)
+		*flag &= ~(1U << config);
+	else
+		*flag = enable;
+}
+
+void dcs_set_debug_num(enum core_num_config_t config, int num)
+{
+	if (config < CORE_NUM_CONFIG_NUM) {
+		g_core_num_ex_data[config].core_num = num;
+		g_core_num_ex_data[config].core_mask = 0;
+	}
+}
+
+int dcs_query_fix_num(enum core_num_config_t config)
+{
+	int ret = GED_OK;
+	int i = 0;
+
+	mutex_lock(&g_DCS_lock);
+	if (config >= CORE_NUM_CONFIG_NUM){
+		ret = GED_ERROR_FAIL;
+		pr_info("invalid config");
+		goto done_unlock;
+	}
+
+	if (g_core_num_ex_data[config].core_num > 0 && g_core_num_ex_data[config].core_mask == 0) {
+		if (!g_core_mask_table)
+			_dcs_init_core_mask_table();
+
+		if (!g_core_mask_table) {
+			ret = GED_ERROR_FAIL;
+			pr_info("init core mask table fail");
+			goto done_unlock;
+		}
+
+		if (g_core_num_ex_data[config].core_num > 0 && g_core_num_ex_data[config].core_num <= g_max_core_num) {
+			for (i = 0; i < g_max_core_num; i++) {
+				if (g_core_num_ex_data[config].core_num == g_core_mask_table[i].num) {
+					g_core_num_ex_data[config].core_mask = g_core_mask_table[i].mask;
+					pr_info("g_debug_ex setting %u %X", config,
+							g_core_num_ex_data[config].core_mask);
+				}
+			}
+		} else {
+			g_core_num_ex_data[config].core_num =  0;
+			g_core_num_ex_data[config].core_mask = 0;
+			pr_info("g_debug_ex reset %u %X", config, g_core_num_ex_data[config].core_mask);
+		}
+	}
+
+done_unlock:
+	mutex_unlock(&g_DCS_lock);
+	return ret;
+}
+
+unsigned int dcs_get_debug(enum core_num_config_t config)
+{
+	if (config < CORE_NUM_CONFIG_NUM)
+		return g_core_num_ex_data[config].enable;
+	else
+		return 0;
+}
+
+void dcs_set_debug(enum core_num_config_t config, int enable)
+{
+	struct fdvfs_ipi_data ipi_data = {0};
+	int ret = 0;
+
+	if (enable < 0 || enable > 1) {
+		pr_info("g_debug_ex reject config %u %d", config, enable);
+		return;
+	}
+
+	if (config >= CORE_NUM_CONFIG_NUM) {
+		pr_info("g_debug_ex invalid config %u %d", config, enable);
+		return;
+	}
+
+	dcs_query_fix_num(config);
+
+	mutex_lock(&g_DCS_lock);
+
+	_set_bit_flag(config, &g_fix_ex_enable_flag, enable);
+
+	g_core_num_ex_data[config].enable = enable;
+
+	ipi_data.u.set_para.arg[0] = GPUFDVFS_IPI_SET_DCS_DEBUG_EX;
+	ipi_data.u.set_para.arg[1] = config;
+	ipi_data.u.set_para.arg[2] = g_core_num_ex_data[config].enable;
+	ipi_data.u.set_para.arg[3] = g_core_num_ex_data[config].core_num;
+	ret = ged_to_fdvfs_command(GPUFDVFS_IPI_SET_CONFIG, &ipi_data);
+
 	mutex_unlock(&g_DCS_lock);
 }
 

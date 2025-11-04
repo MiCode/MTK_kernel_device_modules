@@ -164,14 +164,21 @@ static void ged_eb_work_cb(struct work_struct *psWork)
 		desire_ipi_cnt++;
 		if (is_fdvfs_enable() & POLICY_MODE_V2) {
 			mutex_lock(&gsPolicyLock);
-			dcs_set_setting_dirty();
-			if ((psEBEvent->idx[1] == GOV_MASK_DEBUG || psEBEvent->idx[1] == GOV_MASK_FORCE) &&
-				psEBEvent->idx[0] != 0)
+
+			if (psEBEvent->idx[2] == 0xFFFFFFFF) {
 				dcs_set_fix_core_mask(psEBEvent->idx[1], psEBEvent->idx[0]);
-			else
-				ged_kpi_fastdvfs_update_dcs();
+				trace_tracing_mark_write(5566, "desire_ipi_req_ex", psEBEvent->idx[0]);
+			} else {
+				dcs_set_setting_dirty();
+				if ((psEBEvent->idx[1] == GOV_MASK_DEBUG) &&
+					psEBEvent->idx[0] != 0)
+					dcs_set_fix_core_mask(psEBEvent->idx[1], psEBEvent->idx[0]);
+				else
+					ged_kpi_fastdvfs_update_dcs();
+
+				trace_tracing_mark_write(5566, "desire_ipi_req", psEBEvent->idx[0]);
+			}
 			mutex_unlock(&gsPolicyLock);
-			trace_tracing_mark_write(5566, "desire_ipi_req", psEBEvent->idx[0]);
 		}
 		trace_tracing_mark_write(5566, "desire_ipi_cnt", desire_ipi_cnt);
 		break;

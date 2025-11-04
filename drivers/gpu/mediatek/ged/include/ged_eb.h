@@ -701,6 +701,7 @@ enum ged_eb_config_cmd {
 	GPUFDVFS_IPI_GET_LOADING_SELECT,
 	GPUFDVFS_IPI_SET_DUMMY_SWITCH,
 	GPUFDVFS_IPI_GET_DUMMY_SWITCH,
+	GPUFDVFS_IPI_SET_DCS_DEBUG_EX,
 	GPUFDVFS_IPI_SET_MAX_CONFIG_INDEX,
 
 };
@@ -1054,7 +1055,9 @@ GEN("desire_mask", GOV_DESIRE_MASK, 1, "desire_mask") \
 GEN("fb_mfrc", GPU_FB_MFRC_2, 1, "fb_mfrc_2") \
 GEN("ultra_loading_flag", ULTRA_LOADING_FLAG, 1, "ultra_loading_flag") \
 GEN("dvfs_margin_value", GPU_EB_CMD_DVFS_MARGIN_VALUE, 1, "dvfs_margin_value_cmd") \
-GEN("ap_cur_core_mask", GPU_AP_CUR_MASK, 1, "ap_cur_core_mask")
+GEN("ap_cur_core_mask", GPU_AP_CUR_MASK, 1, "ap_cur_core_mask") \
+GEN("fix_ex_enable_flag", GPU_DEBUG_EX_ENABLE, 2, "fix_ex_enable_flag") \
+GEN("fix_ex_valid_flag", GPU_DEBUG_EX_VALID, 1, "fix_ex_valid_flag")
 
 
 // generate sysram index list according to FDVFS_V2_COUNTER
