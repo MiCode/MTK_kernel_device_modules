@@ -61,6 +61,6 @@ PLATFORMS = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_cmdq/hyp/{}/inc_fdvt/config".format(p),
     ],
     local_defines = [
-        "CMDQ_IOVA",
+        "CMDQ_IOVA", "CMDQ_SECIO_WA"
     ],
 ) for p in PLATFORMS]

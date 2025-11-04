@@ -15,6 +15,7 @@
 #include "mdp_sec_platform.h"
 #include "cmdq_sec_iwc_common.h"
 #include "isp_sec_public.h"
+#include <pkvm_sys.h>
 
 #ifdef memset
 #undef memset
@@ -40,6 +41,74 @@ uint32_t dapc_base_pa[] = {
 	DAPC_BASE3,
 #endif
 };
+
+#ifdef CMDQ_SECIO_WA
+#include <pkvm_mgmt/pkvm_mgmt.h>
+
+#define SIO_READ (0)
+#define SIO_WRITE (1)
+
+#define IO_OFFSET_LIMIT (0x1000)
+#define IO_ACCESS_SIZE (4)
+
+static inline bool is_valid_offset(uint32_t offset)
+{
+	/* Currently, the maximum IO_SIZE is 124K in TF-A */
+	if (offset >= (IO_OFFSET_LIMIT * 0x1F))
+		return false;
+
+	if ((offset % IO_ACCESS_SIZE) != 0)
+		return false;
+
+	return true;
+}
+
+static inline bool is_valid_secio_type(uint32_t type)
+{
+	if ((type > SECIO_INVALID) && (type < SECIO_MAX))
+		return true;
+	return false;
+}
+
+#define IS_NULL(p) (p == NULL)
+static TZ_RESULT SECIO_ACCESS(uint32_t io_type, uint32_t dir, uint32_t offset,
+	uint32_t write_val, uint32_t *read_val)
+{
+	struct arm_smccc_res res;
+
+	if (!is_valid_offset(offset))
+		return TZ_RESULT_ERROR_BAD_FORMAT;
+	CALL_FROM_OPS(putx64, io_type);
+
+	if (!is_valid_secio_type(io_type))
+		return TZ_RESULT_ERROR_ACCESS_DENIED;
+
+	if ((dir == SIO_READ) && IS_NULL(read_val))
+		return TZ_RESULT_ERROR_BAD_PARAMETERS;
+
+	if (dir == SIO_READ)
+		arm_smccc_1_1_smc(MTK_SIP_HYP_SECIO_READ,
+			io_type, offset, 0, 0, 0, 0, 0, &res);
+	else
+		arm_smccc_1_1_smc(MTK_SIP_HYP_SECIO_WRITE,
+			io_type, offset, write_val, 0, 0, 0, 0, &res);
+
+	if (dir == SIO_READ && !IS_NULL(read_val))
+		*read_val = res.a1;
+
+	return (TZ_RESULT)res.a0;
+}
+
+TZ_RESULT __SECIO_WRITE(uint32_t io_type, uint32_t reg_offset, uint32_t write_val)
+{
+	return SECIO_ACCESS(io_type, SIO_WRITE, reg_offset, write_val, NULL);
+}
+
+TZ_RESULT __SECIO_READ(uint32_t io_type, uint32_t reg_offset, uint32_t *read_val)
+{
+	return SECIO_ACCESS(io_type, SIO_READ, reg_offset, 0, read_val);
+}
+#endif
 
 static bool cmdq_tz_is_a_secure_thread(const int32_t thread)
 {
@@ -2261,4 +2330,42 @@ void cmdq_hyp_cam_preview_support(struct user_pt_regs *regs)
 	CALL_FROM_OPS(putx64, mtkcam_security_cam_normal_preview_support);
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
+
+uint32_t cmdq_secio_read(const uint32_t base, const uint32_t addr)
+{
+	uint32_t secio_type = 0;
+	uint32_t val;
+	uint8_t cmdq_id;
+
+	cmdq_id = cmdq_get_hwid_by_base(base);
+
+	secio_type = cmdq_secio_type(CMDQ_SECIO_TYPE_GET_OFFSET(base, addr), cmdq_id);
+
+#ifdef CMDQ_SECIO_WA
+	__SECIO_READ(secio_type,
+		CMDQ_SECIO_GET_OFFSET(addr), &val);
+#else
+	SECIO_READ(secio_type,
+		CMDQ_SECIO_GET_OFFSET(addr), &val);
+#endif
+	return val;
+}
+
+void cmdq_secio_write(const uint32_t base, const uint32_t addr, const uint32_t val)
+{
+	uint32_t secio_type = 0;
+	uint8_t cmdq_id;
+
+	cmdq_id = cmdq_get_hwid_by_base(base);
+	secio_type = cmdq_secio_type(CMDQ_SECIO_TYPE_GET_OFFSET(base, addr), cmdq_id);
+
+#ifdef CMDQ_SECIO_WA
+	__SECIO_WRITE(secio_type,
+		CMDQ_SECIO_GET_OFFSET(addr), val);
+#else
+	SECIO_WRITE(secio_type,
+		CMDQ_SECIO_GET_OFFSET(addr), val);
+#endif
+}
+
 MODULE_LICENSE("GPL");

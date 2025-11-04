@@ -75,34 +75,6 @@ uint32_t cmdq_secio_type(const uint32_t addr, const uint32_t cmdq_id)
 	return SECIO_MAX;
 }
 
-uint32_t cmdq_secio_read(const uint32_t base, const uint32_t addr)
-{
-	uint32_t secio_type = 0;
-	uint32_t val;
-	uint8_t cmdq_id;
-
-	cmdq_id = cmdq_get_hwid_by_base(base);
-
-	secio_type = cmdq_secio_type(CMDQ_SECIO_TYPE_GET_OFFSET(base, addr), cmdq_id);
-
-	SECIO_READ(secio_type,
-		CMDQ_SECIO_GET_OFFSET(addr), &val);
-
-	return val;
-}
-
-void cmdq_secio_write(const uint32_t base, const uint32_t addr, const uint32_t val)
-{
-	uint32_t secio_type = 0;
-	uint8_t cmdq_id;
-
-	cmdq_id = cmdq_get_hwid_by_base(base);
-	secio_type = cmdq_secio_type(CMDQ_SECIO_TYPE_GET_OFFSET(base, addr), cmdq_id);
-
-	SECIO_WRITE(secio_type,
-		CMDQ_SECIO_GET_OFFSET(addr), val);
-}
-
 int32_t cmdq_drv_imgsys_set_slc(void *data)
 {
 	return 0;

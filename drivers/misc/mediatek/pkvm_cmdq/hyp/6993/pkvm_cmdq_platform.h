@@ -73,9 +73,9 @@
 #define MDP_SCENARIO	CMDQ_MAX_SCENARIO_COUNT
 
 bool m4u_larb_port_without_aid(const uint32_t port);
-void cmdq_secio_write(const uint32_t base, const uint32_t addr, const uint32_t val);
-uint32_t cmdq_secio_read(const uint32_t base, const uint32_t addr);
 void cmdq_drv_imgsys_slc_cb(const uint32_t base);
 int32_t cmdq_drv_imgsys_set_domain(void *data, bool isSet);
 uint32_t cmdq_get_base_by_hwid(uint8_t hwid);
-
+uint8_t cmdq_get_hwid_by_base(uint32_t base);
+uint32_t cmdq_get_base_by_hwid(uint8_t hwid);
+uint32_t cmdq_secio_type(const uint32_t addr, const uint32_t cmdq_id);
