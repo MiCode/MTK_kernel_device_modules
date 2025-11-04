@@ -4932,6 +4932,32 @@
 			interrupts = <GIC_SPI 345 IRQ_TYPE_NONE 0>;
 		};
 
+		gps: gps@18c00000 {
+			compatible = "mediatek,mt6881-gps";
+			reg = <0 0x18c00000 0 0x100000>,
+				<0 0x18000000 0 0x100000>,
+				<0 0x1c000000 0 0x4>,
+				<0 0x1c013058 0 0x4>,
+				<0 0x1c013060 0 0x4>,
+				<0 0x1c0130f8 0 0x28>;
+			reg-names = "conn_gps_base", "conn_infra_base",
+				"status_dummy_cr", "tia2_gps_on", "tia2_gps_rc_sel",
+				"tia2_gps_debug";
+			interrupts = <GIC_SPI 507 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 508 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 509 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 510 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 511 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 517 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 257 IRQ_TYPE_LEVEL_HIGH 0>;
+			emi-connac-ver = <2>;
+			emi-addr = <0>;
+			emi-size = <0x100000>;
+			emi-alignment = <0x100000>;
+			emi-max-addr = <0xc0000000>;
+			b13b14-status-addr = <0x1c000008>;
+		};
+
 		vcp: vcp@1ea00000 {
 			#address-cells = <2>;
 			#size-cells = <2>;
