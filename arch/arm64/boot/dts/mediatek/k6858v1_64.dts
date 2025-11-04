@@ -34,6 +34,14 @@
 	pinctrl-names = "mode_te_te";
 	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
 	status = "okay";
+
+	helper-name-proj = "MTK_DRM_OPT_VIDLE_TOP_EN",
+		"MTK_DRM_OPT_VIDLE_VDO_PANEL",
+		"MTK_DRM_OPT_VIDLE_FULL_SCENARIO";
+
+	helper-value-proj = <1>, /*MTK_DRM_OPT_VIDLE_TOP_EN*/
+		<1>, /*MTK_DRM_OPT_VIDLE_VDO_PANEL*/
+		<1>; /*MTK_DRM_OPT_VIDLE_FULL_SCENARIO*/
 };
 
 &dsi0 {
