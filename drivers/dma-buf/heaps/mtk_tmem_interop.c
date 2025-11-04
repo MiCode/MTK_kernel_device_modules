@@ -550,6 +550,8 @@ struct dma_buf *tmem_page_alloc(struct dma_heap *heap, ulong len, u32 fd_flags,
 	buffer->show = sec_buf_priv_dump;
 	buffer->gid = -1;
 
+	init_buffer_info(heap, buffer);
+
 	if (tmem_api_ver() == 2)
 		ret = page_alloc_v2(sec_heap, buffer, len);
 	else
@@ -573,8 +575,6 @@ struct dma_buf *tmem_page_alloc(struct dma_heap *heap, ulong len, u32 fd_flags,
 		pr_err("%s alloc_dmabuf fail\n", __func__);
 		goto free_tmem;
 	}
-
-	init_buffer_info(heap, buffer);
 
 	return dmabuf;
 
@@ -857,6 +857,8 @@ struct dma_buf *tmem_region_alloc(struct dma_heap *heap, ulong len,
 	buffer->show = sec_buf_priv_dump;
 	buffer->gid = -1;
 
+	init_buffer_info(heap, buffer);
+
 	ret = region_alloc(sec_heap, buffer, len, aligned);
 	if (ret)
 		goto free_buffer;
@@ -867,7 +869,6 @@ struct dma_buf *tmem_region_alloc(struct dma_heap *heap, ulong len,
 		pr_err("%s alloc_dmabuf fail\n", __func__);
 		goto free_tmem;
 	}
-	init_buffer_info(heap, buffer);
 
 	return dmabuf;
 
