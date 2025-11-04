@@ -1276,10 +1276,13 @@ struct mtk_drm_crtc {
 	unsigned int ovl_usage_status;
 	void __iomem *ovlsys0_regs;
 	resource_size_t ovlsys0_regs_pa;
+	unsigned int ovlsys0_mutex_mod[2];		// 2 for 64 modules
 	void __iomem *ovlsys1_regs;
 	resource_size_t ovlsys1_regs_pa;
+	unsigned int ovlsys1_mutex_mod[2];		// 2 for 64 modules
 	void __iomem *ovlsys2_regs;
 	resource_size_t ovlsys2_regs_pa;
+	unsigned int ovlsys2_mutex_mod[2];		// 2 for 64 modules
 	unsigned int ovlsys_num;
 	void __iomem *config_regs;
 	resource_size_t config_regs_pa;
@@ -1295,6 +1298,7 @@ struct mtk_drm_crtc {
 	struct mtk_disp_mutex *mutex[DDP_PATH_NR];
 	unsigned int ddp_mode;
 	unsigned int cur_config_fence[OVL_LAYER_NR];
+	bool mutex_mod_muti_cfg;
 
 
 	struct drm_writeback_connector wb_connector;

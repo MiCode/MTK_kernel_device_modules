@@ -368,6 +368,11 @@ void mtk_disp_mutex_remove_comp_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
 					  enum mtk_ddp_comp_id id,
 					  struct cmdq_pkt *handle,
 					  unsigned int mutex_id);
+void mtk_disp_mutex_mod_muti_cfg_start(struct mtk_drm_crtc *mtk_crtc);
+void mtk_disp_mutex_mod_cfg_with_cmdq(struct mtk_drm_crtc *mtk_crtc,
+					  struct cmdq_pkt *handle,
+					  unsigned int mutex_id,
+					  bool add_mod);
 void mtk_disp_mutex_unprepare(struct mtk_disp_mutex *mutex);
 void mtk_disp_mutex_put(struct mtk_disp_mutex *mutex);
 void mtk_disp_mutex_acquire(struct mtk_disp_mutex *mutex);

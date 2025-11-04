@@ -8156,6 +8156,7 @@ void mtk_crtc_layer_off(struct mtk_drm_crtc *mtk_crtc, int crtc_idx,
 		!state->lye_state.rpo_lye && crtc_idx != 2)
 		return;
 
+	mtk_disp_mutex_mod_muti_cfg_start(mtk_crtc);
 	for (i = mtk_crtc->layer_nr - 1; i >= 0; i--) {
 		struct drm_plane *plane = &mtk_crtc->planes[i].base;
 		struct mtk_plane_state *plane_state = NULL;
@@ -8202,6 +8203,7 @@ void mtk_crtc_layer_off(struct mtk_drm_crtc *mtk_crtc, int crtc_idx,
 			break;
 		}
 	}
+	mtk_disp_mutex_mod_cfg_with_cmdq(mtk_crtc, cmdq_handle, 0, false);
 }
 
 unsigned int mtk_drm_primary_frame_bw(struct drm_crtc *crtc)
@@ -9863,6 +9865,7 @@ void mtk_crtc_ovl_connect_change(struct drm_crtc *crtc, unsigned int ovl_res,
 		comp = mtk_crtc->ddp_ctx[ddp_mode].ovl_comp[DDP_FIRST_PATH][i];
 	}
 	/* add comp to mutex */
+	mtk_disp_mutex_mod_muti_cfg_start(mtk_crtc);
 	for (i = 0 ; i < mtk_crtc->ddp_ctx[ddp_mode].ovl_comp_nr[DDP_FIRST_PATH] ; ++i) {
 		comp = mtk_crtc->ddp_ctx[ddp_mode].ovl_comp[DDP_FIRST_PATH][i];
 		if (!comp) {
@@ -9877,7 +9880,7 @@ void mtk_crtc_ovl_connect_change(struct drm_crtc *crtc, unsigned int ovl_res,
 		mtk_ddp_comp_config(comp, &cfg, cmdq_handle);
 		mtk_ddp_comp_start(comp, cmdq_handle);
 	}
-
+	mtk_disp_mutex_mod_cfg_with_cmdq(mtk_crtc, cmdq_handle, 0, true);
 	if (!mtk_crtc->is_dual_pipe)
 		return;
 
@@ -9981,6 +9984,7 @@ void mtk_crtc_ovl_connect_change(struct drm_crtc *crtc, unsigned int ovl_res,
 	}
 
 	/* add dual comp to mutex */
+	mtk_disp_mutex_mod_muti_cfg_start(mtk_crtc);
 	for (i = 0 ; i < mtk_crtc->dual_pipe_ddp_ctx.ovl_comp_nr[DDP_FIRST_PATH] ; ++i) {
 		comp = mtk_crtc->dual_pipe_ddp_ctx.ovl_comp[DDP_FIRST_PATH][i];
 
@@ -9996,7 +10000,7 @@ void mtk_crtc_ovl_connect_change(struct drm_crtc *crtc, unsigned int ovl_res,
 		mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, comp->id,
 				is_frame_mode, cmdq_handle, 0);
 	}
-
+	mtk_disp_mutex_mod_cfg_with_cmdq(mtk_crtc, cmdq_handle, 0, true);
 }
 
 static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
@@ -15763,6 +15767,7 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 	if (priv->data->ovl_exdma_rule)
 		DDPDBG("restore plane mtk_crtc->last_blender %d\n",mtk_crtc->last_blender->id);
 
+	mtk_disp_mutex_mod_muti_cfg_start(mtk_crtc);
 	for (i = 0; i < mtk_crtc->layer_nr; i++) {
 		struct drm_plane *con_plane = &mtk_crtc->planes[i].base;
 		struct mtk_plane_state *con_plane_state;
@@ -15776,6 +15781,7 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 		if (priv->data->ovl_exdma_rule)
 			mtk_drm_crtc_check_blender_connect(mtk_crtc, cmdq_handle, con_plane_state, i);
 	}
+	mtk_disp_mutex_mod_cfg_with_cmdq(mtk_crtc, cmdq_handle, 0, true);
 }
 
 /* restore ovl layer config and set dal layer if any */
@@ -23994,6 +24000,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			old_mtk_state->prop_val[CRTC_PROP_PRES_FENCE_IDX],
 			mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
 
+	mtk_disp_mutex_mod_muti_cfg_start(mtk_crtc);
 	for (i = 0; i < mtk_crtc->layer_nr; i++) {
 		struct drm_plane *plane = &mtk_crtc->planes[i].base;
 		struct mtk_plane_state *plane_state;
@@ -24010,6 +24017,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			mtk_crtc->reset_path))
 			mtk_drm_crtc_check_blender_connect(mtk_crtc, cmdq_handle, plane_state, i);
 	}
+	mtk_disp_mutex_mod_cfg_with_cmdq(mtk_crtc, cmdq_handle, 0, true);
 	if (mtk_crtc->reset_path)
 		mtk_crtc->reset_path = false;
 
@@ -25740,6 +25748,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	mtk_crtc->mml_ir_sram.data.uid = UID_DISP;
 	mtk_crtc->capturing = false;
 	mtk_crtc->dbi_trigger= false;
+	mtk_crtc->mutex_mod_muti_cfg = false;
 	mtk_crtc->pq_data = kzalloc(sizeof(*mtk_crtc->pq_data), GFP_KERNEL);
 	if (mtk_crtc->pq_data == NULL) {
 		DDPPR_ERR("Failed to alloc pq_data\n");
