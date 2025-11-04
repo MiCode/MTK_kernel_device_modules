@@ -67,6 +67,10 @@
 			    nosoftlockup \
 			    loglevel=8 \
 			    androidboot.hardware=mt6881 \
+			    cgroup.memory=nosocket,nokmem \
+			    disable_dma32=on \
+			    transparent_hugepage=never \
+			    arm64.nomops \
 			    initcall_debug=1 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
