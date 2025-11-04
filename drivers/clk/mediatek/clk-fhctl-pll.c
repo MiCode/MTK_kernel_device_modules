@@ -701,6 +701,169 @@ static struct match mt6877_match = {
 };
 /* 6877 end */
 
+/* 6881 begin */
+#define SIZE_6881_TOP0 (sizeof(mt6881_top0_data)\
+	/sizeof(struct fh_pll_data))
+#define SIZE_6881_MCU (sizeof(mt6881_mcu0_data)\
+	/sizeof(struct fh_pll_data))
+
+#define DATA_6881_CONVERT(_name) {				\
+		.name = _name,						\
+		.dds_mask = GENMASK(21, 0),			\
+		.postdiv_mask = GENMASK(26, 24),		    \
+		.postdiv_offset = 24,				        \
+		.slope0_value = 0x6003c97,			\
+		.slope1_value = 0x6003c97,			\
+		.sfstrx_en = BIT(2),				\
+		.frddsx_en = BIT(1),				\
+		.fhctlx_en = BIT(0),				\
+		.tgl_org = BIT(31),					\
+		.dvfs_tri = BIT(31),				\
+		.pcwchg = BIT(31),					\
+		.dt_val = 0x0,						\
+		.df_val = 0x9,						\
+		.updnlmt_shft = 16,					\
+		.msk_frddsx_dys = GENMASK(23, 20),	\
+		.msk_frddsx_dts = GENMASK(19, 16),	\
+	}
+#define REG_6881_CONVERT(_fhctl, _con_pcw) {	\
+		.offset_fhctl = _fhctl,				\
+		.offset_con_pcw = _con_pcw,			\
+		.offset_con_postdiv = _con_pcw,		\
+		.offset_hp_en = 0x0,                \
+		.offset_hp_en_set = 0x4,          \
+		.offset_hp_en_clr = 0x8,			\
+		.offset_clk_con = 0x10,				\
+		.offset_clk_con_set = 0x14,        \
+		.offset_clk_con_clr = 0x18,        \
+		.offset_rst_con = 0x1c,				\
+		.offset_rst_con_set = 0x20,        \
+		.offset_rst_con_clr = 0x24,        \
+		.offset_slope0 = 0x28,				\
+		.offset_slope1 = 0x2C,				\
+		.offset_cfg = 0x0,					\
+		.offset_updnlmt = 0x4,				\
+		.offset_dds = 0x8,					\
+		.offset_dvfs = 0xc,					\
+		.offset_mon = 0x10,					\
+	}
+//TINYSYS no slope1, map to slope0 for compatibility
+#define REG_6881_TINYSYS_CONVERT(_fhctl, _con_pcw) {	\
+		.offset_fhctl = _fhctl,				\
+		.offset_con_pcw = _con_pcw,			\
+		.offset_con_postdiv = _con_pcw,		\
+		.offset_hp_en = 0x0,				\
+		.offset_clk_con = 0x8,				\
+		.offset_rst_con = 0xc,				\
+		.offset_slope0 = 0x10,				\
+		.offset_slope1 = 0x10,				\
+		.offset_cfg = 0x0,					\
+		.offset_updnlmt = 0x4,				\
+		.offset_dds = 0x8,					\
+		.offset_dvfs = 0xc,					\
+		.offset_mon = 0x10,					\
+	}
+
+///////////////////////////////////top0
+static struct fh_pll_data mt6881_top0_data[] = {
+	DATA_6881_CONVERT("mainpll"),
+	DATA_6881_CONVERT("msdcpll"),
+	DATA_6881_CONVERT("emipll"),
+	DATA_6881_CONVERT("mmpll"),
+	DATA_6881_CONVERT("tvdpll"),
+	{}
+};
+static struct fh_pll_offset mt6881_top0_offset[SIZE_6881_TOP0] = {
+	REG_6881_CONVERT(0x0054, 0x0254),  // DATA_6881_CONVERT("mainpll")
+	REG_6881_CONVERT(0x0068, 0x027C),  // DATA_6881_CONVERT("msdcpll")
+	REG_6881_CONVERT(0x007C, 0x0290),  // DATA_6881_CONVERT("emipll")
+	REG_6881_CONVERT(0x0090, 0x02A4),  // DATA_6881_CONVERT("mmpll")
+	REG_6881_CONVERT(0x00A4, 0x02B8),  // DATA_6881_CONVERT("tvdpll")
+	{}
+};
+static struct fh_pll_regs mt6881_top0_regs[SIZE_6881_TOP0];
+static struct fh_pll_domain mt6881_top0 = {
+	.name = "top0",
+	.data = (struct fh_pll_data *)&mt6881_top0_data,
+	.offset = (struct fh_pll_offset *)&mt6881_top0_offset,
+	.regs = (struct fh_pll_regs *)&mt6881_top0_regs,
+	.init = &init_v1,
+};
+
+///////////////////////////////////mcu0
+static struct fh_pll_data mt6881_mcu0_data[] = {
+	DATA_6881_CONVERT("ccipll"),
+	{}
+};
+static struct fh_pll_offset mt6881_mcu_share_offset[SIZE_6881_MCU] = {
+	REG_6881_TINYSYS_CONVERT(0x14, 0xC),
+	{}
+};
+static struct fh_pll_regs mt6881_mcu0_regs[SIZE_6881_MCU];
+static struct fh_pll_domain mt6881_mcu0 = {
+	.name = "mcu0",
+	.data = (struct fh_pll_data *)&mt6881_mcu0_data,
+	.offset = (struct fh_pll_offset *)&mt6881_mcu_share_offset,
+	.regs = (struct fh_pll_regs *)&mt6881_mcu0_regs,
+	.init = &init_v1,
+};
+
+///////////////////////////////////mcu1
+static struct fh_pll_data mt6881_mcu1_data[] = {
+	DATA_6881_CONVERT("armpll_ll"),
+	{}
+};
+static struct fh_pll_regs mt6881_mcu1_regs[SIZE_6881_MCU];
+static struct fh_pll_domain mt6881_mcu1 = {
+	.name = "mcu1",
+	.data = (struct fh_pll_data *)&mt6881_mcu1_data,
+	.offset = (struct fh_pll_offset *)&mt6881_mcu_share_offset,
+	.regs = (struct fh_pll_regs *)&mt6881_mcu1_regs,
+	.init = &init_v1,
+};
+
+///////////////////////////////////mcu2
+static struct fh_pll_data mt6881_mcu2_data[] = {
+	DATA_6881_CONVERT("armpll-b"),
+	{}
+};
+static struct fh_pll_regs mt6881_mcu2_regs[SIZE_6881_MCU];
+static struct fh_pll_domain mt6881_mcu2 = {
+	.name = "mcu2",
+	.data = (struct fh_pll_data *)&mt6881_mcu2_data,
+	.offset = (struct fh_pll_offset *)&mt6881_mcu_share_offset,
+	.regs = (struct fh_pll_regs *)&mt6881_mcu2_regs,
+	.init = &init_v1,
+};
+
+///////////////////////////////////mcu3
+static struct fh_pll_data mt6881_mcu3_data[] = {
+	DATA_6881_CONVERT("ptppll"),
+	{}
+};
+static struct fh_pll_regs mt6881_mcu3_regs[SIZE_6881_MCU];
+static struct fh_pll_domain mt6881_mcu3 = {
+	.name = "mcu3",
+	.data = (struct fh_pll_data *)&mt6881_mcu3_data,
+	.offset = (struct fh_pll_offset *)&mt6881_mcu_share_offset,
+	.regs = (struct fh_pll_regs *)&mt6881_mcu3_regs,
+	.init = &init_v1,
+};
+
+static struct fh_pll_domain *mt6881_domain[] = {
+	&mt6881_top0,
+	&mt6881_mcu0,
+	&mt6881_mcu1,
+	&mt6881_mcu2,
+	&mt6881_mcu3,
+	NULL
+};
+static struct match mt6881_match = {
+	.compatible = "mediatek,mt6881-fhctl",
+	.domain_list = (struct fh_pll_domain **)mt6881_domain,
+};
+/* 6881 end */
+
 /* platform data begin */
 /* 6885 begin */
 #define SIZE_6885_TOP (sizeof(mt6885_top_data)\
@@ -2583,6 +2746,7 @@ static const struct match *matches[] = {
 	&mt6855_match,
 	&mt6858_match,
 	&mt6877_match,
+	&mt6881_match,
 	&mt6885_match,
 	&mt6895_match,
 	&mt6897_match,

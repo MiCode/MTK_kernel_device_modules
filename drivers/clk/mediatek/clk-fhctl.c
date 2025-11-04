@@ -226,6 +226,7 @@ static const struct of_device_id fh_of_match[] = {
 	{ .compatible = "mediatek,mt6855-fhctl"},
 	{ .compatible = "mediatek,mt6858-fhctl"},
 	{ .compatible = "mediatek,mt6877-fhctl"},
+	{ .compatible = "mediatek,mt6881-fhctl"},
 	{ .compatible = "mediatek,mt6885-fhctl"},
 	{ .compatible = "mediatek,mt6895-fhctl"},
 	{ .compatible = "mediatek,mt6897-fhctl"},
