@@ -342,6 +342,35 @@ static inline ssize_t dvfsrc_qosmm_mode_store(struct device *dev,
 }
 DEVICE_ATTR_RW(dvfsrc_qosmm_mode);
 
+static inline ssize_t dvfsrc_qosmd_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%x\n", dvfsrc->qos_mm_mode);
+}
+
+static inline ssize_t dvfsrc_qosmd_mode_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	unsigned int mode = 0;
+	struct arm_smccc_res ares;
+	struct mtk_dvfsrc *dvfsrc = dev_get_drvdata(dev);
+
+	if (kstrtou32(buf, 16, &mode))
+		return -EINVAL;
+
+	arm_smccc_smc(MTK_SIP_VCOREFS_CONTROL, MTK_SIP_VCOREFS_QOS_MODE,
+		mode, 0, 0, 0, 0, 0,
+		&ares);
+
+	if (!ares.a0)
+		dvfsrc->qos_mm_mode = mode;
+
+	return count;
+}
+DEVICE_ATTR_RW(dvfsrc_qosmd_mode);
+
 static ssize_t dvfsrc_md_floor_table_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -526,6 +555,13 @@ int dvfsrc_register_sysfs(struct device *dev)
 			      &dev_attr_dvfsrc_qosmm_mode.attr, NULL);
 		if (err)
 			dev_info(dvfsrc->dev, "can't create mmqos sysfs file\n");
+	}
+
+	if (dvfsrc->dvd->qos_md_mode_en) {
+		err = sysfs_add_file_to_group(&dev->kobj,
+			      &dev_attr_dvfsrc_qosmd_mode.attr, NULL);
+		if (err)
+			dev_info(dvfsrc->dev, "can't create mdqos sysfs file\n");
 	}
 
 	if (dvfsrc->dvd->emi_opp_req_enmode) {

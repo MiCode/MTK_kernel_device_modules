@@ -89,6 +89,7 @@ struct dvfsrc_debug_data {
 	bool spm_stamp_en;
 	bool ceiling_support;
 	bool qos_mm_mode_en;
+	bool qos_md_mode_en;
 	bool therm_info_en;
 	bool mmdvfs_notify;
 	bool apudvfs_notify;

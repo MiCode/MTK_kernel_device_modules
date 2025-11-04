@@ -1476,6 +1476,7 @@ static const struct dvfsrc_debug_data mt6993_data = {
 	.num_opp_desc = 0,
 	.ceiling_support = true,
 	.qos_mm_mode_en = true,
+	.qos_md_mode_en = true,
 	.therm_info_en = true,
 	.emi_opp_req_enmode = 1,
 	.dump_flag = DVFSRC_EMI_DUMP_FLAG,
