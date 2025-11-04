@@ -1,0 +1,70 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/phy/phy.h>
+
+/* chosen */
+&chosen {
+	bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram vmalloc=400M cma=64M \
+8250.nr_uarts=4 kmemleak=off kasan=off \
+loglevel=8 androidboot.selinux=permissive \
+androidboot.hardware=mt6881 \
+earlycon=uart8250,mmio32,0x11001000 \
+initcall_debug=1 \
+kvm-arm.mode=none \
+arm64.nopauth arm64.nosme arm64.nosve";
+};
+
+&timer {
+	clock-frequency = <0x00000002 0xafbef362>;
+};
+
+&ssusb {
+	phys = <&u3fpgaport0 PHY_TYPE_USB3>;
+	plat-type = <1>; /* FPGA */
+	fpga-phy = <3>; /* A60931 */
+	dr_mode = "peripheral";
+	status = "okay";
+};
+
+&u2phy {
+	status = "disabled";
+};
+
+&u3fpgaphy {
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	panel1@0 {
+		compatible = "truly,nt35595,cmd";
+		reg = <0>;
+		// pm-enable-gpios = <&pio 163 0>;
+		// reset-gpios = <&pio 97 0>;
+		// gate-ic = <4831>;
+		// pinctrl-names = "default";
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	ports {
+		port {
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in1>;
+			};
+		};
+	};
+};
+
+/*End of this file, DO NOT ADD ANYTHING HERE*/
