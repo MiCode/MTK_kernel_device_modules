@@ -2550,7 +2550,6 @@ void get_iommu_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
 static int m4u_debug_init(struct mtk_m4u_data *data)
 {
 	u32 id;
-#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	struct proc_dir_entry *debug_file;
 
 	data->debug_root = proc_mkdir("iommu_debug", NULL);
@@ -2564,6 +2563,7 @@ static int m4u_debug_init(struct mtk_m4u_data *data)
 	if (IS_ERR_OR_NULL(debug_file))
 		pr_err("failed to create debug file\n");
 
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 	debug_file = proc_create_data("help",
 		S_IFREG | 0640, data->debug_root, &mtk_iommu_help_fops, NULL);
 	if (IS_ERR_OR_NULL(debug_file))
