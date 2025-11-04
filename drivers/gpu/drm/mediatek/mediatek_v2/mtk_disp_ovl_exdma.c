@@ -2344,11 +2344,11 @@ static void mtk_ovl_exdma_vcsel_config(struct mtk_ddp_comp *comp, unsigned int e
 	}
 
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_L0_GUSER_EXT],
-			   value0, mask0);
+			   value0, ~0);
 
 	for (i = 0; i < 3; i++)
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa +
-		OVL_EXDMA_ELX_GUSER_EXT(exdma, i), value1, mask1);
+		OVL_EXDMA_ELX_GUSER_EXT(exdma, i), value1, ~0);
 }
 
 static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
@@ -2550,25 +2550,25 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 		mask = 0;
 		SET_VAL_MASK(value, mask, roi_stall, reg_fld[FLD_L0_STASH_ROI_LINE_STALL]);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG0],
-			value, mask);
+			value, ~0);
 
 		value = 0;
 		mask = 0;
 		SET_VAL_MASK(value, mask, hdr_roi_stall, reg_fld[FLD_L0_STASH_HDR_ROI_LINE_STALL]);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_STALL_CFG2],
-			value, mask);
+			value, ~0);
 
 		value = 0;
 		mask = 0;
 		SET_VAL_MASK(value, mask, pref_line_lead, reg_fld[FLD_L0_PREF_LINE_LEAD]);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG1],
-			value, mask);
+			value, ~0);
 
 		value = 0;
 		mask = 0;
 		SET_VAL_MASK(value, mask, hdr_pref_l_lead, reg_fld[FLD_L0_HDR_PREF_LINE_LEAD]);
 		cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG3],
-			value, mask);
+			value, ~0);
 	}
 }
 
@@ -3239,17 +3239,17 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 			0, ~0);
 	}
 
-	/* setting SMI for read DRAM */
-	if (!exdma->data->skip_larb_con && comp->larb_cons)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->larb_cons[lye_idx], 0, GENMASK(19, 16));
-
 	/* if no compress, do common config and return */
 	if (compress == 0 || (pending->mml_mode == MML_MODE_RACING) ||
 			     (pending->mml_mode == MML_MODE_DIRECT_LINK)) {
 		_ovl_exdma_common_config(comp, idx, state, handle);
 		return 0;
 	}
+
+	/* setting SMI for read DRAM */
+	if (!exdma->data->skip_larb_con && comp->larb_cons)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->larb_cons[lye_idx], 0, GENMASK(19, 16));
 
 	/* 2. pre-calculation */
 	if (Bpp == 0) {
