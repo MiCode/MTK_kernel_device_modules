@@ -1068,7 +1068,7 @@ static int mt6379_get_charger_status(struct mt6379_charger_data *cdata, int *psy
 static int mt6379_get_vbat_monitor(struct mt6379_charger_data *cdata, enum mt6379_batpro_src src,
 				   u32 *vbat_mon)
 {
-	u32 vbat_mon_en_field = 0, adc_chan = 0, reg_val = 0, stat;
+	u32 vbat_mon_en_field = 0, adc_chan = 0, reg_val = 0, stat = 0;
 	int ret = 0;
 
 	if (cdata->id != CHARGER_ID_MT6379 && src == MT6379_BATPRO_SRC_VBAT_MON2) {
@@ -1245,20 +1245,7 @@ static int mt6379_charger_set_property(struct power_supply *psy, enum power_supp
 
 		return mt6379_charger_field_set(cdata, F_CC, val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
-		if (cdata->id == CHARGER_ID_MT6379)
-			return mt6379_charger_field_set(cdata, F_CV, val->intval);
-
-		ret = mt6379_charger_field_get(cdata, F_VSYSOV, &value);
-		if (ret) {
-			dev_info(cdata->dev, "%s, Failed to get sysov\n", __func__);
-			return ret;
-		}
-
-		if (val->intval <= 4500000)
-			new_vsysov = 4600000;
-		else if (val->intval + 90000 >= value)
-			new_vsysov = ROUND_UP_BASE(val->intval + 100000, 100000);
-
+		new_vsysov = val->intval <= 4600000 ? 4900000 : 5000000;
 		ret = mt6379_charger_field_set(cdata, F_VSYSOV, new_vsysov);
 		if (ret) {
 			dev_info(cdata->dev, "%s, Failed to set vsysov\n", __func__);

@@ -1039,6 +1039,7 @@ static int mt6379_enable_6pin_battery_charging(struct mt6379_charger_data *cdata
 					       enum mt6379_batpro_src src, bool en)
 {
 	struct mt6379_charger_platform_data *pdata = dev_get_platdata(cdata->dev);
+	union power_supply_propval val;
 	u32 vbat = 0, cv = 0, vbat_mon_en_field = 0, adc_chan = 0, stat = 0;
 	u16 batend_code = 0;
 	int ret = 0;
@@ -1092,11 +1093,12 @@ static int mt6379_enable_6pin_battery_charging(struct mt6379_charger_data *cdata
 		goto dis_mon;
 	}
 
-	ret = mt6379_charger_field_get(cdata, F_CV, &cv);
+	ret = power_supply_get_property(cdata->psy, POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE, &val);
 	if (ret) {
 		dev_info(cdata->dev, "%s, Failed to get cv\n", __func__);
 		goto dis_mon;
 	}
+	cv = val.intval;
 
 	mt_dbg(cdata->dev, "%s, vbat = %dmV, cv = %dmV\n", __func__, U_TO_M(vbat), U_TO_M(1000));
 
@@ -1138,7 +1140,8 @@ static int mt6379_enable_6pin_battery_charging(struct mt6379_charger_data *cdata
 	}
 
 	/* set Max CV */
-	ret = mt6379_charger_field_set(cdata, F_CV, 4710000);
+	val.intval = 4710000;
+	ret = power_supply_set_property(cdata->psy, POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE, &val);
 	if (ret) {
 		dev_info(cdata->dev, "%s, Failed to set maximum cv(ret:%d)\n", __func__, ret);
 		goto dis_pro;
