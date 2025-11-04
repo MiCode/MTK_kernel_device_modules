@@ -229,6 +229,7 @@ struct mtk_plane_state {
 	uint64_t prop_val[PLANE_PROP_MAX];
 	enum mml_mode mml_mode;
 	struct mml_submit *mml_cfg;
+	bool layer_off_done;
 };
 
 #define to_mtk_plane_state(x) container_of(x, struct mtk_plane_state, base)

@@ -8045,15 +8045,12 @@ unsigned int dual_pipe_comp_mapping(unsigned int mmsys_id, unsigned int comp_id)
 }
 
 static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
-				      struct mtk_crtc_state *old_mtk_state,
-				      struct mtk_crtc_state *crtc_state,
-					  struct cmdq_pkt *cmdq_handle)
+	struct mtk_crtc_state *old_mtk_state, struct mtk_crtc_state *crtc_state,
+	struct cmdq_pkt *cmdq_handle)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_plane_comp_state *comp_state;
-	struct mtk_lye_ddp_state *lye_state;
-	int i, j, k;
-	int crtc_idx = drm_crtc_index(crtc);
+	struct mtk_plane_comp_state *comp_state = NULL;
+	int i;
 	unsigned int prop_fence_idx;
 	unsigned int old_prop_fence_idx;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -8061,65 +8058,12 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 
 	prop_fence_idx = crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 	old_prop_fence_idx = old_mtk_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
-	lye_state = &crtc_state->lye_state;
 
 	if(prop_fence_idx != old_prop_fence_idx)
 		atomic_set(&mtk_crtc->fence_change, 1);
 
-	for (i = mtk_crtc->layer_nr - 1; i >= 0; i--) {
-		struct drm_plane *plane = &mtk_crtc->planes[i].base;
-		struct mtk_plane_state *plane_state;
-		struct mtk_ddp_comp *comp = NULL;
-
-		plane_state = to_mtk_plane_state(plane->state);
-		comp_state = &(plane_state->comp_state);
-
-		/* TODO: check plane_state by pending.enable */
-		if (plane_state->base.visible &&
-			((prop_fence_idx != old_prop_fence_idx) || (lye_state->rpo_lye == 1)
-			|| crtc_idx == 2)) {
-			for_each_comp_in_cur_crtc_path(
-				comp, mtk_crtc, j,
-				k) {
-
-				if (!comp->id || comp->id != comp_state->comp_id)
-					continue;
-				if (priv->data->ovl_exdma_rule)
-					DDPINFO("%s layer off comp %s lye %d ext lye %d bind comp %s\n",
-						__func__,
-						mtk_dump_comp_str(comp),
-						comp_state->lye_id,
-						comp_state->ext_lye_id,
-						mtk_dump_comp_str(comp->bind_comp));
-
-				mtk_ddp_comp_layer_off(
-					comp,
-					comp_state->lye_id,
-					comp_state->ext_lye_id,
-					cmdq_handle);
-
-				if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer) {
-					struct mtk_drm_private *priv =
-						mtk_crtc->base.dev->dev_private;
-					unsigned int index = dual_pipe_comp_mapping
-						(priv->data->mmsys_id, comp_state->comp_id);
-
-					if (index < DDP_COMPONENT_ID_MAX) {
-						comp = priv->ddp_comp[index];
-						mtk_ddp_comp_layer_off(
-							comp,
-							comp_state->lye_id,
-							comp_state->ext_lye_id,
-							cmdq_handle);
-					} else {
-						DDPPR_ERR("%s Not exist dual pipe comp!\n",
-						__func__);
-					}
-				}
-				break;
-			}
-		}
-	}
+	mtk_crtc_layer_off(mtk_crtc, drm_crtc_index(crtc),
+		crtc_state, old_mtk_state, priv, cmdq_handle);
 
 	for (i = mtk_crtc->layer_nr - 1; i >= 0; i--) {
 		struct drm_plane *plane = &mtk_crtc->planes[i].base;
@@ -8132,32 +8076,30 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 
 		mtk_plane_get_comp_state(plane, &plane_state->comp_state, crtc, 0);
 
-		if (plane_state->comp_state.blender_comp_id != 0) {
-			blender_comp = priv->ddp_comp[plane_state->comp_state.blender_comp_id];
-			comp = priv->ddp_comp[plane_state->comp_state.comp_id];
+		if (plane_state->comp_state.blender_comp_id == 0)
+			continue;
 
-			DDPINFO("%s new comp state %s blender %s\n",
-				__func__,
-				mtk_dump_comp_str(comp),
-				mtk_dump_comp_str(blender_comp));
+		blender_comp = priv->ddp_comp[plane_state->comp_state.blender_comp_id];
+		comp = priv->ddp_comp[plane_state->comp_state.comp_id];
 
-			if (plane_state->comp_state.ext_lye_id == 0)
-				comp->bind_comp = blender_comp;
+		DDPINFO("%s new comp state %s blender %s\n",
+			__func__, mtk_dump_comp_str(comp), mtk_dump_comp_str(blender_comp));
 
-			if (!blender_set) {
-				if (plane_state->comp_state.ext_lye_id == 0 ||
-					blender_comp == mtk_crtc->first_blender) {
-					mtk_crtc->last_blender = blender_comp;
+		if (plane_state->comp_state.ext_lye_id == 0)
+			comp->bind_comp = blender_comp;
 
-					if (mtk_crtc->path_data->is_exdma_dual_layer) {
-						mtk_crtc->last_blender =
-							priv->ddp_comp[plane_state->comp_state.blender_comp_id + 1];
-					}
+		if (blender_set ||
+			(plane_state->comp_state.ext_lye_id != 0 &&
+			blender_comp != mtk_crtc->first_blender))
+			continue;
 
-					blender_set = 1;
-				}
-			}
-		}
+		mtk_crtc->last_blender = blender_comp;
+
+		if (mtk_crtc->path_data->is_exdma_dual_layer)
+			mtk_crtc->last_blender =
+				priv->ddp_comp[plane_state->comp_state.blender_comp_id + 1];
+
+		blender_set = 1;
 	}
 
 	if (!blender_set && prop_fence_idx != old_prop_fence_idx) {
@@ -8168,6 +8110,66 @@ static void mtk_crtc_get_plane_comp_state(struct drm_crtc *crtc,
 		DDPINFO("%s, mtk_crtc->last_blender %s\n", __func__,
 			mtk_dump_comp_str_id(mtk_crtc->last_blender->id));
 }
+
+void mtk_crtc_layer_off(struct mtk_drm_crtc *mtk_crtc, int crtc_idx,
+	struct mtk_crtc_state *state, struct mtk_crtc_state *old_state,
+	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle)
+{
+	struct mtk_plane_comp_state *comp_state = NULL;
+	int i, j, k;
+
+	if (state->prop_val[CRTC_PROP_LYE_IDX] == old_state->prop_val[CRTC_PROP_LYE_IDX] &&
+		!state->lye_state.rpo_lye && crtc_idx != 2)
+		return;
+
+	for (i = mtk_crtc->layer_nr - 1; i >= 0; i--) {
+		struct drm_plane *plane = &mtk_crtc->planes[i].base;
+		struct mtk_plane_state *plane_state = NULL;
+		struct mtk_ddp_comp *comp = NULL;
+
+		plane_state = to_mtk_plane_state(plane->state);
+
+		if (!plane_state->base.visible)
+			continue;
+
+		comp_state = &(plane_state->comp_state);
+		plane_state->layer_off_done = false;
+		for_each_comp_in_cur_crtc_path(comp, mtk_crtc, j, k) {
+			if (!comp->id || comp->id != comp_state->comp_id)
+				continue;
+
+			if (priv->data->ovl_exdma_rule)
+				DDPINFO("%s layer off comp %s lye %d ext lye %d bind comp %s\n",
+					__func__, mtk_dump_comp_str(comp), comp_state->lye_id,
+					comp_state->ext_lye_id, mtk_dump_comp_str(comp->bind_comp));
+
+			mtk_ddp_comp_layer_off(comp, comp_state->lye_id,
+				comp_state->ext_lye_id, cmdq_handle);
+
+			if (!mtk_crtc->is_dual_pipe &&
+				!mtk_crtc->path_data->is_exdma_dual_layer) {
+				plane_state->layer_off_done = true;
+				break;
+			}
+
+			struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+			unsigned int index = dual_pipe_comp_mapping(priv->data->mmsys_id,
+				comp_state->comp_id);
+
+			if (index >= DDP_COMPONENT_ID_MAX) {
+				DDPPR_ERR("%s get dual pipe comp failed\n", __func__);
+				break;
+			}
+
+			comp = priv->ddp_comp[index];
+			mtk_ddp_comp_layer_off(comp, comp_state->lye_id, comp_state->ext_lye_id,
+				cmdq_handle);
+			plane_state->layer_off_done = true;
+			break;
+		}
+	}
+}
+
 unsigned int mtk_drm_primary_frame_bw(struct drm_crtc *crtc)
 {
 	unsigned long long bw = 0;
@@ -21744,6 +21746,38 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 			mtk_ddp_comp_layer_config(comp, plane_index, plane_state,
 						  cmdq_handle);
 		}
+	} else if (!plane_state->layer_off_done) {
+		/* mtk_crtc_get_plane_comp_state() will skip layer off
+		 * when this AC no through layering rule, no rpo layer, and no crtc_idx=2.
+		 * But PU calculation in mtk_plane_atomic_update() may need layer off
+		 * when this plane's dirty region don't be displayed,
+		 * so we need do layer off here.
+		 * (PU dirty region change didn't trigger layering rule.)
+		 */
+		comp = mtk_crtc_get_plane_comp(crtc, plane_state);
+		if (!comp) {
+			DDPPR_ERR("%s,%d NULL comp error\n", __func__, __LINE__);
+			return;
+		}
+
+		mtk_ddp_comp_layer_off(comp, plane_state->comp_state.lye_id,
+			plane_state->comp_state.ext_lye_id, cmdq_handle);
+
+		if (mtk_crtc->is_dual_pipe ||
+			mtk_crtc->path_data->is_exdma_dual_layer) {
+			struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+			unsigned int index = dual_pipe_comp_mapping(priv->data->mmsys_id,
+				plane_state->comp_state.comp_id);
+
+			if (index >= DDP_COMPONENT_ID_MAX) {
+				DDPPR_ERR("%s get dual pipe comp failed\n", __func__);
+				return;
+			}
+			comp = priv->ddp_comp[index];
+			mtk_ddp_comp_layer_off(comp, plane_state->comp_state.lye_id,
+				plane_state->comp_state.ext_lye_id, cmdq_handle);
+		}
+		plane_state->layer_off_done = true;
 	}
 
 #ifndef DRM_CMDQ_DISABLE

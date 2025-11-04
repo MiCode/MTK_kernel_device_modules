@@ -1919,6 +1919,10 @@ struct mtk_cmdq_pkt_info *mtk_crtc_request_cmdq_pkt(struct mtk_drm_crtc *mtk_crt
 void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info);
 int bif_enabled(struct drm_crtc *crtc);
 
+void mtk_crtc_layer_off(struct mtk_drm_crtc *mtk_crtc, int crtc_idx,
+	struct mtk_crtc_state *state, struct mtk_crtc_state *old_state,
+	struct mtk_drm_private *priv, struct cmdq_pkt *cmdq_handle);
+
 /* ********************* Legacy DISP API *************************** */
 unsigned int DISP_GetScreenWidth(void);
 unsigned int DISP_GetScreenHeight(void);
