@@ -247,9 +247,10 @@ static int pkvm_mtee_mem_reg_remove(void *peer_data, void *dev_desc)
 		hvc_id = res.a1;
 		if (hvc_id != 0) {
 			ret = pkvm_el2_mod_call(hvc_id, mtee_dev_desc->mtee_chunks_id);
-			if (ret != 0)
+			if (ret != 0) {
 				pr_info("pKVM release reg mem failed:%d\n", ret);
 				return TMEM_MOCK_RELEASE_MEMORY_FAILED;
+			}
 		} else
 			pr_info("%s: hvc is invalid\n", __func__);
 	}
