@@ -1631,7 +1631,7 @@ void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(dev_crtc);
 
 	drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, dev_crtc->dev);
-	for (i = 0; i < 5; ++i) {
+	for (i = 0; i < 10; ++i) {
 		ret = wait_event_timeout(
 			mtk_crtc->qos_ctx->hrt_cond_wq,
 			atomic_read(&mtk_crtc->qos_ctx->hrt_cond_sig),
@@ -1639,6 +1639,9 @@ void mtk_disp_hrt_repaint_blocking(const unsigned int hrt_idx)
 		if (ret == 0)
 			DDPINFO("wait repaint timeout %d\n", i);
 		atomic_set(&mtk_crtc->qos_ctx->hrt_cond_sig, 0);
+
+		DDPINFO("%s %d last_hrt_idx:%d hrt_idx:%u\n", __func__, i,
+				atomic_read(&mtk_crtc->qos_ctx->last_hrt_idx), hrt_idx);
 		if (atomic_read(&mtk_crtc->qos_ctx->last_hrt_idx) >= hrt_idx)
 			break;
 	}
