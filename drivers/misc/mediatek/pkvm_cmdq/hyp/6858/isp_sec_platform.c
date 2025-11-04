@@ -48,8 +48,7 @@ int32_t cmdq_tz_isp_secure(void *data, bool isSet)
 		cmdq_task_write_value_addr(pTask,  0x150210f0, 0x00002C2C, UINT_MAX);		// img2o
 		cmdq_task_write_value_addr(pTask,  0x150210e8, 0x002C2C2C, UINT_MAX);		// img3o
 		cmdq_task_write_value_addr(pTask,  0x150210c0, 0x0000002C, UINT_MAX);		// imgi
-		cmdq_task_write_value_addr(pTask,  0x150210d4, 0x0000002C, UINT_MAX);		// imgbi
-		cmdq_task_write_value_addr(pTask,  0x150210d4, 0x00002C00, UINT_MAX);		// imgci
+		cmdq_task_write_value_addr(pTask,  0x150210d4, 0x00002C2C, UINT_MAX);		// imgbi/imgci
 		cmdq_task_write_value_addr(pTask,  0x150210cc, 0x002C2C2C, UINT_MAX);		// vipi
 
 		cmdq_task_write_value_addr(pTask,  0x150210c8, 0x2C2C2C2C, UINT_MAX);		//smti_d1 ~ smti_d4
