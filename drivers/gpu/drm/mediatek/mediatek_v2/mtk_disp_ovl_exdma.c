@@ -48,6 +48,8 @@
 #include "mtk-smmu-v3.h"
 
 int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
+static void mtk_ovl_exdma_vcsel_config(struct mtk_ddp_comp *comp, unsigned int enable,
+		struct cmdq_pkt *handle);
 
 int debug_module_bw[MAX_LAYER_NR];
 module_param_array(debug_module_bw, int, NULL, 0644);
@@ -1012,6 +1014,7 @@ static void mtk_ovl_exdma_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_ovl_exdma *exdma = comp_to_ovl_exdma(comp);
 	const u16 *regs = exdma->data->regs;
 	const u32 *reg_fld = exdma->data->reg_fld;
+	unsigned int value = 0, mask = 0;
 
 	DDPINFO("exdma_config:%s\n", mtk_dump_comp_str(comp));
 
@@ -1085,6 +1088,31 @@ static void mtk_ovl_exdma_config(struct mtk_ddp_comp *comp,
 	}
 
 	mtk_ovl_exdma_golden_setting(comp, cfg->p_golden_setting_context->is_dc, handle);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_L0_STASH_EN]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL0_STASH_EN]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL1_STASH_EN]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL2_STASH_EN]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ROI_Y_SEL]);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
+			   value, mask);
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_STASH_CACHE_NUM]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ULTRA_MAN]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_PREULTRA]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ULTRA]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_HDR_ULTRA_MAN]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_HDR_PREULTRA]);
+	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_HDR_ULTRA]);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG2],
+			   value, mask);
+	value = 0;
+	mask = 0;
+	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_PREF_START_CTRL]);
+	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_PREF_LINE_CTRL]);
+	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG0],
+					value, mask);
+	mtk_ovl_exdma_vcsel_config(comp, 1, handle);
 }
 
 static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
@@ -2484,33 +2512,6 @@ static void mtk_ovl_exdma_stash_config(struct mtk_ddp_comp *comp, struct cmdq_pk
 	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG1],
 			   ((gmc_stall << 8) + 0), ~0);
 
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_L0_STASH_EN]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL0_STASH_EN]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL1_STASH_EN]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_EL2_STASH_EN]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ROI_Y_SEL]);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG0],
-			   value, mask);
-
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_STASH_CACHE_NUM]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ULTRA_MAN]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_PREULTRA]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_ULTRA]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_HDR_ULTRA_MAN]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_HDR_PREULTRA]);
-	SET_VAL_MASK(value, mask, 1, reg_fld[FLD_STASH_HDR_ULTRA]);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_STASH_CFG2],
-			   value, mask);
-
-	value = 0;
-	mask = 0;
-	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_PREF_START_CTRL]);
-	SET_VAL_MASK(value, mask, 0, reg_fld[FLD_PREF_LINE_CTRL]);
-	cmdq_pkt_write(handle, comp->cmdq_base, comp->regs_pa + regs[OVL_EXDMA_PREF_LEAD_CFG0],
-					value, mask);
-
 	if (ext_lye_idx != LYE_NORMAL) { //ext layer
 		unsigned int id = ext_lye_idx - 1;
 
@@ -2989,7 +2990,6 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 		if (fmt != DRM_FORMAT_C8)
 			mtk_ovl_exdma_layer_on(comp, lye_idx, ext_lye_idx, handle);
 		mtk_ovl_exdma_stash_config(comp, handle, lye_idx, ext_lye_idx, state);
-		mtk_ovl_exdma_vcsel_config(comp, 1, handle);
 
 		/*constant color :non RDMA source*/
 		/* TODO: cause RPO abnormal */
