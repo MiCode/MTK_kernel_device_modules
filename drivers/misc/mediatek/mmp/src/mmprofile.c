@@ -155,6 +155,9 @@ __aligned(PAGE_SIZE) = {
 	.max_event_count = MMPROFILE_MAX_EVENT_COUNT,
 };
 
+static void *mmprofile_globals_user_mirror;
+static size_t mmprofile_globals_user_size;
+
 static struct mmprofile_regtable_t mmprofile_regtable = {
 	.list = LIST_HEAD_INIT(mmprofile_regtable.list),
 };
@@ -1580,7 +1583,7 @@ static ssize_t mmprofile_dbgfs_global_read(struct file *file, char __user *buf,
 	size_t size, loff_t *ppos)
 {
 	return simple_read_from_buffer(buf, size, ppos, &mmprofile_globals,
-		MMPROFILE_GLOBALS_SIZE);
+		PAGE_ALIGN(sizeof(mmprofile_globals)));
 }
 
 #ifdef MMP_USE
@@ -1588,7 +1591,7 @@ static ssize_t mmprofile_dbgfs_global_write(struct file *file,
 	const char __user *buf, size_t size, loff_t *ppos)
 {
 	return simple_write_to_buffer(&mmprofile_globals,
-		MMPROFILE_GLOBALS_SIZE, ppos, buf, size);
+		PAGE_ALIGN(sizeof(mmprofile_globals)), ppos, buf, size);
 }
 #endif
 
@@ -2331,16 +2334,45 @@ static long mmprofile_ioctl_compat(struct file *file, unsigned int cmd,
 }
 #endif
 
+static int mmprofile_prepare_globals_mirror(void)
+{
+	size_t size_expected = PAGE_ALIGN(sizeof(mmprofile_globals));
+
+	if (mmprofile_globals_user_mirror == NULL) {
+		mmprofile_globals_user_mirror = vzalloc(size_expected);
+		if (!mmprofile_globals_user_mirror)
+			return -ENOMEM;
+		mmprofile_globals_user_size = size_expected;
+	}
+
+	memcpy(mmprofile_globals_user_mirror,
+		&mmprofile_globals,
+		sizeof(mmprofile_globals));
+	return 0;
+}
+
+static void mmprofile_globals_userbuf_exit(void)
+{
+	vfree(mmprofile_globals_user_mirror);
+	mmprofile_globals_user_mirror = NULL;
+	mmprofile_globals_user_size = 0;
+}
+
 static int mmprofile_mmap(struct file *file, struct vm_area_struct *vma)
 {
+	//int ret = 0;
 	unsigned long pos = 0;
 	unsigned long i = 0;
 
 	if (mmprofile_globals.selected_buffer == MMPROFILE_GLOBALS_BUFFER) {
+		size_t size_expected = PAGE_ALIGN(sizeof(mmprofile_globals));
 
 		/* check user space buffer length */
-		if ((vma->vm_end - vma->vm_start) != MMPROFILE_GLOBALS_SIZE)
+		if ((vma->vm_end - vma->vm_start) != size_expected)
 			return -EINVAL;
+
+		if (mmprofile_prepare_globals_mirror())
+			return -EAGAIN;
 
 		pos = vma->vm_start;
 		for (i = 0; i < MMPROFILE_GLOBALS_SIZE;
@@ -2348,7 +2380,7 @@ static int mmprofile_mmap(struct file *file, struct vm_area_struct *vma)
 			if (remap_pfn_range
 			    (vma, pos,
 					vmalloc_to_pfn((void *)((unsigned long)
-					(&mmprofile_globals) + i)),
+					(mmprofile_globals_user_mirror) + i)),
 			     PAGE_SIZE, PAGE_READONLY))
 				return -EAGAIN;
 			/* pr_debug("pfn: 0x%08x\n", pfn); */
@@ -2504,6 +2536,7 @@ static int __init mmprofile_init(void)
 
 static void __exit mmprofile_exit(void)
 {
+	mmprofile_globals_userbuf_exit();
 	mmprofile_remove();
 }
 
