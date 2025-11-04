@@ -513,6 +513,9 @@ int mtk_vidle_update_dt_v1_by_type(void *_crtc, enum mtk_panel_type type)
 
 	/* update DTs affected by TE dur_frame */
 	ret = mtk_set_dt_configure_all(dur_frame, dur_vblank);
+	DDPINFO("%s, dur_frame:%u->%u, dur_vblank:%u->%u\n",
+		__func__, vidle_data.te_duration, dur_frame,
+		vidle_data.vb_duration, dur_vblank);
 	vidle_data.te_duration = dur_frame;
 	vidle_data.vb_duration = dur_vblank;
 
@@ -612,6 +615,9 @@ int mtk_vidle_update_dt_v1_by_period(void *_crtc, unsigned int dur_frame, unsign
 
 	/* update DTs affected by TE dur_frame */
 	ret = mtk_set_dt_configure_all(dur_frame, dur_vblank);
+	DDPINFO("%s, dur_frame:%u->%u, dur_vblank:%u->%u\n",
+		__func__, vidle_data.te_duration, dur_frame,
+		vidle_data.vb_duration, dur_vblank);
 	vidle_data.te_duration = dur_frame;
 	vidle_data.vb_duration = dur_vblank;
 

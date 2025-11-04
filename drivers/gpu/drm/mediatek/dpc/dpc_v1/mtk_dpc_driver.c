@@ -1869,8 +1869,11 @@ static int dpc_dt_set_dur_func(u32 dur_frame, u32 dur_vblank, bool force, bool l
 	if (lock)
 		spin_lock_irqsave(&dpc_lock, flags);
 	duration = dpc_align_fps_duration(dur_frame);
-	if (!force && g_te_duration == duration && g_vb_duration == dur_vblank)
+	if (!force && g_te_duration == duration && g_vb_duration == dur_vblank) {
+		if (dpc_vidle_is_available() == 0)
+			duration = -1;
 		goto out;
+	}
 
 	dpc_mmp(dt, MMPROFILE_FLAG_START, g_te_duration, dur_frame);
 	if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF)) {
@@ -1953,7 +1956,7 @@ out:
 		spin_unlock_irqrestore(&dpc_lock, flags);
 	dpc_pm_ctrl(false, __func__);
 
-	return duration;
+	return (int)duration;
 }
 
 static int dpc_dt_set_dur_v1(u32 dur_frame, u32 dur_vblank)
@@ -4939,7 +4942,8 @@ static void process_dbg_opt(const char *opt)
 		ret = sscanf(opt, "avs:%u,%u\n", &v1, &v2);
 		if (ret != 2)
 			goto err;
-		writel(v2, MEM_VDISP_AVS_STEP(v1));
+		if (MEM_BASE)
+			writel(v2, MEM_VDISP_AVS_STEP(v1));
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
 		mmdvfs_force_step_by_vcp(2, 4 - v1);
 #endif

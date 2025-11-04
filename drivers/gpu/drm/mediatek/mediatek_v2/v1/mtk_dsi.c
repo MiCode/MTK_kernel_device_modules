@@ -4055,6 +4055,37 @@ static void mtk_dsi_power_keep_gce(struct mtk_dsi *dsi, struct cmdq_pkt *cmdq_ha
 		mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_DDIC_CMDQ, cmdq_handle);
 }
 
+static void mtk_dsi_update_dt_timer(struct mtk_drm_crtc *mtk_crtc,
+		unsigned int vfp_target, struct drm_display_mode *mode)
+{
+	unsigned int fps = 0, vfp = 0, vtotal = 0, vtotal_target = 0;
+	unsigned int dur_line = 0, dur_vblank = 0, dur_frame = 0;
+
+	if (IS_ERR_OR_NULL(mtk_crtc) || IS_ERR_OR_NULL(mode) || vfp_target == 0) {
+		DDPPR_ERR("%s, invalid mtk_crtc/mode!!,vfp_target:%u\n",
+			__func__, vfp_target);
+		return;
+	}
+
+	fps = drm_mode_vrefresh(mode);
+	vfp = mode->vsync_start - mode->vdisplay;
+
+	vtotal = mode->vtotal;
+	vtotal_target = vtotal - vfp + vfp_target;
+	if (fps == 0 || vtotal_target == 0) {
+		DDPMSG("%s, invalid fps:%u, vtotal:%u->%u, vfp:%u->%u\n",
+			__func__, fps, vtotal, vtotal_target, vfp, vfp_target);
+		return;
+	}
+
+	dur_line = 1000000000UL / fps / vtotal;
+	dur_vblank = dur_line * vfp_target / 1000;
+	dur_frame = dur_line * vtotal_target / 1000;
+	if (mtk_vidle_update_dt_by_period(&mtk_crtc->base, dur_frame, dur_vblank) < 0)
+		DDPPR_ERR("%s:vidle update DT err,dur:%uus,%uus,fps:%u,vtotal:%u,vfp:%u\n",
+			__func__, dur_frame, dur_vblank, fps, vtotal_target, vfp_target);
+}
+
 static void init_dsi_wq(struct mtk_dsi *dsi)
 {
 	init_waitqueue_head(&dsi->enter_ulps_done.wq);
@@ -8409,6 +8440,7 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 	struct mtk_ddp_comp *comp = &dsi->ddp_comp;
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = NULL;
 	bool mod_vfp, mod_vbp, mod_vsa;
 	bool mod_hfp, mod_hbp, mod_hsa;
 	unsigned int data_rate;
@@ -8421,6 +8453,7 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 	}
 
 	index = drm_crtc_index(crtc);
+	priv = crtc->dev->dev_private;
 
 	dsi->mipi_hopping_sta = en;
 
@@ -8467,6 +8500,12 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 	else
 		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 			mtk_crtc->gce_obj.client[CLIENT_CFG]);
+
+	/*vdo panel disable vidle before update timing*/
+	if ((dsi->mode_flags & MIPI_DSI_MODE_VIDEO) && index == 0 && priv &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
+		mtk_vidle_get_timer();
 
 	if (dsi->mode_flags & MIPI_DSI_MODE_VIDEO) {
 		mtk_dsi_calc_vdo_timing(dsi);
@@ -8558,6 +8597,16 @@ static void mtk_dsi_clk_change(struct mtk_dsi *dsi, int en)
 
 	cmdq_pkt_flush(cmdq_handle);
 	cmdq_pkt_destroy(cmdq_handle);
+	/*vdo panel enable vidle after update timing*/
+	if ((dsi->mode_flags & MIPI_DSI_MODE_VIDEO) && index == 0 && priv &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL) &&
+		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+		struct drm_display_mode *mode = NULL;
+
+		mode = mtk_crtc_get_display_mode_by_comp("clk_change", &mtk_crtc->base, comp, false);
+		mtk_dsi_update_dt_timer(mtk_crtc, dsi->vfp, mode);
+		mtk_vidle_start_timer(crtc, 0);
+	}
 
 done:
 	CRTC_MMP_EVENT_END(index, clk_change,
@@ -14863,31 +14912,7 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 				break;
 
 			mode = mtk_crtc_get_display_mode_by_comp("hs_idle+", &crtc->base, comp, false);
-			if (mode == NULL) {
-				DDPPR_ERR("%s, cmd:%d, invalid mode!!\n", __func__, cmd);
-				break;
-			}
-
-			fps = drm_mode_vrefresh(mode);
-			vtotal = mode->vtotal;
-			vtotal_lowpower = vtotal - mode->vsync_start + mode->vdisplay + vfp_low_power;
-			if (fps == 0 || vtotal == 0 || vtotal_lowpower == 0 ||
-				vtotal == vtotal_lowpower) {
-				DDPMSG("%s, cmd:%d, invalid fps:%u, vtotal:%d->%d\n",
-					__func__, cmd, fps, vtotal, vtotal_lowpower);
-				break;
-			}
-
-			dur_line = 1000000000UL / fps / vtotal;
-			dur_vblank = dur_line * vfp_low_power / 1000;
-			dur_frame = dur_line * vtotal_lowpower / 1000;
-			DDPINFO("%s, cmd:%d idle+ vidle update DT, dur:%uus,%uus, fps:%u, vtotal:%d->%d, vfp:%ulines\n",
-				__func__, cmd, dur_frame, dur_vblank,
-				fps, vtotal, vtotal_lowpower, vfp_low_power);
-			if (mtk_vidle_update_dt_by_period(&crtc->base, dur_frame, dur_vblank) < 0)
-				DDPMSG("%s, cmd:%d idle+ vidle err, dur:%uus,%uus, fps:%u, vtotal:%d->%d\n",
-					__func__, cmd, dur_frame, dur_vblank,
-					fps, vtotal, vtotal_lowpower);
+			mtk_dsi_update_dt_timer(crtc, vfp_low_power, mode);
 		}
 	}
 		break;
@@ -14924,33 +14949,12 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE))) {
 			struct drm_display_mode *mode = NULL;
-			unsigned int fps = 0, vtotal = 0, vfp = 0;
-			unsigned int dur_line = 0, dur_vblank = 0, dur_frame = 0;
+			unsigned int vfp = 0;
 
 			mode = mtk_crtc_get_display_mode_by_comp("hs_idle-", &crtc->base, comp, false);
-			if (mode == NULL) {
-				DDPPR_ERR("%s, cmd:%d, invalid mode!!\n", __func__, cmd);
-				break;
-			}
-
-			fps = drm_mode_vrefresh(mode);
-			vtotal = mode->vtotal;
-			if (fps == 0 || vtotal == 0) {
-				DDPMSG("%s, cmd:%d, invalid fps:%u, vtotal:%u\n",
-					__func__, cmd, fps, vtotal);
-				break;
-			}
-
-			vfp = mode->vsync_start - mode->vdisplay;
-			dur_line = 1000000000UL / fps / vtotal;
-			dur_vblank = dur_line * vfp / 1000;
-			dur_frame = 1000000 / fps;
-
-			DDPINFO("%s, cmd:%d idle- vidle update DT, fps:%u, dur:%uus,%uus\n",
-				__func__, cmd, fps, dur_frame, dur_vblank);
-			if (mtk_vidle_update_dt_by_period(&(crtc->base), dur_frame, dur_vblank) < 0)
-				DDPMSG("%s, cmd:%d idle- vidle err, fps:%u, dur:%uus,%uus\n",
-					__func__, cmd, fps, dur_frame, dur_vblank);
+			if (!IS_ERR_OR_NULL(mode))
+				vfp = mode->vsync_start - mode->vdisplay;
+			mtk_dsi_update_dt_timer(crtc, vfp, mode);
 		}
 	}
 		break;
