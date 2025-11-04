@@ -194,7 +194,8 @@ struct serdes_bridge {
 	struct i2c_client *client;
 	struct device_node *config_node;
 	struct gpio_desc *reset_gpio;
-	struct gpio_desc *power_en_gpio;
+	struct gpio_desc **power_en_gpio;
+	int power_en_gpios_count;
 
 	bool inited_in_lk;
 	enum LINK_TYPE link_type;
@@ -829,17 +830,25 @@ static int serdes_hotplug_kthread(void *data)
 
 void serdes_poweron_ser(struct serdes_bridge *ser_des)
 {
+	int i = 0;
+
 	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
-	if (ser_des->power_en_gpio)
-		gpiod_set_value(ser_des->power_en_gpio, 1);
+	if (!ser_des->power_en_gpio || !ser_des->power_en_gpios_count)
+		return;
+	for (i = 0; i < ser_des->power_en_gpios_count && ser_des->power_en_gpio[i]; i++)
+		gpiod_set_value(ser_des->power_en_gpio[i], 1);
 	pr_info("%s[i2c%d] -\n", __func__, ser_des->client->adapter->nr);
 }
 
 void serdes_poweroff_ser(struct serdes_bridge *ser_des)
 {
+	int i = 0;
+
 	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
-	if (ser_des->power_en_gpio)
-		gpiod_set_value(ser_des->power_en_gpio, 0);
+	if (!ser_des->power_en_gpio || !ser_des->power_en_gpios_count)
+		return;
+	for (i = ser_des->power_en_gpios_count; (i > 0) && ser_des->power_en_gpio[i - 1]; i--)
+		gpiod_set_value(ser_des->power_en_gpio[i - 1], 0);
 	pr_info("%s[i2c%d] -\n", __func__, ser_des->client->adapter->nr);
 }
 
@@ -1506,11 +1515,28 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 			return -1;
 		}
 
-		ser_des->power_en_gpio = devm_gpiod_get(dev, "power-en", GPIOD_OUT_HIGH);
-		if (IS_ERR(ser_des->power_en_gpio)) {
-			pr_info("[i2c%d] no power-en-gpios %ld!\n", client->adapter->nr,
-				PTR_ERR(ser_des->power_en_gpio));
-			ser_des->power_en_gpio = NULL;
+		ser_des->power_en_gpios_count =
+			of_property_count_elems_of_size(dev->of_node, "power-en-gpios", sizeof(u32) * 3);
+		if (ser_des->power_en_gpios_count < 0) {
+			pr_info("%s: no power-en-gpios in [%s] !!\n", __func__, dev->of_node->name);
+			ser_des->power_en_gpios_count = 0;
+		} else {
+			ser_des->power_en_gpio = devm_kcalloc(dev,
+				ser_des->power_en_gpios_count, sizeof(struct gpio_desc *), GFP_KERNEL);
+			if (!ser_des->power_en_gpio)
+				return -ENOMEM;
+
+			for (i = 0; i < ser_des->power_en_gpios_count; i++) {
+				ser_des->power_en_gpio[i] = devm_gpiod_get_index(dev, "power-en", i, GPIOD_OUT_HIGH);
+				if (IS_ERR(ser_des->power_en_gpio[i])) {
+					pr_info("[i2c%d] Fail to get power-en-gpios[%d] %ld!\n", client->adapter->nr,
+						i, PTR_ERR(ser_des->power_en_gpio));
+					ser_des->power_en_gpio[i] = NULL;
+				}
+				if (ser_des->power_en_gpio[i])
+					pr_info("[i2c%d] power-en-gpio[%d] = %d\n",
+						client->adapter->nr, i, desc_to_gpio(ser_des->power_en_gpio[i]));
+			}
 		}
 
 		init_flag = serdes_get_lk_display_flag();
