@@ -2433,6 +2433,13 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		mtk_bwm_calc_hrt_bw(crtc, state);
 	}
 
+	if (private->data->support_bif) {
+		if (drm_crtc_index(crtc) == 0 && (atomic_read(&private->kernel_pm.wakelock_cnt) == 1))
+			set_bif_enable(crtc, true);
+		else
+			set_bif_enable(crtc, false);
+	}
+
 #ifdef IF_ZERO /*TODO: use async atomic_commit would occur crtc_state and crtc race condition */
 	if (async)
 		mtk_atomic_schedule(private, state);
@@ -13155,8 +13162,8 @@ static int mtk_drm_probe(struct platform_device *pdev)
 		DDPFUNC("is tablet!\n");
 	}
 
-	if (!of_property_read_u32(dev->of_node, "bif-enable", &private->enable_bif))
-		DDPFUNC("enable_bif: %d\n", private->enable_bif);
+	if (!of_property_read_u32(dev->of_node, "bif-enable", &private->bif_support_mode))
+		DDPFUNC("bif_support_mode: %d\n", private->bif_support_mode);
 
 	init_secure_static_path_switch(dev, private);
 	if (private->secure_static_path_switch == true)

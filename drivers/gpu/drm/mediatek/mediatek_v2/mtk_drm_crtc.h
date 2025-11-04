@@ -1928,6 +1928,7 @@ struct mtk_cmdq_pkt_info *mtk_crtc_request_cmdq_pkt(struct mtk_drm_crtc *mtk_crt
 	unsigned int client_type, unsigned int pf_idx);
 void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info);
 int bif_enabled(struct drm_crtc *crtc);
+void set_bif_enable(struct drm_crtc *crtc, bool en);
 
 void mtk_crtc_layer_off(struct mtk_drm_crtc *mtk_crtc, int crtc_idx,
 	struct mtk_crtc_state *state, struct mtk_crtc_state *old_state,

@@ -403,7 +403,7 @@ struct mtk_drm_private {
 	/* debug top status */
 	struct mtk_dbgtp mtk_dbgtp_sta;
 
-	unsigned int enable_bif;
+	unsigned int bif_support_mode;
 	struct device *attach_share_dev;
 };
 

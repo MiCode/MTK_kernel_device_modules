@@ -1074,7 +1074,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_BIF_EN);
 			*addr = 1;
 		} else {
-			mtk_crtc->bif_info->bif_enable = BIF_DISABLE;
+			set_bif_enable(crtc, false);
 			CRTC_MMP_MARK(0, bif_src_ctrl, 0xFFFFFFFF, 0xFFFFFFFF);
 		}
 	}
