@@ -43,14 +43,6 @@
 #include "mtk-afe-external.h"
 #endif
 
-#define DISPSYS0	0
-#define DISPSYS1	1
-#define OVLSYS0		2
-#define OVLSYS1		3
-#define OVLSYS2		4
-#define DISPSYS_B_0	5
-#define DISPSYS_B_1	6
-
 #define DISP_REG_OVL0_MOUT_EN(data) (data->ovl0_mout_en)
 #define DISP_REG_DPI0_SEL_IN(data) (data->dpi0_sel_in)
 #define DISP_REG_DPI0_SEL_IN_RDMA1(data) (data->dpi0_sel_in_rdma1)

@@ -128,6 +128,13 @@ int mtk_sync_fence_create(struct sync_timeline *obj, struct fence_data *data);
 int mtk_sync_share_fence_create(struct sync_timeline *obj,
 	struct fence_data *data,
 	struct dma_resv *resv);
+
+int mtk_sync_fence_wait_timeout(struct dma_fence *fence, unsigned long timeout);
+void mtk_sync_fence_put(struct dma_fence *fence);
+void mtk_sync_fence_get(struct dma_fence *fence);
+void mtk_sync_timeline_to_fence(struct sync_timeline *obj,
+				     unsigned int index, struct dma_fence **fence);
+
 #endif /* __KERNEL __ */
 
 #endif /* _MTK_SYNC_H */

@@ -359,4 +359,63 @@ int mtk_sync_share_fence_create(struct sync_timeline *obj,
 }
 EXPORT_SYMBOL_GPL(mtk_sync_share_fence_create);
 
+void mtk_sync_timeline_to_fence(struct sync_timeline *obj,
+				     unsigned int index, struct dma_fence **fence)
+{
+	struct sync_pt *pt, *next;
+	bool found = false;
+
+	spin_lock_irq(&obj->lock);
+	list_for_each_entry_safe(pt, next, &obj->pt_list, link) {
+		if (pt->base.seqno == index) {
+			found =true;
+			break;
+		}
+	}
+	spin_unlock_irq(&obj->lock);
+
+	if (found)
+		*fence = &pt->base;
+
+}
+EXPORT_SYMBOL_GPL(mtk_sync_timeline_to_fence);
+
+
+void mtk_sync_fence_get(struct dma_fence *fence)
+{
+	dma_fence_get(fence);
+}
+EXPORT_SYMBOL_GPL(mtk_sync_fence_get);
+
+
+/*sync fence put*/
+void mtk_sync_fence_put(struct dma_fence *fence)
+{
+	dma_fence_put(fence);
+}
+EXPORT_SYMBOL_GPL(mtk_sync_fence_put);
+
+
+/*sync fence wait*/
+int mtk_sync_fence_wait_timeout(struct dma_fence *fence, unsigned long timeout)
+{
+	long ret;
+
+	if (mtk_sync_timeline_fence_signaled(fence))
+		return 0;
+
+	ret = dma_fence_wait_timeout(fence, true, timeout);
+	if (ret == 0) {
+		pr_debug("fence %llu timeout\n", fence->seqno);
+		return -1;
+	}
+
+	if (ret > 0)
+		return 0;
+
+	pr_debug("fence %llu wait error\n", fence->seqno);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_sync_fence_wait_timeout);
+
 MODULE_LICENSE("GPL");

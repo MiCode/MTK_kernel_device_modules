@@ -4648,7 +4648,7 @@ mtk_crtc_get_plane_comp(struct drm_crtc *crtc,
 	if (plane_state->base.plane)
 		plane_index = to_crtc_plane_index(plane_state->base.plane->index);
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (plane_state->comp_state.comp_id == 0) {
 		if (priv->data->ovl_exdma_rule) {
 			plane_state->comp_state.comp_id =
@@ -13462,7 +13462,7 @@ void __mtk_crtc_restore_plane_setting(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 
 		if (plane_state->comp_state.comp_id == 0 && priv->data->ovl_exdma_rule) {
 			plane_index = to_crtc_plane_index(plane_state->base.plane->index);
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 			plane_state->comp_state.comp_id =
 				mtk_crtc_get_plane_comp_id(crtc, mtk_crtc_state, plane_index);
 #else
@@ -15351,12 +15351,10 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	CRTC_MMP_MARK(crtc_id, enable, 1, 0);
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #ifndef DRM_CMDQ_DISABLE
 	/* power on cmdq client */
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	cmdq_mbox_enable(client->chan);
-#endif
 #endif
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
@@ -15414,17 +15412,18 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, true, true,
 			MTK_APSRC_CRTC_DEFAULT, false);
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		/* 3. prepare modules would be used in this CRTC */
 		mtk_crtc_ddp_prepare(mtk_crtc);
-#endif
 	}
 
 	mtk_set_dpc_dsi_clk(mtk_crtc, true);
 
 	mtk_gce_backup_slot_init(mtk_crtc);
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	mtk_drm_crtc_enable_path(mtk_crtc);
+#else
+
 #ifndef DRM_CMDQ_DISABLE
 	/* 4. prepare cmdq prebuilt instr */
 	CRTC_MMP_MARK((int) crtc_id, enable, 1, 1);
@@ -15443,9 +15442,6 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 			mtk_crtc_start_event_loop(crtc);
 		mtk_crtc_start_trig_loop(crtc);
 	}
-#else
-	mtk_drm_crtc_enable_path(mtk_crtc);
-#endif
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_OVL_BW_MONITOR) &&
 		(priv->data->mmsys_id == MMSYS_MT6991 ||
@@ -15475,7 +15471,6 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 		cmdq_pkt_destroy(cmdq_handle);
 	}
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	CRTC_MMP_MARK((int) crtc_id, enable, 1, 2);
 	/* 6. connect path */
 	mtk_crtc_connect_default_path(mtk_crtc);
@@ -15895,11 +15890,9 @@ void mtk_drm_crtc_atomic_resume(struct drm_crtc *crtc,
 	 * The call here is to ensure that it has been registered.
 	 */
 	if (unlikely(vdisp_func.genpd_put)) {
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 		vdisp_func.genpd_put();
 		vdisp_func.genpd_put = NULL;
 		mtk_dump_mminfra_ck(priv);
-#endif
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		if (vdisp_func.wk_lock)
 			vdisp_func.wk_lock(index, 0, __func__, __LINE__);
@@ -16841,7 +16834,7 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	if (mtk_drm_lcm_is_connect(mtk_crtc))
 		mtk_disp_esd_check_switch(crtc, false);
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	/* 4. stop CRTC */
 	mtk_crtc_stop(mtk_crtc, need_wait);
 	CRTC_MMP_MARK((int) crtc_id, disable, 1, 1);
@@ -16859,20 +16852,16 @@ void mtk_drm_crtc_disable(struct drm_crtc *crtc, bool need_wait)
 	/* 7. disable vblank */
 	drm_crtc_vblank_off(crtc);
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #ifndef DRM_CMDQ_DISABLE
 	/* 8. power off cmdq client */
 	client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	cmdq_mbox_disable(client->chan);
 	CRTC_MMP_MARK((int) crtc_id, disable, 1, 2);
 #endif
-#endif
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 		/* 9. power off all modules in this CRTC */
 		mtk_crtc_ddp_unprepare(mtk_crtc);
-#endif
 
 		/*APSRC control, turn off*/
 		mtk_crtc_v_idle_apsrc_control(crtc, NULL, false, false, crtc_id, false);
@@ -17004,7 +16993,7 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 		mtk_crtc->sec_on = false;
 	}
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	mtk_drm_crtc_disable_auto(crtc);
 #else
 	mtk_drm_crtc_disable(crtc, true);
@@ -21215,7 +21204,7 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	}
 
 	/* for wfd latency debug */
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (index == 0 || index == 2) {
 		dma_addr_t addr = (index == 0) ?
 			mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_OVL_DSI_SEQ) :
@@ -22096,7 +22085,7 @@ u16 mtk_get_gpr(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 			return CMDQ_GPR_R07;
 	}
 }
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+
 static int mtk_drm_cwb_copy_buf(struct drm_crtc *crtc,
 			  struct mtk_cwb_info *cwb_info,
 			  void *buffer, unsigned int buf_idx)
@@ -22358,7 +22347,6 @@ static int mtk_drm_cwb_init(struct drm_crtc *crtc)
 
 	return 0;
 }
-#endif
 
 void mtk_drm_fake_vsync_switch(struct drm_crtc *crtc, bool enable)
 {
@@ -23060,7 +23048,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	if (drm_crtc_index(&mtk_crtc->base) == 0)
 		init_waitqueue_head(&mtk_crtc->qos_ctx->hrt_cond_wq);
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	if (drm_crtc_index(&mtk_crtc->base) == 0)
 		mtk_drm_cwb_init(&mtk_crtc->base);
 #endif
@@ -23202,14 +23190,12 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 	atomic_set(&mtk_crtc->signal_irq_for_pre_fence, 0);
 	init_waitqueue_head(&(mtk_crtc->signal_irq_for_pre_fence_wq));
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 	mtk_crtc->mode_switch_task = kthread_create(
 		mtk_drm_mode_switch_thread, mtk_crtc, "mode_switch");
 	atomic_set(&mtk_crtc->singal_for_mode_switch, 0);
 	init_waitqueue_head(&mtk_crtc->mode_switch_wq);
 	init_waitqueue_head(&mtk_crtc->mode_switch_end_wq);
 	wake_up_process(mtk_crtc->mode_switch_task);
-#endif
 
 	/*thread of dump SMI log (SMI larb, sub common, common: OSTDL, bw throttle)*/
 	init_waitqueue_head(&mtk_crtc->smi_info_dump_wq);

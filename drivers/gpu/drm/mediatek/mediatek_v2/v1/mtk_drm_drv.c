@@ -7964,13 +7964,16 @@ int mtk_drm_esd_recovery_check_ioctl(struct drm_device *dev, void *data,
 	return 0;
 }
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 {
 	int ret = 0, i;
 
 	if (!priv)
 		return -1;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	return mtk_drm_pm_ctl_auto_guest(priv, action);
+#endif
 
 	switch (action) {
 	case DISP_PM_ENABLE:
@@ -8232,6 +8235,11 @@ static void mtk_drm_get_pwr_clk(struct mtk_drm_private *priv)
 	struct pwr_clk_map *clk_map;
 	int i;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	mtk_drm_get_pwr_clk_auto_guest(priv);
+	return;
+#endif
+
 	pwr_node = of_parse_phandle(dev->of_node, "pwr-handle", 0);
 	if (!pwr_node) {
 		DDPMSG("No pwr-handle node\n");
@@ -8262,6 +8270,10 @@ static void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
 	struct device_node *node = dev->of_node;
 	struct clk *clk;
 	int ret, i, clk_num;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	return mtk_drm_get_top_clk_auto_guest(priv);
+#endif
 
 	if (disp_helper_get_stage() != DISP_HELPER_STAGE_NORMAL) {
 		spin_lock_init(&top_clk_lock);
@@ -8332,6 +8344,10 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	int ret;
 	unsigned long flags = 0;
 	void *base;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	return mtk_drm_top_clk_prepare_enable_auto_guest(crtc);
+#endif
 
 	if (priv->top_clk_num <= 0)
 		return;
@@ -8408,6 +8424,10 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc)
 	int i = 0, cnt = 0;
 	unsigned long flags = 0;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	return mtk_drm_top_clk_disable_unprepare_auto_guest(crtc);
+#endif
+
 	if (priv->top_clk_num <= 0)
 		return;
 
@@ -8474,6 +8494,10 @@ bool mtk_drm_top_clk_isr_get(struct mtk_ddp_comp *comp)
 	unsigned long flags = 0;
 	int ret = 0;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	return mtk_drm_top_clk_isr_get_auto_guest(comp);
+#endif
+
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 		spin_lock_irqsave(&top_clk_lock, flags);
 		if (atomic_read(&top_clk_ref) <= 0) {
@@ -8505,6 +8529,10 @@ void mtk_drm_top_clk_isr_put(struct mtk_ddp_comp *comp)
 {
 	unsigned long flags = 0;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	return mtk_drm_top_clk_isr_put_auto_guest(comp);
+#endif
+
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
 
 		spin_lock_irqsave(&top_clk_lock, flags);
@@ -8526,7 +8554,7 @@ void mtk_drm_top_clk_isr_put(struct mtk_ddp_comp *comp)
 		spin_unlock_irqrestore(&top_clk_lock, flags);
 	}
 }
-#endif
+
 static void mtk_drm_first_enable(struct drm_device *drm)
 {
 	struct drm_crtc *crtc;
@@ -10253,9 +10281,9 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	if (ret < 0)
 		goto err_component_unbind;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	/* update data-path from dts */
-	ret = mtk_drm_path_data_update(private->mmsys_dev->of_node);
+	ret = mtk_drm_path_data_update(private);
 	if (ret < 0)
 		goto err_component_unbind;
 #endif
@@ -10761,7 +10789,7 @@ static const struct drm_ioctl_desc mtk_ioctls[] = {
 #endif
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 	DRM_IOCTL_DEF_DRV(MTK_GET_HOST_CRTC_OBJ_ID, mtk_drm_get_host_crtc_obj_id,
-			  DRM_UNLOCKED),
+			  0),
 #endif
 };
 
@@ -12303,11 +12331,6 @@ static int mtk_drm_probe(struct platform_device *pdev)
 	PanelMaster_probe();
 	DDPINFO("%s+\n", __func__);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
-	/* update data-path from host */
-	mtk_drm_path_data_update();
-#endif
-
 	//drm_debug = 0x1F; /* DRIVER messages */
 	private = devm_kzalloc(dev, sizeof(*private), GFP_KERNEL);
 	if (!private)
@@ -12321,6 +12344,11 @@ static int mtk_drm_probe(struct platform_device *pdev)
 		DDPPR_ERR("Failed to get mmsys register data: %d\n", ret);
 		return ret;
 	}
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	/* update data-path from host */
+	mtk_drm_path_data_update_from_host(private);
+#endif
 
 	mutex_init(&private->commit.lock);
 	INIT_WORK(&private->commit.work, mtk_atomic_work);

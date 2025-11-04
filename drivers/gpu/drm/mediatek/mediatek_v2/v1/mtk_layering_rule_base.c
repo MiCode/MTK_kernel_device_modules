@@ -3164,11 +3164,14 @@ static int mtk_lye_get_comp_id(int disp_idx, int disp_list, struct drm_device *d
 	return DDP_COMPONENT_OVL2_2L;
 }
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	struct drm_device *drm_dev, int fun_lye, int rsz_lye)
 {
 	struct mtk_drm_private *priv = drm_dev->dev_private;
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	return mtk_lye_get_exdma_comp_id_auto(disp_idx, layer_idx, drm_dev, fun_lye, rsz_lye);
+#endif
 
 	/* TODO: The component ID should be changed by ddp path and platforms */
 	/* need align with mtk_crtc_get_plane_comp_id */
@@ -3269,7 +3272,6 @@ static int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 	DDPPR_ERR("Invalid disp_idx:%d\n", disp_idx);
 	return DDP_COMPONENT_OVL_EXDMA3;
 }
-#endif
 
 static int mtk_lye_get_blender_comp_id(int disp_idx, int layer_idx,
 	struct drm_device *drm_dev, int blender_lye)

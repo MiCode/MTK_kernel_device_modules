@@ -240,6 +240,9 @@ struct mtk_drm_private {
 	struct device *dsi_phy1_dev;
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	struct device *dsi_phy2_dev;
+	struct device *kdev;
+	struct mtk_drm_crtc *crtc_thread_map[MAX_CMDQ_THREAD];
+	resource_size_t ovlsys0_rsz_regs;
 #endif
 
 	struct drm_crtc *crtc[MAX_CRTC];

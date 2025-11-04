@@ -53,5 +53,6 @@ unsigned long long _layering_get_frame_bw(struct drm_crtc *crtc,
 					struct drm_display_mode *mode);
 // int layering_get_valid_hrt(void);
 // void copy_hrt_bound_table(int is_larb, int *hrt_table);
+void init_layer_mapping_table(enum HRT_TB_TYPE hrt_type, u32 layer_nr);
 
 #endif

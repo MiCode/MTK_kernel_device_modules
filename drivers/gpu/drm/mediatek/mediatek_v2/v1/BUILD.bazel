@@ -169,7 +169,7 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/extcon",
         "-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek",
 	"-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/virtio_disp",
-        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_auto",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/v1/mtk_drm_auto",
 	"-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2",
         "-Wno-unused-but-set-parameter",
         "-Wno-dangling-else",
@@ -232,6 +232,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mml_public_headers".format(kernel_version),
+	"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/virtio_disp:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
@@ -276,6 +277,9 @@ define_mgk_ddk_ko(
 				"mtk_drm_auto/mtk_drm_drv_auto.c",
 				"mtk_drm_auto/mtk_drm_ddp_comp_auto.c",
 				"mtk_drm_auto/mtk_drm_ddp_auto.c",
+				"mtk_drm_auto/mtk_drm_plane_auto.c",
+				"mtk_drm_auto/mtk_disp_vdisp_ao_auto.c",
+				"mtk_drm_auto/mtk_layering_rule_base_auto.c",
 			],
 			False: [
 				"mtk_disp_vdisp_ao.c",
@@ -284,20 +288,16 @@ define_mgk_ddk_ko(
 		"CONFIG_DRM_MEDIATEK_AUTO_HOST": {
 			True: [
 				"mtk_drm_auto/mtk_virt_output_host.c",
-				"mtk_drm_auto/mtk_disp_vdisp_ao_host.c",
-				"mtk_drm_auto/mtk_drm_plane_auto.c",
 				"mtk_drm_auto/mtk_drm_se.c",
 				"mtk_drm_auto/mtk_drm_sysfs.c",
-				"mtk_drm_auto/mtk_virtio_disp.c",
+				"mtk_drm_auto/mtk_virtio_disp_be.c",
 			],
         },
 		"CONFIG_DRM_MEDIATEK_AUTO_GUEST": {
 			True: [
 				"mtk_drm_auto/mtk_drm_crtc_auto_guest.c",
 				"mtk_drm_auto/mtk_drm_drv_auto_guest.c",
-				"mtk_drm_auto/mtk_disp_vdisp_ao_guest.c",
 				"mtk_drm_auto/mtk_virt_output_guest.c",
-				"mtk_drm_auto/mtk_layering_rule_base_auto.c",
 			],
         },
     },

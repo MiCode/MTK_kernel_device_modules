@@ -405,15 +405,6 @@ static const char *const mtk_ddp_comp_stem[MTK_DDP_COMP_TYPE_MAX] = {
 	[MTK_DISP_VIRT_OUTPUT] = "virt-out",
 };
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
-struct mtk_ddp_comp_match {
-	enum mtk_ddp_comp_id index;
-	enum mtk_ddp_comp_type type;
-	int alias_id;
-	const struct mtk_ddp_comp_funcs *funcs;
-	bool is_output;
-};
-
 static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_AAL0, MTK_DISP_AAL, 0, NULL, 0},
 	{DDP_COMPONENT_AAL1, MTK_DISP_AAL, 1, NULL, 0},
@@ -1411,8 +1402,14 @@ static const struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX] = {
 	{DDP_COMPONENT_SYS_B_MERGE0_OUT_CB11, MTK_DISP_VIRTUAL, -1, NULL, 0},
 	{DDP_COMPONENT_SYS_B_MERGE0_OUT_CB12, MTK_DISP_VIRTUAL, -1, NULL, 0},
 /*995*/	{DDP_COMPONENT_SYS_B_RSZ0, MTK_DISP_RSZ, 6, NULL, 0},
+	{DDP_COMPONENT_DSI0_VIRTUAL, MTK_DISP_VIRT_OUTPUT, 0, NULL, 1},
+	{DDP_COMPONENT_DSI1_VIRTUAL, MTK_DISP_VIRT_OUTPUT, 1, NULL, 1},
+	{DDP_COMPONENT_DSI2_VIRTUAL, MTK_DISP_VIRT_OUTPUT, 2, NULL, 1},
+	{DDP_COMPONENT_DPI0_VIRTUAL, MTK_DISP_VIRT_OUTPUT, 3, NULL, 1},
+/*1000*/ {DDP_COMPONENT_DPI1_VIRTUAL, MTK_DISP_VIRT_OUTPUT, 4, NULL, 1},
+	{DDP_COMPONENT_DVO_VIRTUAL, MTK_DISP_VIRT_OUTPUT, 5, NULL, 1},
+	{DDP_COMPONENT_DSI2_1_VIRTUAL, MTK_DISP_VIRT_OUTPUT, 6, NULL, 1},
 };
-#endif
 
 void mtk_irq_time_handle(struct work_struct *data)
 {
@@ -2209,16 +2206,16 @@ void mtk_ddp_comp_clk_prepare(struct mtk_ddp_comp *comp)
 		}
 	}
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	comp->comp_status = true;
+	ret = 0;
+#else
 	if (comp->clk) {
 		ret = clk_prepare_enable(comp->clk);
 		if (ret)
 			DDPPR_ERR("clk prepare enable failed:%s\n",
 				mtk_dump_comp_str(comp));
 	}
-#else
-	comp->comp_status = true;
-	ret = 0;
 #endif
 
 	if (comp->mtk_crtc)
@@ -2235,11 +2232,11 @@ void mtk_ddp_comp_clk_unprepare(struct mtk_ddp_comp *comp)
 	if (comp == NULL)
 		return;
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	comp->comp_status = false;
+#else
 	if (comp->clk)
 		clk_disable_unprepare(comp->clk);
-#else
-	comp->comp_status = false;
 #endif
 
 	mtk_ddp_comp_larb_put(comp, comp->larb_dev);

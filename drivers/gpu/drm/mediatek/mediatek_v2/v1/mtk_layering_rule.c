@@ -27,6 +27,10 @@
 #include "mtk_drm_graphics_base.h"
 #include "mtk_drm_mmp.h"
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+#include "mtk_layering_rule_base_auto.h"
+#endif
+
 #include <soc/mediatek/mmqos.h>
 
 static unsigned int sp_hrt_idx[MAX_CRTC];
@@ -751,6 +755,10 @@ void mtk_layering_rule_init(struct drm_device *dev)
 	l_rule_info.hrt_idx = 0;
 	mtk_register_layering_rule_ops(&l_rule_ops, &l_rule_info);
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	mtk_register_layering_rule_ops_for_auto(&l_rule_ops, &l_rule_info);
+#endif
+
 	mtk_set_layering_opt(
 		LYE_OPT_RPO,
 		mtk_drm_helper_get_opt(private->helper_opt, MTK_DRM_OPT_RPO));
@@ -1304,6 +1312,23 @@ static void fbdc_restore_layout(struct drm_mtk_layering_info *dst_info,
 		layer_info_d->dst_width = layer_info_s->dst_width;
 		layer_info_d->dst_height = layer_info_s->dst_height;
 	}
+}
+
+void init_layer_mapping_table(enum HRT_TB_TYPE hrt_type, u32 layer_nr)
+{
+	uint16_t *tmp_map = NULL;
+
+	if (hrt_type >= HRT_TB_NUM) {
+		DDPMSG("%s invalid hrt_type %d layer_nr %d\n", __func__, hrt_type, layer_nr);
+		return;
+	}
+
+	tmp_map = &layer_mapping_table[hrt_type];
+
+	*tmp_map = (1 << layer_nr) - 1;
+
+	DDPMSG("%s hrt_type %d layer_nr %d layer_mapping_table 0x%X 0x%X\n",
+		__func__, hrt_type, layer_nr, *tmp_map, layer_mapping_table[hrt_type]);
 }
 
 static struct layering_rule_ops l_rule_ops = {

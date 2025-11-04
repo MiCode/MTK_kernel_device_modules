@@ -15,6 +15,14 @@
 #include "mtk-cmdq-ext.h"
 #endif
 
+#define DISPSYS0	0
+#define DISPSYS1	1
+#define OVLSYS0		2
+#define OVLSYS1		3
+#define OVLSYS2		4
+#define DISPSYS_B_0	5
+#define DISPSYS_B_1	6
+
 #define DISP_MUTEX_TOTAL (16)
 #define DISP_MUTEX_TOTAL_v2 (8)
 #define DISP_MUTEX_DDP_FIRST (0)

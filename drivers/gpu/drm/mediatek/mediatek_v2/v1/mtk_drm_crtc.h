@@ -45,6 +45,7 @@ typedef void (*mtk_virt_hotplug_cb)(unsigned int evt);
 
 #if IS_ENABLED(CONFIG_ARM64)
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#define MAX_CMDQ_THREAD 32
 #ifndef MAX_CRTC
 #define MAX_CRTC LYE_CRTC
 #endif
@@ -200,7 +201,9 @@ enum EVENT_TRIGGER_PT {
 #define DISP_SLOT_TRIG_STATUS (DISP_SLOT_OVL_STATUS(MAX_CRTC))
 #define DISP_SLOT_PU_STATUS (DISP_SLOT_TRIG_STATUS + 0x4)
 #define DISP_SLOT_PU_NEED_WAIT (DISP_SLOT_PU_STATUS + 0x4)
-#define DISP_SLOT_READ_DDIC_BASE (DISP_SLOT_PU_NEED_WAIT + 0x4)
+#define DISP_SLOT_OVL_STATUS_FOR_PQ(n)                                                 \
+	(DISP_SLOT_PU_NEED_WAIT + 0x4 + (0x4 * (n)))
+#define DISP_SLOT_READ_DDIC_BASE (DISP_SLOT_OVL_STATUS_FOR_PQ(MAX_CRTC))
 #define DISP_SLOT_READ_DDIC_BASE_END		\
 	(DISP_SLOT_READ_DDIC_BASE + READ_DDIC_SLOT_NUM * 0x4)
 #define DISP_SLOT_READ_DDIC_V2_BASE (DISP_SLOT_READ_DDIC_BASE_END)
@@ -807,6 +810,8 @@ struct mtk_crtc_path_data {
 	bool is_first_path;
 	bool is_shared_device;
 	bool is_dual_ovl;
+	bool is_primary_layer_swap;
+	bool is_guest_exclusive_device;
 	uint32_t host_crtc_id;
 #endif
 	const enum mtk_ddp_comp_id *ovl_path[DDP_MODE_NR][DDP_PATH_NR];
@@ -1398,19 +1403,18 @@ struct mtk_drm_crtc {
 	struct dbi_count_data dbi_data;
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
 	int se_panel;	/* 1 << */
 	int sideband_layer;
 	struct mtk_crtc_static_plane static_plane;
 	struct mtk_crtc_se_plane se_plane[MTK_FB_SE_NUM];
 	enum DISP_SE_STATE se_state;
 	struct mutex sol_lock;
-#endif
 
 	bool virtual_path;
 	unsigned int offset_x;
 	unsigned int offset_y;
 
+	bool emi_req;
 	struct mtk_drm_crtc *p_mtk_crtc; //physical crtc for vitural crtc
 	unsigned int enable_cnt; //for multi-card suspend&resume count
 	struct drm_crtc *crtc_p;
@@ -1420,10 +1424,12 @@ struct mtk_drm_crtc {
 	wait_queue_head_t logo_layer_wq;
 	atomic_t logo_layer_task_active;
 	mtk_virt_hotplug_cb cb;
-#endif
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
-	/* virtual display */
+	/*host display*/
+	bool is_primary_layer_swap;
+	bool is_guest_exclusive_device;
+
+	/* guest  display */
 	bool is_virtio_path;
 	bool is_shared_device;
 #endif

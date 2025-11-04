@@ -1349,6 +1349,7 @@ enum mtk_ddp_io_cmd {
 	GET_CONNECTOR_ID,
 	DSI_CHANGE_MODE,
 	BACKUP_OVL_STATUS,
+	BACKUP_OVL_STATUS_FOR_PQ,
 	MIPI_HOPPING,
 	PANEL_OSC_HOPPING,
 	MODE_SWITCH_INDEX,
@@ -1429,6 +1430,7 @@ enum mtk_ddp_io_cmd {
 	SET_CRTC_ID,
 	GET_DEVICE_TYPE,
 	UPDATE_DP_CONNECT_STATE,
+	GET_ENABLE_READY_STATUS,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {
@@ -1567,6 +1569,7 @@ struct mtk_ddp_comp_funcs {
 	int (*partial_update)(struct mtk_ddp_comp *comp,
 			struct cmdq_pkt *handle, struct mtk_rect partial_roi, unsigned int enable);
 	int (*first_layer)(struct mtk_ddp_comp *comp);
+	int (*is_layer_on)(struct mtk_ddp_comp *comp);
 	irqreturn_t (*irq_handle)(int irq, void *dev_id);
 };
 
@@ -1679,6 +1682,15 @@ struct mtk_ddp_comp {
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 	bool comp_status;
 #endif
+};
+
+struct mtk_ddp_comp_match {
+	enum mtk_ddp_comp_id index;
+	enum mtk_ddp_comp_type type;
+	int alias_id;
+	const struct mtk_ddp_comp_funcs *funcs;
+	bool is_output;
+	int is_virt_comp;
 };
 
 static inline void mtk_ddp_comp_config_overhead(struct mtk_ddp_comp *comp,
