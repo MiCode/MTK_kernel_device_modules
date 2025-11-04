@@ -528,6 +528,7 @@ static int mbraink_v6993_power_get_modem_all_info(struct mbraink_modem_all_raw *
 	int shm_size = 0;
 	void __iomem *shm_addr = NULL;
 	unsigned char *base_addr = NULL;
+	unsigned short samplerate = 600;
 
 	if (modem_all_buffer == NULL)
 		return 0;
@@ -543,10 +544,15 @@ static int mbraink_v6993_power_get_modem_all_info(struct mbraink_modem_all_raw *
 		return 0;
 	}
 
-	pr_notice("shm_size(%d)", shm_size);
+	memcpy((unsigned char *)(&samplerate), modem_all_buffer->data+12, sizeof(samplerate));
+	if (samplerate == 0)
+		samplerate = 600;
+
+	pr_notice("shm_size(%d) samplerate=%d", shm_size, (int)samplerate);
 
 	base_addr = (unsigned char *)shm_addr;
 	memcpy(modem_all_buffer->data, base_addr, MD_MAX_SZ);
+	memcpy(base_addr+12, (unsigned char *)(&samplerate), sizeof(samplerate));
 	modem_all_buffer->count = MD_BLK_MAX_NUM;
 
 	return 0;
