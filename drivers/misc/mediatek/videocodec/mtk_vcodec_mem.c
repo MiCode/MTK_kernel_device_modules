@@ -18,7 +18,6 @@ struct mtk_vcodec_queue *mtk_vcodec_mem_init(struct device *dev)
 	vcodec_queue = vzalloc(sizeof(struct mtk_vcodec_queue));
 	if (vcodec_queue == NULL) {
 		pr_info("Allocate new vcu queue fail!\n");
-		vfree(vcodec_queue);
 		return NULL;
 	}
 	vcodec_queue->dev = dev;
