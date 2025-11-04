@@ -20,6 +20,8 @@
 #define MT6688_REG_LDO_STAT1		0x23
 #define MT6688_REG_BST_STAT1		0x25
 #define MT6688_REG_TOP_ANA_2		0x51
+#define MT6688_REG_EFUSE_6		0x806
+#define MT6688_REG_EFUSE_24		0x818
 
 #define MT6688_MASK_VENID		GENMASK(7, 4)
 #define MT6688_MASK_REVISION		GENMASK(3, 0)
@@ -40,6 +42,25 @@
 #define MT6688_CHIP_REV_E1		0
 #define MT6688_CHIP_REV_E2		2
 #define MT6688_CHIP_REV_E3		3
+
+#define MT6688_E3AP_EFUSE1		0x8D	/* 0x806 */
+#define MT6688_E3AP_EFUSE2		0x8E	/* 0x818 */
+
+enum mt6688_model_id {
+	MT6688_MODEL_ID_P = 0,
+	MT6688_MODEL_ID_AP,
+	MT6688_MODEL_ID_MAX
+};
+
+static const char * const mt6688_model_name[MT6688_MODEL_ID_MAX] = {
+	[MT6688_MODEL_ID_P] = " (P)",
+	[MT6688_MODEL_ID_AP] = " (AP)",
+};
+
+struct mt6688_priv {
+	unsigned int venid;
+	enum mt6688_model_id mid;
+};
 
 enum {
 	MT6688_REGULATOR_VBST,
@@ -114,8 +135,23 @@ static int mt6688_vbst_get_error_flags(struct regulator_dev *rdev, unsigned int 
 	return 0;
 }
 
+static int mt6688_regulator_list_voltage_linear(struct regulator_dev *rdev, unsigned int selector)
+{
+	struct mt6688_priv *priv = rdev_get_drvdata(rdev);
+	int target_uV, offset_uV = 0;
+
+	target_uV = regulator_desc_list_voltage_linear(rdev->desc, selector);
+	if (target_uV <= 0)
+		return target_uV;
+
+	if (priv->mid == MT6688_MODEL_ID_AP)
+		offset_uV = 200000;
+
+	return target_uV + offset_uV;
+}
+
 static const struct regulator_ops mt6688_regulator_vbst_ctrl = {
-	.list_voltage = regulator_list_voltage_linear,
+	.list_voltage = mt6688_regulator_list_voltage_linear,
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 	.get_voltage_sel = regulator_get_voltage_sel_regmap,
 	.enable = regulator_enable_regmap,
@@ -527,10 +563,15 @@ static int mt6688_probe(struct spmi_device *sdev)
 	const struct regulator_desc *desc;
 	struct device *dev = &sdev->dev;
 	struct regulator_config cfg = { .dev = dev };
+	unsigned int venid, efuse[2] = { 0 };
 	struct regulator_dev *rdev;
+	struct mt6688_priv *priv;
 	struct regmap *regmap;
-	unsigned int venid;
 	int i, ret;
+
+	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
+	if (!priv)
+		return -ENOMEM;
 
 	regmap = devm_regmap_init(dev, &mt6688_spmi_bus, sdev, &mt6688_regmap_config);
 	if (IS_ERR(regmap))
@@ -543,7 +584,28 @@ static int mt6688_probe(struct spmi_device *sdev)
 	if ((venid & MT6688_MASK_VENID) != MT6688_VENDOR_ID)
 		return dev_err_probe(dev, -ENODEV, "Incorrect vendor id (0x%02x)\n", venid);
 
-	dev_info(dev, "VENID -> 0x%02x\n", venid);
+	priv->mid = MT6688_MODEL_ID_P;
+	if (venid == MT6688_CHIP_REV_E3) {
+		ret = regmap_read(regmap, MT6688_REG_EFUSE_6, &efuse[0]);
+		if (ret) {
+			dev_info(dev, "Failed to read efuse 6\n");
+			return ret;
+		}
+
+		ret = regmap_read(regmap, MT6688_REG_EFUSE_24, &efuse[1]);
+		if (ret) {
+			dev_info(dev, "Failed to read efuse 24\n");
+			return ret;
+		}
+
+		if (efuse[0] == MT6688_E3AP_EFUSE1 && efuse[1] == MT6688_E3AP_EFUSE2)
+			priv->mid = MT6688_MODEL_ID_AP;
+	}
+
+	priv->venid = venid;
+	dev_info(dev, "VENID -> 0x%02x%s\n", venid,
+		 venid >= MT6688_CHIP_REV_E3 && priv->mid >= 0 && priv->mid < MT6688_MODEL_ID_MAX ?
+		 mt6688_model_name[priv->mid] : "");
 
 	switch (FIELD_GET(MT6688_MASK_REVISION, venid)) {
 	case MT6688_CHIP_REV_E1:
@@ -553,6 +615,8 @@ static int mt6688_probe(struct spmi_device *sdev)
 		desc = mt6688_e2_regulator_desc;
 		break;
 	}
+
+	cfg.driver_data = priv;
 
 	for (i = 0; i < MT6688_MAX_REGULATOR; i++) {
 		rdev = devm_regulator_register(dev, desc + i, &cfg);
