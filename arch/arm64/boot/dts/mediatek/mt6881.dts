@@ -9,7 +9,7 @@
 #include <dt-bindings/interrupt-controller/arm-gic.h>
 #include <dt-bindings/interrupt-controller/irq.h>
 #include <dt-bindings/phy/phy.h>
-#include <dt-bindings/pinctrl/mt6858-pinfunc.h>
+#include <dt-bindings/pinctrl/mt6881-pinfunc.h>
 #include <dt-bindings/gce/mt6881-gce.h>
 #include <dt-bindings/soc/mediatek,boot-mode.h>
 #include <dt-bindings/memory/mt6881-larb-port.h>
