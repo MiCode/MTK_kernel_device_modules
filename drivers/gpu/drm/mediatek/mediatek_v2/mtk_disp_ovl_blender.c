@@ -955,8 +955,6 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 	if (ext_lye_idx != LYE_NORMAL) {
 		id = ext_lye_idx-1;
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + OVL_BLD_ELX_PITCH(bld, id), pitch_msb, ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + OVL_BLD_ELX_PITCH(bld, id), pitch, ~0);
 #ifndef CONFIG_FPGA_EARLY_PORTING
 
@@ -967,8 +965,6 @@ static void _ovl_bld_common_config(struct mtk_ddp_comp *comp, unsigned int idx,
 			comp->regs_pa + OVL_BLD_ELX_CLIP(bld, id), clip, ~0);
 	} else {
 		id = lye_idx;
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + regs[OVL_BLD_L0_PITCH], pitch_msb, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_BLD_L0_PITCH], pitch, ~0);
 #ifndef CONFIG_FPGA_EARLY_PORTING
