@@ -3807,6 +3807,7 @@
 
 	mtk_leds: mtk-leds {
 		compatible = "mediatek,i2c-leds";
+		gate-ic-supply = <&gate_ic>;
 		backlight {
 			label = "lcd-backlight";
 			max-brightness = <2047>;
