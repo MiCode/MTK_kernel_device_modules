@@ -20,7 +20,7 @@
  * Enable Mpool: support Page memory or CMA/Reserved memory for IOMMU pgtbl
  * Disable Mpool: only support CMA/Reserved memory for IOMMU pgtbl
  */
-#define ENABLE_MPOOL_IOMMU_PGTBL 0
+#define ENABLE_MPOOL_IOMMU_PGTBL 1
 
 #define MAX_PAGE_POOL_SZ_MB (64UL)
 #define MAX_PAGE_NODES ((MAX_PAGE_POOL_SZ_MB << 20) >> V7S_PAGE_TABLE_SHIFT)
