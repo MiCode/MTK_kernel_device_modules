@@ -10,7 +10,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&cksys_reg_clk CLK_CKSYS_REG_AXI_PERI_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_DISP0_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_MMINFRA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_MMUP_SEL>,
@@ -100,8 +99,7 @@
 			<&apmixedsys_clk CLK_APMIXED_APLL2>,
 			<&apmixedsys_clk CLK_APMIXED_TVDPLL>,
 			<&vlp_cksys_top_clk CLK_VLP_CKSYS_TOP_SCP_SEL>,
-			<&vlp_cksys_top_clk CLK_VLP_CKSYS_TOP_PWM_VLP_SEL>,
-			<&vlp_cksys_top_clk CLK_VLP_CKSYS_TOP_SSPM_SEL>;
+			<&vlp_cksys_top_clk CLK_VLP_CKSYS_TOP_PWM_VLP_SEL>;
 	};
 
 	bring-up-disp@1 {
@@ -361,7 +359,6 @@
 		clocks =
 			<&mminfra_config_clk CLK_MMINFRA_GCE_D_GCE>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_M_GCE>,
-			<&mminfra_config_clk CLK_MMINFRA_SMI_GCE>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_M2_GCE>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_26M_GCE>;
 	};
@@ -602,117 +599,93 @@
 			<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_AXI_UFS>;
 	};
 
-	bring-up-pd-conn@19 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x19>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_CONN>;
-	};
-
-	bring-up-pd-ufs0-shutdown@1a {
+	bring-up-pd-audio@1a {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x1a>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_UFS0_SHUTDOWN>;
-	};
-
-	bring-up-pd-ufs0-phy@1b {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1b>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_UFS0_PHY>;
-	};
-
-	bring-up-pd-audio@1c {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1c>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_AUDIO>;
 	};
 
-	bring-up-pd-isp-main@1d {
+	bring-up-pd-isp-main@1b {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1d>;
+		reg = <0x1b>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_MAIN>;
 	};
 
-	bring-up-pd-isp-dip1@1e {
+	bring-up-pd-isp-dip1@1c {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1e>;
+		reg = <0x1c>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
 	};
 
-	bring-up-pd-isp-vcore@1f {
+	bring-up-pd-isp-vcore@1d {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1f>;
+		reg = <0x1d>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_VCORE>;
 	};
 
-	bring-up-pd-vde0@20 {
+	bring-up-pd-vde0@1e {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x20>;
+		reg = <0x1e>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_VDE0>;
 	};
 
-	bring-up-pd-ven0@21 {
+	bring-up-pd-ven0@1f {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x21>;
+		reg = <0x1f>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_VEN0>;
 	};
 
-	bring-up-pd-cam-main@22 {
+	bring-up-pd-cam-main@20 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x22>;
+		reg = <0x20>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
 	};
 
-	bring-up-pd-cam-suba@23 {
+	bring-up-pd-cam-suba@21 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x23>;
+		reg = <0x21>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBA>;
 	};
 
-	bring-up-pd-cam-subb@24 {
+	bring-up-pd-cam-subb@22 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x24>;
+		reg = <0x22>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBB>;
 	};
 
-	bring-up-pd-cam-vcore@25 {
+	bring-up-pd-cam-vcore@23 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x25>;
+		reg = <0x23>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_VCORE>;
 	};
 
-	bring-up-pd-dis0-shutdown@26 {
+	bring-up-pd-dis0-shutdown@24 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x26>;
+		reg = <0x24>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_DIS0_SHUTDOWN>;
 	};
 
-	bring-up-pd-mm-infra-shutdown@27 {
+	bring-up-pd-mm-infra-shutdown@25 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x27>;
+		reg = <0x25>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
 	};
 
-	bring-up-pd-mm-proc-dormant@28 {
+	bring-up-pd-mm-proc-dormant@26 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x28>;
+		reg = <0x26>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_PROC_DORMANT>;
 	};
 
-	bring-up-pd-csi-rx@29 {
+	bring-up-pd-csi-rx@27 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x29>;
+		reg = <0x27>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CSI_RX>;
 	};
 
-	bring-up-pd-ssrsys-shutdown@2a {
+	bring-up-pd-ssusb@28 {
 		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2a>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_SSRSYS_SHUTDOWN>;
-	};
-
-	bring-up-pd-ssusb@2b {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x2b>;
+		reg = <0x28>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_SSUSB>;
 	};
 };
