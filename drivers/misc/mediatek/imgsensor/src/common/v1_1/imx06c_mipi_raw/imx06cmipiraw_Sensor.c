@@ -519,10 +519,8 @@ static void write_shutter(kal_uint32 shutter)
 			set_max_framerate(146, 0);
 	}
 
-	if (!imx06c_is_seamless) {
+	if (!imx06c_is_seamless)
 		write_cmos_sensor_8(0x0104, 0x01);
-		write_cmos_sensor_8(0x3010, 0x00);
-	}
 
 	while (shutter >= 65535) {
 		shutter = shutter / 2;
@@ -737,7 +735,6 @@ static kal_uint16 set_gain(kal_uint16 gain)
 
 	if (!imx06c_is_seamless) {
 		write_cmos_sensor_8(0x0104, 0x01);
-		write_cmos_sensor_8(0x3010, 0x00);
 		write_cmos_sensor_8(0x0204, (reg_gain>>8) & 0xFF);
 		write_cmos_sensor_8(0x0205, reg_gain & 0xFF);
 		write_cmos_sensor_8(0x0104, 0x00);
