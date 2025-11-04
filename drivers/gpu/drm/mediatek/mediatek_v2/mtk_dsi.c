@@ -2632,7 +2632,7 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 	else
 		return -1;
 
-	if (dsi->panel) {
+	if ((dsi->panel) && (!dsi->is_slave)) {
 		if (panel_ext && panel_ext->funcs && panel_ext->funcs->prepare_power) {
 			ret = panel_ext->funcs->prepare_power(dsi->panel);
 			if (ret < 0)
@@ -5354,7 +5354,7 @@ static void mtk_dsi_poweroff(struct mtk_dsi *dsi)
 		pm_runtime_put_sync(dsi->host.dev);
 	}
 
-	if (dsi->panel) {
+	if ((dsi->panel) && (!dsi->is_slave)) {
 		if (panel_ext && panel_ext->funcs &&
 			panel_ext->funcs->unprepare_power) {
 			ret = panel_ext->funcs->unprepare_power(dsi->panel);
