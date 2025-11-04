@@ -1175,10 +1175,7 @@ static void smmuwp_reg_dump(struct seq_file *s,
 	void __iomem *wp_base = smmu->wp_base;
 	unsigned int smmuwp_reg_nr, i;
 
-	iommu_dump(s, "wp reg for smmu:%d, base:0x%llx, wp_base:0x%llx\n",
-		   data->plat_data->smmu_type,
-		   (unsigned long long) smmu->base,
-		   (unsigned long long) smmu->wp_base);
+	iommu_dump(s, "wp reg for smmu:%d\n", data->plat_data->smmu_type);
 
 	smmuwp_reg_nr = ARRAY_SIZE(smmuwp_regs);
 
@@ -2552,8 +2549,9 @@ void get_iommu_mrdump_buffer(unsigned long *vaddr, unsigned long *size)
 
 static int m4u_debug_init(struct mtk_m4u_data *data)
 {
-	struct proc_dir_entry *debug_file;
 	u32 id;
+#if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
+	struct proc_dir_entry *debug_file;
 
 	data->debug_root = proc_mkdir("iommu_debug", NULL);
 
@@ -2602,6 +2600,7 @@ static int m4u_debug_init(struct mtk_m4u_data *data)
 		if (IS_ERR_OR_NULL(debug_file))
 			pr_err("failed to proc_create smmu_status file\n");
 	}
+#endif
 
 	mtk_iommu_trace_init(data);
 
