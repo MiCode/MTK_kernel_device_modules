@@ -827,9 +827,7 @@ int mtk_drm_se_get_info_ioctl(struct drm_device *dev, void *data)
 
 	mtk_ddp_comp_io_cmd(output_comp, NULL, GET_ENABLE_READY_STATUS, &is_rdy);
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
-	if (info->need_se_en)
-#endif
+#ifdef IF_ZERO
 	{
 		DDPMSG("%s do se enable\n", __func__);
 		mutex_lock(&se_lock);
@@ -840,6 +838,7 @@ int mtk_drm_se_get_info_ioctl(struct drm_device *dev, void *data)
 			return ret;
 		}
 	}
+#endif
 
 	while (!mtk_crtc->enabled ||
 		(((s_dev == MTK_PANEL_DP0) ||
@@ -857,7 +856,7 @@ int mtk_drm_se_get_info_ioctl(struct drm_device *dev, void *data)
 	}
 
 	if (s_dev == MTK_PANEL_EDP) {
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
 		ret = mtk_drm_dvo_get_info(dev, info);
 #endif
 	} else if ((s_dev == MTK_PANEL_DP0) || (s_dev == MTK_PANEL_DP1)) {

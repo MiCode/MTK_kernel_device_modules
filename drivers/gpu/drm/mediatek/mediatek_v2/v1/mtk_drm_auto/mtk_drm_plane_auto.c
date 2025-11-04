@@ -23,41 +23,17 @@
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 unsigned int to_crtc_plane_index(unsigned int plane_index)
 {
-	struct drm_crtc *crtc;
-	struct mtk_drm_crtc *mtk_crtc;
-	struct drm_plane *base_plane;
-	unsigned int plane_index;
-
-	if (!plane) {
-		DDPMSG("[E]%s invalid plane %p\n", __func__, plane);
+	if (plane_index < OVL_LAYER_NR)
+		return plane_index;
+	else if (plane_index < (OVL_LAYER_NR + EXTERNAL_INPUT_LAYER_NR))
+		return plane_index - OVL_LAYER_NR;
+	else if (plane_index < (OVL_LAYER_NR + EXTERNAL_INPUT_LAYER_NR + MEMORY_INPUT_LAYER_NR))
+		return plane_index - OVL_LAYER_NR - EXTERNAL_INPUT_LAYER_NR;
+	else if (plane_index < MAX_PLANE_NR)
+		return plane_index - OVL_LAYER_NR - EXTERNAL_INPUT_LAYER_NR - MEMORY_INPUT_LAYER_NR;
+	else
 		return 0;
-	}
 
-	if (plane->crtc) {
-		crtc = plane->crtc;
-	} else if (plane->state && plane->state->crtc) {
-		crtc = plane->state->crtc;
-	} else if (plane->dev) {
-		drm_for_each_crtc(crtc, plane->dev) {
-			if (plane->possible_crtcs & drm_crtc_mask(crtc))
-				break;
-		}
-	} else {
-		DDPMSG("[E]%s invalid plane %p %d crtc\n", __func__, plane, plane->index);
-		return 0;
-	}
-
-	mtk_crtc = to_mtk_crtc(crtc);
-
-	base_plane = &mtk_crtc->planes[0].base;
-
-	plane_index = plane->index - base_plane->index;
-
-	DDPINFO("%s crtc %d plane index %d %d possible_crtcs 0x%X\n",
-		__func__, drm_crtc_index(crtc), plane->index, plane_index,
-		plane->possible_crtcs);
-
-	return plane_index;
 }
 #else
 unsigned int to_crtc_plane_index(unsigned int plane_index)

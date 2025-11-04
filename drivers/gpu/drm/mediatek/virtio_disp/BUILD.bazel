@@ -27,11 +27,11 @@ filegroup(
 )
 
 define_mgk_ddk_ko(
-    name = "mtk_drm_virtio_disp",
+    name = "virtio_disp",
     srcs = [],
     conditional_srcs = {
         "CONFIG_MTK_VIRTIO_DISP": {
-            True: ["mtk_drm_virtio_disp.c"],
+            True: ["mtk_virtio_disp_fe"],
         },
     },
     hdrs = glob([

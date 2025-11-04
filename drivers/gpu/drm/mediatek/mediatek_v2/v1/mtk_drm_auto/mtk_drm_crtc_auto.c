@@ -23,6 +23,7 @@
 
 #include "mtk_drm_ddp_comp_auto.h"
 #include "mtk_drm_crtc_auto.h"
+#include "mtk_drm_crtc_auto_guest.h"
 #include "mtk_virtio_disp.h"
 
 #include "mtk_drm_se.h"
@@ -381,7 +382,37 @@ struct mtk_drm_crtc *mtk_drm_get_crtc_by_output(unsigned int comp_id)
 
 	return NULL;
 }
-#endif
+
+void mtk_drm_crtc_backup_ovl_status_for_pq(struct mtk_drm_crtc *mtk_crtc,
+					   struct cmdq_pkt *cmdq_handle)
+{
+	u32 crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	struct mtk_ddp_comp *comp;
+
+	comp = mtk_crtc->first_exdma;
+
+	if (IS_ERR_OR_NULL(comp))
+		DDPMSG("%s CRTC%d failed to backup ovl status\n", __func__, crtc_idx);
+	else
+		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
+				    BACKUP_OVL_STATUS_FOR_PQ, NULL);
+}
+
+void mtk_drm_crtc_check_ovl_status_for_pq(struct mtk_drm_crtc *mtk_crtc)
+{
+	u32 crtc_idx = drm_crtc_index(&mtk_crtc->base);
+	unsigned int ovl_status = 0;
+
+	if (mtk_crtc->enabled) {
+		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
+				DISP_SLOT_OVL_STATUS_FOR_PQ(crtc_idx));
+
+		if (ovl_status & 1)
+			DDPPR_ERR("%s CRTC%d ovl status error:0x%x\n",
+				  __func__, crtc_idx, ovl_status);
+	}
+}
+#endif //auto host
 
 /*======================================COMMON===================================================*/
 u32 mtk_crtc_get_plane_local_index(struct mtk_drm_crtc *mtk_crtc,
@@ -519,19 +550,21 @@ void mtk_drm_crtc_auto_init(struct mtk_drm_crtc *mtk_crtc,
 	unsigned int possible_crtcs = 0;
 	struct mtk_ddp_comp *output_comp;
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
-	mtk_drm_se_crtc_init(mtk_crtc);
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	return mtk_drm_crtc_auto_init_guest (mtk_crtc, path_data, pipe);
 #endif
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
+	mtk_drm_se_crtc_init(mtk_crtc);
+
 	mtk_crtc->offset_x = 0;
 	mtk_crtc->offset_y = 0;
 	mtk_crtc->virtual_path = false;
 	mtk_crtc->is_guest_exclusive_device = path_data->is_guest_exclusive_device;
 	mtk_crtc->is_primary_layer_swap = path_data->is_primary_layer_swap;
 
-	if (check_comp_in_crtc(path_data, MTK_DISP_CHIST))
-		mtk_crtc->crtc_caps.crtc_ability |= ABILITY_CHIST;
+//	if (check_comp_in_crtc(path_data, MTK_DISP_CHIST))
+//		mtk_crtc->crtc_caps.crtc_ability |= ABILITY_CHIST;
 
 	mtk_drm_crtc_init_logo_layer_on(mtk_crtc, pipe);
 #endif
@@ -543,14 +576,11 @@ void mtk_drm_crtc_auto_init(struct mtk_drm_crtc *mtk_crtc,
 			mtk_crtc->emi_req = true;
 			DDPMSG("%s CRTC-%d emi_req %d\n", __func__, pipe, mtk_crtc->emi_req);
 		}
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
-		mtk_ddp_comp_io_cmd(output_comp, NULL, GET_DEVICE_TYPE,
-			&(mtk_crtc->is_shared_device));
-#endif
 		possible_crtcs = 1 << pipe;
 		mtk_ddp_comp_io_cmd(output_comp, NULL, SET_CRTC_ID,
 				    &possible_crtcs);
 
+		//dsi2 default enable superframe
 		if (output_comp->id == DDP_COMPONENT_DSI2_VIRTUAL) {
 			mtk_crtc->virtual_path = true;
 			if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params)
@@ -559,19 +589,9 @@ void mtk_drm_crtc_auto_init(struct mtk_drm_crtc *mtk_crtc,
 				DDPMSG("%s CRTC%d panel is not connect\n", __func__, pipe);
 		}
 	}
-
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
-	mtk_crtc->is_virtio_path = true;
-
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
-	if (drm_crtc_index(&mtk_crtc->base) == 1)
-		mtk_set_hotplug_status(1);
-#endif
-#endif
 }
 
 /* auto superframe api */
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 void mtk_drm_crtc_enable_path(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct cmdq_client *client;
@@ -625,7 +645,7 @@ void mtk_drm_crtc_enable_path(struct mtk_drm_crtc *mtk_crtc)
 	// CRTC_MMP_MARK(crtc_id, enable, 1, 3);
 
 	/* 7. disconnect addon module and config */
-	mtk_crtc_connect_addon_module(&mtk_crtc->base);
+	mtk_crtc_connect_addon_module(&mtk_crtc->base, false);
 	DDPINFO("%s --\n", __func__);
 }
 
@@ -666,28 +686,6 @@ void mtk_drm_crtc_disable_path(struct mtk_drm_crtc *mtk_crtc, bool need_wait)
 #endif
 }
 
-bool mtk_drm_skip_update(struct drm_crtc *crtc)
-{
-	int index = 0;
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_drm_private *private = crtc->dev->dev_private;
-	struct mtk_drm_crtc *mtk_crtc_p = NULL;
-
-	if (mtk_crtc->virtual_path) {
-		index = drm_crtc_index(crtc);
-		mtk_crtc_p = to_mtk_crtc(private->crtc[index - 1]);
-		while (mtk_crtc_p->virtual_path) {
-			index--;
-			mtk_crtc_p = to_mtk_crtc(private->crtc[index - 1]);
-		}
-		if (!mtk_crtc_p->enabled) {
-			DDPMSG("the parent is disable, skip this commit\n");
-			return true;
-		}
-	}
-	return false;
-}
-
 void mtk_drm_crtc_disable_virtual(struct drm_crtc *crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -705,8 +703,6 @@ void mtk_drm_crtc_disable_virtual(struct drm_crtc *crtc)
 		mtk_crtc_stop_trig_loop(crtc);
 
 	drm_crtc_vblank_off(crtc);
-
-	mtk_crtc_set_status(crtc, false);
 
 	DDPINFO("crtc%d %s:%d -\n", crtc_id, __func__, __LINE__);
 }
@@ -738,44 +734,8 @@ void mtk_drm_crtc_enable_virtual(struct drm_crtc *crtc)
 
 	drm_crtc_vblank_on(crtc);
 
-	mtk_crtc_set_status(crtc, true);
-
 	DDPINFO("crtc%d - %s\n", crtc_id, __func__);
 }
-
-void mtk_drm_crtc_enable_auto(struct drm_crtc *crtc)
-{
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
-	if (mtk_crtc->is_virtio_path)
-		mtk_drm_crtc_enable_virtio(crtc);
-	else
-#elif IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
-	else if (mtk_crtc->virtual_path)
-		mtk_drm_crtc_enable_virtual(crtc);
-	else
-#endif
-		mtk_drm_crtc_enable(crtc, false);
-}
-
-void mtk_drm_crtc_disable_auto(struct drm_crtc *crtc)
-{
-	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
-	if (mtk_crtc->is_virtio_path)
-		mtk_drm_crtc_disable_virtio(crtc);
-	else
-#elif IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
-	if (mtk_crtc->virtual_path)
-		mtk_drm_crtc_disable_virtual(crtc);
-	else
-#endif
-		mtk_drm_crtc_disable(crtc, true);
-
-}
-
 
 void mtk_drm_crtc_phy_map(struct mtk_drm_private *private, int i)
 {
@@ -818,38 +778,59 @@ void mtk_drm_crtc_phy_map(struct mtk_drm_private *private, int i)
 	}
 }
 /* auto superframe api */
+
+void mtk_drm_crtc_enable_auto(struct drm_crtc *crtc)
+{
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	if (mtk_crtc->is_virtio_path)
+		mtk_drm_crtc_enable_virtio(crtc);
+#else
+	//auto, auto host
+	if (mtk_crtc->virtual_path)
+		mtk_drm_crtc_enable_virtual(crtc);
+
+	mtk_drm_crtc_enable(crtc, false);
 #endif
-
-void mtk_drm_crtc_backup_ovl_status_for_pq(struct mtk_drm_crtc *mtk_crtc,
-					   struct cmdq_pkt *cmdq_handle)
-{
-	u32 crtc_idx = drm_crtc_index(&mtk_crtc->base);
-	struct mtk_ddp_comp *comp;
-
-	comp = mtk_crtc->first_exdma;
-
-	if (IS_ERR_OR_NULL(comp))
-		DDPMSG("%s CRTC%d failed to backup ovl status\n", __func__, crtc_idx);
-	else
-		mtk_ddp_comp_io_cmd(comp, cmdq_handle,
-				    BACKUP_OVL_STATUS_FOR_PQ, NULL);
 }
 
-void mtk_drm_crtc_check_ovl_status_for_pq(struct mtk_drm_crtc *mtk_crtc)
+void mtk_drm_crtc_disable_auto(struct drm_crtc *crtc)
 {
-	u32 crtc_idx = drm_crtc_index(&mtk_crtc->base);
-	unsigned int ovl_status = 0;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 
-	if (mtk_crtc->enabled) {
-		ovl_status = *(unsigned int *)mtk_get_gce_backup_slot_va(mtk_crtc,
-				DISP_SLOT_OVL_STATUS_FOR_PQ(crtc_idx));
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	if (mtk_crtc->is_virtio_path)
+		mtk_drm_crtc_disable_virtio(crtc);
+#else
+	//auto, auto host
+	if (mtk_crtc->virtual_path)
+		mtk_drm_crtc_disable_virtual(crtc);
 
-		if (ovl_status & 1)
-			DDPPR_ERR("%s CRTC%d ovl status error:0x%x\n",
-				  __func__, crtc_idx, ovl_status);
+	mtk_drm_crtc_disable(crtc, true);
+#endif
+}
+
+bool mtk_drm_skip_update(struct drm_crtc *crtc)
+{
+	int index = 0;
+	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
+	struct mtk_drm_private *private = crtc->dev->dev_private;
+	struct mtk_drm_crtc *mtk_crtc_p = NULL;
+
+	if (mtk_crtc->virtual_path) {
+		index = drm_crtc_index(crtc);
+		mtk_crtc_p = to_mtk_crtc(private->crtc[index - 1]);
+		while (mtk_crtc_p->virtual_path) {
+			index--;
+			mtk_crtc_p = to_mtk_crtc(private->crtc[index - 1]);
+		}
+		if (!mtk_crtc_p->enabled) {
+			DDPMSG("the parent is disable, skip this commit\n");
+			return true;
+		}
 	}
+	return false;
 }
-
-/*=======================================GUEST===================================================*/
 
 #endif

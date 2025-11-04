@@ -13,7 +13,11 @@
 #include <uapi/drm/mediatek_drm.h>
 #include <drm/drm_modes.h>
 
-int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
-			     struct drm_device *drm_dev, int fun_lye)
+int mtk_lye_get_exdma_comp_id_auto(int disp_idx, int layer_idx,
+			     struct drm_device *drm_dev, int fun_lye, int rsz_lye);
+
+void mtk_register_layering_rule_ops_for_auto(struct layering_rule_ops *ops,
+				    struct layering_rule_info_t *info);
+
 
 #endif

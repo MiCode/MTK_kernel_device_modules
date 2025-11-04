@@ -32,7 +32,7 @@ static atomic_t top_isr_ref; /* irq power status protection */
 static atomic_t top_clk_ref; /* top clk status protection*/
 static spinlock_t top_clk_lock; /* power status protection*/
 
-int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
+int mtk_drm_pm_ctl_auto_guest(struct mtk_drm_private *priv, enum disp_pm_action action)
 {
 	int ret = 0;
 
@@ -40,7 +40,38 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 	return ret;
 }
 
-void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
+void mtk_drm_get_pwr_clk_auto_guest(struct mtk_drm_private *priv)
+{
+	struct device *dev = priv->mmsys_dev;
+	struct device_node *pwr_node;
+	struct pwr_clk_map *clk_map;
+	int i;
+
+	pwr_node = of_parse_phandle(dev->of_node, "pwr-handle", 0);
+	if (!pwr_node) {
+		DDPMSG("No pwr-handle node\n");
+		priv->pwr_node = NULL;
+		return;
+	}
+
+	priv->pwr_node = pwr_node;
+	clk_map = priv->data->pwr_clk_map;
+	if (!clk_map) {
+		DDPMSG("%s No clk_map\n", __func__);
+		return;
+	}
+	// Get clocks from pwr_dev
+	for (i = 0; clk_map[i].name != NULL; i++) {
+		priv->pwr_clks[clk_map[i].id] = of_clk_get_by_name(pwr_node, clk_map[i].name);
+		if (IS_ERR(priv->pwr_clks[clk_map[i].id])) {
+			DDPMSG("No %s clock in pwr dev\n", clk_map[i].name);
+			priv->pwr_clks[clk_map[i].id] = NULL;
+		} else
+			DDPMSG("get %s id: %d\n", clk_map[i].name, clk_map[i].id);
+	}
+}
+
+void mtk_drm_get_top_clk_auto_guest(struct mtk_drm_private *priv)
 {
 	struct device *dev = priv->mmsys_dev;
 	struct device_node *node = dev->of_node;
@@ -72,9 +103,9 @@ void mtk_drm_get_top_clk(struct mtk_drm_private *priv)
 	}
 }
 
-void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
+void mtk_drm_top_clk_prepare_enable_auto_guest(struct drm_crtc *crtc)
 {
-	struct mtk_drm_private *priv = drm->dev_private;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	bool en = 1;
 	unsigned long flags = 0;
 
@@ -95,15 +126,15 @@ void mtk_drm_top_clk_prepare_enable(struct drm_device *drm)
 	DRM_MMP_MARK(top_clk, atomic_read(&top_clk_ref),
 			atomic_read(&top_isr_ref));
 	if (priv->data->sodi_config)
-		priv->data->sodi_config(drm, DDP_COMPONENT_ID_MAX, NULL, &en);
+		priv->data->sodi_config(crtc->dev, DDP_COMPONENT_ID_MAX, NULL, &en);
 
 	if (priv->data->disable_merge_irq)
-		priv->data->disable_merge_irq(drm);
+		priv->data->disable_merge_irq(crtc->dev);
 }
 
-void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
+void mtk_drm_top_clk_disable_unprepare_auto_guest(struct drm_crtc *crtc)
 {
-	struct mtk_drm_private *priv = drm->dev_private;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	int cnt = 0;
 	unsigned long flags = 0;
 
@@ -132,7 +163,7 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 			atomic_read(&top_isr_ref));
 }
 
-bool mtk_drm_top_clk_isr_get(char *master)
+bool mtk_drm_top_clk_isr_get_auto_guest(struct mtk_ddp_comp *comp)
 {
 	unsigned long flags = 0;
 
@@ -140,7 +171,7 @@ bool mtk_drm_top_clk_isr_get(char *master)
 		spin_lock_irqsave(&top_clk_lock, flags);
 		if (atomic_read(&top_clk_ref) <= 0) {
 			DDPMSG("%s, top clk off at %s\n",
-				  __func__, master ? master : "NULL");
+				  __func__, mtk_dump_comp_str(comp));
 			spin_unlock_irqrestore(&top_clk_lock, flags);
 			return false;
 		}
@@ -150,7 +181,7 @@ bool mtk_drm_top_clk_isr_get(char *master)
 	return true;
 }
 
-void mtk_drm_top_clk_isr_put(char *master)
+void mtk_drm_top_clk_isr_put_auto_guest(struct mtk_ddp_comp *comp)
 {
 	unsigned long flags = 0;
 
@@ -161,7 +192,7 @@ void mtk_drm_top_clk_isr_put(char *master)
 		/* when timeout of polling isr ref in unpreare top clk*/
 		if (atomic_read(&top_clk_ref) <= 0) {
 			DDPMSG("%s, top clk off at %s\n",
-				  __func__, master ? master : "NULL");
+				  __func__,  mtk_dump_comp_str(comp));
 			spin_unlock_irqrestore(&top_clk_lock, flags);
 			return;
 		}
@@ -170,6 +201,7 @@ void mtk_drm_top_clk_isr_put(char *master)
 	}
 }
 
+#if IS_ENABLED(CONFIG_DRM_PATH_CONFIG_FROM_DTS)
 static void mtk_drm_path_update_output_comp(u32 crtc_id, struct mtk_crtc_path_data *crtc_path_data,
 					struct virtio_disp_an_crtc_path_data *an_crtc_path_data)
 {
@@ -273,8 +305,9 @@ static void mtk_drm_path_update_crtc_prop(u32 crtc_id,
 		crtc_path_data->is_shared_device,
 		crtc_path_data->is_dual_ovl);
 }
+#endif
 
-int mtk_drm_path_data_update(void)
+int mtk_drm_path_data_update_from_host(struct mtk_drm_private *private)
 {
 	struct virtio_disp_cmd *cmd;
 	int i, ret = 0;
@@ -282,7 +315,7 @@ int mtk_drm_path_data_update(void)
 	struct virtio_disp_rsp_crtc_path_info *path_info;
 	struct virtio_disp_an_crtc_path_data *an_crtc_path_data;
 
-
+#if IS_ENABLED(CONFIG_DRM_PATH_CONFIG_FROM_DTS)
 	cmd = virtio_disp_cmd_create();
 	if (IS_ERR(cmd)) {
 		DDPMSG("[E] %s vitio cmd create fail %ld!\n", __func__, PTR_ERR(cmd));
@@ -306,7 +339,7 @@ int mtk_drm_path_data_update(void)
 	}
 
 	for (i = 0; i < path_info->crtc_nr && i < MAX_CRTC; i++) {
-		crtc_path_data = mt6991_mtk_crtc_path_data[i];
+		crtc_path_data = mtk_disp_crtc_path_data[i];
 		an_crtc_path_data = &path_info->crtc_path_data[i];
 
 		if (!crtc_path_data)
@@ -334,7 +367,42 @@ int mtk_drm_path_data_update(void)
 	}
 
 	virtio_disp_cmd_destroy(cmd);
-
+#else
+	for (i = 0; i < MAX_CRTC; i++) {
+		switch (i) {
+		case 0:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->main_path_data;
+			break;
+		case 1:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->ext_path_data;
+			break;
+		case 2:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->third_path_data;
+			break;
+		case 3:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->fourth_path_data_discrete;
+			break;
+		case 4:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->fifth_path_data;
+			break;
+		case 5:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->sixth_path_data;
+			break;
+		case 6:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->seventh_path_data;
+			break;
+		default:
+			break;
+		}
+	}
+#endif
 	return ret;
 }
 
@@ -344,7 +412,7 @@ int mtk_drm_path_find_crtc(struct mtk_ddp_comp *comp)
 	int i;
 
 	for (i = 0; i < MAX_CRTC; i++) {
-		crtc_path_data = mt6991_mtk_crtc_path_data[i];
+		crtc_path_data = mtk_disp_crtc_path_data[i];
 
 		if (!crtc_path_data)
 			continue;
@@ -368,7 +436,7 @@ bool mtk_drm_path_is_shared_device(struct mtk_ddp_comp *comp)
 	int i;
 
 	for (i = 0; i < MAX_CRTC; i++) {
-		crtc_path_data = mt6991_mtk_crtc_path_data[i];
+		crtc_path_data = mtk_disp_crtc_path_data[i];
 
 		if (!crtc_path_data || !crtc_path_data->is_path_enable)
 			continue;

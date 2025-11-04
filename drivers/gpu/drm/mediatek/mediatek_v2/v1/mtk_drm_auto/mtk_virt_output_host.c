@@ -488,9 +488,8 @@ static int mtk_virt_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_virt_remove(struct platform_device *pdev)
+static void mtk_virt_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 struct platform_driver mtk_virt_driver = {

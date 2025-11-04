@@ -142,12 +142,14 @@ struct virtio_disp_cmd {
 	struct completion done;
 	mtk_virt_hotplug_cb cb;
 };
+#if IS_ENABLED(CONFIG_MTK_VIRTIO_DISP)
 struct virtio_disp_cmd *virtio_disp_cmd_create(void);
 void virtio_disp_cmd_destroy(struct virtio_disp_cmd *cmd);
 int virtio_disp_cmd_submit(struct virtio_disp_cmd *cmd);
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ_DMA_MAP)
 dma_addr_t mtk_drm_vbuffer_map(struct sg_table *sgt, uint32_t *idr);
 void mtk_drm_vbuffer_unmap(uint32_t idr);
+#endif
 #endif
 
 #endif

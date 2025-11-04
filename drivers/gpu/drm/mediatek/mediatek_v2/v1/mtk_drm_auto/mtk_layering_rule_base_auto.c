@@ -37,7 +37,6 @@
 #include "mtk_log.h"
 #include "mtk_drm_mmp.h"
 #define CREATE_TRACE_POINTS
-#include "mtk_layer_layout_trace.h"
 #include "mtk_drm_gem.h"
 #include "mtk_dsi.h"
 
@@ -49,11 +48,15 @@
 
 #include <linux/module.h>
 
+static struct layering_rule_info_t *l_rule_info;
+static struct layering_rule_ops *l_rule_ops;
+
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 #include "mtk_drm_crtc_auto.h"
+#define DISP_EXDMA_LAYER_LIMIT 7
 
-int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
-			     struct drm_device *drm_dev, int fun_lye)
+int mtk_lye_get_exdma_comp_id_auto(int disp_idx, int layer_idx,
+			     struct drm_device *drm_dev, int fun_lye, int rsz_lye)
 {
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 	struct drm_crtc *crtc = NULL;
@@ -86,6 +89,13 @@ int mtk_lye_get_exdma_comp_id(int disp_idx, int layer_idx,
 		mtk_dump_comp_str_id(exdma_comp_id));
 
 	return exdma_comp_id;
+}
+
+void mtk_register_layering_rule_ops_for_auto(struct layering_rule_ops *ops,
+				    struct layering_rule_info_t *info)
+{
+	l_rule_ops = ops;
+	l_rule_info = info;
 }
 
 /*when android only have 2 layer, video layer need goto mml for pq*/
@@ -130,7 +140,9 @@ void clear_layer_for_two_android_layer(struct drm_mtk_layering_info *disp_info,
 	if (!mtk_is_gles_layer(disp_info, 0, top))
 		return;
 
-	rollback_all_to_GPU(disp_info, 0);
+	//roll back all to gpu
+	disp_info->gles_head[0] = 0;
+	disp_info->gles_tail[0] = disp_info->layer_num[0] - 1;
 
 	c = &disp_info->input_config[0][top];
 	if (top == disp_info->gles_head[0])

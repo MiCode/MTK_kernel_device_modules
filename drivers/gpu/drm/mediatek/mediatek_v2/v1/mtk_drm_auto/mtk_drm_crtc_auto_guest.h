@@ -43,7 +43,8 @@ int mtk_lye_get_exdma_comp_id_for_auto(int disp_idx, int layer_idx,
 	struct drm_device *drm_dev, int fun_lye, int rsz_lye);
 void clear_layer_for_two_android_layer(struct drm_mtk_layering_info *disp_info,
 	struct drm_device *drm_dev);
-void init_layer_mapping_table(enum HRT_TB_TYPE hrt_type, u32 layer_nr)
+void mtk_drm_crtc_auto_init_guest (struct mtk_drm_crtc *mtk_crtc,
+			    const struct mtk_crtc_path_data *path_data,	int pipe);
 #endif
 
 

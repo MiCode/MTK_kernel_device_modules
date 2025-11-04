@@ -12,7 +12,6 @@
 #include <drm/drm_plane.h>
 #include <linux/videodev2.h>
 
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_dump.h"
@@ -27,8 +26,9 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_virtio_disp.h"
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+struct mtk_crtc_path_data *mtk_disp_crtc_path_data[MAX_CRTC] = {NULL};
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST) || IS_ENABLED(MTK_DRM_MEDIATEK_AUTO_AN_ONLY)
 #define OVLSYS_PATH_DATA_PROP_NAME "ovlsys-path-data"
 #define DUAL_OVLSYS_PATH_DATA_PROP_NAME "dual-ovlsys-path-data"
 #define PRIMARY_LAYER_SWAP_PROP_NAME "is-primary-layer-swap"
@@ -40,6 +40,7 @@
 #define GUEST_EXCLUSIVE_PROP_NAME "is-guest-exclusive-device"
 #define DUAL_PIPE_PROP_NAME "is-dual-pipe"
 
+#if IS_ENABLED(CONFIG_DRM_PATH_CONFIG_FROM_DTS)
 static void mtk_drm_path_update_crtc_prop(struct device_node *node, u32 crtc_id,
 					  struct mtk_crtc_path_data *crtc_path_data)
 {
@@ -428,17 +429,26 @@ static void mtk_drm_path_update_an_path_data(struct device_node *node, u32 crtc_
 		an_crtc_path_info->crtc_nr);
 }
 #endif
+#endif
 
-int mtk_drm_path_data_update(struct device_node *node)
+#endif
+
+int mtk_drm_path_data_update(struct mtk_drm_private *private)
 {
 	int i, ret = 0;
 	char crtc_node_name[100];
 	struct device_node *crtc_node;
 	struct mtk_crtc_path_data *crtc_path_data;
-	struct virtio_disp_rsp_crtc_path_info *an_crtc_path_info = &mt6991_mtk_an_crtc_path_info;
+	struct virtio_disp_rsp_crtc_path_info *an_crtc_path_info;
+	struct device_node *node = private->mmsys_dev->of_node;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+	return 0;
+#endif
+
+#if IS_ENABLED(CONFIG_DRM_PATH_CONFIG_FROM_DTS)
 	for (i = 0; i < MAX_CRTC; i++) {
-		crtc_path_data = mt6991_mtk_crtc_path_data[i];
+		crtc_path_data = mtk_disp_crtc_path_data[i];
 
 		/* writeback crtc, default enable*/
 		if (i == 2) {
@@ -477,8 +487,44 @@ int mtk_drm_path_data_update(struct device_node *node)
 	}
 
 	return ret;
-}
+#else
+	for (i = 0; i < MAX_CRTC; i++) {
+		switch (i) {
+		case 0:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->main_path_data;
+			break;
+		case 1:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->ext_path_data;
+			break;
+		case 2:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->third_path_data;
+			break;
+		case 3:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->fourth_path_data_discrete;
+			break;
+		case 4:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->fifth_path_data;
+			break;
+		case 5:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->sixth_path_data;
+			break;
+		case 6:
+			mtk_disp_crtc_path_data[i] =
+				(struct mtk_crtc_path_data *)private->data->seventh_path_data;
+			break;
+		default:
+			break;
+		}
+	}
+	return ret;
 #endif
+}
 
 int mtk_drm_path_crtc_create(struct drm_device *drm)
 {
@@ -486,7 +532,7 @@ int mtk_drm_path_crtc_create(struct drm_device *drm)
 	struct mtk_crtc_path_data *crtc_path_data;
 
 	for (i = 0; i < MAX_CRTC; i++) {
-		crtc_path_data = mt6991_mtk_crtc_path_data[i];
+		crtc_path_data = mtk_disp_crtc_path_data[i];
 #if IS_ENABLED(CONFIG_VHOST_DISP) || IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 		if (!crtc_path_data || !crtc_path_data->is_path_enable) {
 			DDPMSG("%s path-%d data invalid or disabled\n", __func__, i);
@@ -501,7 +547,5 @@ int mtk_drm_path_crtc_create(struct drm_device *drm)
 			break;
 		}
 	}
-
 	return ret;
 }
-#endif

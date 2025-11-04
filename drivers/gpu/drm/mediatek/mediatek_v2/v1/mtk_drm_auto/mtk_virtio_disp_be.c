@@ -127,13 +127,13 @@ bool mtk_drm_wake_state(uint32_t thread_id)
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPMSG("%s invalid drm dev\n", __func__);
-		return;
+		return false;
 	}
 
 	priv = drm_dev->dev_private;
 	if (IS_ERR_OR_NULL(priv)) {
 		DDPMSG("%s, invalid priv\n", __func__);
-		return;
+		return false;
 	}
 
 	if (thread_id < MAX_CMDQ_THREAD) {
@@ -162,7 +162,7 @@ static int mtk_drm_crtc_enable_full(struct drm_device *dev, struct mtk_drm_crtc 
 
 	if (mtk_crtc->enabled) {
 		DDPMSG(" %s skip\n", __func__);
-		return;
+		return 0;
 	}
 
 	crtc = &mtk_crtc->base;
@@ -297,18 +297,15 @@ int mtk_drm_get_crtc_index(struct virtio_disp_req_crtc *req_crtc,
 			   struct virtio_disp_rsp_crtc *rsp_crtc)
 {
 	struct mtk_drm_crtc *mtk_crtc;
-	int ret;
-
 	struct mtk_drm_private *priv;
 	struct drm_crtc *crtc;
 	struct cmdq_pkt *cmdq_handle = NULL;
 	struct drm_device *drm_dev = mtk_drm_get_dev();
-
 	unsigned int comp_id;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPMSG("%s invalid drm dev\n", __func__);
-		return;
+		return -EINVAL;
 	}
 
 	comp_id = req_crtc->output_comp_id;
@@ -336,16 +333,15 @@ EXPORT_SYMBOL(mtk_drm_get_crtc_index);
 int mtk_drm_crtc_enable_full_by_output(unsigned int comp_id, bool enable)
 {
 	struct mtk_drm_crtc *mtk_crtc;
-	int ret;
-
 	struct mtk_drm_private *priv;
 	struct drm_crtc *crtc;
 	struct cmdq_pkt *cmdq_handle = NULL;
 	struct drm_device *drm_dev = mtk_drm_get_dev();
+	int ret;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPMSG("%s invalid drm dev\n", __func__);
-		return;
+		return -EINVAL;
 	}
 
 	priv = drm_dev->dev_private;
@@ -368,7 +364,7 @@ int mtk_drm_crtc_enable_full_by_output(unsigned int comp_id, bool enable)
 EXPORT_SYMBOL(mtk_drm_crtc_enable_full_by_output);
 
 int mtk_drm_get_panel_timing(unsigned int comp_id,
-	struct virtio_disp_rsp_panel *panel,
+	struct virtio_disp_panel *panel,
 	mtk_virt_hotplug_cb cb)
 {
 	struct drm_device *dev;
@@ -385,7 +381,7 @@ int mtk_drm_get_panel_timing(unsigned int comp_id,
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPMSG("%s invalid drm dev\n", __func__);
-		return;
+		return -EINVAL;
 	}
 	dev = drm_dev;
 

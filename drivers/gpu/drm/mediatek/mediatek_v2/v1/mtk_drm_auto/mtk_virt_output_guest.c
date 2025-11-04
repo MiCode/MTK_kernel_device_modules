@@ -84,7 +84,7 @@ struct notify_dev {
 
 static struct mtk_virt *g_mtk_virt[MTK_DISP_MAX];
 
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 struct notify_dev virt_dp_notify_data;
 #endif
 
@@ -119,12 +119,11 @@ static struct mtk_panel_params ext_params = {
 	.data_rate = 836,
 	.physical_width = 1920,
 	.physical_height = 1080,
-	.vdo_per_frame_lp_enable = 1,
 	.physical_width_um = 129,
 	.physical_height_um = 64,
 };
 
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 struct class *switch_virt_class;
 static atomic_t device_count;
 
@@ -359,6 +358,7 @@ int mtk_virt_get_panel_size(enum MTK_DDP_OUT_ID id,
 			*width = mtk_virt_out->mode.hdisplay;
 			*height = mtk_virt_out->mode.vdisplay;
 		} else {
+#if IS_ENABLED(CONFIG_MTK_VIRTIO_DISP)
 			if (id == MTK_DISP_DSI0)
 				ddp_id = DDP_COMPONENT_DSI0;
 			else if (id == MTK_DISP_DSI1)
@@ -387,6 +387,7 @@ int mtk_virt_get_panel_size(enum MTK_DDP_OUT_ID id,
 			*width = cmd->rsp.param.panel.width;
 			*height = cmd->rsp.param.panel.height;
 			virtio_disp_cmd_destroy(cmd);
+#endif
 		}
 	}
 
@@ -628,7 +629,7 @@ static int mtk_virt_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	struct drm_display_mode **mode;
 	struct mtk_virt *virt = container_of(comp, struct mtk_virt, ddp_comp);
 	bool *para;
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 	int value;
 #endif
 
@@ -673,7 +674,7 @@ static int mtk_virt_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		*para = virt->is_shared_device;
 		break;
 #endif
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 	case UPDATE_DP_CONNECT_STATE:
 		value = *(int *)params;
 
@@ -765,7 +766,7 @@ static int mtk_virt_bind(struct device *dev, struct device *master, void *data)
 
 	virt->drm_dev = drm_dev;
 
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 	if (virt->ddp_comp.id == DDP_COMPONENT_DPI0_VIRTUAL) {
 		if (virt->virt_ready)
 			mtk_virt_dp0_hotplug_uevent(1);
@@ -1094,7 +1095,7 @@ static int mtk_virt_init_panel(struct device *dev, struct mtk_virt *virt)
 	return 0;
 }
 
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 void mtk_set_hotplug_status(int suspend_done)
 {
 	struct mtk_virt *mtk_virt_dp0 = g_mtk_virt[MTK_DISP_DP0];
@@ -1165,7 +1166,7 @@ static int mtk_virt_init_device(struct device *dev, struct mtk_virt *virt)
 		virt->is_first_path);
 #endif
 
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 	if ((virt->ddp_comp.id == DDP_COMPONENT_DSI0_VIRTUAL) ||
 		(virt->ddp_comp.id == DDP_COMPONENT_DSI1_VIRTUAL) ||
 		(virt->ddp_comp.id == DDP_COMPONENT_DSI2_VIRTUAL) ||
@@ -1250,7 +1251,7 @@ static int mtk_virt_probe(struct platform_device *pdev)
 		g_mtk_virt[MTK_DISP_DSI0] = virt;
 	else if (comp_id == DDP_COMPONENT_DPI0_VIRTUAL) {
 		g_mtk_virt[MTK_DISP_DP0] = virt;
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 		virt_dp_notify_data.name = "hdmi";	/* now hwc not support DP */
 		virt_dp_notify_data.index = 0;
 		virt_dp_notify_data.state = VIRT_DPTX_STATE_NO_DEVICE;
@@ -1291,9 +1292,8 @@ static int mtk_virt_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int mtk_virt_remove(struct platform_device *pdev)
+static void mtk_virt_remove(struct platform_device *pdev)
 {
-	return 0;
 }
 
 struct platform_driver mtk_virt_driver = {

@@ -48,6 +48,43 @@
 
 /*=======================================GUEST===================================================*/
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
+void mtk_drm_crtc_auto_init_guest (struct mtk_drm_crtc *mtk_crtc,
+			    const struct mtk_crtc_path_data *path_data,
+			    int pipe)
+{
+		unsigned int possible_crtcs = 0;
+		struct mtk_ddp_comp *output_comp;
+
+		output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+		if (output_comp) {
+			if (output_comp->id == DDP_COMPONENT_DSI0 ||
+				output_comp->id == DDP_COMPONENT_DSI0_VIRTUAL) {
+				mtk_crtc->emi_req = true;
+				DDPMSG("%s CRTC-%d emi_req %d\n", __func__, pipe, mtk_crtc->emi_req);
+			}
+			mtk_ddp_comp_io_cmd(output_comp, NULL, GET_DEVICE_TYPE,
+				&(mtk_crtc->is_shared_device));
+			possible_crtcs = 1 << pipe;
+			mtk_ddp_comp_io_cmd(output_comp, NULL, SET_CRTC_ID,
+						&possible_crtcs);
+
+			if (output_comp->id == DDP_COMPONENT_DSI2_VIRTUAL) {
+				mtk_crtc->virtual_path = true;
+				if (mtk_crtc->panel_ext && mtk_crtc->panel_ext->params)
+					mtk_crtc->offset_x = mtk_crtc->panel_ext->params->crop_width[0];
+				else
+					DDPMSG("%s CRTC%d panel is not connect\n", __func__, pipe);
+			}
+		}
+
+		mtk_crtc->is_virtio_path = true;
+
+#ifdef MTK_VIRT_WITH_HOTPLUG
+		if (drm_crtc_index(&mtk_crtc->base) == 1)
+			mtk_set_hotplug_status(1);
+#endif
+}
+
 /* restore ovl layer config and set dal layer if any */
 static void mtk_crtc_restore_plane_setting_virt(struct mtk_drm_crtc *mtk_crtc)
 {
@@ -124,7 +161,7 @@ void mtk_drm_crtc_enable_virtio(struct drm_crtc *crtc)
 	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
 
 	/* 1. power on mtcmos */
-	mtk_drm_top_clk_prepare_enable(crtc->dev);
+	mtk_drm_top_clk_prepare_enable(crtc);
 
 	/*2 enable all module clk. enable smi clk ref cnt, otherwise android smi can't set ostd*/
 	mtk_crtc_ddp_prepare(mtk_crtc);
@@ -164,7 +201,7 @@ void mtk_drm_crtc_enable_virtio(struct drm_crtc *crtc)
 
 	mtk_crtc_set_status(crtc, true);
 
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 	if (crtc_id == 1)
 		mtk_set_hotplug_status(0);
 #endif
@@ -219,7 +256,7 @@ void mtk_drm_crtc_disable_virtio(struct drm_crtc *crtc)
 	/* 9. power off all modules in this CRTC */
 	mtk_crtc_ddp_unprepare(mtk_crtc);
 
-	mtk_drm_top_clk_disable_unprepare(crtc->dev);
+	mtk_drm_top_clk_disable_unprepare(crtc);
 	mtk_crtc_set_status(crtc, false);
 
 #if IS_ENABLED(CONFIG_MTK_VIRTIO_DISP)
@@ -240,7 +277,7 @@ void mtk_drm_crtc_disable_virtio(struct drm_crtc *crtc)
 		       mtk_crtc->qos_ctx->last_larb_hrt_req);
 #endif
 
-#ifndef MTK_VIRT_WITH_NO_HOTPLUG
+#ifdef MTK_VIRT_WITH_HOTPLUG
 	if (crtc_id == 1)
 		mtk_set_hotplug_status(1);
 #endif
@@ -347,6 +384,7 @@ int mtk_drm_get_host_crtc_obj_id(struct drm_device *dev, void *data, struct drm_
 		return -EINVAL;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_VIRTIO_DISP)
 	cmd = virtio_disp_cmd_create();
 	if (!cmd) {
 		DDPMSG("[E]%s failed to create virtio_disp_cmd\n", __func__);
@@ -383,6 +421,7 @@ int mtk_drm_get_host_crtc_obj_id(struct drm_device *dev, void *data, struct drm_
 	*(unsigned int *)data = cmd->rsp.param.crtc.crtc_obj_id;
 
 	virtio_disp_cmd_destroy(cmd);
+#endif
 
 	return 0;
 }

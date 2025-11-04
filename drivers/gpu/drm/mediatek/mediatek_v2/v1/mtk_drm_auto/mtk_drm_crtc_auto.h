@@ -72,6 +72,13 @@
 
 #define DP_INTF0_CONNECTOR_READY	REG_FLD_MSB_LSB(1, 0)
 
+#define for_each_comp_id_target_mode_path_in_disp_path_data(comp_id, path_data, __j, p_mode, ddp_path) \
+		for ((__j) = 0; (__j) < ((path_data)->path_len[p_mode][ddp_path]) &&  \
+			((comp_id) = (path_data)->path[p_mode][ddp_path][__j], \
+			1);			      \
+			(__j)++)
+
+
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
 void mtk_drm_crtc_wakeup_logo_layer_thread(struct mtk_drm_crtc *mtk_crtc);
 void mtk_drm_crtc_init_logo_layer_on(struct mtk_drm_crtc *mtk_crtc, int pipe);
@@ -110,7 +117,6 @@ void mtk_drm_crtc_auto_init(struct mtk_drm_crtc *mtk_crtc,
 
 
 
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 /* auto superframe */
 void mtk_drm_crtc_disable_path(struct mtk_drm_crtc *mtk_crtc, bool need_wait);
 void mtk_drm_crtc_enable_path(struct mtk_drm_crtc *mtk_crtc);
@@ -118,15 +124,14 @@ bool mtk_drm_skip_update(struct drm_crtc *crtc);
 void mtk_drm_crtc_phy_map(struct mtk_drm_private *private, int i);
 void mtk_drm_crtc_disable_virtual(struct drm_crtc *crtc);
 void mtk_drm_crtc_enable_virtual(struct drm_crtc *crtc);
-#endif
 
 void mtk_drm_crtc_enable_auto(struct drm_crtc *crtc);
 void mtk_drm_crtc_disable_auto(struct drm_crtc *crtc);
 
 /* backup ovl status */
-void mtk_drm_crtc_backup_ovl_status(struct mtk_drm_crtc *mtk_crtc,
-				    struct cmdq_pkt *cmdq_handle);
-void mtk_drm_crtc_check_ovl_status(struct mtk_drm_crtc *mtk_crtc);
+//void mtk_drm_crtc_backup_ovl_status(struct mtk_drm_crtc *mtk_crtc,
+//				    struct cmdq_pkt *cmdq_handle);
+//void mtk_drm_crtc_check_ovl_status(struct mtk_drm_crtc *mtk_crtc);
 void mtk_drm_crtc_backup_ovl_status_for_pq(struct mtk_drm_crtc *mtk_crtc,
 					   struct cmdq_pkt *cmdq_handle);
 void mtk_drm_crtc_check_ovl_status_for_pq(struct mtk_drm_crtc *mtk_crtc);

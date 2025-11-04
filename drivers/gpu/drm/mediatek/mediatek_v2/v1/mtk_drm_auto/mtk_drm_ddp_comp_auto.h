@@ -8,20 +8,20 @@
 
 #include <linux/io.h>
 #include <linux/kernel.h>
+#include "mtk_drm_ddp_comp.h"
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #define PHY_COMP		0
 #define VIRT_COMP		1
 #define SHARE_COMP		3
 
-struct mtk_ddp_comp_match {
-	enum mtk_ddp_comp_id index;
-	enum mtk_ddp_comp_type type;
-	int alias_id;
-	const struct mtk_ddp_comp_funcs *funcs;
-	bool is_output;
-	int is_virt_comp;
-};
+#define DSI0_MAC0_ULTRA				0
+#define DSI1_MAC0_ULTRA				1
+#define DSI1_MAC1_ULTRA				2
+#define DSI2_MAC0_ULTRA				3
+#define DP_INTF0_ULTRA				4
+#define DP_INTF1_ULTRA				5
+#define DVO0_ULTRA				6
 
 enum mtk_ddp_lk_comp_id {
 	DDP_LK_DSI0,
@@ -35,9 +35,8 @@ enum mtk_ddp_lk_comp_id {
 	DDP_LK_MAX,
 };
 
-extern struct mtk_ddp_comp_match mtk_ddp_matches[DDP_COMPONENT_ID_MAX];
-extern unsigned int mtk_disp_num_from_atag(void);
 
+extern unsigned int mtk_disp_num_from_atag(void);
 bool mtk_ddp_comp_check_output_comp(enum mtk_ddp_comp_id virt_id,
 				    enum mtk_ddp_comp_id phy_id);
 enum mtk_ddp_comp_id mtk_ddp_comp_get_virt_output_comp(enum mtk_ddp_comp_id phy_id);
@@ -47,6 +46,7 @@ bool mtk_ddp_comp_is_rdma(struct mtk_ddp_comp *comp);
 bool mtk_ddp_comp_is_rdma_by_id(enum mtk_ddp_comp_id id);
 bool mtk_ddp_comp_is_virt(struct mtk_ddp_comp *comp);
 bool mtk_ddp_comp_is_virt_by_id(enum mtk_ddp_comp_id id);
+int mtk_ddp_comp_is_layer_on(struct mtk_ddp_comp *comp);
 bool mtk_ddp_comp_is_comp_out_cb_by_id(enum mtk_ddp_comp_id id);
 void mtk_ddp_comp_init_type_by_id(enum mtk_ddp_comp_id id, int comp_type);
 bool mtk_ddp_comp_is_share_comp(struct mtk_ddp_comp *comp);
