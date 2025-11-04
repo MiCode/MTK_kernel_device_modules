@@ -314,7 +314,7 @@ int ssusb_host_enable(struct ssusb_mtk *ssusb)
 
 	check_clk = SSUSB_XHCI_RST_B_STS;
 	if (num_u3p > u3_ports_disabled)
-		check_clk = SSUSB_U3_MAC_RST_B_STS;
+		check_clk |= SSUSB_U3_MAC_RST_B_STS;
 
 	ret =  ssusb_check_clocks(ssusb, check_clk);
 
@@ -390,11 +390,15 @@ int ssusb_host_resume(struct ssusb_mtk *ssusb, bool p0_skipped)
 	int u2p_skip_msk = ssusb->u2p_dis_msk;
 	int num_u3p = ssusb->u3_ports;
 	int num_u2p = ssusb->u2_ports;
+	enum usb_device_speed max_speed = ssusb->u3d->max_speed_host;
+	int u3_ports_disabled;
 	u32 value;
+	u32 check_clk;
 	int i;
+	int ret = 0;
 
 	/* if dp 4-lane, set u3_ports = 0 */
-	if (get_dp_switch_status(ssusb))
+	if (get_dp_switch_status(ssusb) || max_speed < USB_SPEED_SUPER)
 		num_u3p = 0;
 
 	if (p0_skipped) {
@@ -407,9 +411,12 @@ int ssusb_host_resume(struct ssusb_mtk *ssusb, bool p0_skipped)
 	mtu3_clrbits(ibase, U3D_SSUSB_IP_PW_CTRL1, SSUSB_IP_HOST_PDN);
 
 	/* power on u3 ports except skipped ones */
+	u3_ports_disabled = 0;
 	for (i = 0; i < num_u3p; i++) {
-		if ((0x1 << i) & u3p_skip_msk)
+		if ((0x1 << i) & u3p_skip_msk) {
+			u3_ports_disabled++;
 			continue;
+		}
 
 		value = mtu3_readl(ibase, SSUSB_U3_CTRL(i));
 		/* resume u3phy since power issue. */
@@ -426,6 +433,15 @@ int ssusb_host_resume(struct ssusb_mtk *ssusb, bool p0_skipped)
 		value &= ~SSUSB_U2_PORT_PDN;
 		mtu3_writel(ibase, SSUSB_U2_CTRL(i), value);
 	}
+
+	check_clk = SSUSB_XHCI_RST_B_STS;
+	if (num_u3p > u3_ports_disabled)
+		check_clk |= SSUSB_U3_MAC_RST_B_STS;
+
+	ret = ssusb_check_clocks(ssusb, check_clk);
+
+	if (ret)
+		dev_info(ssusb->dev, "USB Host resume, check clk fail?\n");
 
 	return 0;
 }
