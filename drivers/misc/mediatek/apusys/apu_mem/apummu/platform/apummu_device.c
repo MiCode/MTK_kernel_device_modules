@@ -80,7 +80,11 @@ static struct apummu_plat mt6993_drv = {
 	.is_general_SLB_support          = false,
 	.alloc_DRAM_FB_in_session_create = false,
 	.is_ASE_support                  = true,
+#ifdef MT6993_APU_MMU_PLAT_DATA
 	.hw_ops                          = &mt6993_ammudata.ops,
+#else
+	.hw_ops                          = NULL,
+#endif
 	.reserved_session_num            = 2,
 	.is_SLC_support                  = true,
 };
@@ -92,7 +96,11 @@ static struct apummu_plat mt6881_drv = {
 	.is_general_SLB_support          = false,
 	.alloc_DRAM_FB_in_session_create = false,
 	.is_ASE_support                  = false,
+#ifdef MT6881_APU_MMU_PLAT_DATA
 	.hw_ops                          = &mt6881_ammudata.ops,
+#else
+	.hw_ops                          = NULL,
+#endif
 	.reserved_session_num            = 0,
 	.is_SLC_support                  = false,
 };
