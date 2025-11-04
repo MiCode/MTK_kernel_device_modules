@@ -1475,6 +1475,11 @@ void mtk_drm_crtc_exdma_path_setting_reset_without_cmdq(struct mtk_drm_crtc *mtk
 	if (mtk_crtc->first_blender)
 		DDPINFO("reset path first: %d\n",mtk_crtc->first_blender->id);
 
+	/* Need layer config in mtk_drm_crtc_plane_update()
+	 * because path will be reset.
+	 */
+	mtk_crtc->need_layer_config = true;
+
 	mutex = mtk_crtc->mutex[0];
 	ddp = container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
 	offset =  DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id);
@@ -1668,6 +1673,11 @@ void mtk_drm_crtc_exdma_path_setting_reset(struct mtk_drm_crtc *mtk_crtc,
 
 	mutex = mtk_crtc->mutex[0];
 	ddp = container_of(mutex, struct mtk_ddp, mutex[mutex->id]);
+
+	/* Need layer config in mtk_drm_crtc_plane_update()
+	 * because path will be reset.
+	 */
+	mtk_crtc->need_layer_config = true;
 
 	if (crtc_id == 0) {
 		if (ddp->ovlsys0_regs)
@@ -21675,11 +21685,14 @@ void mtk_drm_crtc_plane_update(struct drm_crtc *crtc, struct drm_plane *plane,
 		if (plane_state->comp_state.ext_lye_id)
 			plane_state->pending.pq_loop_type = 0;
 
-		if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer)
-			mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_index,
-					plane_state, cmdq_handle);
-		else
-			mtk_ddp_comp_layer_config(comp, plane_index, plane_state, cmdq_handle);
+		if (mtk_crtc->need_layer_config || plane_state->layer_off_done ||
+			plane_state->mtk_prop_change || plane_state->drm_prop_change) {
+			if (mtk_crtc->is_dual_pipe || mtk_crtc->path_data->is_exdma_dual_layer)
+				mtk_crtc_dual_layer_config(mtk_crtc, comp, plane_index,
+						plane_state, cmdq_handle);
+			else
+				mtk_ddp_comp_layer_config(comp, plane_index, plane_state, cmdq_handle);
+		}
 
 		if (mtk_crtc->path_data->is_discrete_path &&
 			(!mtk_crtc->skip_frame))
@@ -23941,6 +23954,11 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 			only_output = true;
 		}
 	}
+
+	/* After mtk_drm_crtc_plane_update() done, we clear this flag,
+	 * because we assume that don't need layer config at next AC.
+	 */
+	mtk_crtc->need_layer_config = false;
 
 	cb_data = mtk_crtc->gce_obj.pkt_info->cb_data;
 
@@ -29046,6 +29064,13 @@ struct total_tile_overhead mtk_crtc_get_total_overhead(struct mtk_drm_crtc *mtk_
 void mtk_crtc_store_total_overhead_v(struct mtk_drm_crtc *mtk_crtc,
 	struct total_tile_overhead_v info)
 {
+	/* Need layer config in mtk_drm_crtc_plane_update()
+	 * because tile overhead change.
+	 */
+	if (mtk_crtc->tile_overhead_v.top_overhead_v != info.top_overhead_v ||
+		mtk_crtc->tile_overhead_v.bot_overhead_v != info.bot_overhead_v)
+		mtk_crtc->need_layer_config = true;
+
 	mtk_crtc->tile_overhead_v.top_overhead_v = info.top_overhead_v;
 	mtk_crtc->tile_overhead_v.bot_overhead_v = info.bot_overhead_v;
 }

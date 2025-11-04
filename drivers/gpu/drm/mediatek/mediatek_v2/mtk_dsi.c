@@ -17977,6 +17977,10 @@ static int mtk_dsi_set_partial_update(struct mtk_ddp_comp *comp,
 	}
 
 	CRTC_MMP_MARK(0, pu_ddic_cmd, 0, 0);
+	/* Need layer config in mtk_drm_crtc_plane_update()
+	 * because PU final roi change.
+	 */
+	crtc->need_layer_config = true;
 
 	if (comp->id == DDP_COMPONENT_DSI0) {
 		dsi->set_partial_update = enable;

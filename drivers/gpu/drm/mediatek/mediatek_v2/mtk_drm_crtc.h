@@ -1547,6 +1547,9 @@ struct mtk_drm_crtc {
 	/* bif data */
 	struct mtk_bif_info *bif_info;
 	bool is_frame_trigger_mode;
+
+	/* Mark if need layer config in mtk_drm_crtc_plane_update() */
+	bool need_layer_config;
 };
 
 /* one exdma may have both compr and uncompr layers(because ext layer).

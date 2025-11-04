@@ -807,6 +807,11 @@ static void mtk_ovl_exdma_all_layer_off(struct mtk_ddp_comp *comp,
 		}
 	}
 
+	/* Need layer config in mtk_drm_crtc_plane_update()
+	 * because all layer off done here.
+	 */
+	comp->mtk_crtc->need_layer_config = true;
+
 	if (comp && comp->bind_comp && comp->bind_comp->funcs && comp->bind_comp->funcs->layer_off) {
 		DDPINFO("%s+ %s bind stop\n", __func__, mtk_dump_comp_str(comp));
 		comp->bind_comp->funcs->layer_off(comp->bind_comp, 0, 0, handle);

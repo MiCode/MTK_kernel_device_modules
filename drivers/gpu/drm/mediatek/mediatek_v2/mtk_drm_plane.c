@@ -320,6 +320,8 @@ static int mtk_plane_atomic_set_property(struct drm_plane *plane,
 
 	for (i = 0; i < PLANE_PROP_MAX; i++) {
 		if (mtk_plane->plane_property[i] == property) {
+			if (!plane_state->mtk_prop_change && val != plane_state->prop_val[i])
+				plane_state->mtk_prop_change = true;
 			plane_state->prop_val[i] = val;
 			DDPDBG("set property:%s %llu\n", property->name, val);
 			return ret;
@@ -494,6 +496,8 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 				    struct drm_atomic_state *state)
 {
 	struct mtk_plane_state *mtk_plane_state = to_mtk_plane_state(plane->state);
+	struct mtk_plane_state *old_mtk_plane_state =
+		to_mtk_plane_state(drm_atomic_get_old_plane_state(state, plane));
 	struct drm_crtc *crtc = plane->state->crtc;
 	struct mtk_drm_private *priv;
 	struct mtk_crtc_state *crtc_state;
@@ -528,6 +532,20 @@ static void mtk_plane_atomic_update(struct drm_plane *plane,
 		DDPINFO("%s: skip in opening\n", __func__);
 		return;
 	}
+
+	if ((mtk_plane_state->base.src_x >> 16) != (old_mtk_plane_state->base.src_x >> 16) ||
+		(mtk_plane_state->base.src_y >> 16) != (old_mtk_plane_state->base.src_y >> 16) ||
+		(mtk_plane_state->base.src_w >> 16) != (old_mtk_plane_state->base.src_w >> 16) ||
+		(mtk_plane_state->base.src_h >> 16) != (old_mtk_plane_state->base.src_h >> 16) ||
+		mtk_plane_state->base.crtc_x != old_mtk_plane_state->base.crtc_x ||
+		mtk_plane_state->base.crtc_y != old_mtk_plane_state->base.crtc_y ||
+		mtk_plane_state->base.crtc_w != old_mtk_plane_state->base.crtc_w ||
+		mtk_plane_state->base.crtc_h != old_mtk_plane_state->base.crtc_h ||
+		(mtk_plane_state->base.fb ? mtk_plane_state->base.fb->base.id : -1) !=
+		(old_mtk_plane_state->base.fb ? old_mtk_plane_state->base.fb->base.id : -1)  ||
+		(mtk_plane_state->base.crtc ? mtk_plane_state->base.crtc->base.id : -1) !=
+		(old_mtk_plane_state->base.crtc ? old_mtk_plane_state->base.crtc->base.id : -1))
+		mtk_plane_state->drm_prop_change = true;
 
 	if (mtk_disp_get_dump_prop_enable()) {
 		written = 0;
