@@ -68,5 +68,30 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	};
 };
 
+/* MD/RF always-on setting */
+&mt6363_vbuck5 {
+	regulator-always-on;
+};
+
+&mt6363_vbuck6 {
+	regulator-always-on;
+};
+
+&mt6363_vcn15 {
+	regulator-always-on;
+};
+
+&mt6363_vrf12 {
+	regulator-always-on;
+};
+
+&mt6363_vsram_digrf {
+	regulator-always-on;
+};
+
+&mt6363_vsram_modem {
+	regulator-always-on;
+};
+
 #include "mediatek/cust_mt6881_camera_v4l2.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
