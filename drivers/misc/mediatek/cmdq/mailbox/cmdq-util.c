@@ -8,6 +8,9 @@
 #include <linux/io.h>
 #include <linux/debugfs.h>
 #include <linux/proc_fs.h>
+#include <linux/mm.h>
+#include <linux/vmalloc.h>
+#include <linux/slab.h>
 #include <linux/dma-mapping.h>
 #include <linux/sched/clock.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
@@ -1562,9 +1565,28 @@ void cmdq_util_reserved_memory_lookup(struct device *dev)
 	pa = mem->base + mem->size - CMDQ_RECORD_SIZE - CMDQ_STATUS_SIZE;
 
 	if (!va) {
-		va = ioremap(pa, CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE);
-		if (!va)
-			return;
+		if (is_protected_kvm_enabled()) {
+			unsigned long total_size = CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE;
+			unsigned long nr_pages = DIV_ROUND_UP(total_size, PAGE_SIZE);
+			struct page **pages;
+			int i;
+
+			pages = kmalloc_array(nr_pages, sizeof(struct page *), GFP_KERNEL);
+			if (!pages)
+				return;
+
+			for (i = 0; i < nr_pages; i++)
+				pages[i] = phys_to_page(pa + (i * PAGE_SIZE));
+
+			va = vmap(pages, nr_pages, VM_MAP, PAGE_KERNEL);
+			kfree(pages);
+			if (!va)
+				return;
+		} else {
+			va = ioremap(pa, CMDQ_RECORD_SIZE + CMDQ_STATUS_SIZE);
+			if (!va)
+				return;
+		}
 	}
 
 	shared_mem->va = va;
@@ -1586,7 +1608,6 @@ void cmdq_util_reserved_memory_lookup(struct device *dev)
 	buf_va = (char *)(shared_mem->va);
 	buf_va_end = buf_va + strlen(title);
 	buf_va += scnprintf(buf_va, buf_va_end - buf_va, "%s\n", title);
-
 }
 EXPORT_SYMBOL(cmdq_util_reserved_memory_lookup);
 

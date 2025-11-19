@@ -8,6 +8,9 @@
 #include <linux/dma-mapping.h>
 #include <linux/io.h>
 #include <linux/mailbox_controller.h>
+#include <linux/mm.h>
+#include <linux/vmalloc.h>
+#include <linux/slab.h>
 #include <linux/of_reserved_mem.h>
 #include <linux/pm_runtime.h>
 #include <linux/pm_domain.h>
@@ -1928,10 +1931,33 @@ static void cmdq_sec_reserved_mem_lookup(struct cmdq_sec_shared_mem *shared_mem)
 	else
 		pa = mem->base + mem->size - PAGE_SIZE;
 	if (!va) {
-		va = ioremap(pa, PAGE_SIZE);
-		if (!va) {
-			cmdq_err("ioremap reserve memory va failed");
-			return;
+		if (is_protected_kvm_enabled()) {
+			unsigned long total_size = PAGE_SIZE;
+			unsigned long nr_pages = DIV_ROUND_UP(total_size, PAGE_SIZE);
+			struct page **pages;
+			int i;
+
+			cmdq_msg("%s start mapping pa:%pa size:%lu pages:%lu", __func__, &pa, total_size, nr_pages);
+
+			pages = kmalloc_array(nr_pages, sizeof(struct page *), GFP_KERNEL);
+			if (!pages)
+				return;
+
+			for (i = 0; i < nr_pages; i++)
+				pages[i] = phys_to_page(pa + (i * PAGE_SIZE));
+
+			va = vmap(pages, nr_pages, VM_MAP, PAGE_KERNEL);
+			kfree(pages);
+			if (!va)
+				return;
+
+			cmdq_msg("%s vmap mapping succeeded va:%p", __func__, va);
+		} else {
+			va = ioremap(pa, PAGE_SIZE);
+			if (!va) {
+				cmdq_err("%s ioremap failed, pa:%pa size:%lu", __func__, &pa, PAGE_SIZE);
+				return;
+			}
 		}
 	}
 	shared_mem->va = va;
