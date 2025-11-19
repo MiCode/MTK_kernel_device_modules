@@ -4374,12 +4374,6 @@
 			reg = <0 0x1000f000 0 0x1000>;
 		};
 
-		kp@10010000 {
-			compatible = "mediatek,kp";
-			reg = <0 0x10010000 0 0x1000>;
-			interrupts = <GIC_SPI 142 IRQ_TYPE_NONE 0>;
-		};
-
 		topmisc@10011000 {
 			compatible = "mediatek,topmisc";
 			reg = <0 0x10011000 0 0x1000>;
@@ -4930,6 +4924,25 @@
 			compatible = "mediatek,emi_mpu";
 			reg = <0 0x10226000 0 0x1000>;
 			interrupts = <GIC_SPI 345 IRQ_TYPE_NONE 0>;
+		};
+
+		keypad: kp@1c00e000 {
+			compatible = "mediatek,kp";
+			/*
+			 * factory key type
+			 * 0: Keypad IP key
+			 * 1: GPIO key
+			 * 2: HOME2 key
+			 */
+			mediatek,factory-key-type = <2>;
+		};
+
+		regulator_vibrator: regulator-vibrator {
+			compatible = "regulator-vibrator";
+			label = "vibrator";
+			min-volt = <2800000>;
+			max-volt = <3500000>;
+			vib-supply = <&mt6368_vibr>;
 		};
 
 		gps: gps@18c00000 {

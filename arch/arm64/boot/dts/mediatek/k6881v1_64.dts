@@ -53,7 +53,23 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	status = "okay";
 };
 
+&mt6363keys {
+	pinctrl-names = "kpcol0_mode";
+	pinctrl-0 = <&kpcol0_pins_gpio_mode>;
+	home2 {
+		linux,keycodes = <114>;
+		wakeup-source;
+	};
+};
+
 &pio {
+	kpcol0_pins_gpio_mode: gpio-mode {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO16__FUNC_GPIO16>;
+			input-enable;
+		};
+	};
+
 	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
