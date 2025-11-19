@@ -2805,6 +2805,8 @@ void mtk_dump_backup_tpr(void)
 	int i;
 	unsigned int *slot_va;
 	u32 first_time, curr_time, diff_time;
+	u32 next_time0;
+	static u32 time0;
 
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPPR_ERR("%s, invalid drm dev error\n", __func__);
@@ -2825,8 +2827,9 @@ void mtk_dump_backup_tpr(void)
 		return;
 	}
 	if(!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
-		return;
+		goto _VDO_MODE;
 
+_CMD_MODE:
 	first_time = 0;
 	for (i = 0 ; i < TRIG_TICK_NR ; i++) {
 		slot_va = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(i));
@@ -2856,6 +2859,34 @@ void mtk_dump_backup_tpr(void)
 		else if (i == 5)
 			drm_trace_tag_value_state("trig_dbi_cnt_dur", diff_time);
 	}
+	return;
+
+_VDO_MODE:
+	for (i = 0 ; i < TRIG_TICK_NR ; i++) {
+		slot_va = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_TRIG_TICK(i));
+		if (IS_ERR_OR_NULL(slot_va))
+			continue;
+
+		curr_time = readl(slot_va);
+		if (curr_time == 0)
+			continue;
+		CMDQ_TICK_TO_US(curr_time);
+		if (i == 0)
+			next_time0 = curr_time;
+		diff_time = curr_time - time0;
+		if (i == 1) {
+			drm_trace_tag_value_state("trig_EOF_dur", diff_time);
+			DDPFENCE("t%d=%u,%u EOF_dur\n", i, diff_time, curr_time);
+		} else if (i == 2) {
+			drm_trace_tag_value_state("trig_dbi_cnt_dur", diff_time);
+			DDPFENCE("t%d=%u,%u dbi_cnt_dur\n", i, diff_time, curr_time);
+		} else if (i == 3) {
+			drm_trace_tag_value_state("trig_finish_dur", diff_time);
+			DDPFENCE("t%d=%u,%u finish_dur\n", i, diff_time, curr_time);
+		}
+	}
+	time0 = next_time0;
+	return;
 }
 
 void mtk_drm_cwb_backup_copy_size(void)
@@ -4423,7 +4454,7 @@ static void process_dbg_opt(const char *opt)
 	} else if (strncmp(opt, "oddmr:", 4) == 0) {
 		mtk_disp_oddmr_debug(crtc, opt + 6);
 	} else if (strncmp(opt, "dbi_count:", 10) == 0) {
-		mtk_dbi_debug(crtc, opt + 10);
+		mtk_dbi_count_debug(crtc, opt + 10);
 	} else if (strncmp(opt, "mtcmos:", 7) == 0) {
 		int ret;
 		unsigned int on;

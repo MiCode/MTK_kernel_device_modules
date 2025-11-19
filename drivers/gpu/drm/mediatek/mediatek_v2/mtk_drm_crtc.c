@@ -10662,6 +10662,7 @@ void mtk_crtc_wait_frame_done(struct mtk_drm_crtc *mtk_crtc,
 			cmdq_pkt_wfe(cmdq_handle, gce_event);
 		else
 			cmdq_pkt_wait_no_clear(cmdq_handle, gce_event);
+
 		priv = mtk_crtc->base.dev->dev_private;
 		if (gce_event == mtk_crtc->gce_obj.event[EVENT_CMD_EOF] &&
 		    mtk_drm_helper_get_opt(priv->helper_opt,
@@ -13556,8 +13557,12 @@ void mtk_crtc_clear_wait_event(struct drm_crtc *crtc)
 		cmdq_pkt_set_event(cmdq_handle,
 				   mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
 
-		} else
+		} else {
 			mtk_use_cabc_event(cmdq_handle, mtk_crtc, SET_OPT, __LINE__);
+			if (mtk_dbi_count_is_support(mtk_crtc))
+				cmdq_pkt_set_event(cmdq_handle,
+					mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_DBI_COUNT_CFG_END]);
+		}
 
 		priv = mtk_crtc->base.dev->dev_private;
 		if (mtk_drm_helper_get_opt(priv->helper_opt,
@@ -14945,7 +14950,14 @@ skip_prete:
 				/*for dynamic Msync on/off,set vfp period token*/
 				GCE_DO(set_event, EVENT_SYNC_TOKEN_VFP_PERIOD);
 			} else {
+				if (profile_trig && (crtc_id == 0))
+					mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(0));
 				GCE_DO(wfe, EVENT_CMD_EOF);
+				if (profile_trig && (crtc_id == 0))
+					mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(1));
+				mtk_oddmr_dbi_count_done_trigloop(mtk_crtc, cmdq_handle);
+				if (profile_trig && (crtc_id == 0))
+					mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(2));
 				mtk_disp_cksm_trigger(cmdq_handle, crtc, &dsi_cksm_info);
 				/* For dbgtp fifo mon WA */
 				if ((priv->data->mmsys_id == MMSYS_MT6993) &&
@@ -14998,6 +15010,8 @@ skip_prete:
 					cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base, slot_src_addr, 0, ~0);
 					GCE_FI;
 				}
+				if (profile_trig && (crtc_id == 0))
+					mtk_crtc_backup_tpr_to_slot(mtk_crtc, cmdq_handle, DISP_SLOT_TRIG_TICK(3));
 			}
 
 		} else if (crtc_id == 1) {
@@ -20957,7 +20971,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 	struct drm_crtc_state *old_crtc_state =
 		drm_atomic_get_old_crtc_state(atomic_state, crtc);
 	int index = drm_crtc_index(crtc);
-	struct mtk_ddp_comp *comp;
+	struct mtk_ddp_comp *comp, *dbi_comp;
 	int i, j, idx;
 	unsigned int crtc_idx = drm_crtc_index(crtc);
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
@@ -21120,7 +21134,12 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, mtk_crtc->is_mml_submit);
 	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, 0);
 	drm_trace_tag_mark("atomic_begin");
-
+	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
+		dbi_comp = mtk_dbi_count_is_support(mtk_crtc);
+		if (dbi_comp)
+			cmdq_pkt_clear_event(mtk_crtc_state->cmdq_handle,
+				dbi_comp->mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_DBI_COUNT_CFG_END]);
+	}
 	/* set backlight value from HWC */
 	mtk_drm_set_backlight(mtk_crtc);
 
@@ -22600,7 +22619,7 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 	struct mtk_cmdq_cb_data *wb_cb_data;
 	struct mtk_cmdq_cb_data *discrete_cb_data;
 	unsigned int r_comp_id;
-	struct mtk_ddp_comp *first_comp, *r_comp;
+	struct mtk_ddp_comp *first_comp, *r_comp, *dbi_comp;
 	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	int session_id = 0;
 	unsigned int fence_idx;
@@ -22812,9 +22831,14 @@ int mtk_crtc_gce_flush(struct drm_crtc *crtc, void *gce_cb,
 		mtk_disp_mutex_enable_cmdq(mtk_crtc->mutex[0],
 			cmdq_handle, mtk_crtc->gce_obj.base);
 	}
-	if(!mtk_crtc_is_frame_trigger_mode(crtc)) {
+	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
 		if (!is_from_dal || !mtk_crtc->skip_frame)
 			mtk_crtc_dbi_count_cfg(mtk_crtc, state, cmdq_handle);
+
+		dbi_comp = mtk_dbi_count_is_support(mtk_crtc);
+		if (dbi_comp)
+			cmdq_pkt_set_event(cmdq_handle,
+				dbi_comp->mtk_crtc->gce_obj.event[EVENT_SYNC_TOKEN_DBI_COUNT_CFG_END]);
 	}
 	/* if gce flush is form dal_show, we do not update and disconnect WDMA */
 	/* because WDMA addon path is not connected */
@@ -24912,6 +24936,9 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 		break;
 	case EVENT_DBI_COUNT_EOF:
 		len = snprintf(buf, buf_len, "disp_dbi_count_eof");
+		break;
+	case EVENT_SYNC_TOKEN_DBI_COUNT_CFG_END:
+		len = snprintf(buf, buf_len, "disp_token_dbi_count_cfg_end");
 		break;
 	case EVENT_OVLSYS_DISP_OVL0_SOF:
 		len = snprintf(buf, buf_len, "disp_ovlsys0_sof%d",

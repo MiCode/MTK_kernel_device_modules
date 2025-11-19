@@ -94,6 +94,12 @@ struct mtk_dbi_count_irq {
 	unsigned long irq_need_check;
 };
 
+enum mtk_dbi_count_gce_event_op {
+	DBI_COUNT_WFE,
+	DBI_COUNT_WAIT_NO_CLEAR,
+	DBI_COUNT_CLEAR,
+	DBI_COUNT_SET,
+};
 int mtk_dbi_count_wait_disable_finish(struct mtk_ddp_comp *comp, void *data);
 int mtk_drm_crtc_get_count_fence_ioctl(struct drm_device *dev, void *data,
 				struct drm_file *file_priv);
@@ -123,6 +129,9 @@ struct dbi_count_block_info mtk_dbi_count_get_block_info(uint32_t block_h, uint3
 void mtk_dbi_idle_count_insert_wb_fence(struct mtk_drm_crtc *mtk_crtc, unsigned int fence);
 void mtk_dbi_idle_count_update_wb_fence(struct mtk_drm_crtc *mtk_crtc);
 int mtk_dbi_curve_interpolate_signed(struct mtk_dbi_curve_2d *curve, int x);
-
+void mtk_dbi_count_eof_event_add(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle,
+	enum mtk_dbi_count_gce_event_op event_op, const char *caller);
+void mtk_oddmr_dbi_count_done_trigloop(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+struct mtk_ddp_comp *mtk_dbi_count_is_support(struct mtk_drm_crtc *mtk_crtc);
 
 #endif
