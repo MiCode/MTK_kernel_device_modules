@@ -1067,7 +1067,7 @@
 
 		cpupm_sysram: cpupm-sysram@11b000 {
 			compatible = "mediatek,cpupm-sysram";
-			reg = <0 0x0011b000 0 0x500>;
+			reg = <0 0x0011e400 0 0x500>;
 		};
 
 		mcusys_ctrl: mcusys-ctrl@c040000 {
@@ -1077,7 +1077,7 @@
 
 		lpm_sysram: lpm-sysram@11b500 {
 			compatible = "mediatek,lpm-sysram";
-			reg = <0 0x0011b500 0 0x300>;
+			reg = <0 0x0011e900 0 0x300>;
 		};
 
 		irq-remain-list {
