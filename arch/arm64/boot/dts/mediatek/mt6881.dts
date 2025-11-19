@@ -8208,6 +8208,9 @@
 			/* for sentest adjust isp clk used */
 			operating-points-v2 = <&opp_table_cam>;
 
+			/* plat info */
+			mtk-iomem-ver = "mt6881";
+
 			/* for clock scaling bind vcore */
 			dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 			/*
