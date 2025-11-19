@@ -868,7 +868,7 @@ static u32 change_to_unit(u32 bw)
 
 	bw_unit = (icc_to_MBps(bw)) >> CHNN_BW_UNIT_SHIFT;
 	if (bw_unit >= MAX_BW_UNIT) {
-		MMQOS_ERR("bw is over %d*16MB/s", MAX_BW_UNIT);
+		MMQOS_DBG("bw is over %d*16MB/s", MAX_BW_UNIT);
 		bw_unit = MAX_BW_UNIT;
 	}
 	if (log_level & 1 << log_comm_freq && bw > 0)
