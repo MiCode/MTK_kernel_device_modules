@@ -1326,9 +1326,14 @@ void init_layer_mapping_table(enum HRT_TB_TYPE hrt_type, u32 layer_nr)
 		return;
 	}
 
+	if (layer_nr == 0 || layer_nr > MAX_PLANE_NR) {
+		DDPMSG("%s invalid layer_nr\n", __func__);
+		return;
+	}
+
 	tmp_map = &layer_mapping_table[hrt_type];
 
-	*tmp_map = (1 << layer_nr) - 1;
+	*tmp_map = (((1 << layer_nr) - 1) << 1) & ~0x1;
 
 	DDPMSG("%s hrt_type %d layer_nr %d layer_mapping_table 0x%X 0x%X\n",
 		__func__, hrt_type, layer_nr, *tmp_map, layer_mapping_table[hrt_type]);

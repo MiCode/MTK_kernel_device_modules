@@ -38,8 +38,16 @@ unsigned int to_crtc_plane_index(unsigned int plane_index)
 #else
 unsigned int to_crtc_plane_index(unsigned int plane_index)
 {
-	DDPINFO("%s plane index %d local_index 0\n", __func__, plane_index);
-
+	if (plane_index < OVL_LAYER_NR)
+		return plane_index;
+	else if (plane_index < (OVL_LAYER_NR + EXTERNAL_INPUT_LAYER_NR))
+		return plane_index - OVL_LAYER_NR;
+	else if (plane_index < (OVL_LAYER_NR + EXTERNAL_INPUT_LAYER_NR + MEMORY_INPUT_LAYER_NR))
+		return plane_index - OVL_LAYER_NR - EXTERNAL_INPUT_LAYER_NR;
+	else if (plane_index < MAX_PLANE_NR)
+		return plane_index - OVL_LAYER_NR - EXTERNAL_INPUT_LAYER_NR - MEMORY_INPUT_LAYER_NR;
+	else
+		return 0;
 	return 0;
 }
 #endif

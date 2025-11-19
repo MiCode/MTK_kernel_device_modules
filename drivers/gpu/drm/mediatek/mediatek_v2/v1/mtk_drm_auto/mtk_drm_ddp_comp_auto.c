@@ -221,7 +221,7 @@ bool mtk_ddp_comp_is_share_comp(struct mtk_ddp_comp *comp)
 	if (comp->id < 0 || comp->id >= DDP_COMPONENT_ID_MAX)
 		return false;
 
-	return (mtk_ddp_matches[comp->id].is_virt_comp == 0x3) ? 1 : 0;
+	return (comp->is_virt_comp == SHARE_EXDMA) ? 1 : 0;
 }
 
 bool mtk_ddp_comp_is_virt(struct mtk_ddp_comp *comp)
@@ -233,10 +233,7 @@ bool mtk_ddp_comp_is_virt(struct mtk_ddp_comp *comp)
 	return false;
 #endif
 
-	if (mtk_ddp_comp_is_share_comp(comp))
-		return false;
-
-	return mtk_ddp_matches[comp->id].is_virt_comp;
+	return (comp->is_virt_comp == GUEST_EXDMA) ? 1 : 0;
 }
 
 int mtk_ddp_comp_is_layer_on(struct mtk_ddp_comp *comp)
@@ -247,12 +244,16 @@ int mtk_ddp_comp_is_layer_on(struct mtk_ddp_comp *comp)
 		return 0;
 }
 
-bool mtk_ddp_comp_is_virt_by_id(enum mtk_ddp_comp_id id)
+bool mtk_ddp_comp_is_virt_by_id(struct mtk_drm_private *private,
+	enum mtk_ddp_comp_id id)
 {
 	if (id >= DDP_COMPONENT_ID_MAX)
 		return false;
 
-	return mtk_ddp_matches[id].is_virt_comp;
+	if (private->ddp_comp[id])
+		return (private->ddp_comp[id]->is_virt_comp == GUEST_EXDMA) ? 1 : 0;
+	else
+		return false;
 }
 
 enum mtk_ddp_comp_id mtk_ddp_comp_get_map_id(u32 comp_id)
@@ -291,12 +292,14 @@ bool mtk_ddp_comp_is_comp_out_cb_by_id(enum mtk_ddp_comp_id id)
 		return false;
 }
 
-void mtk_ddp_comp_init_type_by_id(enum mtk_ddp_comp_id id, int comp_type)
+void mtk_ddp_comp_init_type(struct mtk_drm_private *private,
+	enum mtk_ddp_comp_id id, int comp_type)
 {
 	if (id >= DDP_COMPONENT_ID_MAX)
 		return;
 
-	mtk_ddp_matches[id].is_virt_comp = comp_type;
+	if (private->ddp_comp[id])
+		private->ddp_comp[id]->is_virt_comp = comp_type;
 }
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST) || IS_ENABLED(MTK_DRM_MEDIATEK_AUTO_AN_ONLY)

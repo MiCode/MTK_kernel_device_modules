@@ -813,6 +813,8 @@ struct mtk_crtc_path_data {
 	bool is_primary_layer_swap;
 	bool is_guest_exclusive_device;
 	uint32_t host_crtc_id;
+	u32 *exdma_type;
+	u32 exdma_count;
 #endif
 	const enum mtk_ddp_comp_id *ovl_path[DDP_MODE_NR][DDP_PATH_NR];
 	unsigned int ovl_path_len[DDP_MODE_NR][DDP_PATH_NR];

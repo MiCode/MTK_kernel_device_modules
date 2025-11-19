@@ -45,10 +45,10 @@ enum mtk_ddp_comp_id mtk_ddp_comp_get_phy_output_comp(enum mtk_ddp_comp_id virt_
 bool mtk_ddp_comp_is_rdma(struct mtk_ddp_comp *comp);
 bool mtk_ddp_comp_is_rdma_by_id(enum mtk_ddp_comp_id id);
 bool mtk_ddp_comp_is_virt(struct mtk_ddp_comp *comp);
-bool mtk_ddp_comp_is_virt_by_id(enum mtk_ddp_comp_id id);
+bool mtk_ddp_comp_is_virt_by_id(struct mtk_drm_private *private, enum mtk_ddp_comp_id id);
 int mtk_ddp_comp_is_layer_on(struct mtk_ddp_comp *comp);
 bool mtk_ddp_comp_is_comp_out_cb_by_id(enum mtk_ddp_comp_id id);
-void mtk_ddp_comp_init_type_by_id(enum mtk_ddp_comp_id id, int comp_type);
+void mtk_ddp_comp_init_type(struct mtk_drm_private *private, enum mtk_ddp_comp_id id, int comp_type);
 bool mtk_ddp_comp_is_share_comp(struct mtk_ddp_comp *comp);
 void mtk_drm_notify_to_android(int dev_id, unsigned int event);
 enum mtk_ddp_lk_comp_id mtk_ddp_comp_map_lk_id(enum mtk_ddp_comp_id id);

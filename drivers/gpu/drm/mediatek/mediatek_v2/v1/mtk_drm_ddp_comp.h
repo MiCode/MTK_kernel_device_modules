@@ -1682,6 +1682,9 @@ struct mtk_ddp_comp {
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
 	bool comp_status;
 #endif
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	int is_virt_comp;
+#endif
 };
 
 struct mtk_ddp_comp_match {
@@ -1690,7 +1693,6 @@ struct mtk_ddp_comp_match {
 	int alias_id;
 	const struct mtk_ddp_comp_funcs *funcs;
 	bool is_output;
-	int is_virt_comp;
 };
 
 static inline void mtk_ddp_comp_config_overhead(struct mtk_ddp_comp *comp,

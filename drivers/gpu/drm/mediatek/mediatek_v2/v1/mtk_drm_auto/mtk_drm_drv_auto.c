@@ -171,7 +171,8 @@ static void mtk_drm_path_update_exdma_comp_type(struct device_node *node, u32 cr
 	crtc_path_data->exdma_count = exdma_count;
 }
 
-static int mtk_drm_path_update_ovlsys_data_impl(struct device_node *node, u32 crtc_id,
+static int mtk_drm_path_update_ovlsys_data_impl(struct mtk_drm_private *private,
+						struct device_node *node, u32 crtc_id,
 						struct mtk_crtc_path_data *crtc_path_data,
 						char *prop_name)
 {
@@ -256,8 +257,8 @@ static int mtk_drm_path_update_ovlsys_data_impl(struct device_node *node, u32 cr
 		comp_id = ovl_path[i];
 		if (mtk_ddp_comp_is_rdma_by_id(comp_id) && j < exdma_count) {
 			DDPMSG("%s crtc-%d update [%d] comp %s type to %d\n",
-			       __func__, crtc_id, j, mtk_dump_comp_str_id(comp_id), exdma_type[j]);
-			mtk_ddp_comp_init_type_by_id(comp_id, exdma_type[j]);
+			   __func__, crtc_id, j, mtk_dump_comp_str_id(comp_id), exdma_type[j]);
+			mtk_ddp_comp_init_type(private, comp_id, exdma_type[j]);
 			j++;
 		}
 	}
@@ -265,14 +266,14 @@ static int mtk_drm_path_update_ovlsys_data_impl(struct device_node *node, u32 cr
 	return 0;
 }
 
-static int mtk_drm_path_update_ovlsys_data(struct device_node *node, u32 crtc_id,
-					   struct mtk_crtc_path_data *crtc_path_data)
+static int mtk_drm_path_update_ovlsys_data(struct mtk_drm_private *private,
+	struct device_node *node, u32 crtc_id, struct mtk_crtc_path_data *crtc_path_data)
 {
 	int ret = 0;
 
 	mtk_drm_path_update_exdma_comp_type(node, crtc_id, crtc_path_data);
 
-	ret = mtk_drm_path_update_ovlsys_data_impl(node, crtc_id,
+	ret = mtk_drm_path_update_ovlsys_data_impl(private, node, crtc_id,
 						   crtc_path_data,
 						   OVLSYS_PATH_DATA_PROP_NAME);
 	if (ret < 0) {
@@ -281,7 +282,7 @@ static int mtk_drm_path_update_ovlsys_data(struct device_node *node, u32 crtc_id
 	}
 
 	if (crtc_path_data->is_dual_pipe) {
-		ret = mtk_drm_path_update_ovlsys_data_impl(node, crtc_id,
+		ret = mtk_drm_path_update_ovlsys_data_impl(private, node, crtc_id,
 							   crtc_path_data,
 							   DUAL_OVLSYS_PATH_DATA_PROP_NAME);
 		if (ret < 0) {
@@ -294,7 +295,8 @@ static int mtk_drm_path_update_ovlsys_data(struct device_node *node, u32 crtc_id
 }
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)
-static void mtk_drm_path_update_an_ovlsys_data_impl(u32 crtc_id, u32 an_crtc_id,
+static void mtk_drm_path_update_an_ovlsys_data_impl(struct mtk_drm_private *private,
+					u32 crtc_id, u32 an_crtc_id,
 					struct mtk_crtc_path_data *crtc_path_data,
 					struct virtio_disp_an_crtc_path_data *an_crtc_path_data,
 					bool dual_ovl)
@@ -320,7 +322,7 @@ static void mtk_drm_path_update_an_ovlsys_data_impl(u32 crtc_id, u32 an_crtc_id,
 		comp_id = ovl_path[i];
 
 		/* update android exdma + blender */
-		if (mtk_ddp_comp_is_rdma_by_id(comp_id) && mtk_ddp_comp_is_virt_by_id(comp_id)) {
+		if (mtk_ddp_comp_is_rdma_by_id(comp_id) && mtk_ddp_comp_is_virt(private, comp_id)) {
 			an_ovl_path[j] = ovl_path[i];
 			an_ovl_path[j + 1] = ovl_path[i + 1];
 
@@ -341,15 +343,16 @@ static void mtk_drm_path_update_an_ovlsys_data_impl(u32 crtc_id, u32 an_crtc_id,
 		an_crtc_path_data->ovl_path_len = j;
 }
 
-static void mtk_drm_path_update_an_ovlsys_data(u32 crtc_id, u32 an_crtc_id,
+static void mtk_drm_path_update_an_ovlsys_data(struct mtk_drm_private *private,
+					u32 crtc_id, u32 an_crtc_id,
 					struct mtk_crtc_path_data *crtc_path_data,
 					struct virtio_disp_an_crtc_path_data *an_crtc_path_data)
 {
-	mtk_drm_path_update_an_ovlsys_data_impl(crtc_id, an_crtc_id, crtc_path_data,
+	mtk_drm_path_update_an_ovlsys_data_impl(private, crtc_id, an_crtc_id, crtc_path_data,
 						an_crtc_path_data, false);
 
 	if (crtc_path_data->is_dual_pipe)
-		mtk_drm_path_update_an_ovlsys_data_impl(crtc_id, an_crtc_id, crtc_path_data,
+		mtk_drm_path_update_an_ovlsys_data_impl(private, crtc_id, an_crtc_id, crtc_path_data,
 							an_crtc_path_data, true);
 }
 
@@ -395,7 +398,8 @@ static void mtk_drm_path_update_an_crtc_prop(u32 crtc_id, u32 an_crtc_id,
 		an_crtc_path_data->dual_ovl_enable);
 }
 
-static void mtk_drm_path_update_an_path_data(struct device_node *node, u32 crtc_id,
+static void mtk_drm_path_update_an_path_data(struct mtk_drm_private *private,
+						struct device_node *node, u32 crtc_id,
 					     struct mtk_crtc_path_data *crtc_path_data,
 					     struct virtio_disp_rsp_crtc_path_info *an_crtc_path_info)
 {
@@ -415,7 +419,7 @@ static void mtk_drm_path_update_an_path_data(struct device_node *node, u32 crtc_
 
 	an_crtc_path_data = &an_crtc_path_info->crtc_path_data[an_crtc_id];
 
-	mtk_drm_path_update_an_ovlsys_data(crtc_id, an_crtc_id, crtc_path_data, an_crtc_path_data);
+	mtk_drm_path_update_an_ovlsys_data(private, crtc_id, an_crtc_id, crtc_path_data, an_crtc_path_data);
 
 	mtk_drm_path_update_an_output_comp(crtc_id, an_crtc_id, crtc_path_data, an_crtc_path_data);
 
@@ -475,7 +479,7 @@ int mtk_drm_path_data_update(struct mtk_drm_private *private)
 
 		mtk_drm_path_update_crtc_prop(crtc_node, i, crtc_path_data);
 
-		ret = mtk_drm_path_update_ovlsys_data(crtc_node, i, crtc_path_data);
+		ret = mtk_drm_path_update_ovlsys_data(private, crtc_node, i, crtc_path_data);
 		if (ret < 0)
 			DDPMSG("[E]%s crtc-%d update ovlsys data failed\n", __func__, i);
 
@@ -483,7 +487,7 @@ int mtk_drm_path_data_update(struct mtk_drm_private *private)
 
 		mtk_drm_path_update_output_comp(crtc_node, i, crtc_path_data);
 
-		mtk_drm_path_update_an_path_data(crtc_node, i, crtc_path_data, an_crtc_path_info);
+		mtk_drm_path_update_an_path_data(private, crtc_node, i, crtc_path_data, an_crtc_path_info);
 	}
 
 	return ret;
@@ -533,9 +537,14 @@ int mtk_drm_path_crtc_create(struct drm_device *drm)
 
 	for (i = 0; i < MAX_CRTC; i++) {
 		crtc_path_data = mtk_disp_crtc_path_data[i];
+		if (!crtc_path_data) {
+			DDPMSG("%s path-%d data invalid\n", __func__, i);
+			continue;
+		}
+
 #if IS_ENABLED(CONFIG_VHOST_DISP) || IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_GUEST)
-		if (!crtc_path_data || !crtc_path_data->is_path_enable) {
-			DDPMSG("%s path-%d data invalid or disabled\n", __func__, i);
+		if (!crtc_path_data->is_path_enable) {
+			DDPMSG("%s path-%d data disabled\n", __func__, i);
 			continue;
 		}
 #endif

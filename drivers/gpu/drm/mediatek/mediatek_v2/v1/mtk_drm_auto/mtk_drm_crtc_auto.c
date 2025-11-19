@@ -504,7 +504,8 @@ void mtk_drm_crtc_init_layer_nr(struct mtk_drm_crtc *mtk_crtc, int pipe)
 					__func__, mtk_crtc->layer_nr, mtk_dump_comp_str(comp));
 				mtk_crtc->layer_nr++;
 			}
-		}
+		} else if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_OVL)
+			mtk_crtc->layer_nr += 2;
 	}
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_HOST)

@@ -9365,8 +9365,11 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 		DDPINFO("%s %d, s_dev:%d ", __func__, __LINE__, s_dev);
 
 		if (s_dev == MTK_PANEL_EDP) {
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
 			ret = mtk_drm_dvo_get_info(dev, info);
+#endif
 		} else if ((s_dev == MTK_PANEL_DP0) || (s_dev == MTK_PANEL_DP1)) {
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
 			struct mtk_drm_private *priv = dev->dev_private;
 			int crtc_id = mtk_drm_get_crtc_id(s_dev, priv);
 			struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(priv->crtc[crtc_id]);
@@ -9394,6 +9397,7 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 				DDPINFO("%d get alias fail\n", __func__);
 				return -EINVAL;
 			}
+#endif
 		} else
 			ret = mtk_drm_get_panel_info(dev, info, 0);
 
