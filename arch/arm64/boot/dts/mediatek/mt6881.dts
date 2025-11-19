@@ -89,6 +89,7 @@
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
 			    kvm-arm.mode=none \
+			    maxcpus=5 \
 			    initcall_debug=1";
 	};
 
