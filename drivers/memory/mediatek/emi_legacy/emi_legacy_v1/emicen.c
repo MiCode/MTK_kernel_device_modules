@@ -98,16 +98,17 @@ void mtk_emidbg_dump(void)
 {
 	unsigned long spinlock_save_flags;
 	struct arm_smccc_res smc_res;
+	int i;
 
 	spin_lock_irqsave(&emidbg_lock, spinlock_save_flags);
 
 	arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIDBG_DUMP,
 		0, 0, 0, 0, 0, 0, &smc_res);
-	while (((long)smc_res.a0) > 0) {
+	for (i=0; (i < 10) && (((int)smc_res.a0) > 0); i++) {
 		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIDBG_MSG,
 		0, 0, 0, 0, 0, 0, &smc_res);
 
-		pr_info("%s: %d, 0x%x, 0x%x, 0x%x\n", __func__,
+		pr_info("v1cen: %s: %d, 0x%x, 0x%x, 0x%x\n", __func__,
 			(int)smc_res.a0,
 			(unsigned int)smc_res.a1,
 			(unsigned int)smc_res.a2,
