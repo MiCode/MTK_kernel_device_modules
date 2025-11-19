@@ -45,6 +45,12 @@ static const u32 mt6993_pmif_mpu_regs[] = {
 	[PMIF_PMIC_ALL_RGN_EN_2] =		0x1104,
 };
 
+static const u32 mt6881_pmif_mpu_regs[] = {
+	[PMIF_MPU_CTRL] =			0x6004,
+	[PMIF_PMIC_ALL_RGN_EN] =		0x6700,
+	[PMIF_PMIC_ALL_RGN_EN_2] =		0x6704,
+};
+
 static struct pmif_mpu_timer mpu_timer;
 
 static u32 pmif_mpu_readl(void __iomem *addr, struct pmif_mpu *arb, enum pmif_mpu_regs reg)
@@ -63,6 +69,10 @@ static const struct pmif_mpu_data pmif_mpu_arb = {
 
 static const struct pmif_mpu_data mt6993_pmif_mpu_arb = {
 	.regs = mt6993_pmif_mpu_regs,
+};
+
+static const struct pmif_mpu_data mt6881_pmif_mpu_arb = {
+	.regs = mt6881_pmif_mpu_regs,
 };
 
 static void enable_kernel_mpu(void)
@@ -234,6 +244,9 @@ static const struct of_device_id mtk_spmi_pmif_mpu_match_table[] = {
 	}, {
 		.compatible = "mediatek,mt6878-spmi-pmif-mpu",
 		.data = &pmif_mpu_arb,
+	}, {
+		.compatible = "mediatek,mt6881-spmi_pmif_mpu",
+		.data = &mt6881_pmif_mpu_arb,
 	}, {
 		.compatible = "mediatek,mt6886-spmi_pmif_mpu",
 		.data = &pmif_mpu_arb,

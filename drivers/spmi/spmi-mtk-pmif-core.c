@@ -366,6 +366,69 @@ static const u32 mt6873_regs[] = {
 	[PMIF_SWINF_3_STA] =	0x0CE8,
 };
 
+static const u32 mt6881_regs[] = {
+	[PMIF_INIT_DONE] =			0x0000,
+	[PMIF_INF_EN] =				0x0024,
+	[MD_AUXADC_RDATA_0_ADDR] =		0x0780,/* Not exist in new gen plat */
+	[MD_AUXADC_RDATA_1_ADDR] =		0x0784,/* Replace addr with other reserved reg */
+	[PMIF_ARB_EN] =				0x0150,
+	[PMIF_CMDISSUE_EN] =			0x03B8,
+	[PMIF_TIMER_CTRL] =			0x03E4,
+	[PMIF_SPI_MODE_CTRL] =			0x0408,
+	[PMIF_IRQ_EVENT_EN_0] =			0x1420,
+	[PMIF_IRQ_FLAG_0] =			0x1428,
+	[PMIF_IRQ_CLR_0] =			0x142C,
+	[PMIF_IRQ_EVENT_EN_1] =			0x1430,
+	[PMIF_IRQ_FLAG_1] =			0x1438,
+	[PMIF_IRQ_CLR_1] =			0x143C,
+	[PMIF_IRQ_EVENT_EN_2] =			0x1440,
+	[PMIF_IRQ_FLAG_2] =			0x1448,
+	[PMIF_IRQ_CLR_2] =			0x144C,
+	[PMIF_IRQ_EVENT_EN_3] =			0x1450,
+	[PMIF_IRQ_FLAG_3] =			0x1458,
+	[PMIF_IRQ_CLR_3] =			0x145C,
+	[PMIF_IRQ_EVENT_EN_4] =			0x1460,
+	[PMIF_IRQ_FLAG_4] =			0x1468,
+	[PMIF_IRQ_CLR_4] =			0x146C,
+	[PMIF_WDT_EVENT_EN_0] =			0x1474,
+	[PMIF_WDT_FLAG_0] =			0x1478,
+	[PMIF_WDT_EVENT_EN_1] =			0x147C,
+	[PMIF_WDT_FLAG_1] =			0x1480,
+	[PMIF_SWINF_0_ACC] =			0x2800,
+	[PMIF_SWINF_0_WDATA_31_0] =		0x2804,
+	[PMIF_SWINF_0_RDATA_31_0] =		0x2814,
+	[PMIF_SWINF_0_VLD_CLR] =		0x2824,
+	[PMIF_SWINF_0_STA] =			0x2828,
+	[PMIF_SWINF_1_ACC] =			0x3800,
+	[PMIF_SWINF_1_WDATA_31_0] =		0x3804,
+	[PMIF_SWINF_1_RDATA_31_0] =		0x3814,
+	[PMIF_SWINF_1_VLD_CLR] =		0x3824,
+	[PMIF_SWINF_1_STA] =			0x3828,
+	[PMIF_SWINF_2_ACC] =			0x4800,
+	[PMIF_SWINF_2_WDATA_31_0] =		0x4804,
+	[PMIF_SWINF_2_RDATA_31_0] =		0x4814,
+	[PMIF_SWINF_2_VLD_CLR] =		0x4824,
+	[PMIF_SWINF_2_STA] =			0x4828,
+	[PMIF_SWINF_3_ACC] =			0x5800,
+	[PMIF_SWINF_3_WDATA_31_0] =		0x5804,
+	[PMIF_SWINF_3_RDATA_31_0] =		0x5814,
+	[PMIF_SWINF_3_VLD_CLR] =		0x5824,
+	[PMIF_SWINF_3_STA] =			0x5828,
+	// [PMIF_PMIC_SWINF_0_PER] =		0x093C,
+	// [PMIF_PMIC_SWINF_1_PER] =		0x0940,
+	// [PMIF_ACC_VIO_INFO_0] =			0x0980,
+	// [PMIF_ACC_VIO_INFO_1] =			0x0984,
+	// [PMIF_ACC_VIO_INFO_2] =			0x0988,
+	[PMIF_SPMI_CRC_STA] =			0x1914,
+	[PMIF_SPMI_CRC_INF0] =			0x1918,
+	[PMIF_SPMI_CRC_RDATA0] =		0x191C,
+	[PMIF_SPMI_CRC_RDATA1] =		0x1920,
+	[PMIF_SPMI_CRC_RDATA2] =		0x1924,
+	[PMIF_SPMI_CRC_RDATA3] =		0x1928,
+	[PMIF_SPMI_CRC_VAL] =			0x192C,
+	[PMIF_CRC_RECORD_CLR] =			0x1930,
+};
+
 static const u32 mt6853_spmi_regs[] = {
 	[SPMI_OP_ST_CTRL] =	0x0000,
 	[SPMI_GRP_ID_EN] =	0x0004,
@@ -407,6 +470,34 @@ static const u32 mt6873_spmi_regs[] = {
 	[SPMI_REC3] =		0x0050,
 	[SPMI_REC4] =		0x0054,
 	[SPMI_MST_DBG] =	0x00fc,
+};
+
+static const u32 mt6881_spmi_regs[] = {
+	[SPMI_GRP_ID_EN] =	0x0000,
+	[SPMI_MST_SAMPL] =	0x0004,
+	[SPMI_MST_REQ_EN] =	0x0008,
+	[SPMI_MST_RCS_CTRL] =	0x0010,
+	[SPMI_IRQ_MASK] =	0x0024,
+	[SPMI_DEC_DBG] =	0x1004,
+	[SPMI_MST_DBG] =	0x1008,
+	[SPMI_OP_ST_CTRL] =	0x3000,
+	[SPMI_OP_ST_STA] =	0x3004,
+	[SPMI_SLV_3_0_EINT] =	0x300C,
+	[SPMI_SLV_7_4_EINT] =	0x3010,
+	[SPMI_SLV_B_8_EINT] =	0x3014,
+	[SPMI_SLV_F_C_EINT] =	0x3018,
+	[SPMI_REC_CTRL] =	0x301C,
+	[SPMI_REC_CMD_DEC] =	0x3020,
+	[SPMI_WDT_REC] =	0x3024,
+	[SPMI_SLV_3_0_NACK_COUNT] =	0x3028,
+	[SPMI_SLV_7_4_NACK_COUNT] =	0x302C,
+	[SPMI_SLV_B_8_NACK_COUNT] =	0x3030,
+	[SPMI_SLV_F_C_NACK_COUNT] =	0x3034,
+	[SPMI_REC0] =		0x3038,
+	[SPMI_REC1] =		0x303C,
+	[SPMI_REC2] =		0x3040,
+	[SPMI_REC3] =		0x3044,
+	[SPMI_REC4] =		0x3048,
 };
 
 enum {
@@ -1069,6 +1160,19 @@ static struct pmif mt6895_pmif_arb[] = {
 		.read_cmd = pmif_spmi_read_cmd,
 		.write_cmd = pmif_spmi_write_cmd,
 		.caps = 6,
+	},
+};
+
+static struct pmif mt6881_pmif_arb[] = {
+	{
+		.regs = mt6881_regs,
+		.spmimst_regs = mt6881_spmi_regs,
+		.soc_chan = 2,
+		.mstid = SPMI_MASTER_1,
+		.pmifid = PMIF_PMIFID_SPMI0,
+		.read_cmd = pmif_spmi_read_cmd,
+		.write_cmd = pmif_spmi_write_cmd,
+		.caps = 5,
 	},
 };
 
@@ -2895,6 +2999,9 @@ static const struct of_device_id mtk_spmi_match_table[] = {
 	}, {
 		.compatible = "mediatek,mt6879-spmi",
 		.data = &mt6xxx_pmif_arb,
+	}, {
+		.compatible = "mediatek,mt6881-spmi",
+		.data = &mt6881_pmif_arb,
 	}, {
 		.compatible = "mediatek,mt6886-spmi",
 		.data = &mt6xxx_pmif_arb,
