@@ -9,9 +9,6 @@
 #include <asm/kvm_pkvm_module.h>
 #include "pkvm_p1_defines.h"
 #include "pkvm_p1_sec_regs.h"
-#include <pkvm_mgmt/pkvm_mgmt.h>
-#include <pkvm_trustzone.h>
-#include <pkvm_sys.h>
 
 
 /*******************************************************************************

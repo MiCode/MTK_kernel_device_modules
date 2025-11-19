@@ -4,6 +4,12 @@
  */
 
 /*******************************************************************************
+ * Includes
+ ******************************************************************************/
+#include <pkvm_sys.h>
+
+
+/*******************************************************************************
  * Defines
  ******************************************************************************/
 #define _DAPC_NUM_CQ         34
@@ -11,12 +17,6 @@
 #define TG_A	0
 #define TG_B	1
 #define CAM_NUM 2
-
-#define SIO_READ  (0)
-#define SIO_WRITE (1)
-
-#define IO_OFFSET_LIMIT (0x1000)
-#define IO_ACCESS_SIZE  (4)
 
 #define FH_IDX_TS_LSB        (0)
 #define FH_IDX_MAGIC         (1)
@@ -124,22 +124,3 @@ enum pkvm_sec_dma_port {
 };
 
 uint32_t port_sec_enable[CAM_DMA_PORT_MAX] = {0};
-
-// tf-a/plat/mediatek/drivers/devapc/devapc_hal.h
-enum devapc_sip_cmd {
-	SIP_APC_MODULE_SET = 1,
-	SIP_APC_MASTER_SET,
-};
-
-enum devapc_hyp_module_req_type {
-	DEVAPC_HYP_MODULE_REQ_APU,
-	DEVAPC_HYP_MODULE_REQ_IMGSENSOR,
-	DEVAPC_HYP_MODULE_REQ_CAMERA_ISP,
-	DEVAPC_HYP_MODULE_REQ_NUM,
-};
-
-// tf-a/plat/mediatek/include/drivers/devapc_public.h
-enum devapc_protect_on_off {
-	DEVAPC_PROTECT_DISABLE = 0,
-	DEVAPC_PROTECT_ENABLE,
-};
