@@ -8564,6 +8564,13 @@
 		status = "disabled";
 	};
 
+	battery_manager: battery-manager {
+		compatible = "mediatek,battery manager";
+		gauge1 = <&mtk_gauge>;
+		charger = <&mt6720_chg>;
+		bootmode = <&chosen>;
+	};
+
 	pmic-oc-debug {
 		compatible = "mediatek,mt6879-oc-debug";
 		status = "disabled";
@@ -9542,6 +9549,12 @@
 &mt6363_vbuck1 {
 	regulator-always-on;
 };
+
+&mtk_gauge {
+	disable-mtkbattery = <1>;
+	fixed-battery-temperature = <25>;
+};
+#include "mediatek/bat_setting/mt6881_battery_prop.dtsi"
 
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
