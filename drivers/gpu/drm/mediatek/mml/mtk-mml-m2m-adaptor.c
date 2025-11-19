@@ -1617,6 +1617,7 @@ err_free_handler:
 err_release_m2m_ctx:
 	v4l2_m2m_ctx_release(ctx->m2m_ctx);
 err_free_ctx:
+	ctx->ctx.kt_taskdone = NULL;
 	mml_ctx_deinit(&ctx->ctx);
 	kfree(ctx);
 err_ret:
