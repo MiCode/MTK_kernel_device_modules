@@ -5911,7 +5911,7 @@
 			#interrupt-cells = <1>;
 			irq-event-en = <0xc0000000 0x0 0x0 0x0 0x0>;
 			irq-event-en-p = <0xc0000000 0x0 0x0 0x0 0x0>;
-			spmi-dev-mask = <0x20>;
+			spmi-dev-mask = <0x0>;
 			#address-cells = <2>;
 			#size-cells = <0>;
 			hwinf-err-irq-idx = <0x21 0x2c>;
