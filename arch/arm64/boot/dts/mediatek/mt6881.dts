@@ -897,6 +897,10 @@
 		<GIC_SPI 260 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
+	connfem: connfem {
+		compatible = "mediatek,connfem";
+	};
+
 	sspm: sspm@1c300000 {
 		compatible = "mediatek,sspm";
 		reg = <0 0x1c300000 0 0x2c000>,
@@ -9622,6 +9626,7 @@
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6368.dtsi"
 #include "mediatek/cust_mt6881_msdc.dtsi"
+#include "mediatek/cust_mt6881_connfem.dtsi"
 
 &mt6363_vbuck2 {
 	regulator-always-on;

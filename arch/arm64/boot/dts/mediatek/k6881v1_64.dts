@@ -51,6 +51,26 @@
 	};
 };
 
+&connfem {
+/* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
+#if 0
+	epa-elna {
+		parts = <&wlan7207h &wlan7207c>;
+		wifi {
+			flags-0 {
+				open-loop;
+			};
+		};
+		bt {
+			flags-0 {
+				/* choose one of: epa-elna/epa/elna/bypass */
+				epa-elna;
+			};
+		};
+	};
+#endif
+};
+
 &pio {
 	kpcol0_pins_gpio_mode: gpio-mode {
 		pins-cmd-dat {
@@ -203,4 +223,5 @@
 #include <k6881v1_64/cust.dtsi>
 #include "mediatek/cust_mt6881_camera_v4l2.dtsi"
 #include "mediatek/cust_mt6881_touch_1080x2400_mult.dtsi"
+#include "mediatek/cust_k6881_connfem.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
