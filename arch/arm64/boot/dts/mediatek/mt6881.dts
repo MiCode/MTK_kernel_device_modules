@@ -781,6 +781,10 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 
+		efuse_segment: segment@78 {
+			reg = <0x78 0x4>;
+		};
+
 		lvts_e_data1: data1@1ac {
 			reg = <0x1ac 0x34>;
 		};
