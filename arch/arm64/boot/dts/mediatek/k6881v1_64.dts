@@ -12,14 +12,7 @@
 
 /* chosen */
 &chosen {
-	bootargs = "console=tty0 console=ttyS0,921600n1 root=/dev/ram vmalloc=400M cma=64M \
-8250.nr_uarts=4 kmemleak=off kasan=off \
-loglevel=8 \
-androidboot.hardware=mt6881 \
-earlycon=uart8250,mmio32,0x11001000 \
-initcall_debug=1 \
-kvm-arm.mode=none \
-arm64.nopauth arm64.nosme arm64.nosve";
+	bootargs_ext = "";
 };
 
 &timer {
