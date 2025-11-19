@@ -200,6 +200,17 @@ arm64.nopauth arm64.nosme arm64.nosve";
 	regulator-always-on;
 };
 
+&audio_sram {
+	reg = <0 0x11060000 0 0x10000>;
+	mode-size = <0x10000 0x10000>;
+};
+
+&audio_xhci_sram {
+	reg = <0 0x11070000 0 0x4000>;
+	mode-size = <0x4000>;
+	afe-reserved;
+};
+
 #include <k6881v1_64/cust.dtsi>
 #include "mediatek/cust_mt6881_camera_v4l2.dtsi"
 #include "mediatek/cust_mt6881_touch_1080x2400_mult.dtsi"

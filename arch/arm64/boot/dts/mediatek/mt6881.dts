@@ -8594,6 +8594,10 @@
 		block-size = <0x1000>;
 	};
 
+	audio_xhci_sram: audio-xhci-sram@11070000 {
+		compatible = "mediatek,audio_xhci_sram";
+	};
+
 	sound: sound {
 		compatible = "mediatek,mt6881-mt6368-sound";
 		/* mediatek,snd_audio_dsp = <&snd_audio_dsp>; */
