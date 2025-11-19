@@ -27,11 +27,11 @@ void mtk_emidbg_dump(void)
 	arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIDBG_DUMP,
 		0, 0, 0, 0, 0, 0, &smc_res);
 
-	while (smc_res.a0 > 0) {
+	while (((long)smc_res.a0) > 0) {
 		arm_smccc_smc(MTK_SIP_EMIMPU_CONTROL, MTK_EMIDBG_MSG,
 		0, 0, 0, 0, 0, 0, &smc_res);
 
-		pr_info("emidbg: %d, 0x%x, 0x%x, 0x%x\n",
+		pr_info("v2emidbg: %d, 0x%x, 0x%x, 0x%x\n",
 			(int)smc_res.a0,
 			(unsigned int)smc_res.a1,
 			(unsigned int)smc_res.a2,
