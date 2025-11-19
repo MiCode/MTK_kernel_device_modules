@@ -2005,10 +2005,6 @@ void cmdq_hyp_cancel_task(struct user_pt_regs *regs)
 		}
 
 		pTask = pThread->pCurTask[cookie % max_task];
-		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask thread");
-		CALL_FROM_OPS(putx64, (u64)pTask->thread);
-		CALL_FROM_OPS(puts, PFX_CMDQ_ERR "ptask hwid");
-		CALL_FROM_OPS(putx64, (u64)pTask->hwid);
 		if (pTask == NULL) {
 			CALL_FROM_OPS(puts, __func__);
 			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "CANCEL_TASK: thread");
@@ -2016,7 +2012,7 @@ void cmdq_hyp_cancel_task(struct user_pt_regs *regs)
 			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "pCurTask:");
 			CALL_FROM_OPS(putx64, (u64)cookie);
 			CALL_FROM_OPS(puts, PFX_CMDQ_ERR "is NULL task");
-			break;
+			return;
 		}
 		pTask->thread = thread;
 		pTask->hwid = hwid;
