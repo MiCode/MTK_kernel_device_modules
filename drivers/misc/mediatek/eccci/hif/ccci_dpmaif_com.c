@@ -710,11 +710,10 @@ static void dpmaif_set_clk(unsigned int on, struct dpmaif_clk_node *clk)
 		}
 		clk += 1;
 	}
-	if (g_plat_inf == 6993) {
+	if (g_plat_inf == 6993)
 		CCCI_NORMAL_LOG(0, TAG, "[%s] clk cnt: %u, %u, 0x%x\n", __func__, clk_on_cnt, clk_off_cnt,
 			dpmaif_read32(g_dpmaif_ctrl->infra_ao_mem_base, 0x0D20));
-		udelay(500);
-	}
+	udelay(500);
 }
 
 static void dpmaif_dump_txq_data(int qno)
