@@ -6859,9 +6859,9 @@
 					"mediatek,mt6881-dsi";
 			reg = <0 0x1401a000 0 0x1000>;
 			interrupts = <GIC_SPI 456 IRQ_TYPE_LEVEL_HIGH 0>;
-#if 0
 			phys = <&mipi_tx_config0>;
 			phy-names = "dphy";
+#if 0
 			clocks = <&dispsys0_config_clk CLK_DISPSYS0_DISP_DSI0>,
 			<&dispsys0_config_clk CLK_DISPSYS0_DSI_CLK>,
 			<&mipi_tx_config0>;
