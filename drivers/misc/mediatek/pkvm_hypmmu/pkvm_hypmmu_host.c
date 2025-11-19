@@ -13,6 +13,7 @@
 #include <asm/kvm_host.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <pkvm_mgmt/pkvm_mgmt.h>
+#include "debug_pgtbl.h"
 #include "pkvm_hypmmu_host.h"
 
 #if defined(MTK_IOMMU_CMAPOOL) && (MTK_IOMMU_CMAPOOL)
@@ -195,6 +196,12 @@ static int __init hypmmu_nvhe_init(void)
 	ret = register_kvm_iommu();
 	if (ret) {
 		pr_err("register_kvm_iommu failed\n");
+		return ret;
+	}
+
+	ret = debug_pgtbl_init();
+	if (ret) {
+		pr_err("debug_pgtbl_init failed\n");
 		return ret;
 	}
 final:

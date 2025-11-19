@@ -52,7 +52,8 @@ static void handle_iova_to_phys(struct user_pt_regs *regs)
 	u32 lvl, hw_pte, prot_pte, hw_ret, prot_ret;
 	struct iova_info *info;
 
-	if (regs->regs[1] == IOVA_MATCH_NUM) {
+	if (regs->regs[1] == DEBUG_IOVA_MAGIC_NUMBER) {
+		iova = regs->regs[3] | (regs->regs[4] << 32);
 		info = query_iova_debug_info(iova, regs->regs[2]);
 		if (info) {
 			MOD_PUTS4("TF: iova_start, iova_end, cur_sec, cur_nsec",
@@ -139,7 +140,6 @@ bool mtk_iommu_smc_handler(struct user_pt_regs *regs)
 
 	switch(smc_id) {
 	case HYP_PMM_GET_HYPMMU_TYPE2_EN:
-		register_iova_debug_info(regs);
 		mod_ops->puts("hypmmu enabled");
 		regs->regs[0] = 0x1;	/* hypmmu enabled */
 		handled = true;

@@ -14,7 +14,7 @@
 #include "include/mtk-iommu.h"
 
 #define DEBUG_SHADOW_PAGE 0
-#define DEBUG_IOVA 0
+#define DEBUG_IOVA 1
 
 /*
  * Enable Mpool: support Page memory or CMA/Reserved memory for IOMMU pgtbl
@@ -247,108 +247,6 @@ static void add_mem_to_mpool(uint64_t pglist_pfn)
 	}
 
 	create_lv2_pgtbl_info();
-}
-#endif
-
-#if (DEBUG_IOVA)
-static struct iova_info *iommu_tag_at(int idx)
-{
-	return (struct iova_info *)(iommu_info_rb.tags + (iommu_info_rb.ent_sz * idx));
-}
-
-static void save_iova_debug_info(u32 sec, u32 nsec, u64 iova_start, u64 iova_end,
-		bool iova_map)
-{
-	struct iova_info *info;
-
-	if (iommu_info_rb.cnt == 0)
-		return;
-
-	hyp_spin_lock(&iova_info_rb_lock);
-	info = iommu_tag_at(iommu_info_rb.idx);
-	if (info) {
-		info->iova_start = iova_start;
-		info->iova_end = iova_end;
-		info->cur_sec = sec;
-		info->cur_nsec = nsec;
-		if (iova_map)
-			info->iova_map = true;
-		else
-			info->iova_map = false;
-		iommu_info_rb.idx++;
-		if (iommu_info_rb.idx >= iommu_info_rb.cnt)
-			iommu_info_rb.idx = 0;
-	}
-	hyp_spin_unlock(&iova_info_rb_lock);
-}
-
-struct iova_info *query_iova_debug_info(u64 iova, bool iova_map)
-{
-	struct iova_info *info;
-	int i, end;
-
-	if (iommu_info_rb.cnt == 0)
-		return NULL;
-
-	hyp_spin_lock(&iova_info_rb_lock);
-	end = (iommu_info_rb.idx > 0) ? iommu_info_rb.idx - 1 : iommu_info_rb.cnt - 1;
-	for (i = iommu_info_rb.idx;; ) {
-		info = iommu_tag_at(i);
-		if (!info->cur_sec)
-			goto next;
-
-		if (iova >= info->iova_start && iova <= info->iova_end
-				&& info->iova_map == iova_map) {
-			hyp_spin_unlock(&iova_info_rb_lock);
-			return info;
-		}
-next:
-		if (i == end)
-			break;
-		i = (i >=  iommu_info_rb.cnt - 1) ? 0 : i + 1;
-	}
-	hyp_spin_unlock(&iova_info_rb_lock);
-	return NULL;
-}
-
-void register_iova_debug_info(struct user_pt_regs *regs)
-{
-	uint64_t info_pfn, total_page;
-	void *info_pa;
-
-	/*
-	 * reg[1]: IOVA_MATCH_NUM
-	 * reg[2]: pfn
-	 * reg[3]: order
-	 */
-	if (regs->regs[1] != IOVA_MATCH_NUM || regs->regs[2] == 0) {
-		iommu_info_rb.cnt = 0;
-		return;
-	}
-
-	iommu_info_rb.ent_sz = sizeof(struct iova_info);
-	iommu_info_rb.idx = 0;
-	iommu_info_rb.cnt = 1024;
-
-	info_pfn = regs->regs[2];
-	total_page = (1 << regs->regs[3]) * PAGE_SIZE;
-	if (!share_memory_to_hyp(info_pfn << PAGE_SHIFT, total_page)) {
-		iommu_info_rb.cnt = 0;
-		return;
-	}
-	info_pa = (void *)(info_pfn << PAGE_SHIFT);
-	iommu_info_rb.tags = (void *)mod_ops->hyp_va((phys_addr_t)info_pa);
-
-	mod_ops->memset(iommu_info_rb.tags, 0, iommu_info_rb.ent_sz * iommu_info_rb.cnt);
-}
-#else
-struct iova_info *query_iova_debug_info(u64 iova, bool iova_map)
-{
-	return NULL;
-}
-
-void register_iova_debug_info(struct user_pt_regs *regs)
-{
 }
 #endif
 
@@ -1022,3 +920,110 @@ int io_pgtable_handler(u64 iova_start, u64 iova_size, u64 tid, u32 sec, u32 nsec
 
 	return ret;
 }
+
+#if (DEBUG_IOVA)
+static struct iova_info *iommu_tag_at(int idx)
+{
+	return (struct iova_info *)(iommu_info_rb.tags + (iommu_info_rb.ent_sz * idx));
+}
+
+void save_iova_debug_info(u32 sec, u32 nsec, u64 iova_start, u64 iova_end,
+		bool iova_map)
+{
+	struct iova_info *info;
+
+	if (iommu_info_rb.tags == NULL)
+		return;
+
+	hyp_spin_lock(&iova_info_rb_lock);
+	info = iommu_tag_at(iommu_info_rb.idx);
+	if (info) {
+		info->iova_start = iova_start;
+		info->iova_end = iova_end;
+		info->cur_sec = sec;
+		info->cur_nsec = nsec;
+		if (iova_map)
+			info->iova_map = true;
+		else
+			info->iova_map = false;
+		iommu_info_rb.idx++;
+		if (iommu_info_rb.idx >= iommu_info_rb.cnt)
+			iommu_info_rb.idx = 0;
+	}
+	hyp_spin_unlock(&iova_info_rb_lock);
+}
+
+struct iova_info *query_iova_debug_info(u64 iova, bool iova_map)
+{
+	struct iova_info *info;
+	int i, end;
+
+	if (iommu_info_rb.tags == NULL)
+		return NULL;
+
+	hyp_spin_lock(&iova_info_rb_lock);
+	end = (iommu_info_rb.idx > 0) ? iommu_info_rb.idx - 1 : iommu_info_rb.cnt - 1;
+	for (i = iommu_info_rb.idx;; ) {
+		info = iommu_tag_at(i);
+		if (!info->cur_sec)
+			goto next;
+
+		if (iova >= info->iova_start && iova <= info->iova_end
+				&& info->iova_map == iova_map) {
+			hyp_spin_unlock(&iova_info_rb_lock);
+			return info;
+		}
+next:
+		if (i == end)
+			break;
+		i = (i >=  iommu_info_rb.cnt - 1) ? 0 : i + 1;
+	}
+	hyp_spin_unlock(&iova_info_rb_lock);
+	return NULL;
+}
+
+static u64 *init_shared_page(uint64_t info_page_pfn, uint64_t total_page)
+{
+	void *info_page_pa;
+	u64 *info_page_va;
+
+	if (!share_memory_to_hyp(info_page_pfn << PAGE_SHIFT, total_page))
+		return NULL;
+
+	info_page_pa = (void *)(info_page_pfn << PAGE_SHIFT);
+	info_page_va = (void *)mod_ops->hyp_va((phys_addr_t)info_page_pa);
+
+	mod_ops->memset(info_page_va, 0, total_page);
+
+	return info_page_va;
+}
+
+void register_iova_debug_info(struct user_pt_regs *regs)
+{
+	uint64_t info_pfn, total_page;
+
+	iommu_info_rb.ent_sz = sizeof(struct iova_info);
+	iommu_info_rb.idx = 0;
+	iommu_info_rb.cnt = 1024;
+
+	info_pfn = regs->regs[1];
+	total_page = (1 << regs->regs[2]) * PAGE_SIZE;
+	iommu_info_rb.tags = (char *)init_shared_page(info_pfn, total_page);
+	if (iommu_info_rb.tags == NULL)
+		mod_ops->puts("init iova debug page fail");
+}
+#else
+void save_iova_debug_info(u32 sec, u32 nsec, u64 iova_start, u64 iova_end,
+		bool iova_map)
+{
+}
+
+struct iova_info *query_iova_debug_info(u64 iova, bool iova_map)
+{
+	return NULL;
+}
+
+void register_iova_debug_info(struct user_pt_regs *regs)
+{
+}
+#endif

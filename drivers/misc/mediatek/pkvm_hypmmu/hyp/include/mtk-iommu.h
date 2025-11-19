@@ -8,7 +8,7 @@
 
 #include <asm/kvm_pkvm_module.h>
 
-#define IOVA_MATCH_NUM 0xBBFD
+#define DEBUG_IOVA_MAGIC_NUMBER 0xBBFD
 #define IOMMU_DRIVER_MEM_PFN_MAX (100U)
 
 extern u64 page_pool_base;
@@ -16,9 +16,9 @@ extern u64 page_pool_size;
 extern bool is_iommu_pgtbl_page_memory(void);
 
 struct iommu_info {
-	int ent_sz; /* size of tag entry (including tag info) */
-	int cnt;    /* total count of tags */
-	int idx;    /* current tag index */
+	u32 ent_sz; /* size of tag entry (including tag info) */
+	u32 cnt;    /* total count of tags */
+	u32 idx;    /* current tag index */
 	char *tags; /* container of tags, size = ent_sz * cnt */
 };
 
@@ -58,7 +58,7 @@ u32 debug_io_get_pte(u32 *pgd, u64 iova, u32 *out_pte, u64 table_id);
 u32 debug_make_result(u64 iova, u32 pte, u32 lvl);
 u32 query_ac_srinfo(u64 pa);
 void set_ac_attr(u64 pa, u64 size, u8 attr);
-void register_iova_debug_info(struct user_pt_regs *regs);
 struct iova_info *query_iova_debug_info(u64 iova, bool iova_map);
+void save_iova_debug_info(u32 sec, u32 nsec, u64 iova_start, u64 iova_end, bool iova_map);
 
 #endif

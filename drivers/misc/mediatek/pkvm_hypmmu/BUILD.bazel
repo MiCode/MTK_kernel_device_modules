@@ -40,6 +40,8 @@ define_mgk_ddk_ko(
         "hal-gpu-mpu.c",
         "hal-infra-mpu.c",
         "include/mtk-iommu-defines.h",
+        "debug_pgtbl.c",
+        "debug_pgtbl.h",
     ],
     includes = [".", "include"],
     out = "pkvm_hypmmu.ko",

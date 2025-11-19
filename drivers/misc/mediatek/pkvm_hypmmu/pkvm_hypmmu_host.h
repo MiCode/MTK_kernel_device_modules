@@ -17,6 +17,7 @@ int kvm_nvhe_sym(pkvm_hypmmu_load_init)(const struct pkvm_module_ops *ops);
 void kvm_nvhe_sym(mtk_iommu_hyp_init)(struct user_pt_regs *regs);
 void kvm_nvhe_sym(mtk_iommu_add_device)(struct user_pt_regs *regs);
 void kvm_nvhe_sym(iommu_finalise)(struct user_pt_regs *regs);
+void kvm_nvhe_sym(register_iova_debug_info)(struct user_pt_regs *regs);
 
 /* gpu-mpu */
 void kvm_nvhe_sym(gpu_mpu_hyp_init)(struct user_pt_regs *regs);
