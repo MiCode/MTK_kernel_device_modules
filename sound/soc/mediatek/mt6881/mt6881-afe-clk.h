@@ -44,10 +44,10 @@
 #define CKSYS_AUD_TOP_CFG 0x032c
 #define CKSYS_AUD_TOP_MON 0x0330
 
-#define APLL1_EN	BIT(5)
-#define APLL1_CLR	BIT(5)
-#define APLL2_EN	BIT(6)
-#define APLL2_CLR	BIT(6)
+#define APLL1_EN	BIT(6)
+#define APLL1_CLR	BIT(6)
+#define APLL2_EN	BIT(7)
+#define APLL2_CLR	BIT(7)
 
 /* CLK_AUDDIV_0 */
 #define APLL12_DIV_I2SIN0_PDN_SFT               0
@@ -129,6 +129,9 @@
 #define APLL12_DIV_FMI2S_INV_MASK_SFT           (0x1 << 12)
 
 /* CLK_AUDDIV_2 */
+#define APLL12_CK_DIV_I2SIN0_SFT                0
+#define APLL12_CK_DIV_I2SIN0_MASK               0xff
+#define APLL12_CK_DIV_I2SIN0_MASK_SFT           (0xff << 0)
 #define APLL12_CK_DIV_I2SIN1_SFT                8
 #define APLL12_CK_DIV_I2SIN1_MASK               0xff
 #define APLL12_CK_DIV_I2SIN1_MASK_SFT           (0xff << 8)
@@ -150,6 +153,9 @@
 // #define APLL12_CK_DIV_I2SIN4_SFT                0
 // #define APLL12_CK_DIV_I2SIN4_MASK               0xff
 // #define APLL12_CK_DIV_I2SIN4_MASK_SFT           (0xff << 0)
+#define APLL12_CK_DIV_I2SIN6_SFT                8
+#define APLL12_CK_DIV_I2SIN6_MASK               0xff
+#define APLL12_CK_DIV_I2SIN6_MASK_SFT           (0xff << 8)
 #define APLL12_CK_DIV_I2SOUT1_SFT               24
 #define APLL12_CK_DIV_I2SOUT1_MASK              0xff
 #define APLL12_CK_DIV_I2SOUT1_MASK_SFT          (0xff << 24)
