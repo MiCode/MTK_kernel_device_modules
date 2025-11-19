@@ -9,9 +9,11 @@
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
 #include "proto.h"
 #endif
+#ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)
 #include <mtk-smmu-v3.h>
 #include <iommu_debug.h>
+#endif
 #endif
 
 #define GCE_D_PA	0x1e980000
@@ -24,7 +26,7 @@
 
 const char *cmdq_thread_module_dispatch(phys_addr_t gce_pa, s32 thread)
 {
-	if (gce_pa == GCE_D_PA || gce_pa == GCE_D_2_PA) {
+	if (gce_pa == GCE_D_PA) {
 		switch (thread) {
 		case 0 ... 7:
 		case 10 ... 12:
@@ -95,13 +97,6 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 		case CMDQ_EVENT_DISPSYS_DISP_OVL0_2L_SOF
 			... CMDQ_EVENT_DISPSYS_BUF_UNDERRUN_ENG_EVENT_7:
 			return "MM_DISP";
-		case CMDQ_EVENT_MML1_STREAM_SOF_0
-			... CMDQ_EVENT_MML1_MDP_C3D0_FLIP_DONE_ENG_EVENT:
-		case CMDQ_EVENT_MML2_STREAM_SOF_0
-			... CMDQ_EVENT_MML2_MDP_C3D0_FLIP_DONE_ENG_EVENT:
-		case CMDQ_SYNC_TOKEN_MML_BUFA
-			... CMDQ_SYNC_TOKEN_MML_APU_START:
-			return "MM_MML";
 		default:
 			return "MM_GCE";
 		}
@@ -229,7 +224,7 @@ const char *cmdq_event_module_dispatch(phys_addr_t gce_pa, const u16 event,
 		default:
 			return "MM_GCEM";
 		}
-
+	}
 	return "MM_GCE";
 }
 
