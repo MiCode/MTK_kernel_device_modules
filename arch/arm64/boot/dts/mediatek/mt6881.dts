@@ -22,6 +22,7 @@
 #include <dt-bindings/iio/adc/mediatek,mt6720_adc.h>
 #include <dt-bindings/mfd/mt6720.h>
 #include <dt-bindings/power/mt6375-gauge.h>
+#include <dt-bindings/reset/ti-syscon.h>
 
 / {
 	model = "MT6881";
@@ -7929,6 +7930,26 @@
 			};
 		};
 
+		pextpcfg_ao_clk: syscon@112e0000 {
+			compatible = "mediatek,mt6881-pextpcfg_ao", "syscon", "simple-mfd";
+			reg = <0 0x112e0000 0 0x1000>;
+			#clock-cells = <1>;
+
+			pextpao_rst: reset-controller {
+				compatible = "ti,syscon-reset";
+				#reset-cells = <1>;
+
+				ti,reset-bits = <
+					/* 0: PCIe0 MAC reset */
+					0x8  0 0xc  0 0 0
+					(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+					/* 1: PCIe0 PHY reset */
+					0x8  1 0xc  1 0 0
+					(ASSERT_SET | DEASSERT_SET | STATUS_NONE)
+					>;
+			};
+		};
+
 		pcie: pcie@112f0000 {
 			device_type = "pci";
 			compatible = "mediatek,mt6881-pcie";
@@ -7944,6 +7965,10 @@
 			linux,pci-domain = <0>;
 			mediatek,peri-reset-dis;
 			mediatek,dvfs-req-dis;
+			pextpcfg = <&pextpcfg_ao_clk>;
+
+			resets = <&pextpao_rst 0>, <&pextpao_rst 1>;
+			reset-names = "mac", "phy";
 
 			phys = <&pciephy>;
 			phy-names = "pcie-phy";
