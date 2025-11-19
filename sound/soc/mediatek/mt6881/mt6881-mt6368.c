@@ -28,7 +28,7 @@
  * mt6881_mt6368_spk_amp_event()
  */
 #define EXT_SPK_AMP_W_NAME "Ext_Speaker_Amp"
-#define MT6368_PROBE_DONE 0
+#define MT6368_PROBE_DONE 1
 
 #if IS_ENABLED(CONFIG_SND_SOC_MT6368_ACCDET) && !defined(SKIP_ACCDET)
 #include "../../codecs/mt6368-accdet.h"
@@ -539,6 +539,10 @@ static int mt6881_mt6368_init(struct snd_soc_pcm_runtime *rtd)
 	ops.set_lch_dc_compensation = mt6881_set_lch_dc_compensation;
 	ops.set_rch_dc_compensation = mt6881_set_rch_dc_compensation;
 	ops.adda_dl_gain_control = mt6881_adda_dl_gain_control;
+	if (!codec_component) {
+		dev_err(afe->dev, "%s(), codec_component is NULL\n", __func__);
+		return -EINVAL;
+	}
 	mt6368_set_codec_ops(codec_component, &ops);
 
 	/* set mtkaif protocol */
