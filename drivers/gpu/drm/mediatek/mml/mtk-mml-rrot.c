@@ -1749,45 +1749,45 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
  *
  * width >= inxe - inxs + 1 = outxe - outxs + luma + incrop
  */
-static void rrot_config_left(struct mml_tile_engine *tile)
+static void rrot_config_left(struct mml_tile_engine *tile, u8 bin)
 {
 	u32 in_w, out_w;
 
 	in_w = round_up(tile->in.xe - tile->in.xs + 1, 2);
-	tile->in.xe = round_up(tile->in.xs + in_w / 2, 32) - 1;
+	tile->in.xe = round_up(tile->in.xs + in_w / 2, 32 >> bin) - 1;
 	out_w = tile->in.xe - tile->in.xs + 1 - tile->luma.x;
 	tile->out.xe = tile->out.xs + out_w - 1;
 }
 
-static void rrot_config_right(struct mml_tile_engine *tile)
+static void rrot_config_right(struct mml_tile_engine *tile, u8 bin)
 {
 	u32 in_right_crop, in_left_w, out_w;
 
 	in_right_crop = (tile->in.xe - tile->in.xs) - (tile->out.xe - tile->out.xs) - tile->luma.x;
 	in_left_w = round_up(tile->in.xe - tile->in.xs + 1, 2);
-	tile->in.xs = round_up(tile->in.xs + in_left_w / 2, 32);
+	tile->in.xs = round_up(tile->in.xs + in_left_w / 2, 32 >> bin);
 	out_w = tile->in.xe - tile->in.xs + 1 - in_right_crop;
 	tile->out.xs = tile->out.xe + 1 - out_w;
 	tile->luma.x = 0;
 }
 
-static void rrot_config_top(struct mml_tile_engine *tile)
+static void rrot_config_top(struct mml_tile_engine *tile, u8 bin)
 {
 	u32 in_h, out_h;
 
 	in_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
-	tile->in.ye = round_up(tile->in.ys + in_h / 2, 16) - 1;
+	tile->in.ye = round_up(tile->in.ys + in_h / 2, 16 >> bin) - 1;
 	out_h = tile->in.ye - tile->in.ys + 1 - tile->luma.y;
 	tile->out.ye = tile->out.ys + out_h - 1;
 }
 
-static void rrot_config_bottom(struct mml_tile_engine *tile)
+static void rrot_config_bottom(struct mml_tile_engine *tile, u8 bin)
 {
 	u32 in_bottom_crop, in_top_h, out_h;
 
 	in_bottom_crop = (tile->in.ye - tile->in.ys) - (tile->out.ye - tile->out.ys) - tile->luma.y;
 	in_top_h = round_up(tile->in.ye - tile->in.ys + 1, 2);
-	tile->in.ys = round_up(tile->in.ys + in_top_h / 2, 16);
+	tile->in.ys = round_up(tile->in.ys + in_top_h / 2, 16 >> bin);
 	out_h = tile->in.ye - tile->in.ys + 1 - in_bottom_crop;
 	tile->out.ys = tile->out.ye + 1 - out_h;
 	tile->luma.y = 0;
@@ -1904,29 +1904,29 @@ static struct mml_tile_engine rrot_config_dual(struct mml_comp *comp, struct mml
 		if (rrot->pipe == 0) {
 			if ((rrot_frm->rotate == MML_ROT_90 && !rrot_frm->flip) ||
 			    (rrot_frm->rotate == MML_ROT_270 && rrot_frm->flip))
-				rrot_config_bottom(&tile);
+				rrot_config_bottom(&tile, cfg->bin_y);
 			else if ((rrot_frm->rotate == MML_ROT_90 && rrot_frm->flip) ||
 				 (rrot_frm->rotate == MML_ROT_270 && !rrot_frm->flip))
-				rrot_config_top(&tile);
+				rrot_config_top(&tile, cfg->bin_y);
 			else if ((rrot_frm->rotate == MML_ROT_0 && !rrot_frm->flip) ||
 				 (rrot_frm->rotate == MML_ROT_180 && rrot_frm->flip))
-				rrot_config_left(&tile);
+				rrot_config_left(&tile, cfg->bin_x);
 			else if ((rrot_frm->rotate == MML_ROT_0 && rrot_frm->flip) ||
 				 (rrot_frm->rotate == MML_ROT_180 && !rrot_frm->flip))
-				rrot_config_right(&tile);
+				rrot_config_right(&tile, cfg->bin_x);
 		} else {
 			if ((rrot_frm->rotate == MML_ROT_90 && !rrot_frm->flip) ||
 			    (rrot_frm->rotate == MML_ROT_270 && rrot_frm->flip))
-				rrot_config_top(&tile);
+				rrot_config_top(&tile, cfg->bin_y);
 			else if ((rrot_frm->rotate == MML_ROT_90 && rrot_frm->flip) ||
 				 (rrot_frm->rotate == MML_ROT_270 && !rrot_frm->flip))
-				rrot_config_bottom(&tile);
+				rrot_config_bottom(&tile, cfg->bin_y);
 			else if ((rrot_frm->rotate == MML_ROT_0 && !rrot_frm->flip) ||
 				 (rrot_frm->rotate == MML_ROT_180 && rrot_frm->flip))
-				rrot_config_right(&tile);
+				rrot_config_right(&tile, cfg->bin_x);
 			else if ((rrot_frm->rotate == MML_ROT_0 && rrot_frm->flip) ||
 				 (rrot_frm->rotate == MML_ROT_180 && !rrot_frm->flip))
-				rrot_config_left(&tile);
+				rrot_config_left(&tile, cfg->bin_x);
 		}
 	}
 
