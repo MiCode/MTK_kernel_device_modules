@@ -5884,14 +5884,13 @@
 					"pmif_p_irq","spmi_p_nack_irq";
 			interrupt-controller;
 			#interrupt-cells = <1>;
-			irq-event-en = <0xc0000000 0x1 0x0 0x0 0x0>;
-			irq-event-en-p = <0xc0000000 0x1 0x0 0x0 0x0>;
+			irq-event-en = <0xc0000000 0x0 0x0 0x0 0x0>;
+			irq-event-en-p = <0xc0000000 0x0 0x0 0x0 0x0>;
 			spmi-dev-mask = <0x20>;
 			#address-cells = <2>;
 			#size-cells = <0>;
-			hwinf-err-irq-idx = <0x21 0x30>;
-			swinf-err-irq-idx = <0x71 0x76>;
-			rcs-mask-list = <0x4 0x4>;
+			hwinf-err-irq-idx = <0x21 0x2c>;
+			swinf-err-irq-idx = <0x5d 0x62>;
 		};
 
 		spmi_pmif_mpu: spmi-pmif-mpu@1cc1e004 {
