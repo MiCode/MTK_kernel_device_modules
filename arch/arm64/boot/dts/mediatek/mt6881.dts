@@ -6492,9 +6492,9 @@
 			/*0-napi,1-txbusystop,2-sgio,3-hwchksum,4-lro,5-2rxq,6-rsvmem,7-maxbat,8-udpgro*/
 			mediatek,dpmaif-cap = <0x0000004a>;
 			mediatek,plat-info = <6881>;
-			clocks = <&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_DPMAIF_MAIN>,
-				<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CLDMA_BCLK>,
-				<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_RG_MMW_DPMAIF26M_CK>;
+			clocks = <&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_DPMAIF_MAIN_DPMAIF>,
+				<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CLDMA_BCLK_DPMAIF>,
+				<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_RG_MMW_DPMAIF26M_CK_DPMAIF>;
 			clock-names = "infra-dpmaif-clk",
 				    "infra-dpmaif-blk-clk",
 				    "infra-dpmaif-rg-mmw-clk";
