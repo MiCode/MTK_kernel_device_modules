@@ -120,12 +120,19 @@ static void mtu3_vbus_draw_work(struct work_struct *data)
 int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA)
 {
 	struct mtu3 *mtu = gadget_to_mtu3(g);
+	const char *usb_psy_name;
 
-	if (!mtu->usb_psy_name)
+	if (!mtu->vbus_draw_enable)
 		goto skip;
 
 	if (!mtu->usb_psy) {
-		mtu->usb_psy = power_supply_get_by_name(mtu->usb_psy_name);
+		if (device_property_read_string(mtu->dev,
+				"usb-psy-name",	&usb_psy_name)) {
+			dev_info(mtu->dev, "couldn't get usb usb-phy-name\n");
+			goto skip;
+		}
+
+		mtu->usb_psy = power_supply_get_by_name(usb_psy_name);
 		if (!mtu->usb_psy) {
 			dev_info(mtu->dev, "couldn't get usb power supply\n");
 			goto skip;
@@ -1240,6 +1247,7 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 	struct device *dev = ssusb->dev;
 	struct platform_device *pdev = to_platform_device(dev);
 	struct mtu3 *mtu = NULL;
+	struct device_node *node;
 	int ret = -ENOMEM;
 
 	mtu = devm_kzalloc(dev, sizeof(struct mtu3), GFP_KERNEL);
@@ -1273,10 +1281,15 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 		mtu->mac_base, mtu->ippc_base);
 
 	/* check usbif compliance property */
-	if (device_property_read_string(mtu->dev, "usb-psy-name", &mtu->usb_psy_name) >= 0) {
-		dev_info(mtu->dev, "usb psy: %s\n", mtu->usb_psy_name);
-		INIT_WORK(&mtu->draw_work, mtu3_vbus_draw_work);
+	node = of_find_node_with_property(NULL, "enable-pdtest-mode");
+	if (node) {
+		of_property_read_u32(node, "enable-pdtest-mode", &mtu->vbus_draw_enable);
+		if (mtu->vbus_draw_enable)
+			INIT_WORK(&mtu->draw_work, mtu3_vbus_draw_work);
+
+		of_node_put(node);
 	}
+	dev_info(dev, "vbus_draw_enable: %d\n", mtu->vbus_draw_enable);
 
 	/* work for error recovery */
 	INIT_WORK(&mtu->recovery_work, mtu3_recovery_work);

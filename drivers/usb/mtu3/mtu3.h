@@ -583,9 +583,9 @@ struct mtu3 {
 	bool lpm_timer_active;
 	spinlock_t lpm_lock;
 
-	const char *usb_psy_name;
 	struct power_supply *usb_psy;
 	struct work_struct draw_work;
+	unsigned int vbus_draw_enable;
 	unsigned int vbus_draw;
 
 	const char *typec_name;
