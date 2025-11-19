@@ -3,6 +3,7 @@
  * Copyright (c) 2025 MediaTek Inc.
  */
 #include <asm/kvm_pkvm_module.h>
+#include "pkvm_cmdq_hyp.h"
 
 #define CMDQ_MAX_SECURE_CORE_COUNT	(2)
 /* TZMP sw token */
@@ -110,3 +111,5 @@ uint32_t cmdq_get_base_by_hwid(uint8_t hwid);
 uint8_t cmdq_get_hwid_by_base(uint32_t base);
 uint32_t cmdq_get_base_by_hwid(uint8_t hwid);
 uint32_t cmdq_secio_type(const uint32_t addr, const uint32_t cmdq_id);
+int32_t cmdq_tz_get_max_task_in_thread(const int32_t thread);
+int32_t cmdq_tz_get_cmd_block_size(const int32_t thread);

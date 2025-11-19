@@ -27,6 +27,21 @@ void cmdq_set_plat_ops(const struct pkvm_module_ops *ops)
 	CALL_FROM_PLAT_OPS(puts, PFX_CMDQ_MSG "enter");
 }
 
+static const int32_t cmdq_max_task_in_thread[CMDQ_MAX_SECURE_THREAD_COUNT] = {10, 10, 2, 10, 10};
+int32_t cmdq_tz_get_max_task_in_thread(const int32_t thread)
+{
+	return cmdq_tz_is_a_secure_thread(thread) ?
+		cmdq_max_task_in_thread[thread - CMDQ_MIN_SECURE_THREAD_ID] / CMDQ_MAX_SECURE_CORE_COUNT : 0;
+}
+
+static const int32_t cmdq_tz_cmd_block_size[CMDQ_MAX_SECURE_THREAD_COUNT] = {
+	4 << 12, 4 << 12, 20 << 12, 4 << 12, 4 << 12};
+int32_t cmdq_tz_get_cmd_block_size(const int32_t thread)
+{
+	return cmdq_tz_is_a_secure_thread(thread) ?
+		cmdq_tz_cmd_block_size[thread - CMDQ_MIN_SECURE_THREAD_ID] : 0;
+}
+
 uint32_t cmdq_get_base_by_hwid(uint8_t hwid)
 {
 	if (hwid == 0)

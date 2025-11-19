@@ -110,7 +110,7 @@ TZ_RESULT __SECIO_READ(uint32_t io_type, uint32_t reg_offset, uint32_t *read_val
 }
 #endif
 
-static bool cmdq_tz_is_a_secure_thread(const int32_t thread)
+bool cmdq_tz_is_a_secure_thread(const int32_t thread)
 {
 	if ((thread >= CMDQ_MIN_SECURE_THREAD_ID) &&
 		((CMDQ_MIN_SECURE_THREAD_ID + CMDQ_MAX_SECURE_THREAD_COUNT) > thread)) {
@@ -119,20 +119,7 @@ static bool cmdq_tz_is_a_secure_thread(const int32_t thread)
 	return false;
 }
 
-static const int32_t cmdq_max_task_in_thread[CMDQ_MAX_SECURE_THREAD_COUNT] = {10, 10, 2, 10, 10};
-int32_t cmdq_tz_get_max_task_in_thread(const int32_t thread)
-{
-	return cmdq_tz_is_a_secure_thread(thread) ?
-		cmdq_max_task_in_thread[thread - CMDQ_MIN_SECURE_THREAD_ID] / CMDQ_MAX_SECURE_CORE_COUNT : 0;
-}
 
-static const int32_t cmdq_tz_cmd_block_size[CMDQ_MAX_SECURE_THREAD_COUNT] = {
-	4 << 12, 4 << 12, 20 << 12, 4 << 12, 4 << 12};
-int32_t cmdq_tz_get_cmd_block_size(const int32_t thread)
-{
-	return cmdq_tz_is_a_secure_thread(thread) ?
-		cmdq_tz_cmd_block_size[thread - CMDQ_MIN_SECURE_THREAD_ID] : 0;
-}
 
 void cmdq_secmem_IOVAQuery(uint64_t *iova)
 {

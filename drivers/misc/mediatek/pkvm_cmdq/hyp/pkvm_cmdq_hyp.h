@@ -350,6 +350,7 @@ int cmdq_task_finalize_loop(struct TaskStruct *task);
 void cmdq_tz_mdp_handle(struct TaskStruct *pTask);
 void cmdq_secio_write(const uint32_t base, const uint32_t addr, const uint32_t val);
 uint32_t cmdq_secio_read(const uint32_t base, const uint32_t addr);
+bool cmdq_tz_is_a_secure_thread(const int32_t thread);
 #ifdef CMDQ_SECIO_WA
 TZ_RESULT __SECIO_WRITE(uint32_t io_type, uint32_t reg_offset, uint32_t write_val);
 TZ_RESULT __SECIO_READ(uint32_t io_type, uint32_t reg_offset, uint32_t *read_val);
