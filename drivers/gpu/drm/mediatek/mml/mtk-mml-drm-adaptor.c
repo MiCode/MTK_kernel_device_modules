@@ -518,7 +518,9 @@ not_support:
 enum mml_mode mml_drm_query_cap(struct mml_drm_ctx *dctx,
 				struct mml_frame_info *info)
 {
-	struct mml_frame_info_cache info_cache = {0};
+	struct mml_frame_info_cache info_cache = {
+		.remain = (u32) - 1,
+	};
 	enum mml_mode mode;
 
 	mode = mml_drm_query_frame(dctx, info, &info_cache);
