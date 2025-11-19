@@ -6340,6 +6340,21 @@
 			reg = <0 0x10c40000 0 0xc0000>;
 		};
 
+		mmc1: mmc@11240000 {
+			compatible = "mediatek,mt6881-mmc";
+			reg = <0 0x11240000 0 0x1000>,
+				<0 0x11b30000 0 0x1000>;
+			interrupts = <GIC_SPI 516 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&cksys_reg_clk CLK_CKSYS_REG_MSDC30_1_SEL>,
+					<&cksys_reg_clk CLK_CKSYS_REG_MSDC_MACRO_1P_SEL>,
+					<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_MSDC1_MSDC1>,
+					<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_MSDC1_DIV_MSDC1>,
+					<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_MSDC1_MST_F_MSDC1>,
+					<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_MSDC1_SLV_H_MSDC1>;
+			clock-names = "source", "macro", "source_cg", "ahb_cg", "axi_cg", "bus_clk";
+			status = "disabled";
+		};
+
 		ufsphy: ufsphy@112a0000 {
 			compatible = "mediatek,mt8183-ufsphy";
 			#phy-cells = <0>;
@@ -9517,6 +9532,7 @@
 
 #include "mediatek/mt6363.dtsi"
 #include "mediatek/mt6368.dtsi"
+#include "mediatek/cust_mt6881_msdc.dtsi"
 
 &mt6363_vbuck4 {
 	regulator-always-on;
@@ -9596,6 +9612,8 @@
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
+/delete-node/ &mt6368_vmch;
+/delete-node/ &mt6368_vmch_eint_low;
 
 /* PMIC TODO: add pmic-lvsys-notify after bring up */
 
