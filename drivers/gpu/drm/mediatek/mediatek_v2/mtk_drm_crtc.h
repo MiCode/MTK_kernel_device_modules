@@ -1045,7 +1045,11 @@ enum BIF_EN_MODE {
 	BIF_HS_IDLE = 1,
 	BIF_ALL_SCN = 2,
 };
-
+enum BIF_SLBC {
+	SLBC_RELEASE = 0,
+	SLBC_REQUEST = 1,
+	SLBC_FORCE_RELEASE = 2,
+};
 struct mtk_bif_info {
 	int bif_enable;
 	bool racing_en;
@@ -1057,6 +1061,7 @@ struct mtk_bif_info {
 	struct mtk_rect src_roi;
 	int wdma_offset;
 	unsigned int sram_en;
+	atomic_t slbc_hold;
 	struct slbc_data sram_data;
 	u64 sram_pa;
 	u64 sram_size;
@@ -2022,7 +2027,7 @@ enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int 
 void mtk_crtc_bif_enable_racing(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
 void mtk_crtc_bif_restore_path_mutex(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
 void mtk_crtc_bif_backup_path_mutex(struct mtk_drm_crtc *mtk_crtc);
-bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, bool en);
+bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC bif_slbc);
 void mtk_crtc_bif_keep_read_path(struct drm_crtc *crtc, struct cmdq_pkt *handle);
 void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc);
 void mtk_crtc_bif_apsrc_ddren_control(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en);

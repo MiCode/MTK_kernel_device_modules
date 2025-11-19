@@ -539,10 +539,10 @@ void mtk_crtc_bif_backup_path_mutex(struct mtk_drm_crtc *mtk_crtc)
 	mtk_crtc->bif_info->dispsys_1[0] = readl(ddp->side_regs + DISP_REG_MUTEX_MOD(0, ddp->data, mutex->id));
 	mtk_crtc->bif_info->dispsys_1[1] = readl(ddp->side_regs + DISP_REG_MUTEX_MOD(1, ddp->data, mutex->id));
 
-	DDPBIF("bif_bk_m,ovlsys_0_0:0x%x,ovlsys_0_1:0x%x,ovlsys_1_0:0x%x,ovlsys_1_1:0x%x\n",
+	DDPDBG("bif_bk_m,ovlsys_0_0:0x%x,ovlsys_0_1:0x%x,ovlsys_1_0:0x%x,ovlsys_1_1:0x%x\n",
 		mtk_crtc->bif_info->ovlsys_0[0],  mtk_crtc->bif_info->ovlsys_0[1],
 		mtk_crtc->bif_info->ovlsys_1[0], mtk_crtc->bif_info->ovlsys_1[1]);
-	DDPBIF("bif_bk_m,dispsys_0_0:0x%x,dispsys_0_1:0x%x,dispsys_1_0:0x%x,dispsys_1_1:0x%x\n",
+	DDPDBG("bif_bk_m,dispsys_0_0:0x%x,dispsys_0_1:0x%x,dispsys_1_0:0x%x,dispsys_1_1:0x%x\n",
 		mtk_crtc->bif_info->dispsys_0[0], mtk_crtc->bif_info->dispsys_0[1],
 		mtk_crtc->bif_info->dispsys_1[0], mtk_crtc->bif_info->dispsys_1[1]);
 
@@ -559,7 +559,7 @@ void mtk_crtc_bif_enable_mutex(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *h
 		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_VIRTUAL)
 			continue;
 
-		DDPBIF("%s,comp:%s\n", __func__, mtk_dump_comp_str(comp));
+		DDPDBG("%s,comp:%s\n", __func__, mtk_dump_comp_str(comp));
 
 		if (handle) {
 			if (en)
@@ -580,7 +580,7 @@ void mtk_crtc_bif_enable_mutex(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *h
 		if (mtk_ddp_comp_get_type(comp->id) == MTK_DISP_VIRTUAL)
 			continue;
 
-		DDPBIF("%s,comp:%s\n", __func__, mtk_dump_comp_str(comp));
+		DDPDBG("%s,comp:%s\n", __func__, mtk_dump_comp_str(comp));
 
 		if (handle) {
 			if (en)
@@ -594,6 +594,7 @@ void mtk_crtc_bif_enable_mutex(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *h
 				mtk_disp_mutex_remove_comp(mtk_crtc->mutex[0], comp->id);
 		}
 	}
+	DDPBIF("%s -\n", __func__);
 }
 void mtk_crtc_bif_enable_racing(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 {
@@ -653,10 +654,10 @@ void mtk_crtc_bif_restore_path_mutex(struct mtk_drm_crtc *mtk_crtc, struct cmdq_
 			__func__, __LINE__,
 			&ddp->mutex[mutex->id], mutex, mutex->id);
 
-	DDPBIF("bif_rs_m,ovlsys_0_0:0x%x,ovlsys_0_1:0x%x,ovlsys_1_0:0x%x,ovlsys_1_1:0x%x\n",
+	DDPDBG("bif_rs_m,ovlsys_0_0:0x%x,ovlsys_0_1:0x%x,ovlsys_1_0:0x%x,ovlsys_1_1:0x%x\n",
 		mtk_crtc->bif_info->ovlsys_0[0], mtk_crtc->bif_info->ovlsys_0[1],
 		mtk_crtc->bif_info->ovlsys_1[0], mtk_crtc->bif_info->ovlsys_1[1]);
-	DDPBIF("bif_rs_m,dispsys_0_0:0x%x,dispsys_0_1:0x%x,dispsys_1_0:0x%x,dispsys_1_1:0x%x\n",
+	DDPDBG("bif_rs_m,dispsys_0_0:0x%x,dispsys_0_1:0x%x,dispsys_1_0:0x%x,dispsys_1_1:0x%x\n",
 		mtk_crtc->bif_info->dispsys_0[0], mtk_crtc->bif_info->dispsys_0[1],
 		mtk_crtc->bif_info->dispsys_1[0], mtk_crtc->bif_info->dispsys_1[1]);
 
@@ -5057,7 +5058,7 @@ void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc)
 			next_id = DDP_COMPONENT_ID_MAX;
 		}
 
-		DDPBIF("%s,write path: %s --> %s --> %s\n", __func__,
+		DDPDBG("%s,write path: %s --> %s --> %s\n", __func__,
 			mtk_dump_comp_str_id(prev_id),
 			mtk_dump_comp_str(comp),
 			mtk_dump_comp_str_id(next_id));
@@ -5082,15 +5083,16 @@ void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc)
 			next_id = DDP_COMPONENT_ID_MAX;
 		}
 
-		DDPBIF("%s,read path:%s --> %s --> %s\n", __func__,
+		DDPDBG("%s,read path:%s --> %s --> %s\n", __func__,
 			mtk_dump_comp_str_id(prev_id),
 			mtk_dump_comp_str(comp),
 			mtk_dump_comp_str_id(next_id));
 
 		mtk_ddp_add_comp_to_path(mtk_crtc, comp, prev_id, next_id);
 	}
+	DDPBIF("%s -\n", __func__);
 }
-bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, bool en)
+bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC bif_slbc)
 {
 	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
 	int ret = 0;
@@ -5098,7 +5100,7 @@ bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, bool en)
 	bif_info->sram_data.uid = UID_BIF;
 	bif_info->sram_data.type = TP_BUFFER;
 
-	if (en) {
+	if (bif_slbc == SLBC_REQUEST) {
 		ret = slbc_request(&bif_info->sram_data);
 		if (ret < 0) {
 			DDPPR_ERR("%s, slbc_request fail\n", __func__);
@@ -5110,17 +5112,31 @@ bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, bool en)
 		bif_info->sram_size = (size_t) bif_info->sram_data.size;
 
 		DDPBIF("%s,sram addr:0x%llx,sz:0x%llx\n", __func__, bif_info->sram_pa, bif_info->sram_size);
-	} else {
+	} else if (bif_slbc == SLBC_FORCE_RELEASE) {
 		bif_info->sram_en = 0;
+		atomic_set(&bif_info->slbc_hold, 0);
+
 		ret = slbc_release(&bif_info->sram_data);
 		if (ret < 0) {
 			DDPPR_ERR("%s, slbc_release fail\n", __func__);
 			return false;
 		}
+	} else {
+		atomic_dec(&bif_info->slbc_hold);
+
+		if (atomic_read(&bif_info->slbc_hold) == 0) {
+			bif_info->sram_en = 0;
+
+			ret = slbc_release(&bif_info->sram_data);
+			if (ret < 0) {
+				DDPPR_ERR("%s, slbc_release fail\n", __func__);
+				return false;
+			}
+		}
 	}
 
-	DDPBIF("%s,en:%d,sram_en:%d\n", __func__, en, bif_info->sram_en);
-	CRTC_MMP_MARK(0, bif_slbc, 0, en);
+	DDPBIF("%s[%d]slbc_hold:%d\n", __func__, bif_slbc, atomic_read(&bif_info->slbc_hold));
+	CRTC_MMP_MARK(0, bif_slbc, atomic_read(&bif_info->slbc_hold), bif_slbc);
 
 	return true;
 }
@@ -5227,6 +5243,8 @@ void mtk_crtc_bif_info_init(struct mtk_drm_crtc *mtk_crtc)
 	}
 	mtk_drm_crtc_get_panel_original_size(crtc,
 		&mtk_crtc->bif_info->lcm_width, &mtk_crtc->bif_info->lcm_height);
+
+	atomic_set(&mtk_crtc->bif_info->slbc_hold, 0);
 
 	DDPINFO("%s,lcm:%dx%d\n", __func__, mtk_crtc->bif_info->lcm_width, mtk_crtc->bif_info->lcm_height);
 }
@@ -17687,7 +17705,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 
 		if (bif_enabled(crtc)) {
 			if (!mtk_crtc->bif_info->sram_en) {
-				if (!mtk_crtc_bif_slbc_request(mtk_crtc, true))
+				if (!mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST))
 					set_bif_enable(crtc, false);
 			}
 			DDPMSG("%s,bif_enable:%d,\n", __func__, mtk_crtc->bif_info->bif_enable);
@@ -19384,7 +19402,7 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	/* release bif slbc */
 	if (mtk_crtc->bif_info) {
 		if (mtk_crtc->bif_info->sram_en)
-			mtk_crtc_bif_slbc_request(mtk_crtc, false);
+			mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_FORCE_RELEASE);
 	}
 
 	/* no need to consider cam throttle between suspend and first LR after suspend */

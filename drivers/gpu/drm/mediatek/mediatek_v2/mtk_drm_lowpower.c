@@ -1060,9 +1060,11 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		mtk_crtc_bif_backup_path_mutex(mtk_crtc);
 
 		if (!mtk_crtc->bif_info->sram_en)
-			mtk_crtc_bif_slbc_request(mtk_crtc, true);
+			mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST);
 
 		if (mtk_crtc->bif_info->sram_en) {
+			atomic_inc(&mtk_crtc->bif_info->slbc_hold);
+
 			mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
 			mtk_crtc_bif_enable_racing(mtk_crtc, handle);
 
@@ -1103,6 +1105,8 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 			mtk_disp_set_hrt_bw(mtk_crtc, 0);
 		mtk_crtc_bif_apsrc_ddren_control(mtk_crtc, NULL, false);
+
+		CRTC_MMP_MARK(0, enter_idle, 0, atomic_read(&mtk_crtc->bif_info->slbc_hold));
 	}
 
 	if (perf) {
@@ -1140,7 +1144,9 @@ static void vdo_leave_idle_cb(struct cmdq_cb_data data)
 	unsigned int *addr = NULL;
 
 	if (mtk_crtc->bif_info->sram_en) {
-		mtk_crtc_bif_slbc_request(mtk_crtc, false);
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 		addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_BIF_EN);
 		*addr = 0;

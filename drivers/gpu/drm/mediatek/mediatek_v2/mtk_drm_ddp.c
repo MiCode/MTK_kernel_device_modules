@@ -31801,8 +31801,8 @@ void mtk_disp_bif_racing_config_MT6991(struct cmdq_pkt *handle, struct mtk_drm_c
 						priv->side_config_regs + MT6991_DISP1_BIF_OFFSET_ADDR);
 				}
 			}
-			DDPBIF("%s,sram_en:%d,racing:%d,sram_addr:0x%llx,sz:%llx,BIF_CON:0x%x\n", __func__,
-				bif_info->sram_en, racing, bif_info->sram_pa, bif_info->sram_size, bif_con);
+			DDPBIF("%s,sram_en:%d,racing:%d,BIF_CON:0x%x\n", __func__,
+				bif_info->sram_en, racing, bif_con);
 
 			return;
 		}
