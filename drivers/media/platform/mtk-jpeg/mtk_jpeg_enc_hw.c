@@ -37,7 +37,6 @@ void mtk_jpeg_enc_set_resource(void __iomem *base)
 
 	value = 0x00000001;
 	writel(value, base+ VENC_GCON_RESOURCE_FLAT_SET);
-	pr_info("%s %d: set resource flag", __func__, __LINE__);
 
 
 }
@@ -56,7 +55,6 @@ void mtk_jpeg_enc_set_axdomain(struct mtk_jpeg_dev *jpeg, void __iomem *base)
 		value |= jpeg->axdomain;
 		writel(value, base+ (0xF80 + MTK_M4U_TO_PORT(jpeg->port_id[i])*4));
 	}
-	pr_info("%s %d: set jpeg enc domain", __func__, __LINE__);
 }
 
 void mtk_jpeg_enc_set_34bits(struct mtk_jpeg_ctx *ctx, void __iomem *base,

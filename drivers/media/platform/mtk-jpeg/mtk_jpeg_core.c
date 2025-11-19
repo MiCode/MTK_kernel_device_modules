@@ -767,7 +767,6 @@ static void mtk_jpeg_prepare_bw_request(struct mtk_jpeg_dev *jpeg)
 
 static void mtk_jpeg_set_level_qos(struct mtk_jpeg_dev *jpeg)
 {
-	pr_info("%s +\n", __func__);
 	if (jpeg->gcon_base != NULL) {
 		writel(0x61, jpeg->gcon_base + VENC_MMQOS + jpeg->port_id[0]*4);
 		writel(0x61, jpeg->gcon_base + VENC_MMQOS + jpeg->port_id[1]*4);
@@ -789,7 +788,6 @@ static void mtk_jpeg_update_bw_request(struct mtk_jpeg_ctx *ctx)
 	unsigned int picSize = 0;
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 	ret = of_property_read_u32(jpeg->dev->of_node, "interconnect-num", &port_num);
-	pr_info("%s  ret: %d\n", __func__, ret);
 
 	if (jpeg->path_y_rdma == 0) {
 		pr_info("%s  qos not supported\n", __func__);
@@ -897,7 +895,6 @@ static void mtk_jpeg_dvfs_begin(struct mtk_jpeg_ctx *ctx)
 		}
 		pr_info("%s  volt: %d\n", __func__, volt);
 	} else if (jpeg->jpegenc_mmdvfs_clk) {
-		pr_info("%s set mmdvfs clk\n", __func__);
 		if (mmdvfs_get_version())
 			mtk_mmdvfs_enable_vcp(true, jpeg->mmdvfs_vcp_idx);
 		ret = clk_set_rate(jpeg->jpegenc_mmdvfs_clk, active_freq);
@@ -919,7 +916,6 @@ static void mtk_jpeg_dvfs_end(struct mtk_jpeg_ctx *ctx)
 	unsigned long active_freq = 0;
 	struct mtk_jpeg_dev *jpeg = ctx->jpeg;
 
-	pr_info("%s  ++\n", __func__);
 
 	if (jpeg->freq_cnt == 0)
 		return;
