@@ -4843,8 +4843,6 @@
 				     "mediatek,mt6589-wdt",
 				     "syscon", "simple-mfd";
 			reg = <0 0x1c00a000 0 0x1000>;
-			/* Temp disable WDT for SB */
-			apwdten = <0>;
 			reboot-mode {
 				compatible = "syscon-reboot-mode";
 				offset = <0x24>;
