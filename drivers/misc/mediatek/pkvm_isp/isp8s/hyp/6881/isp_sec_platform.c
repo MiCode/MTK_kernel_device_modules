@@ -2,16 +2,19 @@
 /*
  * Copyright (c) 2025 MediaTek Inc.
  */
+
 #include "pkvm_isp_hyp.h"
 #include "isp_sec_api.h"
 #include "isp_sec_platform.h"
 #include <pkvm_sys.h>
 #include <pkvm_trustzone.h>
+
 uint64_t camsys_sec_readio(int tag, uint32_t addr)
 {
 	int ret = TZ_RESULT_SUCCESS, val = 0;
 
 	SECIO_READ(tag, addr, &val);
+
 	if(ret != TZ_RESULT_SUCCESS){
 		CALL_FROM_OPS(puts, __func__);
 		CALL_FROM_OPS(puts, PFX "SECIO_READ fail, ret = ");
@@ -25,11 +28,13 @@ uint64_t camsys_sec_readio(int tag, uint32_t addr)
 	}
 	return val;
 }
+
 TZ_RESULT camsys_sec_writeio(int tag, uint32_t addr, uint64_t val)
 {
 	TZ_RESULT ret = TZ_RESULT_SUCCESS;
 
 	ret = SECIO_WRITE(tag, addr, val);
+
 	if(ret != TZ_RESULT_SUCCESS){
 		CALL_FROM_OPS(puts, __func__);
 		CALL_FROM_OPS(puts, PFX "SECIO_WRITE fail, ret = ");
@@ -43,6 +48,7 @@ TZ_RESULT camsys_sec_writeio(int tag, uint32_t addr, uint64_t val)
 	}
 	return ret;
 }
+
 int register_dump(int cam, int camsv)
 {
 	int SECIO_CAM = SECIO_ISP_CAM_A;
@@ -77,14 +83,6 @@ int register_dump(int cam, int camsv)
 			SECIO_CAM_CTL = SECIO_ISP_CAMCTL_CAM_B;
 			SECIO_CAM_CTL2 = SECIO_ISP_CAMCTL2_CAM_B;
 			SECIO_CAM_CTL3 = SECIO_ISP_CAMCTL3_CAM_B;
-			break;
-		case CAMC:
-			SECIO_CAM = SECIO_ISP_CAM_C;
-			SECIO_RMS = SECIO_ISP_RMS_CAM_C;
-			SECIO_YUV = SECIO_ISP_YUV_CAM_C;
-			SECIO_CAM_CTL = SECIO_ISP_CAMCTL_CAM_C;
-			SECIO_CAM_CTL2 = SECIO_ISP_CAMCTL2_CAM_C;
-			SECIO_CAM_CTL3 = SECIO_ISP_CAMCTL3_CAM_C;
 			break;
 		default:
 			CALL_FROM_OPS(puts, "cam invalid! cam: ");
@@ -137,9 +135,6 @@ int register_dump(int cam, int camsv)
 		case CAMB:
 			SECIO_CAMSV = SECIO_ISP_CAMSV_B;
 			break;
-		case CAMC:
-			SECIO_CAMSV = SECIO_ISP_CAMSV_C;
-			break;
 		default:
 			CALL_FROM_OPS(puts, "camsv invalid! camsv: ");
 			CALL_FROM_OPS(putx64, camsv);
@@ -180,6 +175,7 @@ int register_dump(int cam, int camsv)
 	CALL_FROM_OPS(puts, "-");
 	return 0;
 }
+
 int isp_sec_streamOn_platform(int without_tg, int CamModule)
 {
 	int SECIO_CAM = SECIO_ISP_CAM_A;
@@ -207,9 +203,6 @@ int isp_sec_streamOn_platform(int without_tg, int CamModule)
 	case CAMB:
 		SECIO_CAM = SECIO_ISP_CAM_B;
 		break;
-	case CAMC:
-		SECIO_CAM = SECIO_ISP_CAM_C;
-		break;
 	default:
 		CALL_FROM_OPS(puts, "CamModule invalid! CamModule: ");
 		CALL_FROM_OPS(putx64, CamModule);
@@ -224,6 +217,7 @@ int isp_sec_streamOn_platform(int without_tg, int CamModule)
 
 	return ret;
 }
+
 int isp_sec_configCam_platform(int bSecure, int CamModule)
 {
 	int SECIO_CAM = SECIO_ISP_CAM_A;
@@ -283,14 +277,6 @@ int isp_sec_configCam_platform(int bSecure, int CamModule)
 				SECIO_CAM_CTL = SECIO_ISP_CAMCTL_CAM_B;
 				SECIO_CAM_CTL2 = SECIO_ISP_CAMCTL2_CAM_B;
 				SECIO_CAM_CTL3 = SECIO_ISP_CAMCTL3_CAM_B;
-				break;
-			case SEC_CAM_C:
-				SECIO_CAM = SECIO_ISP_CAM_C;
-				SECIO_RMS = SECIO_ISP_RMS_CAM_C;
-				SECIO_YUV = SECIO_ISP_YUV_CAM_C;
-				SECIO_CAM_CTL = SECIO_ISP_CAMCTL_CAM_C;
-				SECIO_CAM_CTL2 = SECIO_ISP_CAMCTL2_CAM_C;
-				SECIO_CAM_CTL3 = SECIO_ISP_CAMCTL3_CAM_C;
 				break;
 			default:
 				CALL_FROM_OPS(puts, "CamModule invalid! CamModule: ");
@@ -404,17 +390,18 @@ int isp_sec_configCam_platform(int bSecure, int CamModule)
 	CALL_FROM_OPS(putx64, ret);
 	return ret;
 }
+
 int isp_sec_configCamsv_platform(int bSecure, int CamSVModule)
 {
 	int SECIO_CAMSV = SECIO_ISP_CAMSV_A;
 	int ret = 0;
+	int i, j;
 
 	CALL_FROM_OPS(puts, "+ Secure:");
 	CALL_FROM_OPS(putx64, bSecure);
 	CALL_FROM_OPS(puts, ",CamSVModule:");
 	CALL_FROM_OPS(putx64, CamSVModule);
 
-	int i, j;
 	REG_E_CAMSVCENTRAL_CID_CHK_SENINF   sv_cid_chk_en;
 	REG_E_CAMSVCENTRAL_CID_CHK_RAW_DCIF    sv_cid_chk_raw_dcif_en;
 
@@ -427,9 +414,6 @@ int isp_sec_configCamsv_platform(int bSecure, int CamSVModule)
 			case SEC_CAM_B:
 				SECIO_CAMSV = SECIO_ISP_CAMSV_B;
 				break;
-			case SEC_CAM_C:
-				SECIO_CAMSV = SECIO_ISP_CAMSV_C;
-				break;
 			default:
 				CALL_FROM_OPS(puts, "Camsv Module invalid! CamSVModule: ");
 				CALL_FROM_OPS(putx64, CamSVModule);
@@ -437,9 +421,11 @@ int isp_sec_configCamsv_platform(int bSecure, int CamSVModule)
 			}
 			sv_cid_chk_en.Bits.CAMSVCENTRAL_CAMSV_SENINF_CID_CHK_EN = 0;
 			sv_cid_chk_raw_dcif_en.Bits.CAMSVCENTRAL_RAW_TO_CAMSV_DCIF_CID_CHK_EN = 0;
+
 			ret |= camsys_sec_writeio(SECIO_CAMSV, CAMSVCENTRAL_CID_CHK_SENINF, sv_cid_chk_en.Raw);
 			ret |= camsys_sec_writeio(SECIO_CAMSV,
 				CAMSVCENTRAL_CID_CHK_RAW_DCIF, sv_cid_chk_raw_dcif_en.Raw);
+
 			if (bSecure) {
 				// CID 14 [3:0]
 				ret |= camsys_sec_writeio(SECIO_CAMSV, CAMSVCENTRAL_ROOT_CAMSV_CID, CAMSV_ROOT_CID_VALUE);
