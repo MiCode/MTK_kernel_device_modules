@@ -1308,15 +1308,15 @@ static const struct mtk_gate mm_clks[] = {
 
 	/* MM1 */
 	GATE_MM1(CLK_MM_DSI0, "mm_dsi0_ck",
-			"cksys_disp0_ck"/* parent */, 0),
+			"cksys_disp0_ck"/* parent */, 12),
 	GATE_MM1_V(CLK_MM_DSI0_DISP, "mm_dsi0_ck_disp",
 			"mm_dsi0_ck"/* parent */),
 	GATE_MM1(CLK_MM_DSI1, "mm_dsi1_ck",
-			"cksys_disp0_ck"/* parent */, 1),
+			"cksys_disp0_ck"/* parent */, 13),
 	GATE_MM1_V(CLK_MM_DSI1_DISP, "mm_dsi1_ck_disp",
 			"mm_dsi1_ck"/* parent */),
 	GATE_MM1(CLK_MM_26M, "mm_26m_ck",
-			"cksys_disp0_ck"/* parent */, 11),
+			"cksys_disp0_ck"/* parent */, 23),
 	GATE_MM1_V(CLK_MM_26M_DISP, "mm_26m_ck_disp",
 			"mm_26m_ck"/* parent */),
 };
