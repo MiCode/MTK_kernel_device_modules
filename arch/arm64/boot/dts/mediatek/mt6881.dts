@@ -79,14 +79,11 @@
 		bootargs = "console=tty0 root=/dev/ram \
 			    8250.nr_uarts=3 \
 			    nosoftlockup \
-			    loglevel=8 \
 			    androidboot.hardware=mt6881 \
-			    initcall_debug=1 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
 			    kvm-arm.mode=none \
-			    maxcpus=5 \
-			    initcall_debug=1";
+			    maxcpus=5";
 	};
 
 	cpus {
