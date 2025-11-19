@@ -3343,7 +3343,7 @@ static unsigned int smmuwp_process_intr(struct arm_smmu_device *smmu, bool log_e
 
 	if (irq_sta & STA_TCU_EVTQ_INTR) {
 		pend_cnt = smmuwp_consume_intr(smmu, STA_TCU_EVTQ_INTR);
-		smmu_dbg(smmu->dev, log_enable,
+		smmu_dbg(smmu->dev, false,
 			 "IRQ_STA:0x%x, Non-secure TCU EVTQ interrupt detected %d\n",
 			 irq_sta, pend_cnt);
 	}
