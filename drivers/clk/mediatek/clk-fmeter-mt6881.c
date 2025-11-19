@@ -40,16 +40,34 @@ static DEFINE_SPINLOCK(subsys_meter_lock);
 /* check from topckgen&vlpcksys CODA */
 #define CLK26CALI_0					(0x220)
 #define CLK26CALI_1					(0x224)
-#define CLK_MISC_CFG_0					(0x240)
-#define CLK_DBG_CFG					(0x28C)
-#define CKSYS2_CLK26CALI_0				(0xA20)
-#define CKSYS2_CLK26CALI_1				(0xA24)
-#define CKSYS2_CLK_MISC_CFG_0				(0xA40)
-#define CKSYS2_CLK_DBG_CFG				(0xA8C)
+#define CLK_MISC_CFG_0					(0x160)
+#define CLK_DBG_CFG					(0x18C)
 #define VLP_FQMTR_CON0					(0x230)
 #define VLP_FQMTR_CON1					(0x234)
 
+/* MCUSYS_BUS_PLL1U_TOP_N41P12M Register */
+#define MCU_BUS_PLL1U_PLL_CON0		(0x0008)
+#define MCU_BUS_PLL1U_PLL_CON1		(0x000C)
+#define MCU_BUS_PLL1U_FQMTR_CON0	(0x0040)
+#define MCU_BUS_PLL1U_FQMTR_CON1	(0x0044)
 
+/* MCUSYS_CPU0_PLL1U_TOP_N41P12M Register */
+#define MCU_CPU0_PLL1U_PLL_CON0		(0x0008)
+#define MCU_CPU0_PLL1U_PLL_CON1		(0x000C)
+#define MCU_CPU0_PLL1U_FQMTR_CON0	(0x0040)
+#define MCU_CPU0_PLL1U_FQMTR_CON1	(0x0044)
+
+/* MCUSYS_CPU1_PLL1U_TOP_N41P12M Register */
+#define MCU_CPU1_PLL1U_PLL_CON0		(0x0008)
+#define MCU_CPU1_PLL1U_PLL_CON1		(0x000C)
+#define MCU_CPU1_PLL1U_FQMTR_CON0	(0x0040)
+#define MCU_CPU1_PLL1U_FQMTR_CON1	(0x0044)
+
+/* MCUSYS_PTP_PLL1U_TOP_N41P12M Register */
+#define MCU_PTP_PLL1U_PLL_CON0		(0x0008)
+#define MCU_PTP_PLL1U_PLL_CON1		(0x000C)
+#define MCU_PTP_PLL1U_FQMTR_CON0	(0x0040)
+#define MCU_PTP_PLL1U_FQMTR_CON1	(0x0044)
 
 static void __iomem *fm_base[FM_SYS_NUM];
 
@@ -65,12 +83,28 @@ struct fmeter_data {
 static struct fmeter_data subsys_fm[] = {
 	[FM_VLP_CKSYS_TOP] = {FM_VLP_CKSYS_TOP, "fm_vlp_cksys",
 		0, 0, VLP_FQMTR_CON0, VLP_FQMTR_CON1},
+	[FM_ARMPLL_LL] = {FM_ARMPLL_LL, "fm_armpll_ll",
+		MCU_CPU0_PLL1U_PLL_CON0, MCU_CPU0_PLL1U_PLL_CON1,
+		MCU_CPU0_PLL1U_FQMTR_CON0, MCU_CPU0_PLL1U_FQMTR_CON1},
+	[FM_ARMPLL_BL] = {FM_ARMPLL_LL, "fm_armpll_bl",
+		MCU_CPU1_PLL1U_PLL_CON0, MCU_CPU1_PLL1U_PLL_CON1,
+		MCU_CPU1_PLL1U_FQMTR_CON0, MCU_CPU1_PLL1U_FQMTR_CON1},
+	[FM_BUSPLL] = {FM_BUSPLL, "fm_buspll",
+		MCU_BUS_PLL1U_PLL_CON0, MCU_BUS_PLL1U_PLL_CON1,
+		MCU_BUS_PLL1U_FQMTR_CON0, MCU_BUS_PLL1U_FQMTR_CON1},
+	[FM_PTPPLL] = {FM_PTPPLL, "fm_ptpll",
+		MCU_PTP_PLL1U_PLL_CON0, MCU_PTP_PLL1U_PLL_CON1,
+		MCU_PTP_PLL1U_FQMTR_CON0, MCU_PTP_PLL1U_FQMTR_CON1},
 };
 
 const char *comp_list[] = {
 	[FM_CKSYS_REG] = "mediatek,mt6881-cksys_reg",
 	[FM_APMIXEDSYS] = "mediatek,mt6881-apmixedsys",
 	[FM_VLP_CKSYS_TOP] = "mediatek,mt6881-vlp_cksys_top",
+	[FM_ARMPLL_LL] = "mediatek,mt6881-armpll_ll_pll_ctrl",
+	[FM_ARMPLL_BL] = "mediatek,mt6881-armpll_bl_pll_ctrl",
+	[FM_BUSPLL] = "mediatek,mt6881-buspll_pll_ctrl",
+	[FM_PTPPLL] = "mediatek,mt6881-ptppll_pll_ctrl",
 };
 
 /*
@@ -412,7 +446,7 @@ static int __mt_get_freq2(unsigned int  type, unsigned int id)
 	else
 		clk_writel(con0, (clk_readl(con0) & 0x00FFFFF8) | (id << 0));
 	/* set ckgen_load_cnt to 1024 */
-	clk_writel(con1, (clk_readl(con1) & 0xFC00FFFF) | (0x3FF << 16));
+	clk_writel(con1, (clk_readl(con1) & 0xFC00FFFF) | (0x1FF << 16));
 
 	/* sel fqmtr_cksel and set ckgen_k1 to 0(DIV4) */
 	clk_writel(con0, (clk_readl(con0) & 0x00FFFFFF) | (3 << 24));
@@ -468,11 +502,11 @@ static unsigned int mt6881_get_subsys_freq(unsigned int ID)
 	int output = 0;
 	unsigned long flags;
 
-	subsys_fmeter_lock(flags);
-
 	pr_notice("subsys ID: %d\n", ID);
 	if (ID >= FM_SYS_NUM)
 		return 0;
+
+	subsys_fmeter_lock(flags);
 
 	output = __mt_get_freq2(ID, FM_PLL_CKDIV_CK);
 

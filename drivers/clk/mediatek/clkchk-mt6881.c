@@ -819,7 +819,7 @@ static struct regbase rb[] = {
 #define REGNAME(_base, _ofs, _name)	\
 	{ .base = &rb[_base], .id = _base, .ofs = _ofs, .name = #_name }
 
-static struct regname rn[] = { //FIXME
+static struct regname rn[] = {
 	/* CKSYS_REG register */
 	REGNAME(cksys_reg, 0x0010, CLK_CFG_0),
 	REGNAME(cksys_reg, 0x0020, CLK_CFG_1),
@@ -846,7 +846,30 @@ static struct regname rn[] = { //FIXME
 	REGNAME(cksys_reg, 0x0334, CLK_AUDDIV_3),
 	REGNAME(cksys_reg, 0x0338, CLK_AUDDIV_4),
 	REGNAME(cksys_reg, 0x033C, CLK_AUDDIV_5),
-	REGNAME(cksys_reg, 0x320, CLK_AUDDIV_0),
+
+	/* CKSYS FNEC Status register */
+	REGNAME(cksys_reg, 0x0230, CKSTA_REG),
+	REGNAME(cksys_reg, 0x0234, CKSTA_REG1),
+	REGNAME(cksys_reg, 0x0238, CKSTA_REG2),
+	REGNAME(cksys_reg, 0x0544, CLK_FENC_STATUS_MON_0),
+	REGNAME(cksys_reg, 0x0548, CLK_FENC_STATUS_MON_1),
+	REGNAME(cksys_reg, 0x054C, CLK_FENC_STATUS_MON_2),
+	REGNAME(cksys_reg, 0x0584, CLK_FENC_ENABLE_CKMUX_MON_0),
+	REGNAME(cksys_reg, 0x0588, CLK_FENC_ENABLE_CKMUX_MON_1),
+	REGNAME(cksys_reg, 0x058C, CLK_FENC_ENABLE_CKMUX_MON_2),
+	REGNAME(cksys_reg, 0x0590, CLK_FENC_STATUS_MINI_MON_0),
+	REGNAME(cksys_reg, 0x0594, CLK_FENC_STATUS_MINI_MON_1),
+	REGNAME(cksys_reg, 0x0598, CLK_FENC_STATUS_MINI_MON_2),
+	REGNAME(cksys_reg, 0x0550, CLK_EN_MAINPLL_MON_0),
+	REGNAME(cksys_reg, 0x0554, CLK_EN_MAINPLL_MON_1),
+	REGNAME(cksys_reg, 0x0558, CLK_EN_UNIVPLL_MON_0),
+	REGNAME(cksys_reg, 0x055C, CLK_EN_UNIVPLL_MON_1),
+	REGNAME(cksys_reg, 0x0560, CLK_EN_MSDCPLL_MON_0),
+	REGNAME(cksys_reg, 0x0568, CLK_EN_APLL1_MON_0),
+	REGNAME(cksys_reg, 0x056C, CLK_EN_APLL2_MON_0),
+	REGNAME(cksys_reg, 0x0570, CLK_EN_TVDPLL_MON_0),
+	REGNAME(cksys_reg, 0x0574, CLK_EN_MMPLL_MON_0),
+
 	/* INFRA_INFRACFG_AO_REG register */
 	REGNAME(infra_infracfg_ao_reg, 0x6C, HRE_INFRA_BUS_CTRL),
 	REGNAME(infra_infracfg_ao_reg, 0x94, MODULE_CG_1),
@@ -956,6 +979,14 @@ static struct regname rn[] = { //FIXME
 	REGNAME(vlp_cksys_top, 0x002C, VLP_CLK_CFG_3),
 	REGNAME(vlp_cksys_top, 0x0038, VLP_CLK_CFG_4),
 	REGNAME(vlp_cksys_top, 0x0044, VLP_CLK_CFG_5),
+	/* VLP_CKSYS_TOP FENC Status register */
+	REGNAME(vlp_cksys_top, 0x0330, VLP_FENC_ENABLE_CKMUX_MON_0),
+	REGNAME(vlp_cksys_top, 0x0328, VLP_OCIC_FENC_STATUS_MON_0),
+	REGNAME(vlp_cksys_top, 0x0334, VLP_FENC_STATUS_MINI_MON_0),
+	REGNAME(vlp_cksys_top, 0x0318, VLP_CLK_EN_MAINPLL_MON_0),
+	REGNAME(vlp_cksys_top, 0x031c, VLP_CLK_EN_UNIVPLL_MON_0),
+	REGNAME(vlp_cksys_top, 0x0320, VLP_CLK_EN_APLL1_MON_0),
+
 	/* SSR_TOP_BUS register */
 	REGNAME(ssr_top, 0x0090, SSR_TOP_PWR_PROTECT_EN),
 	REGNAME(ssr_top, 0x0094, SSR_TOP_PWR_PROTECT_RDY),
@@ -986,7 +1017,7 @@ static struct regname rn[] = { //FIXME
 	/* MDPSYS_CONFIG register */
 	REGNAME(mdp, 0x100, MDPSYS_CG_0),
 	REGNAME(mdp, 0x110, MDPSYS_CG_1),
-	/* HWV register // FIXME */
+	/* HWV register */
 	REGNAME(hwv, 0x0, HW_CCF_AP_CG0_SET),
 	REGNAME(hwv, 0x8, HW_CCF_AP_CG1_SET),
 	REGNAME(hwv, 0x10, HW_CCF_AP_CG2_SET),
@@ -995,16 +1026,14 @@ static struct regname rn[] = { //FIXME
 	REGNAME(hwv, 0x28, HW_CCF_AP_CG5_SET),
 	REGNAME(hwv, 0x30, HW_CCF_AP_CG6_SET),
 	REGNAME(hwv, 0x38, HW_CCF_AP_CG7_SET),
-	REGNAME(hwv, 0x40, HW_CCF_AP_CG8_SET),
 	REGNAME(hwv, 0x800 + 0x0, HW_CCF_SSPM_CG0_SET),
 	REGNAME(hwv, 0x800 + 0x8, HW_CCF_SSPM_CG1_SET),
 	REGNAME(hwv, 0x200 + 0x10, HW_CCF_TEE_CG2_SET),
+	REGNAME(hwv, 0x200 + 0x18, HW_CCF_TEE_CG3_SET),
 	REGNAME(hwv, 0x200 + 0x20, HW_CCF_TEE_CG4_SET),
-	REGNAME(hwv, 0x200 + 0x48, HW_CCF_TEE_CG5_SET),
-	REGNAME(hwv, 0x400 + 0x18, HW_CCF_VCP_CG3_SET),
-	REGNAME(hwv, 0x400 + 0x30, HW_CCF_VCP_CG6_SET),
-	REGNAME(hwv, 0x400 + 0x38, HW_CCF_VCP_CG7_SET),
-	REGNAME(hwv, 0x400 + 0x40, HW_CCF_VCP_CG8_SET),
+	REGNAME(hwv, 0x200 + 0x28, HW_CCF_TEE_CG5_SET),
+	REGNAME(hwv, 0x200 + 0x30, HW_CCF_TEE_CG6_SET),
+	REGNAME(hwv, 0x200 + 0x38, HW_CCF_TEE_CG7_SET),
 	REGNAME(hwv, 0x198, HW_CCF_AP_MTCMOS_SET),
 	REGNAME(hwv, 0x800 + 0x198, HW_CCF_SSPM_MTCMOS_SET),
 	REGNAME(hwv, 0x1500, HW_CCF_INT_STATUS),
@@ -1024,7 +1053,6 @@ static struct regname rn[] = { //FIXME
 	REGNAME(hwv, 0x1814, HW_CCF_CG5_STATUS),
 	REGNAME(hwv, 0x1818, HW_CCF_CG6_STATUS),
 	REGNAME(hwv, 0x181c, HW_CCF_CG7_STATUS),
-	REGNAME(hwv, 0x1820, HW_CCF_CG8_STATUS),
 	REGNAME(hwv, 0x1900, HW_CCF_CG0_ENABLE),
 	REGNAME(hwv, 0x1904, HW_CCF_CG1_ENABLE),
 	REGNAME(hwv, 0x1908, HW_CCF_CG2_ENABLE),
@@ -1033,7 +1061,6 @@ static struct regname rn[] = { //FIXME
 	REGNAME(hwv, 0x1914, HW_CCF_CG5_ENABLE),
 	REGNAME(hwv, 0x1918, HW_CCF_CG6_ENABLE),
 	REGNAME(hwv, 0x191c, HW_CCF_CG7_ENABLE),
-	REGNAME(hwv, 0x1920, HW_CCF_CG8_ENABLE),
 	REGNAME(hwv, 0x1c00, HW_CCF_CG0_DONE),
 	REGNAME(hwv, 0x1c04, HW_CCF_CG1_DONE),
 	REGNAME(hwv, 0x1c08, HW_CCF_CG2_DONE),
@@ -1042,7 +1069,6 @@ static struct regname rn[] = { //FIXME
 	REGNAME(hwv, 0x1c14, HW_CCF_CG5_DONE),
 	REGNAME(hwv, 0x1c18, HW_CCF_CG6_DONE),
 	REGNAME(hwv, 0x1c1c, HW_CCF_CG7_DONE),
-	REGNAME(hwv, 0x1c20, HW_CCF_CG8_DONE),
 	/* HWV history */
 	REGNAME(hwv, 0x1aa0, HWV_INPUT_TIMELINE_POINTER),
 	REGNAME(hwv, 0x1aa4, HWV_INPUT_TIMELINE_HISTORY_4_0),

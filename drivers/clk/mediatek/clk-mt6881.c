@@ -2508,6 +2508,49 @@ static const struct mtk_mux vlp_cksys_top_muxes[] = {
 };
 
 static const struct mtk_composite top_composites[] = {
+	/* CLK_AUDDIV_0 */
+	MUX(CLK_CKSYS_REG_APLL_IN0_MCK_SEL/* dts */, "cksys_apll_in0_m_sel",
+		cksys_apll_in0_m_parents/* parent */, 0x0320/* ofs */,
+		16/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_IN1_MCK_SEL/* dts */, "cksys_apll_in1_m_sel",
+		cksys_apll_in1_m_parents/* parent */, 0x0320/* ofs */,
+		17/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_IN2_MCK_SEL/* dts */, "cksys_apll_in2_m_sel",
+		cksys_apll_in2_m_parents/* parent */, 0x0320/* ofs */,
+		18/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_IN3_MCK_SEL/* dts */, "cksys_apll_in3_m_sel",
+		cksys_apll_in3_m_parents/* parent */, 0x0320/* ofs */,
+		19/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_IN4_MCK_SEL/* dts */, "cksys_apll_in4_m_sel",
+		cksys_apll_in4_m_parents/* parent */, 0x0320/* ofs */,
+		20/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_IN6_MCK_SEL/* dts */, "cksys_apll_in6_m_sel",
+		cksys_apll_in6_m_parents/* parent */, 0x0320/* ofs */,
+		21/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_OUT0_MCK_SEL/* dts */, "cksys_apll_out0_m_sel",
+		cksys_apll_out0_m_parents/* parent */, 0x0320/* ofs */,
+		22/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_OUT1_MCK_SEL/* dts */, "cksys_apll_out1_m_sel",
+		cksys_apll_out1_m_parents/* parent */, 0x0320/* ofs */,
+		23/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_OUT2_MCK_SEL/* dts */, "cksys_apll_out2_m_sel",
+		cksys_apll_out2_m_parents/* parent */, 0x0320/* ofs */,
+		24/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_OUT3_MCK_SEL/* dts */, "cksys_apll_out3_m_sel",
+		cksys_apll_out3_m_parents/* parent */, 0x0320/* ofs */,
+		25/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_OUT4_MCK_SEL/* dts */, "cksys_apll_out4_m_sel",
+		cksys_apll_out4_m_parents/* parent */, 0x0320/* ofs */,
+		26/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_OUT6_MCK_SEL/* dts */, "cksys_apll_out6_m_sel",
+		cksys_apll_out6_m_parents/* parent */, 0x0320/* ofs */,
+		27/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_FMI2S_MCK_SEL/* dts */, "cksys_apll_fmi2s_m_sel",
+		cksys_apll_fmi2s_m_parents/* parent */, 0x0320/* ofs */,
+		28/* lsb */, 1/* width */),
+	MUX(CLK_CKSYS_REG_APLL_MCK_SEL/* dts */, "cksys_apll_m_sel",
+		cksys_apll_m_parents/* parent */, 0x0320/* ofs */,
+		29/* lsb */, 1/* width */),
 	/* CLK_AUDDIV_2 */
 	DIV_GATE(CLK_CKSYS_REG_APLL12_CK_DIV_IN0/* dts */, "cksys_apll12_div_in0"/* ccf */,
 		"cksys_apll_in0_m_sel"/* parent */, 0x0320/* pdn ofs */,
@@ -2748,6 +2791,9 @@ static int clk_mt6881_cksys_reg_probe(struct platform_device *pdev)
 
 	mtk_clk_register_muxes(cksys_reg_muxes, ARRAY_SIZE(cksys_reg_muxes), node,
 			&mt6881_clk_lock, clk_data);
+
+	mtk_clk_register_composites(top_composites, ARRAY_SIZE(top_composites),
+			base, &mt6881_clk_lock, clk_data);
 
 	r = of_clk_add_provider(node, of_clk_src_onecell_get, clk_data);
 

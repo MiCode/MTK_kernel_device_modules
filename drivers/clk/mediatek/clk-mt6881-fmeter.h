@@ -160,7 +160,11 @@ enum fm_sys_id {
 	FM_CKSYS_REG = 0,
 	FM_APMIXEDSYS = 1,
 	FM_VLP_CKSYS_TOP = 2,
-	FM_SYS_NUM = 3,
+	FM_ARMPLL_LL = 3,
+	FM_ARMPLL_BL = 4,
+	FM_BUSPLL = 5,
+	FM_PTPPLL = 6,
+	FM_SYS_NUM = 7,
 };
 
 #endif /* _CLK_MT6881_FMETER_H */

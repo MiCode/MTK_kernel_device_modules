@@ -1813,6 +1813,8 @@ static const struct mtk_gate mdp_clks[] = {
 			"mdp_smi0"/* parent */),
 	GATE_MDP0_V(CLK_MDP_SMI0_SMI, "mdp_smi0_smi",
 			"mdp_smi0"/* parent */),
+	GATE_MDP0_V(CLK_MDP_SMI0_GENPD, "mdp_smi0_genpd",
+			"mdp_smi0"/* parent */),
 	GATE_MDP0(CLK_MDP_RDMA0, "mdp_rdma0",
 			"cksys_disp0_ck"/* parent */, 3),
 	GATE_MDP0_V(CLK_MDP_RDMA0_MML, "mdp_rdma0_mml",
@@ -2399,9 +2401,6 @@ static const struct mtk_gate ufspdn_clks[] = {
 			"cksys_mem_sub_ufs_ck"/* parent */, 5),
 	GATE_UFSPDN_V(CLK_UFSPDN_UFSHCI_UFS_AXI_UFS, "ufspdn_ufshci_ufs_axi_ufs",
 			"ufspdn_ufshci_ufs_axi"/* parent */),
-	GATE_UFSPDN_V(CLK_UFSPDN_UFSHCI_UFS_AXI_GENPD, "ufspdn_ufshci_ufs_axi_genpd",
-			"ufspdn_ufshci_ufs_axi"/* parent */),
-
 };
 
 static const struct mtk_clk_desc ufspdn_mcd = {

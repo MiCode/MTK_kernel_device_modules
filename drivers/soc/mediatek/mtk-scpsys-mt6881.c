@@ -120,7 +120,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.ctl_offs = 0xE28,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		//.basic_clk_name = {"img1_0", "ipe0_1"},
+		//.basic_clk_name = {"img1_0", "ipe_0"},
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_ISP_MAIN),
@@ -248,6 +248,7 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 		.sram_pdn_ack_bits = GENMASK(12, 12),
 		//.basic_clk_name = {"dis0_0"},
 		//.subsys_clk_prefix = "dis0",
+		//.subsys_lp_clk_prefix = "dis0_lp",
 		.bp_table = {
 			BUS_PROT_IGN(IFR_TYPE, 0x0C14, 0x0C18, 0x0C10, 0x0C1C,
 				MT6881_TOP_AXI_PROT_EN_MMSYS_STA_0_DIS0),

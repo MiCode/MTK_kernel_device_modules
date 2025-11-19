@@ -22,7 +22,7 @@
 #define PWR_ID_SHIFT			0
 #define PWR_STA_SHIFT			8
 #define HWV_INT_MTCMOS_TRIGGER		0x0008
-#define HWV_IRQ_STATUS			0x0500 //FIXME
+#define HWV_IRQ_STATUS			0x1500
 
 static DEFINE_SPINLOCK(pwr_trace_lock);
 static unsigned int pwr_event[EVT_LEN];
@@ -441,7 +441,7 @@ struct subsys_cgs_check {
 struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6881_CHK_PD_AUDIO, PD_NULL, afe_swcgs, afe},
 	{MT6881_CHK_PD_CSI_RX, PD_NULL, mipi_csi_top_ctrl_0_swcgs, mipi_csi_top_ctrl_0},
-	{MT6881_CHK_PD_DIS0, PD_NULL, dispsys_config_swcgs, mm},
+	{MT6881_CHK_PD_DIS0, MT6881_CHK_PD_MM_INFRA, dispsys_config_swcgs, mm},
 	{MT6881_CHK_PD_ISP_MAIN, MT6881_CHK_PD_ISP_VCORE, imgsys_main_swcgs, img},
 	{MT6881_CHK_PD_ISP_DIP1, MT6881_CHK_PD_ISP_MAIN, dip_top_dip1_swcgs, dip_top_dip1},
 	{MT6881_CHK_PD_ISP_DIP1, MT6881_CHK_PD_ISP_MAIN, dip_nr1_dip1_swcgs, dip_nr1_dip1},
@@ -462,7 +462,7 @@ struct subsys_cgs_check mtk_subsys_check[] = {
 	{MT6881_CHK_PD_CAM_SUBB, MT6881_CHK_PD_CAM_MAIN, camsys_rmsb_swcgs, camsys_rmsb},
 	{MT6881_CHK_PD_CAM_SUBB, MT6881_CHK_PD_CAM_MAIN, camsys_yuvb_swcgs, cam_yb},
 	{MT6881_CHK_PD_CAM_VCORE, MT6881_CHK_PD_MM_INFRA, cam_vcore_r1a_swcgs, cam_v},
-	{MT6881_CHK_PD_DIS0, PD_NULL, mdpsys_config_swcgs, mdp},
+	{MT6881_CHK_PD_DIS0, MT6881_CHK_PD_MM_INFRA, mdpsys_config_swcgs, mdp},
 };
 
 static struct pd_check_swcg *get_subsys_cg(unsigned int id)
@@ -526,13 +526,13 @@ static bool is_in_pd_list(unsigned int id)
 	return false;
 }
 
-static enum chk_sys_id debug_dump_id[] = { //FIXME
+static enum chk_sys_id debug_dump_id[] = {
 	spm,
 	cksys_reg,
 	infra_infracfg_ao_reg,
 	apmixed,
 	vlpcfg_reg_bus,
-	//vlp_top,
+	vlp_cksys_top,
 	hwv,
 	chk_sys_num,
 };
@@ -731,7 +731,7 @@ static void check_hwv_irq_sta(void)
 {
 	u32 irq_sta;
 
-	irq_sta = get_mt6881_reg_value(hwv, HWV_IRQ_STATUS); // FIXME
+	irq_sta = get_mt6881_reg_value(hwv, HWV_IRQ_STATUS);
 
 	if ((irq_sta & HWV_INT_MTCMOS_TRIGGER) == HWV_INT_MTCMOS_TRIGGER)
 		debug_dump(MT6881_CHK_PD_NUM, 0);
