@@ -290,8 +290,6 @@ static const struct scp_domain_data scp_domain_mt6881_spm_data[] = {
 	[MT6881_POWER_DOMAIN_CSI_RX] = {
 		.name = "csi-rx",
 		.ctl_offs = 0xE9C,
-		.sram_pdn_bits = GENMASK(8, 8),
-		.sram_pdn_ack_bits = GENMASK(12, 12),
 		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6881_POWER_DOMAIN_SSUSB] = {
