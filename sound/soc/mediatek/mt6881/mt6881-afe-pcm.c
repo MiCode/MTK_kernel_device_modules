@@ -9760,11 +9760,6 @@ static int mt6881_afe_pcm_dev_probe(struct platform_device *pdev)
 
 	pr_info("+%s()\n", __func__);
 
-	int testlindsay = 1;
-
-	if (testlindsay)
-		return -EINVAL;
-
 	ret = dma_set_mask_and_coherent(&pdev->dev, DMA_BIT_MASK(34));
 	if (ret)
 		return ret;
