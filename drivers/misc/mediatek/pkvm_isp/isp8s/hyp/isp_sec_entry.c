@@ -36,8 +36,14 @@ ISP_RETURN isp_config_sethsfcam(struct user_pt_regs *regs)
 	CALL_FROM_OPS(putx64, cam_info->Sec_status);
 	CALL_FROM_OPS(putx64, cam_info->SecTG);
 
-	if (cam_info->Sec_status == 0x0) {
+	if (En) {
+		CALL_FROM_OPS(puts, "secure cam enabled!");
 		ApiISPSetSecureState(cam_info, camsys_check_value);
+		CALL_FROM_OPS(puts, "camsys return value:");
+		CALL_FROM_OPS(putx64, cam_info->Sec_status);
+	} else {
+		CALL_FROM_OPS(puts, "secure cam disabled!");
+		ApiISPSetSecureState(cam_info, 0);
 		CALL_FROM_OPS(puts, "camsys return value:");
 		CALL_FROM_OPS(putx64, cam_info->Sec_status);
 	}
@@ -106,6 +112,8 @@ ISP_RETURN isp_stream_ctrl(struct user_pt_regs *regs)
 	if (cam_info->Sec_status == sensor_check_value) {
 		ApiISPSetSecureState(cam_info, sensor_check_value);
 		isp_sec_streamOn_platform(without_tg, enable_raw);
+	} else {
+		CALL_FROM_OPS(puts, PFX "error : seninf secure initial fail");
 	}
 
 	CALL_FROM_OPS(flush_dcache_to_poc, pfixmap, sizeof(SecMgr_CamInfo));
