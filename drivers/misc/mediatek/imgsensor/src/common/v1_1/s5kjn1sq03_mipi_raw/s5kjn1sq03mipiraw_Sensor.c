@@ -358,7 +358,7 @@ static void write_shutter(kal_uint32 shutter)
 	kal_uint16 realtime_fps = 0;
 	int l_shift = 0;
 
-	LOG_INF("E: shutter = %d\n", shutter);
+	LOG_DEBUG("E: shutter = %d\n", shutter);
 	// Set framelength
 	spin_lock(&imgsensor_drv_lock);
 	if (shutter > imgsensor.min_frame_length - imgsensor_info.margin)
@@ -382,7 +382,7 @@ static void write_shutter(kal_uint32 shutter)
 	if(l_shift > 11)
 		l_shift = 11;
 	shutter = shutter >> l_shift;
-	LOG_INF("l_shift = %d, shutter = %d\n", l_shift, shutter);
+	LOG_DEBUG("l_shift = %d, shutter = %d\n", l_shift, shutter);
 
 	// Framelength should be an even number
 	shutter = (shutter >> 1) << 1;
@@ -412,9 +412,10 @@ static void write_shutter(kal_uint32 shutter)
 	write_cmos_sensor_8(0x0702, l_shift);
 	write_cmos_sensor_8(0X0704, l_shift);
 
-	LOG_INF("X: shutter = %d, framelength = %d\n",
+	LOG_INF("X: shutter = %d, framelength = %d, l_shift = %d\n",
 		shutter,
-		imgsensor.frame_length);
+		imgsensor.frame_length,
+		l_shift);
 }
 
 /*************************************************************************
@@ -622,7 +623,7 @@ static void sensor_init(void)
 	table_write_cmos_sensor(addr_data_pair_init_jn1,
 		sizeof(addr_data_pair_init_jn1) / sizeof(kal_uint16));
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 }
 
 static void check_stream_is_on(void)
@@ -955,7 +956,7 @@ static void preview_setting(void)
 	table_write_cmos_sensor(addr_data_pair_preview_jn1,
 		sizeof(addr_data_pair_preview_jn1) / sizeof(kal_uint16));
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 } /* preview_setting */
 
 kal_uint16 addr_data_pair_capture_jn1[] = {
@@ -1256,7 +1257,7 @@ static void capture_setting(void)
 	table_write_cmos_sensor(addr_data_pair_capture_jn1,
 		sizeof(addr_data_pair_capture_jn1) / sizeof(kal_uint16));
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 } /* capture_setting */
 
 kal_uint16 addr_data_pair_video_jn1[] = {
@@ -1555,7 +1556,7 @@ static void normal_video_setting(void)
 	table_write_cmos_sensor(addr_data_pair_video_jn1,
 		sizeof(addr_data_pair_video_jn1) / sizeof(kal_uint16));
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 } /* normal video setting */
 
 kal_uint16 addr_data_pair_hs_video_jn1[] = {
@@ -1849,7 +1850,7 @@ static void hs_video_setting(void)
 	table_write_cmos_sensor(addr_data_pair_hs_video_jn1,
 		sizeof(addr_data_pair_hs_video_jn1) / sizeof(kal_uint16));
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 }
 
 /********************************************************
@@ -2144,7 +2145,7 @@ static void slim_video_setting(void)
 	table_write_cmos_sensor(addr_data_pair_slim_video_jn1,
 		sizeof(addr_data_pair_slim_video_jn1) / sizeof(kal_uint16));
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 }
 
 /*************************************************************************
@@ -2383,7 +2384,7 @@ static kal_uint32 capture(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	capture_setting();
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 	return ERROR_NONE;
 } /* capture() */
 
@@ -2402,7 +2403,7 @@ static kal_uint32 normal_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	normal_video_setting();
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 	return ERROR_NONE;
 } /* normal_video */
 
@@ -2424,7 +2425,7 @@ static kal_uint32 hs_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	spin_unlock(&imgsensor_drv_lock);
 	hs_video_setting();
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 	return ERROR_NONE;
 } /* hs_video */
 
@@ -2447,7 +2448,7 @@ static kal_uint32 slim_video(MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	slim_video_setting();
 	/* set_mirror_flip(sensor_config_data->SensorImageMirror); */
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 	return ERROR_NONE;
 } /* slim_video */
 
@@ -2491,7 +2492,7 @@ static kal_uint32 get_resolution(
 	sensor_resolution->SensorCustom2Height =
 		imgsensor_info.custom2.grabwindow_height;
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 	return ERROR_NONE;
 } /* get_resolution */
 
@@ -2685,7 +2686,6 @@ static kal_uint32 control(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 	MSDK_SENSOR_EXPOSURE_WINDOW_STRUCT *image_window,
 	MSDK_SENSOR_CONFIG_STRUCT *sensor_config_data)
 {
-	LOG_INF("E\n");
 	LOG_INF("scenario_id = %d\n", scenario_id);
 
 	spin_lock(&imgsensor_drv_lock);
@@ -2713,7 +2713,7 @@ static kal_uint32 control(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 		return ERROR_INVALID_SCENARIO_ID;
 	}
 
-	LOG_INF("X\n");
+	LOG_DEBUG("X\n");
 	return ERROR_NONE;
 } /* control() */
 
@@ -3159,11 +3159,11 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	}
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_SUSPEND:
-		LOG_INF("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");
+		LOG_DEBUG("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");
 		streaming_control(KAL_FALSE);
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_RESUME:
-		LOG_INF("SENSOR_FEATURE_SET_STREAMING_RESUME, shutter:%llu\n",
+		LOG_DEBUG("SENSOR_FEATURE_SET_STREAMING_RESUME, shutter:%llu\n",
 			*feature_data);
 		if (*feature_data != 0)
 			set_shutter(*feature_data);

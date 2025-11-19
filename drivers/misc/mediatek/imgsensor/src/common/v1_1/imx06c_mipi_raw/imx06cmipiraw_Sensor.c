@@ -440,7 +440,7 @@ static void set_mirror_flip(kal_uint8 image_mirror)
 {
 	kal_uint8 itemp;
 
-	LOG_INF("image_mirror = %d\n", image_mirror);
+	LOG_DEBUG("image_mirror = %d\n", image_mirror);
 	itemp = read_cmos_sensor_8(0x0101);
 	itemp &= ~0x03;
 
@@ -526,7 +526,7 @@ static void write_shutter(kal_uint32 shutter)
 		shutter = shutter / 2;
 		longexposure_times += 1;
 	}
-	LOG_INF("long exposure times %d\n", longexposure_times);
+	LOG_DEBUG("long exposure times %d\n", longexposure_times);
 	if (!imx06c_is_seamless)
 		if (read_cmos_sensor_8(0x0350) != 0x01) {
 			LOG_INF("single cam scenario enable auto-extend");
@@ -854,7 +854,7 @@ static void check_stream_is_on(void)
 	// int try_time = 3;
 	int timeout = (10000/imgsensor.current_fps)+1;
 
-	LOG_INF(" timeout:%d\n", timeout);
+	LOG_INF(" timeout is:%d\n", timeout);
 	for (i = 0; i < timeout; i++) {
 
 		framecnt = read_cmos_sensor_8(0x0005);
@@ -891,7 +891,7 @@ static kal_uint32 streaming_control(kal_bool enable)
 	LOG_INF("last enable: %d, enable now: %d\n",
 		last_enable, enable);
 	if(last_enable == enable) {
-		LOG_INF("streaming control: no change\n");
+		LOG_DEBUG("streaming control: no change\n");
 	} else {
 		if (enable) {
 			if (read_cmos_sensor_8(0x0350) != 0x01) {
@@ -4173,7 +4173,7 @@ static kal_uint32 get_imgsensor_id(UINT32 *sensor_id)
 	/*sensor have two i2c address 0x34 & 0x20,
 	 *we should detect the module used i2c address
 	 */
-	LOG_INF("[%s] E!\n", __func__);
+	LOG_DEBUG("[%s] E!\n", __func__);
 	while (imgsensor_info.i2c_addr_table[i] != 0xff) {
 		spin_lock(&imgsensor_drv_lock);
 		imgsensor.i2c_write_id = imgsensor_info.i2c_addr_table[i];
@@ -4281,7 +4281,7 @@ static kal_uint32 open(void)
 	imgsensor.test_pattern = 0;
 	imgsensor.current_fps = imgsensor_info.pre.max_framerate;
 	spin_unlock(&imgsensor_drv_lock);
-	LOG_INF("X!\n");
+	LOG_DEBUG("X!\n");
 
 	return ERROR_NONE;
 } /* open */
@@ -4904,7 +4904,7 @@ static kal_uint32 seamless_switch(enum MSDK_SCENARIO_ID_ENUM scenario_id,
 		imx06c_size_to_write);
 
 	imx06c_is_seamless = false;
-	LOG_INF("exit\n");
+	LOG_DEBUG("exit\n");
 	return ERROR_NONE;
 }
 
@@ -5549,11 +5549,11 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		*(feature_data + 2) = imgsensor_info.margin;
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_SUSPEND:
-		LOG_INF("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");
+		LOG_DEBUG("SENSOR_FEATURE_SET_STREAMING_SUSPEND\n");
 		streaming_control(KAL_FALSE);
 		break;
 	case SENSOR_FEATURE_SET_STREAMING_RESUME:
-		LOG_INF("SENSOR_FEATURE_SET_STREAMING_RESUME, shutter:%llu\n",
+		LOG_DEBUG("SENSOR_FEATURE_SET_STREAMING_RESUME, shutter:%llu\n",
 			*feature_data);
 		if (*feature_data != 0)
 			set_shutter(*feature_data);
