@@ -1711,6 +1711,7 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m:wlan_drv_gen4m_6991_6653_dx5":"mt6991",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m:wlan_drv_gen4m_6991_6653":"mt6991",
     "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m:wlan_drv_gen4m_6991_6653_dx5_triband":"mt6991",
+    "//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4m:wlan_drv_gen4m_8875_6653_triband":"mt6881",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:mdp_drv_mt6789".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:mdp_drv_mt6855".format(kernel_version): "mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:mdp_drv_mt6858".format(kernel_version): "mt6858",
