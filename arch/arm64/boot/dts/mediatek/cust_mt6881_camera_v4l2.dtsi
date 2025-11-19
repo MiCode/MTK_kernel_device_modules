@@ -398,18 +398,14 @@
 };
 
 &i2c9 {
-	compatible = "mediatek,mt6991-i3c";
 	#address-cells = <3>;
 	#size-cells = <0>;
-	i3c-scl-hz = <12000000>;
 	status = "okay";
 
 	sensor4: sensor4@10 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "s5khp9splite_mipi_raw";
-		reg = <0x26 0x0216 0x1b730000>;
-		assigned-address = <0x26>;
-		pre-cfg-addr = <0x10>;
+		reg = <0x26>;
 		maximum-pmic-delay = <4000>;
 
 		#thermal-sensor-cells = <0>;
@@ -476,7 +472,7 @@
 
 	mtk_camera_eeprom4:camera-eeprom4@55 {
 		compatible = "mediatek,camera_eeprom";
-		reg = <0x55 0 0>;
+		reg = <0x55>;
 		names = "s5khp9sp_cust_eeprom";
 		status = "okay";
 	};
