@@ -100,58 +100,74 @@
 		cpu0: cpu@0 {
 			device_type = "cpu";
 			reg = <0x0000>;
+			performance-domains = <&performance 0>;
 			enable-method = "psci";
 			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 			//				&system_vcore &s2idle>;
+			//capacity-dmips-mhz = <793>;
 		};
 //		cpu1: cpu@1 {
 //			device_type = "cpu";
 //			reg = <0x0100>;
+//			performance-domains = <&performance 0>;
 //			enable-method = "psci";
 //			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 //			//				&system_vcore &s2idle>;
+//			//capacity-dmips-mhz = <793>;
 //		};
 //		cpu2: cpu@2 {
 //			device_type = "cpu";
 //			reg = <0x0200>;
+//			performance-domains = <&performance 0>;
 //			enable-method = "psci";
 //			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 //			//				&system_vcore &s2idle>;
+//			//capacity-dmips-mhz = <793>;
 //		};
 //		cpu3: cpu@3 {
 //			device_type = "cpu";
 //			reg = <0x0300>;
+//			performance-domains = <&performance 0>;
 //			enable-method = "psci";
 //			//cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 //			//				&system_vcore &s2idle>;
+//			//capacity-dmips-mhz = <793>;
 //		};
 //		cpu4: cpu@100 {
 //			device_type = "cpu";
 //			reg = <0x0400>;
+//			performance-domains = <&performance 1>;
 //			enable-method = "psci";
 //			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 //			//				&system_vcore &s2idle>;
+//			//capacity-dmips-mhz = <1024>;
 //		};
 //		cpu5: cpu@101 {
 //			device_type = "cpu";
 //			reg = <0x0500>;
+//			performance-domains = <&performance 1>;
 //			enable-method = "psci";
 //			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 //			//				&system_vcore &s2idle>;
+//			//capacity-dmips-mhz = <1024>;
 //		};
 //		cpu6: cpu@102 {
 //			device_type = "cpu";
 //			reg = <0x0600>;
+//			performance-domains = <&performance 1>;
 //			enable-method = "psci";
 //			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 //			//				&system_vcore &s2idle>;
+//			//capacity-dmips-mhz = <1024>;
 //		};
 //		cpu7: cpu@103 {
 //			device_type = "cpu";
 //			reg = <0x0700>;
+//			performance-domains = <&performance 1>;
 //			enable-method = "psci";
 //			//cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 //			//				&system_vcore &s2idle>;
+//			//capacity-dmips-mhz = <1024>;
 //		};
 //
 //		cpu-map {
@@ -775,6 +791,39 @@
 			     <GIC_PPI 10 IRQ_TYPE_LEVEL_HIGH 0>;
 		clock-frequency = <1000000000>;
 	};
+	cpuhvfs: cpuhvfs@c0de750 {
+		compatible = "mediatek,cpufreq-hybrid";
+		reg = <0 0x0c0de750 0 0xc00>,
+			<0 0x0c0dd350 0 0x1400>,
+			<0 0x0c0db350 0 0x800>,
+			<0 0x0c0df290 0 0xc0>;
+
+		reg-names = "USRAM", "CSRAM", "ESRAM";
+		cslog-range =  <0x03d0>, <0x0fa0>;
+		tbl-off = <4>, <76>, <148>;
+
+		/* pll mcucfg */
+		mcucfg-ver = <0>;
+		apmixedsys = <&cpu_pll>;
+		clk-div-base = <&cpu_mcucfg>;
+		pll-con = <0x20c>, <0x21c>, <0x23c>;
+		clk-div = <0xa2a0>, <0xa2a4>, <0xa2e0>;
+
+		/* regulator */
+		proc1-supply = <&mt6368_vbuck1>;  //L
+		proc2-supply = <&mt6319_6_vbuck1>; //B
+		proc3-supply = <&mt6368_vbuck1>;  //DSU
+
+		/* leakage info */
+		// nvmem-cells = <&lkginfo>;
+		// nvmem-cell-names = "lkginfo";
+	};
+
+	eas_info: eas-info {
+		compatible = "mediatek,eas-info";
+		csram-base = <0x0c0dd350>;
+	};
+
 
 	efuse: efuse@11c10000 {
 		compatible = "mediatek,devinfo";
@@ -4625,9 +4674,39 @@
 			};
 		};
 
+		lkg: lkg@c0de750 {
+			compatible = "mediatek,mtk-lkg";
+			reg = <0 0x0c0de750 0 0xc00>;
+		};
+
+		performance: performance-controller@c0dd360 {
+			compatible = "mediatek,cpufreq-hw";
+			reg = <0 0x0c0dd360 0 0x120>,
+					<0 0x0c0dd480 0 0x120>;
+			reg-names = "performance-domain0",
+					"performance-domain1";
+			#performance-domain-cells = <1>;
+		};
+
+		cpu_mcucfg: mcusys-ao-cfg@c530000 {
+			reg = <0 0x0c530000 0 0x10000>; /* 64KB */
+		};
+
+		cpu_pll: mcusys-pll1u-top@1000c000 {
+			reg = <0 0x1000c000 0 0x1000>; /* 4KB */
+		};
+
 		pwrap@1000d000 {
 			compatible = "mediatek,pwrap";
 			reg = <0 0x1000d000 0 0x1000>;
+		};
+
+		csram_sys: csram-sysram@11f000 {
+			reg = <0 0x0011f000 0 0x1400>; /* 5KB */
+		};
+
+		curve_adj: curve-adjust@c0dbb50 {
+			reg = <0 0x0c0dbb50 0 0x280>;
 		};
 
 		devapc-ao-infra-peri@1000e000 {
