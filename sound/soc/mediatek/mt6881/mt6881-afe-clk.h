@@ -46,8 +46,12 @@
 
 #define APLL1_EN	BIT(6)
 #define APLL1_CLR	BIT(6)
+#define APLL1_TUNER_EN		BIT(4)
+#define APLL1_SDM_PCW_CHG	BIT(31)
 #define APLL2_EN	BIT(7)
 #define APLL2_CLR	BIT(7)
+#define APLL2_TUNER_EN		BIT(5)
+#define APLL2_SDM_PCW_CHG	BIT(31)
 
 /* CLK_AUDDIV_0 */
 #define APLL12_DIV_I2SIN0_PDN_SFT               0
