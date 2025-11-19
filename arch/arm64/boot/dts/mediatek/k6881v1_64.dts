@@ -15,10 +15,6 @@
 	bootargs_ext = "";
 };
 
-&timer {
-	clock-frequency = <0x00000002 0xafbef362>;
-};
-
 &mtkfb {
 	pinctrl-names = "lcd_bias_enp0_gpio",
 		"lcd_bias_enn0_gpio",
