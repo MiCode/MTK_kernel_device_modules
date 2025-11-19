@@ -509,8 +509,6 @@ static struct mtk_dpc mt6899_dpc_driver_data = {
 
 static struct mtk_dpc mt6858_dpc_driver_data = {
 	.mmsys_id = MMSYS_MT6858,
-	.disp_cmd_dt_usage = mt6878_disp_cmd_dt_usage,
-	.mml_cmd_dt_usage = mt6878_mml_cmd_dt_usage,
 	.disp_vdo_dt_usage = mt6878_disp_vdo_dt_usage,
 	.mml_vdo_dt_usage = mt6878_mml_vdo_dt_usage,
 	.get_sys_status = mt6858_get_sys_status,
@@ -2446,7 +2444,9 @@ static void dpc_init_panel_type_v1(enum mtk_panel_type type)
 	if (type == PANEL_TYPE_CMD) {
 		if (g_priv->disp_cmd_dt_usage == NULL ||
 			g_priv->mml_cmd_dt_usage == NULL) {
-			DPCERR("not support cmd dt usage");
+			g_priv->vidle_mask = 0x0;
+			DPCERR("not support cmd dt usage, type:%d, mask:0x%x",
+				g_panel_type, g_priv->vidle_mask);
 			return;
 		}
 
@@ -2472,7 +2472,7 @@ static void dpc_init_panel_type_v1(enum mtk_panel_type type)
 	}
 	mtk_dpc_dump_caps();
 	g_panel_type = type;
-	DPCFUNC("type:%d", g_panel_type);
+	DPCFUNC("type:%d, vidle_mask:0x%x", g_panel_type, g_priv->vidle_mask);
 }
 
 static int dpc_enable_vcp(bool en, const u32 subsys)

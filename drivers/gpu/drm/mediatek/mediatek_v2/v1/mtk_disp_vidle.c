@@ -213,7 +213,7 @@ void mtk_vidle_flag_init(void *_crtc)
 		DDPMSG("%s panel:%d te duration is not set, disable vidle\n", __func__, type);
 		return;
 	}
-	DDPMSG("%s, panel:%d\n", __func__, type);
+	DDPMSG("%s, panel:%d, vidle_en:%d\n", __func__, type, mtk_disp_vidle_flag.vidle_en);
 }
 
 static unsigned int mtk_vidle_check(unsigned int vidle_item)
