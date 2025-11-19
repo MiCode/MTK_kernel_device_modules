@@ -30,7 +30,7 @@
 #define C3D_WAIT_TIMEOUT_MS 50
 #define C3D_REG_NUM 60
 #define REG_NOT_SUPPORT 0xfff
-#define C3D_LABEL_COUNT 12
+#define C3D_LABEL_COUNT 13
 
 enum mml_color_reg_index {
 	C3D_EN,
