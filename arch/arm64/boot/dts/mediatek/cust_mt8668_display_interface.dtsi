@@ -89,7 +89,7 @@
 	panel2 {
 		compatible = "boe,jd9365da";
 		reg = <1>;
-		power-gpios = <&pio 196 0>;
+		power-gpios = <&pio 190 0>;
 		reset-gpios = <&pio 9 0>;
 		pinctrl-names = "default";
 		port {
@@ -108,6 +108,28 @@
 	};
 };
 
+&virt_dsi0 {
+	reg = <0>;
+	ports {
+		port {
+			dsiv0_out: endpoint {
+				remote-endpoint = <&max96789_v0_in>;
+			};
+		};
+	};
+};
+
+&virt_dsi1 {
+	reg = <0>;
+	ports {
+		port {
+			dsiv1_out: endpoint {
+				remote-endpoint = <&max96789_v1_in>;
+			};
+		};
+	};
+};
+
 &i2c10 {
 	status = "okay";
 
@@ -120,7 +142,7 @@
 		//interrupt-parent = <&pio>;
 		//interrupts = <187 IRQ_TYPE_EDGE_RISING>;
 		pinctrl-names = "default";
-		setting = <&setting_compatible>;
+		setting = <&config_compatible>;
 		port {
 			max96789_in: endpoint {
 				remote-endpoint = <&dsi_out>;
@@ -189,7 +211,7 @@
 		reg = <0x40>;
 		reset-gpios = <&pio 11 0>;
 		pinctrl-names = "default";
-		setting = <&setting_compatible>;
+		setting = <&config_compatible>;
 		port {
 			max96789_1_in: endpoint {
 				remote-endpoint = <&dsi1_out>;

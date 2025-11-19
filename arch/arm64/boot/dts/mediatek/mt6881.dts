@@ -7184,6 +7184,60 @@
 			dispsys-sel-offset = <0x178 0x17c>;
 			status = "disabled";
 		};
+
+		virt_dsi0: virt-dsi0@1401a000 {
+			compatible = "mediatek,mt8668-virt";
+			status = "disabled";
+		};
+
+		virt_dsi1: virt-dsi1@1401b000 {
+			compatible = "mediatek,mt8668-virt";
+			status = "disabled";
+		};
+
+		disp_pwm: disp-pwm0@1100e000 {
+			compatible = "mediatek,disp_pwm0",
+				"mediatek,mt6881-disp-pwm0";
+			reg = <0 0x1100e000 0 0x1000>;
+			interrupts = <GIC_SPI 254 IRQ_TYPE_LEVEL_HIGH 0>;
+			#pwm-cells = <2>;
+			clocks = <&cksys_clk CLK_CK_DISP_PWM_SEL>;
+			clock-names = "main";
+			status = "disabled";
+		};
+
+		disp_pwm1: disp-pwm1@1100f000 {
+			compatible = "mediatek,disp_pwm0",
+				"mediatek,mt6881-disp-pwm0";
+			reg = <0 0x1100f000 0 0x1000>;
+			interrupts = <GIC_SPI 254 IRQ_TYPE_LEVEL_HIGH 0>;
+			#pwm-cells = <2>;
+			clocks = <&cksys_clk CLK_CK_DISP_PWM_SEL>;
+			clock-names = "main";
+			status = "disabled";
+		};
+
+		pwmleds: pwmleds {
+			compatible = "mediatek,pwm-leds";
+			status = "disabled";
+			backlight {
+				label = "lcd-backlight";
+				pwms = <&disp_pwm 0 39385>;
+				max-brightness = <255>;
+				pwm-names = "lcd-backlight";
+			};
+		};
+
+		pwmleds1: pwmleds1 {
+			compatible = "mediatek,pwm-leds";
+			status = "disabled";
+			backlight {
+				label = "lcd-backlight1";
+				pwms = <&disp_pwm1 0 39385>;
+				max-brightness = <255>;
+				pwm-names = "lcd-backlight1";
+			};
+		};
 #endif
 
 		i2c@1401d000 {
