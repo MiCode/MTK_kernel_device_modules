@@ -2352,7 +2352,7 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		pf = (unsigned int)mtk_crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
 
 		if (mtk_crtc_state->prop_val[CRTC_PROP_USER_SCEN] & USER_SCEN_SAME_POWER_MODE) {
-			DDPMSG("skip atomic commit with same power mode\n");
+			DDPINFO("skip atomic commit with same power mode\n");
 			cpu_hotplug_enable();
 			return 0;
 		}
