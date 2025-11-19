@@ -3720,6 +3720,7 @@ static void cmdq_remove_secure_routine(struct cmdqRecStruct *handle)
 		CMDQ_MSG("[PKVM] %s cmdq_sec_mbox_stop pkt:%p cl:%p\n",
 			__func__, handle->pkt_sec, handle->pkt_sec->cl);
 		cmdq_sec_mbox_stop(handle->pkt_sec->cl);
+		cmdq_sec_pkt_wait_complete(handle->pkt_sec);
 	}
 	mutex_unlock(&cmdq_routine_mutex);
 

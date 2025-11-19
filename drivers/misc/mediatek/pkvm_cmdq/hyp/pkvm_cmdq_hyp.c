@@ -923,7 +923,7 @@ static int32_t cmdq_tz_check_port_security_reg_impl(
 
 	if (useCmdq)
 		ret = cmdq_core_insert_security_instruction(pTask, reg, value, mask);
-
+#if defined(CMDQ_DEBUG)
 	CALL_FROM_OPS(puts, __func__);
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "m4u:");
 	CALL_FROM_OPS(putx64, (u64)m4u);
@@ -937,7 +937,7 @@ static int32_t cmdq_tz_check_port_security_reg_impl(
 	CALL_FROM_OPS(putx64, (u64)ret);
 	CALL_FROM_OPS(puts, PFX_CMDQ_MSG "sec_id:");
 	CALL_FROM_OPS(putx64, (u64)pTask->sec_id);
-
+#endif
 	if (!useCmdq && !ret)
 		return 1;
 	return ret;
@@ -1048,6 +1048,7 @@ int32_t cmdq_tz_set_dapc_security_reg(struct TaskStruct *task, bool enable, bool
 				task, DAPC_REG_PA(g_dapc_sys[i],
 				g_dapc_reg_offset[i]), value, g_mask[i]);
 		}
+#if defined(CMDQ_DEBUG)
 		CALL_FROM_OPS(puts, __func__);
 		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "DAPC_REG_PA");
 		CALL_FROM_OPS(putx64, (u64)DAPC_REG_PA(g_dapc_sys[i], g_dapc_reg_offset[i]));
@@ -1055,6 +1056,7 @@ int32_t cmdq_tz_set_dapc_security_reg(struct TaskStruct *task, bool enable, bool
 		CALL_FROM_OPS(putx64, (u64)value);
 		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "mask");
 		CALL_FROM_OPS(putx64, (u64)g_mask[i]);
+#endif
 	}
 
 	return offset;

@@ -1291,8 +1291,5 @@ void cmdq_tz_mdp_handle(struct TaskStruct *pTask)
 	cmdq_inst->arg_c = CMDQ_GET_ARG_C(shift_pa);
 	/* GCE Execute routine 12 start*/
 	Routine12(pTask);
-
-	cmdqUtilPrintHexDump("[CMDQ][pkvm]", pTask->pVABase, pTask->commandSize,
-		pTask->MVABase);
 }
 
