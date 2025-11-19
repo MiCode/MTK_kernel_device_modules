@@ -114,6 +114,7 @@ struct share_ctrl_ext {
 	unsigned int read_lock;
 	unsigned int write_lock;
 	unsigned int clear_flag;
+	unsigned int swpm_pmsr_en;
 };
 
 struct share_subsys_data {
@@ -141,5 +142,6 @@ extern void swpm_v6993_ext_init(void);
 extern void swpm_v6993_ext_exit(void);
 extern void swpm_release_pmsr_access_rights(void);
 extern void swpm_retrieve_pmsr_access_rights(void);
+extern bool swpm_check_swpm_pmsr_en_is_enable(void);
 
 #endif /* __MTK_SWPM_SP_PLATFORM_H__ */

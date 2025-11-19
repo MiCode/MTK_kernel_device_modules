@@ -51,9 +51,13 @@ static ssize_t enable_read(char *ToUser, size_t sz, void *priv)
 	if (!ToUser)
 		return -EINVAL;
 
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
+
 	swpm_dbg_log("echo <type or 65535> <0 or 1> > /proc/swpm/enable\n");
 	swpm_dbg_log("SWPM status = 0x%x\n", swpm_status);
 
+out:
 	return p - ToUser;
 }
 
@@ -71,6 +75,10 @@ static ssize_t enable_write(char *FromUser, size_t sz, void *priv)
 		goto out;
 
 	ret = -EPERM;
+
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
+
 	if (sscanf(FromUser, "%d %d", &type, &enable) == 2) {
 		swpm_lock(&swpm_mutex);
 		swpm_set_enable(type, enable);
@@ -94,15 +102,20 @@ static const struct mtk_swpm_sysfs_op enable_fops = {
 	.fs_write = enable_write,
 };
 
-static unsigned int swpm_pmsr_en = 1;
 static ssize_t swpm_pmsr_en_read(char *ToUser, size_t sz, void *priv)
 {
 	char *p = ToUser;
+	unsigned int status = 0;
 
 	if (!ToUser)
 		return -EINVAL;
 
-	swpm_dbg_log("%d\n", swpm_pmsr_en);
+	if (swpm_check_swpm_pmsr_en_is_enable())
+		status = 1;
+	else
+		status = 0;
+
+	swpm_dbg_log("%d\n", status);
 
 	return p - ToUser;
 }
@@ -127,8 +140,7 @@ static ssize_t swpm_pmsr_en_write(char *FromUser, size_t sz, void *priv)
 		else
 			swpm_release_pmsr_access_rights();
 
-		swpm_pmsr_en = !!enable;
-		swpm_set_only_cmd(0, swpm_pmsr_en,
+		swpm_set_only_cmd(0, !!enable,
 				  PMSR_SET_EN, PMSR_CMD_TYPE);
 		ret = sz;
 	}
@@ -156,6 +168,10 @@ static ssize_t swpm_pmsr_dbg_en_write(char *FromUser, size_t sz, void *priv)
 		goto out;
 
 	ret = -EPERM;
+
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
+
 	if (sscanf(FromUser, "%x %x", &type, &val) == 2) {
 		swpm_set_only_cmd(type, val,
 						  PMSR_SET_DBG_EN, PMSR_CMD_TYPE);
@@ -186,6 +202,9 @@ static ssize_t swpm_pmsr_log_interval_write(char *FromUser,
 
 	ret = -EPERM;
 
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
+
 	if (!kstrtouint(FromUser, 0, &val)) {
 		swpm_set_only_cmd(0, val,
 				  PMSR_SET_LOG_INTERVAL, PMSR_CMD_TYPE);
@@ -213,8 +232,12 @@ static ssize_t swpm_sp_test_read(char *ToUser, size_t sz, void *priv)
 	struct freq_duration *emi_duration_ptr = NULL;
 	struct res_sig_stats *spm_res_sig_stats_ptr = NULL;
 
+
 	if (!ToUser)
 		return -EINVAL;
+
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
 
 	core_vol_num = get_vcore_vol_num();
 	xpu_ip_num = get_xpu_ip_num();
@@ -304,7 +327,7 @@ End:
 	}
 
 	kfree(spm_res_sig_stats_ptr);
-
+out:
 	return p - ToUser;
 }
 
@@ -326,8 +349,12 @@ static ssize_t swpm_sp_ddr_idx_read(char *ToUser, size_t sz, void *priv)
 	struct ddr_sr_pd_times *ddr_sr_pd_times_ptr = NULL;
 	struct ddr_ip_bc_stats *ddr_ip_stats_ptr = NULL;
 
+
 	if (!ToUser)
 		return -EINVAL;
+
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
 
 	ddr_freq_num = get_ddr_freq_num();
 	ddr_bc_ip_num = get_ddr_data_ip_num();
@@ -398,6 +425,7 @@ End:
 		kfree(ddr_ip_stats_ptr);
 	}
 
+out:
 	return p - ToUser;
 }
 
@@ -413,8 +441,12 @@ static ssize_t swpm_sp_spm_sig_read(char *ToUser, size_t sz, void *priv)
 	struct res_sig_stats *spm_res_sig_stats_ptr;
 	struct res_sig *spm_res_sig_ptr;
 
+
 	if (!ToUser)
 		return -EINVAL;
+
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
 
 	spm_res_sig_stats_ptr =
 	kzalloc(sizeof(struct res_sig_stats), GFP_KERNEL);
@@ -454,6 +486,8 @@ END:
 		kfree(spm_res_sig_stats_ptr->res_sig_tbl);
 		kfree(spm_res_sig_stats_ptr);
 	}
+
+out:
 	return p - ToUser;
 }
 
@@ -470,8 +504,12 @@ static ssize_t swpm_psp_test_read(char *ToUser, size_t sz, void *priv)
 	unsigned int out3 = 0;
 	int ret = 0;
 
+
 	if (!ToUser)
 		return -EINVAL;
+
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
 
 	out1=0;
 	out2=0;
@@ -618,7 +656,7 @@ static ssize_t swpm_psp_test_read(char *ToUser, size_t sz, void *priv)
 		out2, out3, ret);
 
 
-
+out:
 	return p - ToUser;
 }
 
@@ -632,8 +670,12 @@ static ssize_t dram_bw_read(char *ToUser, size_t sz, void *priv)
 	char *p = ToUser;
 	unsigned long flags;
 
+
 	if (!ToUser)
 		return -EINVAL;
+
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
 
 	ret = sync_latest_data();
 	if (ret)
@@ -650,6 +692,8 @@ static ssize_t dram_bw_read(char *ToUser, size_t sz, void *priv)
 		spin_unlock_irqrestore(&swpm_sub_data_spinlock, flags);
 	} else
 		swpm_dbg_log("swpm_timer has not started yet\n");
+
+out:
 	return p - ToUser;
 }
 
@@ -667,6 +711,10 @@ static ssize_t dram_bw_write(char *FromUser, size_t sz, void *priv)
 		goto out;
 
 	ret = -EPERM;
+
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
+
 	if (!kstrtouint(FromUser, 0, &enable)) {
 		if (!enable) {
 			if (!swpm_status) {
@@ -707,6 +755,7 @@ static ssize_t swpm_dbg_en_write(char *FromUser, size_t sz, void *priv)
 
 	ret = -EINVAL;
 
+
 	if (!FromUser)
 		goto out;
 
@@ -714,6 +763,10 @@ static ssize_t swpm_dbg_en_write(char *FromUser, size_t sz, void *priv)
 		goto out;
 
 	ret = -EPERM;
+
+	if (!swpm_check_swpm_pmsr_en_is_enable())
+		goto out;
+
 	if (sscanf(FromUser, "%x %x", &num1, &num2) == 2) {
 		swpm_dbg_en(num1, num2, &out1, &out2);
 		if (out1 == 0 && out2 == 0) {

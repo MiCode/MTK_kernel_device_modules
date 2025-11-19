@@ -260,10 +260,16 @@ static int swpm_get_data_from_sram(void)
 	int ret = SWPM_NOT_EXE;
 	unsigned int cur_update_count;
 	unsigned int cur_write_flag;
-
+	unsigned int isEnable = 0;
 
 	if (mutex_trylock(&swpm_pmsr_access_rights_mutex) == 0) {
 		pr_notice("%s mutex_trylock busy", __func__);
+		return SWPM_PSP_SUCCESS;
+	}
+
+	isEnable = readl(&share_idx_ctrl_ext->swpm_pmsr_en);
+	if (!isEnable) {
+		swpm_unlock(&swpm_pmsr_access_rights_mutex);
 		return SWPM_PSP_SUCCESS;
 	}
 
@@ -656,6 +662,20 @@ static int swpm_sub_data_event(struct notifier_block *nb,
 static struct notifier_block swpm_sub_data_notifier = {
 	.notifier_call = swpm_sub_data_event,
 };
+
+bool swpm_check_swpm_pmsr_en_is_enable(void)
+{
+	unsigned int isEnable = 0;
+
+	swpm_lock(&swpm_get_sram_data_mutex);
+	isEnable = readl(&share_idx_ctrl_ext->swpm_pmsr_en);
+	swpm_unlock(&swpm_get_sram_data_mutex);
+
+	if (isEnable)
+		return true;
+	else
+		return false;
+}
 
 void swpm_v6993_ext_init(void)
 {
