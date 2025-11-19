@@ -846,8 +846,6 @@ int mtk_drm_get_conn_obj_id_from_idx(unsigned int disp_idx, int flag)
 		++i;
 	}
 
-	DDPMSG("%s disp_idx %u conn_obj_id %d\n", __func__, disp_idx, conn_obj_id);
-
 	return conn_obj_id;
 }
 EXPORT_SYMBOL(mtk_drm_get_conn_obj_id_from_idx);
