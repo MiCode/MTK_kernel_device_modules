@@ -8541,9 +8541,9 @@
 			iommus = <&apu_iommu0 M4U_PORT_L50_APU_CODE>;
 		};
 
-		mali: mali@48000000 {
+		mali: mali@3a000000 {
 			compatible = "mediatek,mali", "arm,mali-valhall";
-			reg = <0 0x48000000 0 0x480000>;
+			reg = <0 0x3a000000 0 0x480000>;
 			physical-memory-group-manager = <&mgm>;
 			interrupts =
 			<GIC_SPI 397 IRQ_TYPE_LEVEL_HIGH 0>,
