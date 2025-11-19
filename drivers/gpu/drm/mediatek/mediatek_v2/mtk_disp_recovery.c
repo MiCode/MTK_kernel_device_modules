@@ -655,6 +655,7 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	int index = drm_crtc_index(crtc);
 	struct mtk_dsi *dsi = NULL;
 	bool skip_refresh = false;
+	int wakelock_cnt;
 
 	CRTC_MMP_EVENT_START(index, esd_recovery, 0, 0);
 	if (crtc->state && !crtc->state->active) {
@@ -719,9 +720,16 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 		}
 	}
 
+	wakelock_cnt = atomic_read(&priv->kernel_pm.wakelock_cnt);
 
 	mtk_drm_crtc_enable(crtc, true);
 	CRTC_MMP_MARK(index, esd_recovery, 0, 3);
+
+	/* Decrement if wakelock_cnt increased to avoid leak.
+	 * Only mtk_drm_crtc_enable changes wakelock and cnt; mtk_drm_crtc_disable does not.
+	 */
+	if (atomic_read(&priv->kernel_pm.wakelock_cnt) > wakelock_cnt)
+		atomic_dec(&priv->kernel_pm.wakelock_cnt);
 
 	/* resubmit MML IR && since MML DL layer disable already, no need to resubmit */
 	if (mtk_crtc->is_mml) {
