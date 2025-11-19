@@ -158,6 +158,15 @@ static long pkvm_p1_ioctl(struct file *filep, unsigned int cmd, unsigned long Pa
 
 			for (int i = 0; i < fh_copy_size; i++) {
 				temp = pkvm_el2_mod_call(pkvm_p1_get_sec_fh_info, secinfo_pkvm.sec_pa, i);
+				if (temp == RET_BYPASS && i == 0) {
+					LOG_NOTICE("FH not ready, wait for next time\n");
+					break;
+				}
+				if (temp == -EFAULT) {
+					LOG_NOTICE("ERROR: get sec fh info FAILED\n");
+					ret = -EFAULT;
+					break;
+				}
 				secinfo_pkvm.sec_fhinfo[i] = temp;
 				// LOG_NOTICE("sec_fhinfo[%d]: 0x%x", i, secinfo_pkvm.sec_fhinfo[i]);
 			}

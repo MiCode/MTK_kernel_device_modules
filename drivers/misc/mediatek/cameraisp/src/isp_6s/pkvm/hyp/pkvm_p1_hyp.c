@@ -19,19 +19,19 @@ static inline bool is_valid_offset(uint32_t offset)
 {
 	/* Currently, the maximum IO_SIZE is 124K in TF-A */
 	if (offset >= (IO_OFFSET_LIMIT * 0x1F))
-		return false;
+		return MFALSE;
 
 	if ((offset % IO_ACCESS_SIZE) != 0)
-		return false;
+		return MFALSE;
 
-	return true;
+	return MTRUE;
 }
 
 static inline bool is_valid_secio_type(uint32_t type)
 {
 	if ((type > SECIO_INVALID) && (type < SECIO_MAX))
-		return true;
-	return false;
+		return MTRUE;
+	return MFALSE;
 }
 
 #define IS_NULL(p) (p == NULL)
@@ -374,13 +374,12 @@ void pkvm_p1_hyp_sec_config(struct user_pt_regs *regs)
 
 	if (ret != TZ_RESULT_SUCCESS) {
 		CALL_FROM_OPS(puts, PFX "ERROR: sec_config FAILED\n");
-		regs->regs[1] = false;
+		regs->regs[1] = -EFAULT;
 	} else {
 		CALL_FROM_OPS(puts, PFX "sec_config success\n");
-		regs->regs[1] = true;
+		regs->regs[1] = RET_OK;
+		regs->regs[0] = SMCCC_RET_SUCCESS;
 	}
-
-	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 
 
@@ -431,13 +430,12 @@ void pkvm_p1_hyp_set_sec_cam(struct user_pt_regs *regs)
 
 	if (ret != TZ_RESULT_SUCCESS) {
 		CALL_FROM_OPS(puts, PFX "ERROR: set_sec_cam FAILED\n");
-		regs->regs[1] = false;
+		regs->regs[1] = -EFAULT;
 	} else {
 		CALL_FROM_OPS(puts, PFX "set_sec_cam success\n");
-		regs->regs[1] = true;
+		regs->regs[1] = RET_OK;
+		regs->regs[0] = SMCCC_RET_SUCCESS;
 	}
-
-	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 
 
@@ -480,23 +478,23 @@ void pkvm_p1_hyp_set_dapc_auth(struct user_pt_regs *regs)
 		reg_dma_en.Bits.CAMCTL_CRZBO_R1_EN  ||
 		(reg_dma_en.Bits.CAMCTL_CRZO_R2_EN ^ crzo_r2_en)) {
 		CALL_FROM_OPS(puts, PFX "REG_CAMCTL_R1_CAMCTL_DMA_EN auth failed");
-		regs->regs[1] = false;
+		regs->regs[1] = MFALSE;
 	} else if (reg_dma2_en.Bits.CAMCTL_RAWI_R2_EN ||
 		reg_dma2_en.Bits.CAMCTL_RAWI_R3_EN ||
 		reg_dma2_en.Bits.CAMCTL_UFDI_R2_EN) {
 		CALL_FROM_OPS(puts, PFX "REG_CAMCTL_R1_CAMCTL_DMA2_EN auth failed");
-		regs->regs[1] = false;
+		regs->regs[1] = MFALSE;
 	} else if (reg_sel.Bits.CAMCTL_RAW_SEL ||
 		reg_sel.Bits.CAMCTL_CRP_R3_SEL ||
 		(reg_sel.Bits.CAMCTL_IMGO_SEL != 0 && reg_sel.Bits.CAMCTL_IMGO_SEL != 2)) {
 		CALL_FROM_OPS(puts, PFX "REG_CAMCTL_R1_CAMCTL_SEL auth failed");
-		regs->regs[1] = false;
+		regs->regs[1] = MFALSE;
 	} else if ((reg_lces_size.Bits.LCES_OUT_HT >=  LCES_OUT_HT_LIMIT) ||
 		(reg_lces_size.Bits.LCES_OUT_WD >= LCES_OUT_WD_LIMIT)) {
 		CALL_FROM_OPS(puts, PFX "REG_CAMCTL_R1_CAMCTL_LCES_OUT_SIZE auth failed");
-		regs->regs[1] = false;
+		regs->regs[1] = MFALSE;
 	} else {
-		regs->regs[1] = true;
+		regs->regs[1] = MTRUE;
 	}
 
 	regs->regs[0] = SMCCC_RET_SUCCESS;
@@ -519,6 +517,13 @@ void pkvm_p1_hyp_set_dapc_reg(struct user_pt_regs *regs)
 	CamModule = regs->regs[1];
 	index = regs->regs[2];
 	dapc_val = regs->regs[3];
+
+	if (index >= _DAPC_NUM_WRITE) {
+		CALL_FROM_OPS(puts, PFX "ERROR: index out of range\n");
+		CALL_FROM_OPS(putx64, index);
+		regs->regs[1] = -EFAULT;
+		return;
+	}
 
 	if (index == 0) {
 		CALL_FROM_OPS(puts, __func__);
@@ -549,13 +554,12 @@ void pkvm_p1_hyp_set_dapc_reg(struct user_pt_regs *regs)
 
 	if (ret != TZ_RESULT_SUCCESS) {
 		CALL_FROM_OPS(puts, PFX "ERROR: set_dapc_reg FAILED\n");
-		regs->regs[1] = false;
+		regs->regs[1] = -EFAULT;
 	} else {
 		CALL_FROM_OPS(puts, PFX "set_dapc_reg success\n");
-		regs->regs[1] = true;
+		regs->regs[1] = RET_OK;
+		regs->regs[0] = SMCCC_RET_SUCCESS;
 	}
-
-	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 
 
@@ -595,7 +599,7 @@ void pkvm_p1_hyp_APC_CamIspProtCtl(struct user_pt_regs *regs)
 			CALL_FROM_OPS(puts, PFX "Not supported CamModule!");
 	}
 
-	regs->regs[1] = true;
+	regs->regs[1] = RET_OK;
 	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 
@@ -615,11 +619,33 @@ void pkvm_p1_hyp_get_sec_fh_info(struct user_pt_regs *regs)
 	sec_pa = regs->regs[1];
 	index = regs->regs[2];
 
-	if (index == 0)
-		CALL_FROM_OPS(puts, PFX "get_sec_fh_info +++\n");
+	if (sec_pa == 0) {
+		CALL_FROM_OPS(puts, PFX "ERROR: sec_pa is NULL\n");
+		regs->regs[1] = -EFAULT;
+		return;
+	}
+
+	if (index >= FH_IDX_MAX) {
+		CALL_FROM_OPS(puts, PFX "ERROR: index out of range\n");
+		CALL_FROM_OPS(putx64, index);
+		regs->regs[1] = -EFAULT;
+		return;
+	}
 
 	pfixmap = CALL_FROM_OPS(fixmap_map, sec_pa);
 	sec_fh = (uint32_t *)pfixmap;
+
+	if (index == 0) {
+		CALL_FROM_OPS(puts, PFX "get_sec_fh_info +++\n");
+		if (sec_fh[FH_IDX_IMG_PA] == 0) {
+			CALL_FROM_OPS(puts, PFX "FH not ready, wait for next time\n");
+			CALL_FROM_OPS(fixmap_unmap);
+			regs->regs[1] = RET_BYPASS;
+			regs->regs[0] = SMCCC_RET_SUCCESS;
+			return;
+		}
+	}
+
 	cur_sec_fh = sec_fh[index];
 	sec_fh[index] = 0;
 
@@ -658,13 +684,12 @@ void pkvm_p1_hyp_uninit(struct user_pt_regs *regs)
 
 	if (ret != TZ_RESULT_SUCCESS) {
 		CALL_FROM_OPS(puts, PFX "ERROR: uninit FAILED\n");
-		regs->regs[1] = false;
+		regs->regs[1] = -EFAULT;
 	} else {
 		CALL_FROM_OPS(puts, PFX "uninit success\n");
-		regs->regs[1] = true;
+		regs->regs[1] = MTRUE;
+		regs->regs[0] = SMCCC_RET_SUCCESS;
 	}
-
-	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 
 

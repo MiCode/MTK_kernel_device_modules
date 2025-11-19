@@ -7,6 +7,7 @@
  * Defines
  ******************************************************************************/
 #define _DAPC_NUM_CQ         34
+#define _DAPC_NUM_WRITE      15
 #define TG_A	0
 #define TG_B	1
 #define CAM_NUM 2
@@ -16,6 +17,28 @@
 
 #define IO_OFFSET_LIMIT (0x1000)
 #define IO_ACCESS_SIZE  (4)
+
+#define FH_IDX_TS_LSB        (0)
+#define FH_IDX_MAGIC         (1)
+#define FH_IDX_ENQUE_SOF     (2)
+#define FH_IDX_RAW_TYPE      (3)
+#define FH_IDX_PIX_ID        (4)
+#define FH_IDX_FMT           (5)
+#define FH_IDX_ENQUE_CNT     (6)
+#define FH_IDX_SRC_SIZE      (7)
+#define FH_IDX_IQ_LEVEL      (8)
+#define FH_IDX_CROP_START    (9)
+#define FH_IDX_CROP_SIZE    (10)
+#define FH_IDX_IMG_PA       (11)
+#define FH_IDX_TS_MSB       (12)
+#define FH_IDX_IS_UFE_FMT   (13)
+#define FH_IDX_MAX          (14)
+
+#define RET_OK          (0x1)
+#define RET_BYPASS      (0x2)
+
+#define MTRUE           (0x1)
+#define MFALSE          (0x0)
 
 /*******************************************************************************
  * Constants

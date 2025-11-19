@@ -14,6 +14,11 @@
 #define DAPC_IDX_REG_CAMCTL_R1_CAMCTL_SEL     7
 #define DAPC_IDX_REG_CAMCTL_R1_LCES_OUT_SIZE  15
 
+#define RET_OK          (0x1)
+#define RET_BYPASS      (0x2)
+
+#define MTRUE           (0x1)
+#define MFALSE          (0x0)
 
 /*******************************************************************************
  * Constants
