@@ -1962,6 +1962,11 @@ void dpc_group_enable_v3(const u16 group, bool en)
 	if (group == 7777) {
 		/* force vote mminfra req */
 		writel(0x00080008, dpc_base + DISP_DPC_MMINFRA_HWVOTE_CFG);
+
+		/* polling dpc mminfra req idle */
+		ret = readl_poll_timeout_atomic(hwccf_hw_irq_req, value, !(value & 0xc), 1, 2000);
+		if (ret < 0)
+			DPCERR("polling dpc req idle timeout %d", __LINE__);
 		writel(0x0a0a0a, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
 		writel(0x0a0a0a, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 
@@ -1982,6 +1987,38 @@ void dpc_group_enable_v3(const u16 group, bool en)
 		ret = readl_poll_timeout_atomic(hwccf_hw_irq_req, value, !(value & 0xc), 1, 2000);
 		if (ret < 0)
 			DPCERR("polling dpc req idle timeout %d", __LINE__);
+	} else if (group == 8888) {
+		int ret = 0;
+		u32 value = 0;
+
+		/* check mminfra hwvoter status */
+		if (!try_irq_voter())
+			return;
+
+		/* release hwvoter by power on dpc and toggle voter */
+		DPCFUNC("11358(%#x) 1135c(%#x) 14400(%#x)",
+			readl(hwccf_bk1_en), readl(hwccf_bk1_sta), readl(hwccf_hw_irq_req));
+
+		dpc_pm_ctrl(true);
+		clk_prepare_enable(g_priv->pwr_clk[0]);
+
+		writel(0x00080008, dpc_base + DISP_DPC_MMINFRA_HWVOTE_CFG);
+
+		/* vote high */
+		ret = readl_poll_timeout_atomic(hwccf_hw_irq_req, value, !(value & 0xc), 1, 2000);
+		if (ret < 0)
+			DPCERR("polling dpc req idle timeout %d", __LINE__);
+		writel(0x1a1a1a, dpc_base + DISP_REG_DPC_DISP_INFRA_PLL_OFF_CFG);
+		writel(0x1a1a1a, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
+
+		/* vote low */
+		dpc_group_enable_v3(7777, false);
+
+		clk_disable_unprepare(g_priv->pwr_clk[0]);
+		dpc_pm_ctrl(false);
+
+		DPCFUNC("11358(%#x) 1135c(%#x) 14400(%#x)",
+			readl(hwccf_bk1_en), readl(hwccf_bk1_sta), readl(hwccf_hw_irq_req));
 	} else if (group == DPC_SUBSYS_DISP) {
 		if (en) {
 			dpc_disp_group_enable(en);

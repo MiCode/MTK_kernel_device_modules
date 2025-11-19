@@ -122,6 +122,7 @@ static atomic_t g_vdisp_ctrl_cnt = ATOMIC_INIT(0);
 static DEFINE_MUTEX(g_vdisp_ctrl_cnt_lock);
 static struct dpc_funcs disp_dpc_driver;
 struct wakeup_source *g_vdisp_wake_lock;
+static bool g_use_vdisp_wake_lock = true;
 struct mtk_vdisp *g_priv;
 
 static void __iomem *hwccf_xpu0_mtcmos_set;
@@ -499,7 +500,8 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 		if (atomic_read(&g_vdisp_ctrl_cnt) == 0) {
 			/* PRE ON */
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
-			__pm_stay_awake(g_vdisp_wake_lock);
+			if (g_use_vdisp_wake_lock)
+				__pm_stay_awake(g_vdisp_wake_lock);
 #endif
 			/* power on disp vcore by mtcmos voter */
 			if (disp_dpc_driver.dpc_mtcmos_on_off)
@@ -578,7 +580,8 @@ void mtk_vdisp_ctrl(int on_off, const char *c_n, uint32_t ops, uint32_t bit)
 				disp_dpc_driver.dpc_mtcmos_on_off(false, NULL, DISP_VIDLE_USER_DISP_VCORE, true, 0);
 
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
-			__pm_relax(g_vdisp_wake_lock);
+			if (g_use_vdisp_wake_lock)
+				__pm_relax(g_vdisp_wake_lock);
 #endif
 		}
 	}
@@ -1346,6 +1349,26 @@ static const struct of_device_id mtk_vdisp_driver_v3_dt_match[] = {
 
 MODULE_DEVICE_TABLE(of, mtk_vdisp_driver_v3_dt_match);
 
+static int mtk_vdisp_resume_v3(struct device *dev)
+{
+	VDISPDBG();
+	g_use_vdisp_wake_lock = true;
+	return 0;
+}
+static int mtk_vdisp_suspend_v3(struct device *dev)
+{
+	VDISPDBG();
+	g_use_vdisp_wake_lock = false;
+	if (disp_dpc_driver.dpc_group_enable)
+		disp_dpc_driver.dpc_group_enable(8888, false);
+	return 0;
+}
+
+static const struct dev_pm_ops mtk_vdisp_pm_ops = {
+	.resume = mtk_vdisp_resume_v3,
+	.suspend = mtk_vdisp_suspend_v3,
+};
+
 struct platform_driver mtk_vdisp_driver_v3 = {
 	.probe = mtk_vdisp_probe,
 	.remove = mtk_vdisp_remove,
@@ -1353,6 +1376,7 @@ struct platform_driver mtk_vdisp_driver_v3 = {
 		.name = "mediatek-vdisp-ctrl-v3",
 		.owner = THIS_MODULE,
 		.of_match_table = mtk_vdisp_driver_v3_dt_match,
+		.pm = &mtk_vdisp_pm_ops,
 	},
 };
 
