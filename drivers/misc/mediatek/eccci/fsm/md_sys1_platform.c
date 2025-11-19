@@ -85,6 +85,54 @@ struct tag_chipid {
 #define RAnd2W(a, b, c)  ccci_write32(a, b, (ccci_read32(a, b)&c))
 #define RabIsc(a, b, c) ((ccci_read32(a, b)&c) != c)
 
+#if IS_ENABLED(CONFIG_PM)
+static atomic_t is_suspend = ATOMIC_INIT(0);
+
+static int ccci_pm_event(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		if (atomic_read(&is_suspend) == 0)
+			atomic_set(&is_suspend, 1);
+		return NOTIFY_DONE;
+	case PM_POST_SUSPEND:
+		if (atomic_read(&is_suspend) == 1)
+			atomic_set(&is_suspend, 0);
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block ccci_pm_notifier_block = {
+	.notifier_call = ccci_pm_event,
+	.priority = 0,
+};
+#endif /* CONFIG_PM */
+
+#if !IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) && !IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY)
+static void wait_pm_resume(void)
+{
+	int count = 0;
+
+#if IS_ENABLED(CONFIG_PM)
+	while(atomic_read(&is_suspend) == 1) {
+		if (count % 10 == 0)
+			CCCI_NORMAL_LOG(0, TAG, "Waiting to PM enter resume....\n");
+
+		if( count == 300 ) {
+			CCCI_ERROR_LOG(0, TAG, "Wait PM resume timeout 300 times\n");
+			break;
+		}
+
+		count++;
+		msleep(100);
+	}
+#endif /* CONFIG_PM */
+
+	CCCI_NORMAL_LOG(0, TAG, "run %d times to exit\n", count);
+}
+#endif /* CONFIG_COMMON_CLK_PG_LEGACY */
+
 #ifdef ENABLE_DEBUG_DUMP /* Fix me! */
 void md1_subsys_debug_dump(enum subsys_id sys)
 {
@@ -1214,6 +1262,7 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 #if IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) || IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY)
 		clk_disable_unprepare(clk_table[0].clk_ref);
 #else
+		wait_pm_resume();
 		ret = pm_runtime_put_sync(&md->plat_dev->dev);
 #endif
 	}
@@ -2443,6 +2492,7 @@ static int md_cd_power_on(struct ccci_modem *md)
 #if IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) || IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY)
 		ret = clk_prepare_enable(clk_table[0].clk_ref);
 #else
+		wait_pm_resume();
 		ret = pm_runtime_get_sync(&md->plat_dev->dev);
 #endif
 	}
@@ -2810,6 +2860,7 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	ret = clk_prepare_enable(clk_table[0].clk_ref);
 	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] dummy: clk: MD MTCMOS ON %d\n", ret);
 #else
+	wait_pm_resume();
 	pm_runtime_enable(&dev_ptr->dev);
 	dev_pm_syscore_device(&dev_ptr->dev, true);
 	retval = pm_runtime_get_sync(&dev_ptr->dev);
@@ -2902,6 +2953,7 @@ static int ccci_modem_probe(struct platform_device *plat_dev)
 			"%s:alloc md hw mem fail\n", __func__);
 		return -1;
 	}
+
 	ret = md_cd_get_modem_hw_info(plat_dev, &dev_cfg, md_hw);
 	if (ret != 0) {
 		CCCI_ERROR_LOG(-1, TAG,
@@ -2909,6 +2961,16 @@ static int ccci_modem_probe(struct platform_device *plat_dev)
 		kfree(md_hw);
 		return -1;
 	}
+
+#if IS_ENABLED(CONFIG_PM)
+	if (!(md_cd_plat_val_ptr.ccci_ctrl_mtcmos)) {
+		ret = register_pm_notifier(&ccci_pm_notifier_block);
+		if (ret)
+			CCCI_ERROR_LOG(-1, TAG,
+				"%s:failed to register PM notifier %d\n", __func__, ret);
+	}
+#endif /* CONFIG_PM */
+
 #ifdef CCCI_KMODULE_ENABLE
 	ccci_init();
 #endif
