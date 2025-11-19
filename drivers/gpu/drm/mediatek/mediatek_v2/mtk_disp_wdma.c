@@ -1824,7 +1824,10 @@ static void mtk_wdma_addon_config(struct mtk_ddp_comp *comp,
 
 	DDPINFO("%s WDMA config iommu, CRTC%d\n", __func__, crtc_idx);
 	mtk_ddp_comp_iommu_enable(comp, handle);
-
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	mtk_ddp_write(comp, 0x01, DISP_REG_WDMA_RST, handle);
+	mtk_ddp_write(comp, 0x00, DISP_REG_WDMA_RST, handle);
+#endif
 	write_dst_addr(comp, handle, 0, addr);
 
 	con = wdma_fmt_convert(comp->fb->format->format);
