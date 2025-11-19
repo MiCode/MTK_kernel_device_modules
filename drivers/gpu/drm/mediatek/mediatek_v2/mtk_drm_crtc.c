@@ -5110,51 +5110,46 @@ void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc)
 	}
 	DDPBIF("%s -\n", __func__);
 }
-bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC bif_slbc)
+bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc)
 {
 	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
 	int ret = 0;
 
-	bif_info->sram_data.uid = UID_BIF;
-	bif_info->sram_data.type = TP_BUFFER;
+	if (slbc == SLBC_REQUEST) {
+		if (bif_info->sram_en)
+			return true;
 
-	if (bif_slbc == SLBC_REQUEST) {
 		ret = slbc_request(&bif_info->sram_data);
 		if (ret < 0) {
 			DDPPR_ERR("%s, slbc_request fail\n", __func__);
-			bif_info->sram_en = 0;
+			bif_info->sram_en = false;
+			CRTC_MMP_MARK(0, bif_slbc, 0xFFFFFFFF, __LINE__);
 			return false;
 		}
-		bif_info->sram_en = 1;
+		bif_info->sram_en = true;
 		bif_info->sram_pa = (size_t) bif_info->sram_data.paddr;
 		bif_info->sram_size = (size_t) bif_info->sram_data.size;
 
 		DDPBIF("%s,sram addr:0x%llx,sz:0x%llx\n", __func__, bif_info->sram_pa, bif_info->sram_size);
-	} else if (bif_slbc == SLBC_FORCE_RELEASE) {
-		bif_info->sram_en = 0;
-		atomic_set(&bif_info->slbc_hold, 0);
+	} else {
+		if (!bif_info->sram_en)
+			return true;
+
+		bif_info->sram_en = false;
 
 		ret = slbc_release(&bif_info->sram_data);
 		if (ret < 0) {
 			DDPPR_ERR("%s, slbc_release fail\n", __func__);
+			CRTC_MMP_MARK(0, bif_slbc, 0xFFFFFFFF, __LINE__);
 			return false;
-		}
-	} else {
-		atomic_dec(&bif_info->slbc_hold);
-
-		if (atomic_read(&bif_info->slbc_hold) == 0) {
-			bif_info->sram_en = 0;
-
-			ret = slbc_release(&bif_info->sram_data);
-			if (ret < 0) {
-				DDPPR_ERR("%s, slbc_release fail\n", __func__);
-				return false;
-			}
 		}
 	}
 
-	DDPBIF("%s[%d]slbc_hold:%d\n", __func__, bif_slbc, atomic_read(&bif_info->slbc_hold));
-	CRTC_MMP_MARK(0, bif_slbc, atomic_read(&bif_info->slbc_hold), bif_slbc);
+	DDPBIF("%s[%d]\n", __func__, slbc);
+	if (slbc == SLBC_REQUEST)
+		CRTC_MMP_EVENT_START(0, bif_slbc, slbc, 0);
+	else
+		CRTC_MMP_EVENT_END(0, bif_slbc, slbc, 0);
 
 	return true;
 }
@@ -5246,9 +5241,39 @@ err:
 	set_bif_enable(&mtk_crtc->base, false, __LINE__);
 	DDPPR_ERR("%s: error\n", __func__);
 }
+void mtk_bif_slbc_release_wq(struct mtk_drm_crtc *mtk_crtc)
+{
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE);
+	atomic_set(&mtk_crtc->bif_info->bif_release, 0);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+}
+static int mtk_bif_worker_kthread(void *data)
+{
+	struct mtk_drm_crtc *mtk_crtc = (struct mtk_drm_crtc *) data;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct sched_param param = {.sched_priority = 94 };
+	int ret;
+
+	sched_setscheduler(current, SCHED_RR, &param);
+
+	while (1) {
+		ret = wait_event_interruptible(mtk_crtc->bif_info->bif_task_wq,
+			atomic_read(&mtk_crtc->bif_info->bif_release));
+		if (ret < 0)
+			DDPPR_ERR("wait %s fail, ret=%d\n", __func__, ret);
+
+		mtk_bif_slbc_release_wq(mtk_crtc);
+
+		if (kthread_should_stop())
+			break;
+	}
+	return 0;
+}
 void mtk_crtc_bif_info_init(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_bif_info *bif_info = NULL;
 
 	if (!mtk_crtc->bif_info) {
 		mtk_crtc->bif_info = kzalloc(sizeof(struct mtk_bif_info), GFP_KERNEL);
@@ -5259,10 +5284,19 @@ void mtk_crtc_bif_info_init(struct mtk_drm_crtc *mtk_crtc)
 		DDPPR_ERR("%s: bif_info allocate memory fail\n", __func__);
 		return;
 	}
-	mtk_drm_crtc_get_panel_original_size(crtc,
-		&mtk_crtc->bif_info->lcm_width, &mtk_crtc->bif_info->lcm_height);
 
-	atomic_set(&mtk_crtc->bif_info->slbc_hold, 0);
+	bif_info = mtk_crtc->bif_info;
+
+	bif_info->sram_data.uid = UID_BIF;
+	bif_info->sram_data.type = TP_BUFFER;
+
+	mtk_drm_crtc_get_panel_original_size(crtc,
+		&bif_info->lcm_width, &bif_info->lcm_height);
+
+	bif_info->bif_task = kthread_create(mtk_bif_worker_kthread, crtc, "bif_thd");
+	init_waitqueue_head(&bif_info->bif_task_wq);
+	atomic_set(&bif_info->bif_release, 0);
+	wake_up_process(bif_info->bif_task);
 
 	DDPINFO("%s,lcm:%dx%d\n", __func__, mtk_crtc->bif_info->lcm_width, mtk_crtc->bif_info->lcm_height);
 }
@@ -13222,6 +13256,9 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 #endif
 	mtk_crtc_release_cmdq_pkt(cb_data->pkt_info);
 
+	if (bif_enabled(crtc))
+		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE);
+
 	CRTC_MMP_EVENT_END(id, frame_cfg, 0, mtk_crtc->skip_check_trigger);
 }
 
@@ -17723,10 +17760,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 		mtk_crtc_update_bif_roi(mtk_crtc);
 
 		if (bif_enabled(crtc)) {
-			if (!mtk_crtc->bif_info->sram_en) {
-				if (!mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST))
-					set_bif_enable(crtc, false, __LINE__);
-			}
+			if (!mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST))
+				set_bif_enable(crtc, false, __LINE__);
 			DDPMSG("%s,bif_enable:%d,\n", __func__, mtk_crtc->bif_info->bif_enable);
 		}
 	}
@@ -19419,10 +19454,8 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 	mtk_drm_crtc_wk_lock(crtc, 0, __func__, __LINE__);
 
 	/* release bif slbc */
-	if (mtk_crtc->bif_info) {
-		if (mtk_crtc->bif_info->sram_en)
-			mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_FORCE_RELEASE);
-	}
+	if (mtk_crtc->bif_info)
+		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_FORCE_RELEASE);
 
 	/* no need to consider cam throttle between suspend and first LR after suspend */
 	if (index == 0)

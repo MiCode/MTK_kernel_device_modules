@@ -1068,14 +1068,16 @@ struct mtk_bif_info {
 	int wb_frame_done_event;
 	int wdma_offset;
 	enum BIF_STAGE stage;
-	unsigned int sram_en;
-	atomic_t slbc_hold;
+	bool sram_en;
 	u64 sram_pa;
 	u64 sram_size;
 	u32 ovlsys_0[2];
 	u32 ovlsys_1[2];
 	u32 dispsys_0[2];
 	u32 dispsys_1[2];
+	struct task_struct *bif_task;
+	wait_queue_head_t bif_task_wq;
+	atomic_t bif_release;
 };
 
 struct mtk_crtc_static_plane {
