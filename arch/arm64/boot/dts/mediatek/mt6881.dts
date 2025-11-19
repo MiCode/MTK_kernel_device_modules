@@ -7854,12 +7854,15 @@
 		u2phy: usb-phy0@11f40000 {
 			compatible = "mediatek,xsphy", "mediatek,mt6881-xsphy";
 			reg = <0 0x11f40000 0 0x400>;
+			reg-names = "u2_port_base";
 			#address-cells = <2>;
 			#size-cells = <2>;
 			ranges;
 
 			u2port0: usb2-phy0@11f40000 {
 				reg = <0 0x11f40000 0 0x400>;
+				clocks = <&clk26m>;
+				clock-names = "ref";
 				#phy-cells = <1>;
 			};
 		};
