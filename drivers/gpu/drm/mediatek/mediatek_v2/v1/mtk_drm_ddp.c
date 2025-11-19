@@ -16976,6 +16976,62 @@ static char *ddp_greq_name_larb1_mt6878(int bit)
 	}
 }
 
+static char *ddp_greq_name_larb0_mt6881(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "DISP_OVL0_2L_HDR";
+	case 1:
+		return "DISP_OVL0_2L";
+	case 2:
+		return "DISP_OVL1_2L_1";
+	case 3:
+		return "DISP_OVL2_2L_HDR";
+	case 4:
+		return "DISP_OVL2_2L";
+	case 5:
+		return "DISP_OVL3_2L_1";
+	case 6:
+		return "DISP_OVL0_1L_HDR";
+	case 7:
+		return "DISP_OVL0_1L";
+	case 8:
+		return "DISP_POSTMASK0";
+	case 9:
+		return "DISP_FAKE_ENG0";
+	default:
+		return NULL;
+	}
+}
+
+static char *ddp_greq_name_larb1_mt6881(int bit)
+{
+	switch (bit) {
+	case 0:
+		return "DISP_OVL0_2L_1";
+	case 1:
+		return "DISP_OVL1_2L_HDR";
+	case 2:
+		return "DISP_OVL1_2L";
+	case 3:
+		return "DISP_OVL2_2L_1";
+	case 4:
+		return "DISP_OVL3_2L_HDR";
+	case 5:
+		return "DISP_OVL3_2L";
+	case 6:
+		return "DISP_OVL1_1L_HDR";
+	case 7:
+		return "DISP_OVL1_1L";
+	case 8:
+		return "DISP_WDMA1";
+	case 9:
+		return "DISP_FAKE_ENG1";
+	default:
+		return NULL;
+	}
+}
+
 static char *ddp_get_mutex_module0_name_mt6768(unsigned int bit)
 {
 	switch (bit) {
@@ -49430,7 +49486,7 @@ void mmsys_config_dump_analysis_mt6881(struct drm_crtc *crtc)
 	clock_on[0] = '\0';
 	for (bit = 0; bit < 32; bit++) {
 		if (greq0 & (1 << bit)) {
-			name = ddp_greq_name_larb0_mt6878(bit);
+			name = ddp_greq_name_larb0_mt6881(bit);
 			if (!name)
 				continue;
 			strncat(clock_on, name,
@@ -49441,7 +49497,7 @@ void mmsys_config_dump_analysis_mt6881(struct drm_crtc *crtc)
 
 	for (bit = 0; bit < 32; bit++) {
 		if (greq1 & (1 << bit)) {
-			name = ddp_greq_name_larb1_mt6878(bit);
+			name = ddp_greq_name_larb1_mt6881(bit);
 			if (!name)
 				continue;
 			strncat(clock_on, name,

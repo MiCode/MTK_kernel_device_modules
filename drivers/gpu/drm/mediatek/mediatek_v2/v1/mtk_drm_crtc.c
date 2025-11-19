@@ -2777,7 +2777,9 @@ mtk_drm_crtc_duplicate_state(struct drm_crtc *crtc)
 			old_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
 		state->prop_val[CRTC_PROP_PRES_FENCE_IDX] =
 			old_state->prop_val[CRTC_PROP_PRES_FENCE_IDX];
-		if (priv->data->mmsys_id != MMSYS_MT6858 && priv->data->mmsys_id != MMSYS_MT6878)
+		if (priv->data->mmsys_id != MMSYS_MT6858 &&
+			priv->data->mmsys_id != MMSYS_MT6878 &&
+			priv->data->mmsys_id != MMSYS_MT6881)
 			state->prop_val[CRTC_PROP_LYE_IDX] =
 				old_state->prop_val[CRTC_PROP_LYE_IDX];
 		state->prop_val[CRTC_PROP_PARTIAL_UPDATE_ENABLE] =
