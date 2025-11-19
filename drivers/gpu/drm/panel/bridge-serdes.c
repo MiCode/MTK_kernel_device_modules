@@ -32,9 +32,14 @@
 #endif
 #include "bridge-serdes.h"
 #include "../mediatek/mediatek_v2/mtk_panel_ext.h"
+#if IS_ENABLED(CONFIG_MTK_DISP_SUPPORT_AUTO_MBRAIN) && IS_ENABLED(CONFIG_MTK_MBRAINK_AUTO)
+#include <linux/timekeeping.h>
+#include "../mediatek/mediatek_v2/mtk_disp_mbrain.h"
+#define MBRAIN_RETRIGGER_TIME					(2 * 60 * 60) // two hour
+#endif
 
-#define ENABLE_HOTPLUG_INT 0
-#define ENALBE_INIT_WORK   1
+#define ENABLE_HOTPLUG_INT						0
+#define ENALBE_INIT_WORK						1
 
 #define PANEL_NODE_NAME							"panel"
 #define MASTER_NODE_NAME						"master"
@@ -57,8 +62,6 @@
 #define SER_STATUS_CMD_NODE_NAME				"ser-status"
 #define LINKA_STATUS_CMD_NODE_NAME				"linka-status"
 #define LINKB_STATUS_CMD_NODE_NAME				"linkb-status"
-#define LINKA_INITED_STATUS_CMD_NODE_NAME		"linka-inited-status"
-#define LINKB_INITED_STATUS_CMD_NODE_NAME		"linkb-inited-status"
 
 #define PANEL_TIMING_A_NODE_NAME				"panel-timing-a"
 #define PANEL_TIMING_B_NODE_NAME				"panel-timing-b"
@@ -84,21 +87,26 @@ struct node_map {
 	const char *name;
 };
 
-enum SERDES_STATUS_TYPE {
-	SER_STATUS = 0,
-	LINKA_STATUS,
-	LINKB_STATUS,
-	LINKA_INITED_STATUS,
-	LINKB_INITED_STATUS,
-	MAX_STATUS
+enum SERDES_TYPE {
+	SER = 0,
+	LINKA,
+	LINKB,
+	MAX_SERDES_TYPE
+};
+
+enum SERDES_STATUS {
+	SERDES_STATUS_UNDEFINED = -1,
+	SERDES_STATUS_DISCONNECTED = 0,
+	SERDES_STATUS_CONNECTED = 1,
+	SERDES_STATUS_PCLK_DETECTED = 3,
+	SERDES_STATUS_VDO_DETECTED = 7,
+	SERDES_STATUS_INITED = 3
 };
 
 static struct node_map status_node_name[] = {
-	{ SER_STATUS, SER_STATUS_CMD_NODE_NAME },
-	{ LINKA_STATUS, LINKA_STATUS_CMD_NODE_NAME },
-	{ LINKB_STATUS, LINKB_STATUS_CMD_NODE_NAME },
-	{ LINKA_INITED_STATUS, LINKA_INITED_STATUS_CMD_NODE_NAME },
-	{ LINKB_INITED_STATUS, LINKB_INITED_STATUS_CMD_NODE_NAME },
+	{ SER, SER_STATUS_CMD_NODE_NAME },
+	{ LINKA, LINKA_STATUS_CMD_NODE_NAME },
+	{ LINKB, LINKB_STATUS_CMD_NODE_NAME },
 };
 
 enum CMD_TYPE {
@@ -149,12 +157,17 @@ struct serdes_config_cmd {
 	struct device_cmd **dev_cmd;
 };
 
-struct serdes_status_cmd {
+struct status_cmd {
 	u8 dev_addr;
 	u8 reg_width;
 	u16 reg_addr;
 	u8 mask;
 	u8 exp_data;
+};
+
+struct serdes_status_cmd {
+	u32 sta_cmd_num;
+	struct status_cmd **sta_cmd;
 };
 
 struct comp_config_type_cmd {
@@ -208,7 +221,7 @@ struct serdes_bridge {
 	bool is_suspend;
 
 	struct serdes_config_cmd *cfg_cmd[MAX_CONFIG_CMD];
-	struct serdes_status_cmd *sta_cmd[MAX_STATUS];
+	struct serdes_status_cmd *sta_cmd[MAX_SERDES_TYPE];
 	struct comp_config_cmd *comp_cfg_cmd;
 	struct vdo_timing panel_timing[2];
 
@@ -231,6 +244,9 @@ struct serdes_bridge {
 #if ENABLE_HOTPLUG_INT
 	int irq_num;
 #endif
+#endif
+#if IS_ENABLED(CONFIG_MTK_DISP_SUPPORT_AUTO_MBRAIN) && IS_ENABLED(CONFIG_MTK_MBRAINK_AUTO)
+	struct mb_disp_data mb_data;
 #endif
 };
 
@@ -449,9 +465,10 @@ static int serdes_get_panel_timing_from_dts(struct serdes_bridge *ser_des)
 static int serdes_get_status_cmd_from_dts(struct serdes_bridge *ser_des,
 	const char *type, struct serdes_status_cmd **sta_cmd)
 {
-	int len = 0;
-	const __be32 *p = NULL;
+	int len = 0, offset = 0, count = 0;
+	const __be32 *p = NULL, *tmp_p = NULL;
 	struct serdes_status_cmd *tmp_sta_cmd = NULL;
+	u8 reg_width = 0;
 
 	if (!ser_des || !type) {
 		pr_info("%s: Invalid serdes or type!\n", __func__);
@@ -471,46 +488,86 @@ static int serdes_get_status_cmd_from_dts(struct serdes_bridge *ser_des,
 	if (!tmp_sta_cmd)
 		return -1;
 
-	tmp_sta_cmd->dev_addr = be32_to_cpu(*p++);
-	tmp_sta_cmd->reg_width = be32_to_cpu(*p++);
-	tmp_sta_cmd->reg_addr = be32_to_cpu(*p++);
-	tmp_sta_cmd->mask = be32_to_cpu(*p++);
-	tmp_sta_cmd->exp_data = be32_to_cpu(*p++);
+	tmp_p = p;
+	while (offset < len) {
+		tmp_p++;
+		reg_width = be32_to_cpu(*tmp_p++);
+		if (reg_width == 0) {
+			offset += (3 + be32_to_cpu(*tmp_p));
+			tmp_p += be32_to_cpu(*tmp_p);
+		} else {
+			offset += 5;
+			tmp_p += 3;
+		}
+		count++;
+	}
+	if (count != 2 && count != 3) {
+		pr_info("%s: only support 2 or 3 status cmds now[act=%d]!\n", __func__, count);
+		return -1;
+	}
+	tmp_sta_cmd->sta_cmd = devm_kzalloc(ser_des->dev,
+		sizeof(struct status_cmd *) * count, GFP_KERNEL);
+	if (!tmp_sta_cmd->sta_cmd)
+		return -1;
 
+	tmp_sta_cmd->sta_cmd_num = count;
+	tmp_p = p;
+	for (int i = 0; i < count; i++) {
+		tmp_sta_cmd->sta_cmd[i] = devm_kzalloc(ser_des->dev,
+			sizeof(struct status_cmd), GFP_KERNEL);
+		if (!tmp_sta_cmd->sta_cmd[i])
+			return -1;
+
+		tmp_sta_cmd->sta_cmd[i]->dev_addr = be32_to_cpu(*tmp_p++);
+		tmp_sta_cmd->sta_cmd[i]->reg_width = be32_to_cpu(*tmp_p++);
+		tmp_sta_cmd->sta_cmd[i]->reg_addr = be32_to_cpu(*tmp_p++);
+		tmp_sta_cmd->sta_cmd[i]->mask = be32_to_cpu(*tmp_p++);
+		tmp_sta_cmd->sta_cmd[i]->exp_data = be32_to_cpu(*tmp_p++);
+	}
 	*sta_cmd = tmp_sta_cmd;
 
 	return 0;
 }
 
-static bool serdes_get_serdes_status(struct serdes_bridge *ser_des,
-	enum SERDES_STATUS_TYPE type)
+static int serdes_get_serdes_status(struct serdes_bridge *ser_des,
+	enum SERDES_TYPE type)
 {
-	int ret = 0;
-	u8 val = 0, tmp_addr = 0;
+	int ret = 0, i = 0;
+	u8 val = 0, tmp_addr = 0, status = 0;
 	struct serdes_status_cmd *sta_cmd = NULL;
 
 	if (!ser_des || !ser_des->client) {
 		pr_info("%s[i2c%d]: ser_des or i2c client is null!\n",
 			__func__, ser_des->client->adapter->nr);
-		return true;
+		return SERDES_STATUS_UNDEFINED;
 	}
 
 	sta_cmd = ser_des->sta_cmd[type];
 	if (!sta_cmd) {
 		pr_info("%s[i2c%d]: cmd[%s] is NULL!\n", __func__,
 			ser_des->client->adapter->nr, status_node_name[type].name);
-		return true;
+		return SERDES_STATUS_UNDEFINED;
+	}
+
+	if (!sta_cmd->sta_cmd_num) {
+		pr_info("%s[i2c%d]: cmd[%s] is NULL!\n", __func__,
+			ser_des->client->adapter->nr, status_node_name[type].name);
+		return SERDES_STATUS_UNDEFINED;
 	}
 
 	tmp_addr = ser_des->client->addr;
-	ser_des->client->addr = sta_cmd->dev_addr;
-	ret = i2c_write_read_byte(ser_des->client, sta_cmd->dev_addr,
-		sta_cmd->reg_addr, sta_cmd->reg_width, &val);
+	for (i = 0; i < sta_cmd->sta_cmd_num; i++) {
+		ser_des->client->addr = sta_cmd->sta_cmd[i]->dev_addr;
+		ret = i2c_write_read_byte(ser_des->client, sta_cmd->sta_cmd[i]->dev_addr,
+			sta_cmd->sta_cmd[i]->reg_addr, sta_cmd->sta_cmd[i]->reg_width, &val);
+		if (ret >= 0 && (val & sta_cmd->sta_cmd[i]->mask) == sta_cmd->sta_cmd[i]->exp_data)
+			status |= 1 << i;
+		else
+			status &= ~(1 << i);
+	}
 	ser_des->client->addr = tmp_addr;
-	if (ret < 0)
-		return false;
 
-	return ((val & sta_cmd->mask) == sta_cmd->exp_data) ? true : false;
+	return status;
 }
 
 static int serdes_get_cmd_from_dts(struct serdes_bridge *ser_des,
@@ -558,26 +615,24 @@ static int serdes_get_cmd_from_dts(struct serdes_bridge *ser_des,
 		return -1;
 
 	tmp_cfg_cmd->dev_cmd_num = count;
-	count = 0;
-	offset = 0;
 	tmp_p = p;
-	while (offset < len) {
-		tmp_cfg_cmd->dev_cmd[count] = devm_kzalloc(ser_des->dev,
+	for (int i = 0; i < count; i++) {
+		tmp_cfg_cmd->dev_cmd[i] = devm_kzalloc(ser_des->dev,
 			sizeof(struct device_cmd), GFP_KERNEL);
-		tmp_cfg_cmd->dev_cmd[count]->dev_addr = be32_to_cpu(*tmp_p++);
-		tmp_cfg_cmd->dev_cmd[count]->reg_width = be32_to_cpu(*tmp_p++);
-		if (tmp_cfg_cmd->dev_cmd[count]->reg_width == 0) {
-			tmp_cfg_cmd->dev_cmd[count]->multi_i2c_cmd.len = be32_to_cpu(*tmp_p++);
-			for (u32 i = 0; i < tmp_cfg_cmd->dev_cmd[count]->multi_i2c_cmd.len; i++)
-				tmp_cfg_cmd->dev_cmd[count]->multi_i2c_cmd.data[i] = be32_to_cpu(*tmp_p++);
-			offset += 3 + tmp_cfg_cmd->dev_cmd[count]->multi_i2c_cmd.len;
+		if (!tmp_cfg_cmd->dev_cmd[i])
+			return -1;
+
+		tmp_cfg_cmd->dev_cmd[i]->dev_addr = be32_to_cpu(*tmp_p++);
+		tmp_cfg_cmd->dev_cmd[i]->reg_width = be32_to_cpu(*tmp_p++);
+		if (tmp_cfg_cmd->dev_cmd[i]->reg_width == 0) {
+			tmp_cfg_cmd->dev_cmd[i]->multi_i2c_cmd.len = be32_to_cpu(*tmp_p++);
+			for (u32 j = 0; j < tmp_cfg_cmd->dev_cmd[i]->multi_i2c_cmd.len; j++)
+				tmp_cfg_cmd->dev_cmd[i]->multi_i2c_cmd.data[j] = be32_to_cpu(*tmp_p++);
 		} else {
-			tmp_cfg_cmd->dev_cmd[count]->single_i2c_cmd.addr = be32_to_cpu(*tmp_p++);
-			tmp_cfg_cmd->dev_cmd[count]->single_i2c_cmd.data = be32_to_cpu(*tmp_p++);
-			tmp_cfg_cmd->dev_cmd[count]->single_i2c_cmd.delay_ms = be32_to_cpu(*tmp_p++);
-			offset += 5;
+			tmp_cfg_cmd->dev_cmd[i]->single_i2c_cmd.addr = be32_to_cpu(*tmp_p++);
+			tmp_cfg_cmd->dev_cmd[i]->single_i2c_cmd.data = be32_to_cpu(*tmp_p++);
+			tmp_cfg_cmd->dev_cmd[i]->single_i2c_cmd.delay_ms = be32_to_cpu(*tmp_p++);
 		}
-		count++;
 	}
 
 	*cfg_cmd = tmp_cfg_cmd;
@@ -728,27 +783,44 @@ void serdes_reset_ser(struct serdes_bridge *ser_des)
 
 int serdes_get_link_status(struct serdes_bridge *ser_des)
 {
-	bool linka_status = false, linkb_status = false,
-		linka_inited_status = false, linkb_inited_status = false;
+	int linka_status = 0, linkb_status = 0;
 
 	if (!ser_des) {
 		pr_info("%s: Invalid serdes!\n", __func__);
 		return -1;
 	}
-	linka_status = serdes_get_serdes_status(ser_des, LINKA_STATUS);
-	linka_inited_status = serdes_get_serdes_status(ser_des, LINKA_INITED_STATUS);
+	linka_status = serdes_get_serdes_status(ser_des, LINKA);
 	if (ser_des->link_type == LINK_TYPE_SUPERFRAME
 		 || ser_des->link_type == LINK_TYPE_MST
 		 || ser_des->link_type == LINK_TYPE_DUAL_LINK) {
-		linkb_status = serdes_get_serdes_status(ser_des, LINKB_STATUS);
-		linkb_inited_status = serdes_get_serdes_status(ser_des, LINKB_INITED_STATUS);
+		linkb_status = serdes_get_serdes_status(ser_des, LINKB);
 	}
 
-	return linkb_inited_status << 3 |
-			linka_inited_status << 2 |
-			linkb_status << 1 |
-			linka_status;
+	linka_status = (linka_status < 0) ? 0: linka_status;
+	linkb_status = (linkb_status < 0) ? 0: linkb_status;
+
+	return (linkb_status & 0x2) << 2 |
+			(linka_status & 0x2) << 1 |
+			(linkb_status & 0x1) << 1 |
+			(linka_status & 0x1);
 }
+
+#if IS_ENABLED(CONFIG_MTK_DISP_SUPPORT_AUTO_MBRAIN) && IS_ENABLED(CONFIG_MTK_MBRAINK_AUTO)
+void serdes_trigger_mbrain(struct serdes_bridge *ser_des, const char *msg, u8 status_a, u8 status_b)
+{
+	char str[64] = {0};
+	int ret;
+
+	ret = snprintf(str, sizeof(str), "[i2c%d]: %s[0x%x 0x%x]", ser_des->client->adapter->nr,
+		msg, status_a, status_b);
+	if (ret < 0 || ret >= (int)sizeof(str))
+		str[0] = '\0';
+
+	ser_des->mb_data.event = DISP_DSI_SERDES_UNLOCK;
+	ser_des->mb_data.req_type = DISP_JUST_NOTIFY_TO_MB;
+	disp_mb_event_trigger(&ser_des->mb_data, str, false);
+}
+#endif
 
 #if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 #if ENABLE_HOTPLUG_INT
@@ -773,7 +845,11 @@ static int serdes_hotplug_kthread(void *data)
 {
 	struct sched_param param = {.sched_priority = DEFAULT_PRIO};
 	struct serdes_bridge *ser_des = (struct serdes_bridge *)data;
-	int status = 0, reset_a = 0, reset_b = 0;
+	int status_a = 0, status_b = 0;
+#if IS_ENABLED(CONFIG_MTK_DISP_SUPPORT_AUTO_MBRAIN) && IS_ENABLED(CONFIG_MTK_MBRAINK_AUTO)
+	time64_t now = 0;
+	time64_t last_trigger_time = 0;
+#endif
 
 	sched_setscheduler(current, SCHED_NORMAL, &param);
 	if (!ser_des) {
@@ -798,27 +874,53 @@ static int serdes_hotplug_kthread(void *data)
 			return 0;
 		}
 
-		reset_a = reset_b = 0;
-		status = serdes_get_link_status(ser_des);
+#if IS_ENABLED(CONFIG_MTK_DISP_SUPPORT_AUTO_MBRAIN) && IS_ENABLED(CONFIG_MTK_MBRAINK_AUTO)
+		// for mbrain, serdes lost power
+		status_a = serdes_get_serdes_status(ser_des, SER);
+		if (status_a == SERDES_STATUS_DISCONNECTED || status_a == SERDES_STATUS_CONNECTED) {
+			pr_info("%s: error: serdes[i2c%d] disconnected or signal unstable!\n", __func__,
+				ser_des->client->adapter->nr);
+			now = ktime_get_real_seconds();
+			if (now - last_trigger_time >= MBRAIN_RETRIGGER_TIME || last_trigger_time == 0) {
+				serdes_trigger_mbrain(ser_des, "DSI_SERDES_DISCONNECTED_OR_SIGNAL_UNSTABLE",
+					status_a, 0);
+				last_trigger_time = now;
+			}
+			continue;
+		}
+#endif
 
-		pr_info("%s:[i2c%d] serdes status=0x%x!\n", __func__,
-			ser_des->client->adapter->nr, status);
+		status_a = serdes_get_serdes_status(ser_des, LINKA);
+		status_b = serdes_get_serdes_status(ser_des, LINKB);
+		pr_info("%s:[i2c%d] status:[%d %d]!\n", __func__, ser_des->client->adapter->nr,
+			status_a, status_b);
 
-		if ((status & 0x5) == 0x1)
-			reset_a = 1;
-		if ((status & 0xa) == 0x2)
-			reset_b = 1;
+		if (status_a == SERDES_STATUS_CONNECTED || status_b == SERDES_STATUS_CONNECTED) {
+			if (ser_des->link_type == LINK_TYPE_SUPERFRAME
+				|| ser_des->link_type == LINK_TYPE_MST
+				|| ser_des->link_type == LINK_TYPE_DUAL_LINK)
+				serdes_send_cmd(ser_des, I2C_REMAP_CMD);
+			if (status_a == SERDES_STATUS_CONNECTED)
+				serdes_send_cmd(ser_des, LINKA_INIT_CMD);
+			if (status_b == SERDES_STATUS_CONNECTED)
+				serdes_send_cmd(ser_des, LINKB_INIT_CMD);
+			status_a = serdes_get_serdes_status(ser_des, LINKA);
+			status_b = serdes_get_serdes_status(ser_des, LINKB);
+			pr_info("%s:After re-init, [i2c%d] status:[%d %d]!\n", __func__,
+				ser_des->client->adapter->nr, status_a, status_b);
+		}
 
-		if ((ser_des->link_type == LINK_TYPE_SUPERFRAME
-			 || ser_des->link_type == LINK_TYPE_MST
-			 || ser_des->link_type == LINK_TYPE_DUAL_LINK)
-			&& (reset_a || reset_b))
-			serdes_send_cmd(ser_des, I2C_REMAP_CMD);
-		if (reset_a)
-			serdes_send_cmd(ser_des, LINKA_INIT_CMD);
-		if (reset_b)
-			serdes_send_cmd(ser_des, LINKB_INIT_CMD);
-
+#if IS_ENABLED(CONFIG_MTK_DISP_SUPPORT_AUTO_MBRAIN) && IS_ENABLED(CONFIG_MTK_MBRAINK_AUTO)
+		// for mbrain, des can't work after reset
+		if (status_a == SERDES_STATUS_CONNECTED || status_b == SERDES_STATUS_CONNECTED) {
+			now = ktime_get_real_seconds();
+			if (now - last_trigger_time >= MBRAIN_RETRIGGER_TIME || last_trigger_time == 0) {
+				serdes_trigger_mbrain(ser_des, "DSI_SERDES_STATUS_CONNECTED_BUT_NOT_INITED",
+					status_a, status_b);
+				last_trigger_time = now;
+			}
+		}
+#endif
 #if ENABLE_HOTPLUG_INT
 		if (ser_des->irq_num)
 			enable_irq(ser_des->irq_num);
@@ -915,7 +1017,7 @@ void serdes_bridge_enable(struct drm_bridge *bridge)
 {
 	struct serdes_bridge *serdes = bridge_to_serdes(bridge);
 	struct serdes_bridge *ser_des;
-	int port = 0;
+	int port = 0, status = 0;
 
 	if (!serdes || !serdes->driver_data) {
 		pr_info("%s: serdes is NULL\n", __func__);
@@ -932,9 +1034,15 @@ void serdes_bridge_enable(struct drm_bridge *bridge)
 		ser_des->client->adapter->nr, port,
 		ser_des->port0_enabled, ser_des->port1_enabled);
 
-	if (!serdes_get_serdes_status(ser_des, SER_STATUS)) {
+	status = serdes_get_serdes_status(ser_des, SER);
+
+	if (status == SERDES_STATUS_DISCONNECTED) {
 		pr_info("%s: error: serdes[i2c%d] not connect!\n", __func__,
 			ser_des->client->adapter->nr);
+#if IS_ENABLED(CONFIG_MTK_DISP_SUPPORT_AUTO_MBRAIN) && IS_ENABLED(CONFIG_MTK_MBRAINK_AUTO)
+		// for mbrain, ser lost power
+		serdes_trigger_mbrain(ser_des, "DSI_SERDES_DISCONNECTED_WHEN_ENABLE", status, 0);
+#endif
 		return;
 	}
 	if (ser_des->port0_enabled && (port == 0))
@@ -954,7 +1062,7 @@ void serdes_bridge_enable(struct drm_bridge *bridge)
 
 #if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
 	ser_des->stop_thread = false;
-	if (ser_des->sta_cmd[LINKA_STATUS]) {
+	if (status != SERDES_STATUS_UNDEFINED) {
 		pr_info("%s:[i2c%d] create hotplug thread!\n", __func__, ser_des->client->adapter->nr);
 		ser_des->hotplug_task = kthread_run(serdes_hotplug_kthread, ser_des, "hotplug");
 #if ENABLE_HOTPLUG_INT
@@ -975,7 +1083,7 @@ void serdes_bridge_pre_enable(struct drm_bridge *bridge)
 {
 	struct serdes_bridge *serdes = bridge_to_serdes(bridge);
 	struct serdes_bridge *ser_des;
-	int port = 0;
+	int port = 0, status = 0;
 
 	if (!serdes || !serdes->driver_data) {
 		pr_info("%s: serdes is NULL\n", __func__);
@@ -1005,9 +1113,14 @@ void serdes_bridge_pre_enable(struct drm_bridge *bridge)
 
 	serdes_poweron_ser(ser_des);
 	serdes_reset_ser(ser_des);
-	if (!serdes_get_serdes_status(ser_des, SER_STATUS)) {
+	status = serdes_get_serdes_status(ser_des, SER);
+	if (status == SERDES_STATUS_DISCONNECTED) {
 		pr_info("%s: error: serdes[i2c%d] not connect!\n", __func__,
 			ser_des->client->adapter->nr);
+#if IS_ENABLED(CONFIG_MTK_DISP_SUPPORT_AUTO_MBRAIN) && IS_ENABLED(CONFIG_MTK_MBRAINK_AUTO)
+		// for mbrain, ser lost power
+		serdes_trigger_mbrain(ser_des, "DSI_SERDES_DISCONNECTED_WHEN_PREENABLE", status, 0);
+#endif
 		return;
 	}
 
@@ -1062,7 +1175,7 @@ void serdes_bridge_disable(struct drm_bridge *bridge)
 		ser_des->port0_pre_enabled, ser_des->port1_pre_enabled,
 		ser_des->port0_enabled, ser_des->port1_enabled);
 
-	if (!serdes_get_serdes_status(ser_des, SER_STATUS)) {
+	if (serdes_get_serdes_status(ser_des, SER) == SERDES_STATUS_DISCONNECTED) {
 		pr_info("%s: error: serdes[i2c%d] not connect!\n", __func__,
 			ser_des->client->adapter->nr);
 		return;
@@ -1554,7 +1667,7 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 		serdes_get_link_type_flag_from_dts(ser_des);
 		serdes_get_panel_timing_from_dts(ser_des);
 
-		for (i = 0; i < MAX_STATUS; i++)
+		for (i = 0; i < MAX_SERDES_TYPE; i++)
 			serdes_get_status_cmd_from_dts(ser_des, status_node_name[i].name, &ser_des->sta_cmd[i]);
 
 		for (i = 0; i < MAX_CONFIG_CMD; i++)
@@ -1586,7 +1699,7 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 			} else if (ser_des->link_type == LINK_TYPE_DUAL_LINK)
 				ser_des->port1_pre_enabled = true;
 	#if IS_ENABLED(CONFIG_ENABLE_SERDES_HOTPLUG)
-			if (!serdes_get_serdes_status(ser_des, SER_STATUS) && ser_des->sta_cmd[LINKA_STATUS]) {
+			if (serdes_get_serdes_status(ser_des, SER) > 0) {
 				ser_des->hotplug_task = kthread_run(serdes_hotplug_kthread, ser_des, "hotplug");
 	#if ENABLE_HOTPLUG_INT
 				if (ser_des->irq_num)
