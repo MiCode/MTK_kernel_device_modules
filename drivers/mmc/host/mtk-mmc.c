@@ -760,6 +760,32 @@ static const struct mtk_mmc_compatible mt6858_compat = {
 	},
 };
 
+static const struct mtk_mmc_compatible mt6881_compat = {
+	.clk_div_bits = 12,
+	.recheck_sdio_irq = false,
+	.hs400_tune = false,
+	.pad_tune_reg = MSDC_PAD_TUNE0,
+	.async_fifo = true,
+	.data_tune = true,
+	.busy_check = true,
+	.stop_clk_set = {
+		.enable = 1,
+		.stop_cnt = 1,
+		.pop_cnt = 2,
+	},
+	.enhance_rx = true,
+	.support_64g = true,
+	.clock_set = {
+		.need_gate_cg = false,
+	},
+	.new_tx_ver = MSDC_NEW_TX_V2,
+	.new_rx_ver = MSDC_NEW_RX_V1,
+	.infra_check = {
+		.enable = true,
+		.work_mode = MSDC_SPM_HW_MODE,
+	},
+};
+
 static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt8135-mmc", .data = &mt8135_compat},
 	{ .compatible = "mediatek,mt8173-mmc", .data = &mt8173_compat},
@@ -787,6 +813,7 @@ static const struct of_device_id msdc_of_ids[] = {
 	{ .compatible = "mediatek,mt6765-mmc", .data = &mt6765_compat},
 	{ .compatible = "mediatek,mt6993-mmc", .data = &mt6993_compat},
 	{ .compatible = "mediatek,mt6858-mmc", .data = &mt6858_compat},
+	{ .compatible = "mediatek,mt6881-mmc", .data = &mt6881_compat},
 	{}
 };
 MODULE_DEVICE_TABLE(of, msdc_of_ids);
@@ -4721,7 +4748,8 @@ static int msdc_drv_probe(struct platform_device *pdev)
 	else
 		mmc->f_min = DIV_ROUND_UP(host->src_clk_freq, 4 * 4095);
 
-	if (host->dev_comp->infra_check.enable) {
+	if (host->dev_comp->infra_check.enable &&
+		host->dev_comp->infra_check.work_mode == MSDC_SPM_SW_MODE) {
 		host->infra_ack_vaddr =
 			ioremap(host->dev_comp->infra_check.infra_ack_paddr, 0x4);
 		if (host->infra_ack_vaddr == NULL)
@@ -4917,6 +4945,7 @@ host_free:
 		devm_pinctrl_put(host->pinctrl);
 	if (host->dev_comp != NULL &&
 		host->dev_comp->infra_check.enable &&
+		host->dev_comp->infra_check.work_mode == MSDC_SPM_SW_MODE &&
 		host->infra_ack_vaddr != NULL)
 		iounmap(host->infra_ack_vaddr);
 	mmc_free_host(mmc);
@@ -4952,6 +4981,7 @@ static void msdc_drv_remove(struct platform_device *pdev)
 			host->dma.bd, host->dma.bd_addr);
 	if (host->dev_comp != NULL &&
 		host->dev_comp->infra_check.enable &&
+		host->dev_comp->infra_check.work_mode == MSDC_SPM_SW_MODE &&
 		host->infra_ack_vaddr != NULL)
 		iounmap(host->infra_ack_vaddr);
 
