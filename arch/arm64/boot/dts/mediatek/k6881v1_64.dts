@@ -202,4 +202,5 @@ arm64.nopauth arm64.nosme arm64.nosve";
 
 #include <k6881v1_64/cust.dtsi>
 #include "mediatek/cust_mt6881_camera_v4l2.dtsi"
+#include "mediatek/cust_mt6881_touch_1080x2400_mult.dtsi"
 /*End of this file, DO NOT ADD ANYTHING HERE*/
