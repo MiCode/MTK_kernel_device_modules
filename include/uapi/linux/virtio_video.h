@@ -183,6 +183,11 @@ enum virtio_video_cmd_type {
 	VIRTIO_VIDEO_CMD_STREAM_CREATE,
 	VIRTIO_VIDEO_CMD_STREAM_DESTROY,
 	VIRTIO_VIDEO_CMD_STREAM_DRAIN,
+#if VIRTIO_VIDEO_MTK_EXTENSION
+	VIRTIO_VIDEO_CMD_STREAM_ON,
+	VIRTIO_VIDEO_CMD_STREAM_OFF,
+	VIRTIO_VIDEO_CMD_REQUEST_BUFFER,
+#endif
 	VIRTIO_VIDEO_CMD_RESOURCE_CREATE,
 	VIRTIO_VIDEO_CMD_RESOURCE_QUEUE,
 	VIRTIO_VIDEO_CMD_RESOURCE_DESTROY_ALL,
@@ -291,6 +296,21 @@ struct virtio_video_stream_drain {
 	struct virtio_video_cmd_hdr hdr;
 };
 
+#if VIRTIO_VIDEO_MTK_EXTENSION
+/* VIRTIO_VIDEO_CMD_STREAM_ON_OFF */
+struct virtio_video_stream_on_off {
+	struct virtio_video_cmd_hdr hdr;
+	__le32 queue_type; /* One of VIRTIO_VIDEO_QUEUE_TYPE_* types */
+};
+
+/* VIRTIO_VIDEO_CMD_REQUEST_BUFFER */
+struct virtio_video_request_buffer {
+	struct virtio_video_cmd_hdr hdr;
+	__le32 queue_type; /* One of VIRTIO_VIDEO_QUEUE_TYPE_* types */
+	__le32 count; /* buffer counts */
+};
+#endif
+
 /* VIRTIO_VIDEO_CMD_RESOURCE_CREATE */
 struct virtio_video_mem_entry {
 	__le64 addr;
@@ -308,7 +328,14 @@ struct virtio_video_resource_create {
 	struct virtio_video_cmd_hdr hdr;
 	__le32 queue_type; /* One of VIRTIO_VIDEO_QUEUE_TYPE_* types */
 	__le32 resource_id;
+#if VIRTIO_VIDEO_MTK_EXTENSION
+	union {
+		__le32 orig_resource_id;
+		__le32 planes_layout;
+	};
+#else
 	__le32 planes_layout;
+#endif
 	__le32 num_planes;
 	__le32 plane_offsets[VIRTIO_VIDEO_MAX_PLANES];
 	__le32 num_entries[VIRTIO_VIDEO_MAX_PLANES];
@@ -330,7 +357,11 @@ struct virtio_video_resource_queue {
 	__le32 num_data_sizes;
 	__le32 data_sizes[VIRTIO_VIDEO_MAX_PLANES];
 	__le32 flags;
+#if VIRTIO_VIDEO_MTK_EXTENSION
+	__le32 gbid;
+#else
 	__u8 padding[4];
+#endif
 };
 
 enum virtio_video_buffer_flag {
@@ -341,6 +372,14 @@ enum virtio_video_buffer_flag {
 	VIRTIO_VIDEO_BUFFER_FLAG_IFRAME = 0x0004,
 	VIRTIO_VIDEO_BUFFER_FLAG_PFRAME = 0x0008,
 	VIRTIO_VIDEO_BUFFER_FLAG_BFRAME = 0x0010,
+#if VIRTIO_VIDEO_MTK_EXTENSION
+	VIRTIO_VIDEO_BUFFER_CROP_CHANGED = 0x0020,
+	VIRTIO_VIDEO_BUFFER_COLOR_ASPECT_CHANGED = 0x0040,
+	VIRTIO_VIDEO_BUFFER_OUTPUT_NOT_GENERATED = 0x0080,
+	VIRTIO_VIDEO_BUFFER_MULTINAL = 0x0100,
+	VIRTIO_VIDEO_BUFFER_NAL_LENGTH_BS = 0x0200,
+	VIRTIO_VIDEO_BUFFER_REF_FREED = 0x0400,
+#endif
 };
 
 struct virtio_video_resource_queue_resp {
@@ -533,11 +572,18 @@ enum virtio_video_event_type {
 	/* For decoder only */
 	VIRTIO_VIDEO_EVENT_DECODER_RESOLUTION_CHANGED = 0x0200,
 	VIRTIO_VIDEO_EVENT_EOS = 0x0300,
+#if VIRTIO_VIDEO_MTK_EXTENSION
+	VIRTIO_VIDEO_EVENT_NO_SEQHEADER = 0x0400,
+	VIRTIO_VIDEO_EVENT_CODE_ERROR = 0x0500,
+#endif
 };
 
 struct virtio_video_event {
 	__le32 event_type; /* One of VIRTIO_VIDEO_EVENT_* types */
 	__le32 stream_id;
+#if VIRTIO_VIDEO_MTK_EXTENSION
+	__u8 data[64];
+#endif
 };
 
 #endif /* _UAPI_LINUX_VIRTIO_VIDEO_H */
