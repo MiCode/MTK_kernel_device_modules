@@ -77,6 +77,7 @@ PANELS = [
     "panel-alpha-jdi-nt36672e-vdo-120hz-frameratev5",
     "panel-alpha-jdi-nt36672e-vdo-120hz-frameratev6",
     "panel-alpha-jdi-nt36672e-vdo-120hz-hfp-frameratev5",
+    "panel-alpha-jdi-nt36672e-vdo-120hz-hfp-frameratev5-1",
     "panel-samsung-op-cmd",
     "panel-samsung-op-cmd-msync2",
     "panel-alpha-samsung-s6e3hae-wqhd-dphy-cmd-120hz",
