@@ -753,7 +753,7 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 
 	if (g_platform_id == 0x6858) {
 		if (start) { /* start MFB, configure MMDVFS to highest CLK */
-			LOG_INF("MFB total: %lu", qos_total);
+			LOG_DBG("MFB total: %lu", qos_total);
 			spin_lock(&(SpinLockMfbPmqos));
 			if (bw != 0)
 				qos_scen[scen] = bw;
@@ -817,7 +817,7 @@ void MFBQOS_Update(bool start, unsigned int scen, unsigned long bw)
 		}
 	} else {
 		if (start) { /* start MFB, configure MMDVFS to highest CLK */
-			LOG_INF("MFB total: %lu", qos_total);
+			LOG_DBG("MFB total: %lu", qos_total);
 			spin_lock(&(SpinLockMfbPmqos));
 			if (bw != 0)
 				qos_scen[scen] = bw;
@@ -1197,7 +1197,7 @@ signed int CmdqMSSHW(struct frame *frame)
 #ifdef MFB_PMQOS
 	MFBQOS_Update(1, 0, pMssConfig->qos);
 #endif
-	LOG_INF("MSS fter pkt flush");
+	LOG_DBG("MSS after pkt flush");
 	cmdq_pkt_flush_threaded(handle, mss_norm_sirq, (void *)handle);
 #endif
 
@@ -1521,7 +1521,7 @@ signed int CmdqMSFHW(struct frame *frame)
 #ifdef MFB_PMQOS
 	MFBQOS_Update(1, 2, pMsfConfig->qos);
 #endif
-	LOG_INF("MSF after pkt flush");
+	LOG_DBG("MSF after pkt flush");
 	cmdq_pkt_flush_threaded(handle, msf_norm_sirq, (void *)handle);
 #endif
 	return 0;
