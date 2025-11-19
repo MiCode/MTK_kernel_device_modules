@@ -146,6 +146,7 @@ static const struct regmap_config mt6379_spmi_config = {
 	.val_bits		= 8,
 	.reg_format_endian	= REGMAP_ENDIAN_BIG,
 	.max_register		= 0xdff,
+	.use_raw_spinlock	= true,
 };
 
 static void mt6379_spmi_check_of_irq(struct mt6379_data *data)
