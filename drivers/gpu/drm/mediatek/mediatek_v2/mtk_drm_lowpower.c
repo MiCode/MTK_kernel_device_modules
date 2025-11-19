@@ -1075,7 +1075,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 			*addr = 1;
 		} else {
 			set_bif_enable(crtc, false);
-			CRTC_MMP_MARK(0, bif_src_ctrl, 0xFFFFFFFF, 0xFFFFFFFF);
+			CRTC_MMP_MARK(0, bif_slbc, 0xFFFFFFFF, 0xFFFFFFFF);
 		}
 	}
 
@@ -1202,6 +1202,8 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 
 	if (bif_enabled(crtc) == BIF_HS_IDLE) {
 		struct mtk_cmdq_cb_data *cb_data;
+
+		CRTC_MMP_MARK(0, leave_idle, 0, (unsigned long)handle);
 
 		mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
 

@@ -740,13 +740,15 @@ void mtk_crtc_bif_apsrc_ddren_control(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 	if (priv->data->bif_resource_ctrl)
 		priv->data->bif_resource_ctrl(mtk_crtc,handle, en);
 
-	if (en)
-		drm_trace_tag_end("bif_src_ctrl");
-	else
-		drm_trace_tag_start("bif_src_ctrl");
-
-	CRTC_MMP_MARK((int)drm_crtc_index(crtc), bif_src_ctrl,
-		mtk_crtc->bif_info->bif_enable, en);
+	if (en) {
+		CRTC_MMP_EVENT_END((int)drm_crtc_index(crtc), bif_src_release,
+			mtk_crtc->bif_info->bif_enable, priv->bif_support_mode);
+		drm_trace_tag_end("bif_read");
+	} else {
+		CRTC_MMP_EVENT_START((int)drm_crtc_index(crtc), bif_src_release,
+			mtk_crtc->bif_info->bif_enable, priv->bif_support_mode);
+		drm_trace_tag_start("bif_read");
+	}
 
 	DDPBIF("%s(%d)\n", __func__, en);
 }
@@ -5118,7 +5120,7 @@ bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, bool en)
 	}
 
 	DDPBIF("%s,en:%d,sram_en:%d\n", __func__, en, bif_info->sram_en);
-	CRTC_MMP_MARK(0, bif_src_ctrl, 0xF0000000, en);
+	CRTC_MMP_MARK(0, bif_slbc, 0, en);
 
 	return true;
 }
@@ -5266,7 +5268,7 @@ void mtk_crtc_update_bif_roi(struct mtk_drm_crtc *mtk_crtc)
 	/* w/ dsc, 3:dsc_compress_rate */
 	bif_info->src_roi.width = w_dsc + bif_info->wdma_offset;
 	bif_info->src_roi.height = h;
-	DDPMSG("%s,{%dx%d:%d)\n", __func__,
+	DDPINFO("%s,{%dx%d:%d)\n", __func__,
 		bif_info->src_roi.width, bif_info->src_roi.height, bif_info->wdma_offset);
 
 	if (unlikely(bif_mode)) {
