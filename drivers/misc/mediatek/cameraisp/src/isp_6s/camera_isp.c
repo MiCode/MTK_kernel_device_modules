@@ -92,7 +92,6 @@
 #include "inc/cam_qos.h"
 #include "inc/camera_isp.h"
 #include "cam_common.h"
-#include "pkvm_p1_host.h"
 
 #ifdef ENABLE_TIMESYNC_HANDLE
 #include <archcounter_timesync.h>
@@ -2973,14 +2972,9 @@ static void ISP_EnableClock(enum ISP_DEV_NODE_ENUM module, bool En)
 		spin_unlock(&(IspInfo.SpinLockClock));
 		/* !!cannot be used in spinlock!! */
 		if (G_u4EnableClockCount[module] == 0) {
-			int ret = 0;
-
 			disable_irq(isp_devs[module].irq);
 			LOG_INF(
 				"disable_irq cam %d\n", module);
-			ret = pkvm_p1_uninit_by_isp();
-			if (ret < 0)
-				LOG_NOTICE("ERROR: pkvm uninit FAILED\n");
 		}
 		Disable_Unprepare_ccf_clock(module);
 #endif
