@@ -185,7 +185,7 @@
 	sensor0: sensor0@36 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "ov48b_mipi_raw",
-					"imx06c_mipi_raw";
+					"imx06clite_mipi_raw";
 		reg = <0x36 0 0>;
 		maximum-pmic-delay = <4000>;
 
@@ -333,7 +333,7 @@
 
 	sensor2: sensor2@10 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "s5kjn1_mipi_raw";
+		sensor-names = "s5kjn1lite_mipi_raw";
 		reg = <0x10>;
 		maximum-pmic-delay = <4000>;
 
@@ -406,7 +406,7 @@
 
 	sensor4: sensor4@10 {
 		compatible = "mediatek,imgsensor";
-		sensor-names = "s5khp9sp_mipi_raw";
+		sensor-names = "s5khp9splite_mipi_raw";
 		reg = <0x26 0x0216 0x1b730000>;
 		assigned-address = <0x26>;
 		pre-cfg-addr = <0x10>;
