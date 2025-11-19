@@ -29,11 +29,11 @@
 #define LOCAL_DBG	(1)
 #define RPC_ALIVE_DBG	(0)
 
-//ce_pwr_on v9p0
+//ce_pwr_on v1p1
 static uint32_t ce_pwr_on[] = {
 	0x35011900,
 	0xf803c812,
-	0x09011203,
+	0x01111203,
 	0x0383c00d,
 	0xbbbc001f,
 	0xbbbe001f,
@@ -77,11 +77,9 @@ static uint32_t ce_pwr_on[] = {
 	0x60000006,
 	0x73c3c007,
 	0x7383c81d,
-	0x60000020,
 	0x07c3c81d,
 	0x60000002,
 	0x7303c81d,
-	0x60000020,
 	0x07c3c81d,
 	0x60000002,
 	0x48810002,
@@ -137,11 +135,9 @@ static uint32_t ce_pwr_on[] = {
 	0x74c3c007,
 	0x74c3c007,
 	0x7243c81d,
-	0x60000020,
 	0x07c3c81d,
 	0x60000002,
 	0x7283c81e,
-	0x60000020,
 	0x07c3c81e,
 	0x60000002,
 	0x7103c002,
@@ -692,8 +688,12 @@ static int __apu_are_init(struct device *dev)
 
 	/* bypass not to are backup in ce fw pwr_on (TBD) */
 	are_global_cfg = readl(papw->regs[apu_are] + 0x0000);
-	are_global_cfg &= 0xFF9FFFFF; //clr bit21/bit22
+	are_global_cfg |= 0x00600000; //enable bit21/bit22
 	apu_writel(are_global_cfg, papw->regs[apu_are] + 0x0000);
+
+	are_global_cfg = readl(papw->regs[apu_are_reg] + 0x0000);
+	are_global_cfg |= 0x00600000; //enable bit21/bit22
+	apu_writel(are_global_cfg, papw->regs[apu_are_reg] + 0x0000);
 
 	dev_info(dev, "%s RG papw->regs[apu_are] + 0x0000 = 0x%x\n",
 		__func__, readl(papw->regs[apu_are] + 0x0000));
