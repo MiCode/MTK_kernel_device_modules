@@ -9643,6 +9643,10 @@
 	/delete-property/ regulator-always-on;
 };
 
+&mt6363_vsram_cpum {
+	regulator-always-on;
+};
+
 &mt6363_vsram_modem {
 	regulator-always-on;
 };
@@ -9681,10 +9685,6 @@
 
 /* Add regulator-read-only for CPU nodes */
 &mt6363_vsram_cpub {
-	regulator-read-only;
-};
-
-&mt6363_vsram_cpum {
 	regulator-read-only;
 };
 
