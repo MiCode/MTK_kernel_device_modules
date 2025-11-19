@@ -44,6 +44,11 @@ uarthub_mt6989_srcs=[
     "common/platform/6989/mt6989_debug.c"
 ]
 
+uarthub_mt6881_srcs=[
+    "common/platform/6881/mt6881.c",
+    "common/platform/6881/mt6881_debug.c"
+]
+
 uarthub_mt6991_srcs=[
     "common/platform/6991/mt6991.c",
     "common/platform/6991/mt6991_debug.c"
@@ -89,6 +94,7 @@ define_mgk_ddk_ko(
         #(uarthub_mt6993_ut_it_srcs if glob(["common/platform/6993/mt6993.c"]) else []) +
         (uarthub_mt6985_srcs if glob(["common/platform/6985/mt6985.c"]) else []) +
         (uarthub_mt6989_srcs if glob(["common/platform/6989/mt6989.c"]) else []) +
+        (uarthub_mt6881_srcs if glob(["common/platform/6881/mt6881.c"]) else []) +
         (uarthub_mt6991_srcs if glob(["common/platform/6991/mt6991.c"]) else []) +
         (uarthub_mt6993_srcs if glob(["common/platform/6993/mt6993.c"]) else []),
     includes = [

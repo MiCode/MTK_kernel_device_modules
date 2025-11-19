@@ -80,6 +80,7 @@ static int uarthub_fb_notifier_callback(struct notifier_block *nb, unsigned long
 struct uarthub_ops_struct __weak undef_plat_data = {};
 struct uarthub_ops_struct __weak mt6985_plat_data = {};
 struct uarthub_ops_struct __weak mt6989_plat_data = {};
+struct uarthub_ops_struct __weak mt6881_plat_data = {};
 struct uarthub_ops_struct __weak mt6991_plat_data = {};
 struct uarthub_ops_struct __weak mt6993_plat_data = {};
 
@@ -90,6 +91,7 @@ const struct of_device_id apuarthub_of_ids[] = {
 	{ .compatible = "mediatek,mt6983-uarthub", .data = &undef_plat_data },
 	{ .compatible = "mediatek,mt6985-uarthub", .data = &mt6985_plat_data },
 	{ .compatible = "mediatek,mt6989-uarthub", .data = &mt6989_plat_data },
+	{ .compatible = "mediatek,mt6881-uarthub", .data = &mt6881_plat_data },
 	{ .compatible = "mediatek,mt6991-uarthub", .data = &mt6991_plat_data },
 	{ .compatible = "mediatek,mt6993-uarthub", .data = &mt6993_plat_data },
 	{}

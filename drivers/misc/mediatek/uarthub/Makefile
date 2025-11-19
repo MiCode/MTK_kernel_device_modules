@@ -51,6 +51,17 @@ ifeq ($(BUILD_UT), 6989)
 endif
 endif
 
+ifneq ($(wildcard $(PATH_TO_UARTHUB_DRV)/common/platform/6881/mt6881.c),)
+    $(MODULE_NAME)-objs += common/platform/6881/mt6881.o
+    $(MODULE_NAME)-objs += common/platform/6881/mt6881_debug.o
+ifeq ($(BUILD_UT), 6881)
+    $(MODULE_NAME)-objs += common/platform/6881/ut/mt6881_ut_test.o
+    $(MODULE_NAME)-objs += common/platform/6881/ut/mt6881_ut_test_for_ip.o
+    $(MODULE_NAME)-objs += common/platform/6881/ut/mt6881_ut_dat.o
+    $(MODULE_NAME)-objs += common/platform/6881/ut/ut_util.o
+endif
+endif
+
 ifneq ($(wildcard $(PATH_TO_UARTHUB_DRV)/common/platform/6991/mt6991.c),)
     $(MODULE_NAME)-objs += common/platform/6991/mt6991.o
     $(MODULE_NAME)-objs += common/platform/6991/mt6991_debug.o

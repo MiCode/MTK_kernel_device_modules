@@ -1432,7 +1432,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/smap:smap-mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6375".format(kernel_version): "mt6789 mt6855 mt6878 mt6895",
     "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_mt6379".format(kernel_version): "mt6858 mt6881 mt6991 mt6993",
-    "//kernel_device_modules-{}/drivers/misc/mediatek/uarthub:uarthub_drv".format(kernel_version): "mt6985 mt6989 mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/uarthub:uarthub_drv".format(kernel_version): "mt6985 mt6989 mt6991 mt6993 mt6881",
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_boost:musb_boost".format(kernel_version):"mt6789 mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version):"mt6789 mt6855",
     "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20/musb_main:musb_main".format(kernel_version):"mt6789 mt6855",
