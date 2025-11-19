@@ -3429,6 +3429,22 @@
 				};
 			};
 		};
+		uarthub: uarthub@11000000 {
+			compatible = "mediatek,mt6881-uarthub";
+			reg = <0 0x11000000 0 0x1000>;
+			interrupts = <GIC_SPI 521 IRQ_TYPE_LEVEL_HIGH 0>; /*uarthub irq*/
+#if 0
+			clocks = <&topckgen_clk CLK_TOP_UARTHUB_BCLK_SEL>,
+				<&topckgen_clk CLK_TOP_UART_SEL>,
+				<&topckgen_clk CLK_TOP_UNIVPLL_D6_D4>,
+				<&topckgen_clk CLK_TOP_TCK_26M_MX9>;
+#endif
+			clock-names = "clk_top_uarthub_bclk_sel",
+				"clk_top_uart_sel",
+				"clk_top_univpll_d6_d4_208m",
+				"clk_top_tck_26m_mx9";
+			status = "disabled";
+		};
 		apu {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
