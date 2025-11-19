@@ -1076,7 +1076,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 			addr = mtk_get_gce_backup_slot_va(mtk_crtc, DISP_SLOT_BIF_EN);
 			*addr = 1;
 		} else {
-			set_bif_enable(crtc, false);
+			set_bif_enable(crtc, false, __LINE__);
 			CRTC_MMP_MARK(0, bif_slbc, 0xFFFFFFFF, 0xFFFFFFFF);
 		}
 	}
@@ -1105,6 +1105,8 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 			mtk_disp_set_hrt_bw(mtk_crtc, 0);
 		mtk_crtc_bif_apsrc_ddren_control(mtk_crtc, NULL, false);
+
+		set_bif_stage(mtk_crtc, READ_MODE);
 
 		CRTC_MMP_MARK(0, enter_idle, 0, atomic_read(&mtk_crtc->bif_info->slbc_hold));
 	}
@@ -1168,14 +1170,16 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	unsigned int *trace;
 	struct mtk_drm_idlemgr_perf *perf = mtk_crtc->idlemgr->perf;
 	u64 start_time = 0, end_time = 0, cost = 0;
+	enum BIF_STAGE stage = get_bif_stage(mtk_crtc);
 
 	if (perf)
 		start_time = local_clock();
 
-	if (bif_enabled(crtc) == BIF_HS_IDLE) {
+	if (stage == READ_MODE) {
 		mtk_crtc_bif_apsrc_ddren_control(mtk_crtc, NULL, true);
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 			mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
+		set_bif_stage(mtk_crtc, DEFAULT_MODE);
 	}
 
 	mtk_crtc_pkt_create(&handle, crtc, client);
@@ -1206,7 +1210,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		*trace |= BIT(31);
 	}
 
-	if (bif_enabled(crtc) == BIF_HS_IDLE) {
+	if (stage == READ_MODE) {
 		struct mtk_cmdq_cb_data *cb_data;
 
 		CRTC_MMP_MARK(0, leave_idle, 0, (unsigned long)handle);

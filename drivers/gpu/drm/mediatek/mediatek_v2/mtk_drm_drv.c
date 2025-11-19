@@ -2309,8 +2309,6 @@ static void mtk_atomic_check_res_switch(struct mtk_drm_private *private,
 
 			/*store total overhead data*/
 			mtk_crtc_store_total_overhead(mtk_crtc, cfg.tile_overhead);
-
-			mtk_crtc_update_bif_roi(mtk_crtc);
 		}
 	}
 }
@@ -2435,9 +2433,9 @@ static int mtk_atomic_commit(struct drm_device *drm,
 
 	if (private->data->support_bif) {
 		if (drm_crtc_index(crtc) == 0 && (atomic_read(&private->kernel_pm.wakelock_cnt) == 1))
-			set_bif_enable(crtc, true);
+			set_bif_enable(crtc, true, __LINE__);
 		else
-			set_bif_enable(crtc, false);
+			set_bif_enable(crtc, false, __LINE__);
 	}
 
 #ifdef IF_ZERO /*TODO: use async atomic_commit would occur crtc_state and crtc race condition */

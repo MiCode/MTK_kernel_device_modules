@@ -445,9 +445,8 @@ static void mtk_drm_crtc_reset(struct drm_crtc *crtc)
 
 	state->base.crtc = crtc;
 }
-void set_bif_enable(struct drm_crtc *crtc, bool en)
+void set_bif_enable(struct drm_crtc *crtc, bool en, int line)
 {
-	int crtc_index = 0;
 	struct mtk_drm_private *priv = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 
@@ -473,8 +472,29 @@ void set_bif_enable(struct drm_crtc *crtc, bool en)
 
 	if (en)
 		mtk_crtc->bif_info->bif_enable = priv->bif_support_mode;
-	else
+	else {
 		mtk_crtc->bif_info->bif_enable = BIF_DISABLE;
+		CRTC_MMP_MARK(0, bif_src_release, 0xFFFFFFFF, line);
+		DDPMSG("set BIF_DISABLE(%d)\n", line);
+	}
+}
+void set_bif_stage(struct mtk_drm_crtc *mtk_crtc, enum BIF_STAGE stage)
+{
+	if (!mtk_crtc)
+		return;
+	if (!mtk_crtc->bif_info)
+		return;
+
+	mtk_crtc->bif_info->stage = stage;
+}
+enum BIF_STAGE get_bif_stage(struct mtk_drm_crtc *mtk_crtc)
+{
+	if (!mtk_crtc)
+		return UNKNOWN_MODE;
+	if (!mtk_crtc->bif_info)
+		return UNKNOWN_MODE;
+
+	return mtk_crtc->bif_info->stage;
 }
 int bif_enabled(struct drm_crtc *crtc)
 {
@@ -733,7 +753,7 @@ void mtk_crtc_bif_apsrc_ddren_control(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_crtc_state *mtk_crtc_state = to_mtk_crtc_state(crtc->state);
 	struct mtk_ddp_comp *comp = NULL;
-	int i = 0, j = 0, tgt_comp = 0;
+	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
 
 	if (priv->data->bif_sodi_config)
 		priv->data->bif_sodi_config(mtk_crtc, handle, en);
@@ -742,12 +762,10 @@ void mtk_crtc_bif_apsrc_ddren_control(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 		priv->data->bif_resource_ctrl(mtk_crtc,handle, en);
 
 	if (en) {
-		CRTC_MMP_EVENT_END((int)drm_crtc_index(crtc), bif_src_release,
-			mtk_crtc->bif_info->bif_enable, priv->bif_support_mode);
+		CRTC_MMP_EVENT_END(0, bif_src_release, 0, 0);
 		drm_trace_tag_end("bif_read");
 	} else {
-		CRTC_MMP_EVENT_START((int)drm_crtc_index(crtc), bif_src_release,
-			mtk_crtc->bif_info->bif_enable, priv->bif_support_mode);
+		CRTC_MMP_EVENT_START(0, bif_src_release, 0, 0);
 		drm_trace_tag_start("bif_read");
 	}
 
@@ -5225,7 +5243,7 @@ void mtk_crtc_bif_data_init(struct mtk_drm_crtc *mtk_crtc,
 
 	return;
 err:
-	set_bif_enable(&mtk_crtc->base, false);
+	set_bif_enable(&mtk_crtc->base, false, __LINE__);
 	DDPPR_ERR("%s: error\n", __func__);
 }
 void mtk_crtc_bif_info_init(struct mtk_drm_crtc *mtk_crtc)
@@ -5263,7 +5281,7 @@ void mtk_crtc_update_bif_roi(struct mtk_drm_crtc *mtk_crtc)
 	}
 
 	if (crtc_idx != 0) {
-		set_bif_enable(crtc, false);
+		set_bif_enable(crtc, false, __LINE__);
 		DDPPR_ERR("%s:error,only suppot crtc 0\n", __func__);
 		return;
 	}
@@ -5279,7 +5297,7 @@ void mtk_crtc_update_bif_roi(struct mtk_drm_crtc *mtk_crtc)
 	if ((w != bif_info->lcm_width) || (h != bif_info->lcm_height)
 		|| (bif_info->wdma_offset == 0)
 		|| (bif_mode < 0)) {
-		set_bif_enable(crtc, false);
+		set_bif_enable(crtc, false, __LINE__);
 		return;
 	}
 
@@ -9609,6 +9627,7 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 	mtk_drm_idlemgr_kick(__func__, crtc, 0);
 
 	CRTC_MMP_EVENT_END((int) drm_crtc_index(crtc), mode_switch, fps_src, fps_dst);
+	mtk_crtc_update_bif_roi(mtk_crtc);
 	DDPINFO("%s--\n", __func__);
 }
 
@@ -17706,7 +17725,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 		if (bif_enabled(crtc)) {
 			if (!mtk_crtc->bif_info->sram_en) {
 				if (!mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST))
-					set_bif_enable(crtc, false);
+					set_bif_enable(crtc, false, __LINE__);
 			}
 			DDPMSG("%s,bif_enable:%d,\n", __func__, mtk_crtc->bif_info->bif_enable);
 		}

@@ -1050,19 +1050,26 @@ enum BIF_SLBC {
 	SLBC_REQUEST = 1,
 	SLBC_FORCE_RELEASE = 2,
 };
+enum BIF_STAGE {
+	UNKNOWN_MODE = 0,
+	DEFAULT_MODE = 1,
+	READ_MODE = 2,
+};
+
 struct mtk_bif_info {
-	int bif_enable;
-	bool racing_en;
-	int lcm_width;
-	int lcm_height;
 	struct mtk_ddp_comp *wb_comp;
 	struct mtk_ddp_comp *read_comp;
-	int wb_frame_done_event;
 	struct mtk_rect src_roi;
+	struct slbc_data sram_data;
+	bool racing_en;
+	int bif_enable;
+	int lcm_width;
+	int lcm_height;
+	int wb_frame_done_event;
 	int wdma_offset;
+	enum BIF_STAGE stage;
 	unsigned int sram_en;
 	atomic_t slbc_hold;
-	struct slbc_data sram_data;
 	u64 sram_pa;
 	u64 sram_size;
 	u32 ovlsys_0[2];
@@ -1937,7 +1944,9 @@ struct mtk_cmdq_pkt_info *mtk_crtc_request_cmdq_pkt(struct mtk_drm_crtc *mtk_crt
 	unsigned int client_type, unsigned int pf_idx);
 void mtk_crtc_release_cmdq_pkt(struct mtk_cmdq_pkt_info *pkt_info);
 int bif_enabled(struct drm_crtc *crtc);
-void set_bif_enable(struct drm_crtc *crtc, bool en);
+void set_bif_enable(struct drm_crtc *crtc, bool en, int line);
+void set_bif_stage(struct mtk_drm_crtc *mtk_crtc, enum BIF_STAGE stage);
+enum BIF_STAGE get_bif_stage(struct mtk_drm_crtc *mtk_crtc);
 
 void mtk_crtc_layer_off(struct mtk_drm_crtc *mtk_crtc, int crtc_idx,
 	struct mtk_crtc_state *state, struct mtk_crtc_state *old_state,
