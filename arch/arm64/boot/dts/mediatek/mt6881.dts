@@ -8181,7 +8181,6 @@
 			status = "okay";
 		};
 
-#if 0
 		seninf_top: seninf-top@3a400000 {
 			compatible = "mediatek,seninf-core";
 			#address-cells = <2>;
@@ -8504,7 +8503,6 @@
 		csi_efuse3: csi-data3@1dc {
 			reg = <0x1dc 0x4>;
 		};
-#endif
 
 		apu_top_3: apu-top-3@190f0000 {
 			compatible = "mt6881,apu_top_3";

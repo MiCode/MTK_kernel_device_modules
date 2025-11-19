@@ -4,7 +4,6 @@
 #include <dt-bindings/pinctrl/mt6881-pinfunc.h>
 #include <dt-bindings/pinctrl/mt6363-pinfunc.h>
 
-#if 0
 &seninf_top {
 		seninf_csi_port_0: seninf-csi-port-0 {
 			compatible = "mediatek,seninf";
@@ -79,7 +78,6 @@
 			};
 		};
 };
-#endif
 
 &mt6363_pio {
 	camera_pins_cam2_dvdd_0: cam4@0 {
@@ -181,7 +179,6 @@
 };
 
 &i2c4 {
-#if 0
 	status = "okay";
 	clock-frequency = <1000000>;
 
@@ -261,11 +258,9 @@
 			"ov48b_mtk_eeprom";
 		status = "okay";
 	};
-#endif
 };
 
 &i2c2 {
-#if 0
 	status = "okay";
 	clock-frequency = <1000000>;
 
@@ -330,11 +325,9 @@
 		names = "s5k3p9sp_mtk_eeprom";
 		status = "okay";
 	};
-#endif
 };
 
 &i2c8 {
-#if 0
 	status = "okay";
 	clock-frequency = <1000000>;
 
@@ -402,11 +395,9 @@
 		names = "s5kjn1_cust_eeprom";
 		status = "okay";
 	};
-#endif
 };
 
 &i2c9 {
-#if 0
 	compatible = "mediatek,mt6991-i3c";
 	#address-cells = <3>;
 	#size-cells = <0>;
@@ -489,7 +480,6 @@
 		names = "s5khp9sp_cust_eeprom";
 		status = "okay";
 	};
-#endif
 };
 
 &pio {
