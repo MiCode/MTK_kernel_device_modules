@@ -1231,6 +1231,7 @@ static struct mtk_panel_params ext_params_120hz = {
 	.data_rate = 996,
 	.data_rate_khz = 995178,
 	.vfp_low_power = 2152, //60Hz
+	.wait_eof_before_dec_vfp = 1,
 	.physical_width_um = 273615,
 	.physical_height_um = 171009,
 	.output_mode = MTK_PANEL_DUAL_PORT,

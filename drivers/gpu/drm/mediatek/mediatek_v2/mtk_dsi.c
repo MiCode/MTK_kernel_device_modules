@@ -16684,6 +16684,12 @@ static int mtk_dsi_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			cmdq_pkt_wait_no_clear(handle,
 				crtc->gce_obj.event[EVENT_DSI_SOF]);
 		}
+
+		if (panel_ext && panel_ext->params
+			&& panel_ext->params->wait_eof_before_dec_vfp)
+			cmdq_pkt_wait_no_clear(handle,
+				crtc->gce_obj.event[EVENT_CMD_EOF]);
+
 		if (is_bdg_supported())
 			mtk_dsi_stop_vdo_mode(dsi, handle, __LINE__);
 		mtk_dsi_porch_setting(comp, handle, DSI_VFP,
