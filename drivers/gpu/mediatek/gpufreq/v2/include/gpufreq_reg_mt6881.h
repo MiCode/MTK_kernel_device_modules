@@ -101,10 +101,42 @@
 #define MFG_VCORE_BUS_AW_TRACKER_ID            (g_mfg_vcore_bus_trk_base + 0x900)  /* 0x3D910900 */
 #define MFG_VCORE_BUS_AW_TRACKER_L             (g_mfg_vcore_bus_trk_base + 0xA00)  /* 0x3D910A00 */
 
+#define INFRA_AO_DEBUG_BASE                    (0x10023000)
+#define INFRA_AO_DEBUG_CTRL                    (g_infra_ao_debug_base + 0x000)     /* 0x10023000 */
+
+#define INFRA_AO1_DEBUG_BASE                   (0x1002B000)
+#define INFRA_AO1_DEBUG_CTRL                   (g_infra_ao1_debug_base + 0x000)    /* 0x1002B000 */
+
+#define EMI_NAO_DEBUG_CTRL_BASE                (0x10042000)
+#define EMI_NAO_DEBUG_CTRL_EMI_NAO_CTRL0       (g_emi_nao_dbg_ctrl_base + 0x000)   /* 0x10042000 */
+
+#define NTH_EMICFG_BASE                        (0x1021C000)
+#define NTH_EMICFG_MFG_EMI0_GALS_SLV_DBG       (g_nth_emicfg_base + 0x810)         /* 0x1021C810 */
+#define NTH_EMICFG_MFG_EMI1_GALS_SLV_DBG       (g_nth_emicfg_base + 0x814)         /* 0x1021C814 */
+
+#define EMI_M6_XPU_SOC_SSC_BASE                (0x1025F000)
+#define EMI_M6_SMI_DEBUG_S0                    (g_emi_m6_base + 0x400)             /* 0x1025F400 */
+#define EMI_M6_SMI_DEBUG_S1                    (g_emi_m6_base + 0x404)             /* 0x1025F404 */
+#define EMI_M6_SMI_DEBUG_S2                    (g_emi_m6_base + 0x408)             /* 0x1025F408 */
+#define EMI_M6_SMI_DEBUG_M0                    (g_emi_m6_base + 0x430)             /* 0x1025F430 */
+
+#define EMICFG_AO_BASE                         (0x10270000)
+#define EMICFG_AO_M6M7_BUS_CLK_IDLE_SEL        (g_emicfg_ao_base + 0x218)          /* 0x10270218 */
+
+#define EMI_IFR_PDN_BCRM_BASE                  (0x10276000)
+#define EMI_IFR_NEMI_M0_AXI_SLPPORT_IDLE       (g_emicfg_pd_bcrm_base + 0x060)     /* 0x10276060 */
+#define EMI_IFR_NEMI_M1_AXI_SLPPORT_IDLE       (g_emicfg_pd_bcrm_base + 0x074)     /* 0x10276074 */
+
+#define EMI_M7_XPU_SOC_SSC_BASE                (0x1030C000)
+#define EMI_M7_SMI_DEBUG_S0                    (g_emi_m7_base + 0x400)             /* 0x1030C400 */
+#define EMI_M7_SMI_DEBUG_S1                    (g_emi_m7_base + 0x404)             /* 0x1030C404 */
+#define EMI_M7_SMI_DEBUG_S2                    (g_emi_m7_base + 0x408)             /* 0x1030C408 */
+#define EMI_M7_SMI_DEBUG_M0                    (g_emi_m7_base + 0x430)             /* 0x1030C430 */
+
 #define SPM_BASE                               (0x1C001000)
 #define SPM_SPM2GPUPM_CON                      (g_sleep + 0x0410)                  /* 0x1C001410 */
 #define SPM_SRC_REQ                            (g_sleep + 0x0818)                  /* 0x1C001818 */
-#define SPM_MFG0_PWR_CON                       (g_sleep + 0x0EB0)                  /* 0x1C001EB0 */
+#define SPM_MFG0_PWR_CON                       (g_sleep + 0x0EB4)                  /* 0x1C001EB4 */
 #define SPM_SOC_BUCK_ISO_CON                   (g_sleep + 0x0F28)                  /* 0x1C001F28 */
 #define SPM_SOC_BUCK_ISO_CON_SET               (g_sleep + 0x0F2C)                  /* 0x1C001F2C */
 #define SPM_SOC_BUCK_ISO_CON_CLR               (g_sleep + 0x0F30)                  /* 0x1C001F30 */
