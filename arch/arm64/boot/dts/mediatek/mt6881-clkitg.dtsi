@@ -422,21 +422,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x10>;
 		clocks =
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_IN0_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_IN1_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_IN2_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_IN3_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_IN4_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_IN6_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_OUT0_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_OUT1_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_OUT2_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_OUT3_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_OUT4_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_OUT6_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_FMI2S_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_M_PDN_AUDIO>,
-			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_DIV_B_PDN_AUDIO>,
 			<&afe_clk CLK_AFE_AUD_PAD_TOP_MOSI_EN_AUDIO>,
 			<&afe_clk CLK_AFE_DL1_DAC_TML_AUDIO>,
 			<&afe_clk CLK_AFE_DL1_DAC_HIRES_AUDIO>,

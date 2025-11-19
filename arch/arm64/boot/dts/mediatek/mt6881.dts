@@ -489,6 +489,30 @@
 		};
 	};
 
+	buspll_pll_ctrl_clk: syscon@c030000 {
+		compatible = "mediatek,mt6881-buspll_pll_ctrl", "syscon";
+		reg = <0 0xc030000 0 0x0400>;
+		#clock-cells = <1>;
+	};
+
+	armpll_ll_pll_ctrl_clk: syscon@c030400 {
+		compatible = "mediatek,mt6881-armpll_ll_pll_ctrl", "syscon";
+		reg = <0 0xc030400 0 0x0400>;
+		#clock-cells = <1>;
+	};
+
+	armpll_bl_pll_ctrl_clk: syscon@c030800 {
+		compatible = "mediatek,mt6881-armpll_bl_pll_ctrl", "syscon";
+		reg = <0 0xc030800 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
+	ptppll_pll_ctrl_clk: syscon@c034000 {
+		compatible = "mediatek,mt6881-ptppll_pll_ctrl", "syscon";
+		reg = <0 0xc034000 0 0x1000>;
+		#clock-cells = <1>;
+	};
+
 	cksys_reg_clk: syscon@10000000 {
 		compatible = "mediatek,mt6881-topckgen", "syscon";
 		reg = <0 0x10000000 0 0x1000>;
@@ -629,29 +653,25 @@
 		//clocks = <&cksys_reg_clk CLK_CKSYS_REG_AUD_INTBUS_SEL>,
 		//	<&cksys_reg_clk CLK_CKSYS_REG_DISP0_SEL>,
 		//	<&cksys_reg_clk CLK_CKSYS_REG_MMINFRA_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_SSR_DMA_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_SSR_RNG_SEL>,
 		//	<&cksys_reg_clk CLK_CKSYS_REG_MMUP_SEL>,
 		//	<&cksys_reg_clk CLK_CKSYS_REG_IMG1_SEL>,
 		//	<&cksys_reg_clk CLK_CKSYS_REG_VDEC_SEL>,
 		//	<&cksys_reg_clk CLK_CKSYS_REG_VENC_SEL>,
 		//	<&cksys_reg_clk CLK_CKSYS_REG_IPE_SEL>,
 		//	<&cksys_reg_clk CLK_CKSYS_REG_CAM_SEL>,
-		//	<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_AXI_GENPD>,
-		//	<&dispsys_config_clk CLK_MM_SMI_COMMON_GENPD>;
+		//	<&dispsys_config_clk CLK_MM_SMI_COMMON_GENPD>,
+		//	<&mdpsys_config_clk CLK_MDP_SMI0_GENPD>;
 		//clock-names = "audio_0",
 		//	"dis0_0",
 		//	"mm_infra_0",
-		//	"ssrsys_0",
-		//	"ssrsys_1",
 		//	"mm_proc_0",
 		//	"img1_0",
 		//	"vde0_0",
 		//	"ven0_0",
 		//	"ipe_0",
 		//	"cam_0",
-		//	"ufs0-0",
-		//	"dis0-0";
+		//	"dis0-0",
+		//	"dis0_lp-0";
 		//genpd buck for isp-vcore and cam-vcore comment for bringup AO
 		//isp-vcore-supply = <&mt6363_vbuck1>
 		//cam-vcore-supply = <&mt6363_vbuck1>
