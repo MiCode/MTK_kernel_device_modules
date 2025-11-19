@@ -5395,11 +5395,11 @@
 				<9 0x1000>, /* MMQOS_MEM_ID 4KB */
 				<10 0x0>; /* secure dump, its size is in secure_dump_size */
 
-			//power-domains = <&scpsys MT6858_POWER_DOMAIN_MM_PROC_DORMANT>;
-			//clocks = <&cksys_reg_clk CLK_TOP_MMUP_SEL>,
-			//	<&cksys_reg_clk CLK_TOP_MAINPLL_D3>,
-			//	<&cksys_reg_clk CLK_TOP_TCK_26M_MX9>;
-			//clock-names = "mmup-sel", "mmup-clk", "mmup-26m";
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_PROC_DORMANT>;
+			clocks = <&cksys_reg_clk CLK_CKSYS_REG_MMUP_SEL>,
+				<&cksys_reg_clk CLK_CKSYS_REG_MAINPLL_D3>,
+				<&cksys_reg_clk CLK_CKSYS_REG_TCK_26M_MX9>;
+			clock-names = "mmup-sel", "mmup-clk", "mmup-26m";
 		};
 
 		vcp_io2: vcp-iommu-vdec@1ec24000 {
