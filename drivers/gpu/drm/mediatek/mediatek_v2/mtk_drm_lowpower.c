@@ -1217,6 +1217,9 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 			cb_data->crtc = crtc;
 			cmdq_pkt_flush_async(handle, vdo_leave_idle_cb, cb_data);
 		}
+		cmdq_pkt_wait_complete(handle);
+		cmdq_pkt_destroy(handle);
+		kfree(cb_data);
 	} else {
 		cmdq_pkt_flush(handle);
 		cmdq_pkt_destroy(handle);
