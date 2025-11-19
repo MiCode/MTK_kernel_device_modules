@@ -1936,8 +1936,8 @@ static void dpc_mml_group_enable(bool en)
 
 	/* mminfra request */
 	writel(0x00080008, dpc_base + DISP_DPC_MMINFRA_HWVOTE_CFG);
-	value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x000a00 : 0x1a0a1a; /* mminfrq req always off */
-	writel(value, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
+	// value = (en && has_cap(DPC_CAP_MMINFRA_PLL)) ? 0x000a00 : 0x1a0a1a; /* mminfrq req always off */
+	// writel(value, dpc_base + DISP_REG_DPC_MML_INFRA_PLL_OFF_CFG);
 
 	/* vcore off */
 	value = (en && has_cap(DPC_CAP_PMIC_VCORE)) ? 0x180000 : 0x181e1e;
