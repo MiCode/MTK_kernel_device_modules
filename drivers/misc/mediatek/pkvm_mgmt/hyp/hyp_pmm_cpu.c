@@ -157,7 +157,6 @@ static const char *pmm_hal_name = "cpu";
 int register_cpu_hal(void)
 {
 	pmm_ops.name = pmm_hal_name;
-	pmm_ops.is_enabled = true;
 
 	pmm_pre_init();
 	return hyp_pmm_hal_register(&pmm_ops);

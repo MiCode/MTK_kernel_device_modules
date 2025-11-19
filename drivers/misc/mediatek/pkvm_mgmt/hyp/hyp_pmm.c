@@ -461,6 +461,7 @@ int hyp_pmm_init(void)
 
 int hyp_pmm_hal_register(struct pmm_hal *hal)
 {
+	hal->is_enabled = true;
 	hal_register(hal);
 	pkvm_ops->puts("HYP_PMM: hal register");
 	pkvm_ops->puts(hal->name);
