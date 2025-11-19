@@ -7570,6 +7570,14 @@
 				<0 0x3d810400 0 0x400>,   /* MFG_PLL_TOP_P1 */
 				<0 0x3d860000 0 0x10000>, /* MFG_VCORE_AO_CFG */
 				<0 0x3d910000 0 0x10000>, /* MFG_VCORE_BUS_DBG_TRACKER */
+				<0 0x10023000 0 0x100>,   /* INFRA_AO_DEBUG */
+				<0 0x1002b000 0 0x100>,   /* INFRA_AO1_DEBUG */
+				<0 0x10042000 0 0x100>,   /* EMI_NAO_DBG_CTRL */
+				<0 0x1021c000 0 0x1000>,  /* NTH_EMICFG */
+				<0 0x1025f000 0 0x500>,   /* EMI_M6_XPU_SOC_SSC */
+				<0 0x10270000 0 0x300>,   /* EMICFG_AO */
+				<0 0x10276000 0 0x100>,   /* EMICFG_PD_BCRM */
+				<0 0x1030c000 0 0x500>,   /* EMI_M7_XPU_SOC_SSC */
 				<0 0x1c001000 0 0x1000>;  /* SLEEP */
 			reg-name =
 				"mfg_top_config",
@@ -7579,6 +7587,14 @@
 				"mfg_pll_top_p1",
 				"mfg_vcore_ao_cfg",
 				"mfg_vcore_bus_trk",
+				"infra_ao_debug",
+				"infra_ao1_debug",
+				"emi_nao_dbg_ctrl",
+				"nth_emicfg",
+				"emi_m6_xpu_soc_ssc",
+				"emicfg_ao",
+				"emicfg_pd_bcrm",
+				"emi_m7_xpu_soc_ssc",
 				"sleep";
 			interrupts =
 				<GIC_SPI 402 IRQ_TYPE_LEVEL_HIGH 0>;
