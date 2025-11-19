@@ -416,6 +416,20 @@
 		tcpc-supply = <&mt6720_typec>;
 	};
 
+	pd_adapter: pd-adapter {
+		compatible = "mediatek,pd_adapter";
+		nr-port = <1>;
+		force-cv;
+		adapter-name = "pd_adapter";
+		tcpc-supply = <&mt6720_typec>;
+	};
+
+	ufcs_adapter: ufcs-adapter {
+	      compatible = "mediatek,ufcs-adapter";
+	      force-cv;
+	      status = "okay";
+	};
+
 	mtk_ctd: mtk-ctd {
 		compatible = "mediatek,mtk_ctd";
 		nr-port = <1>;
@@ -9518,6 +9532,11 @@
 };
 
 &i2c5 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	mediatek,fifo-use-polling;
+	clock-frequency = <1000000>;
+
 	rt6160@75 {
 		/* richtek,rt6160-vbb compatbile is for is-existed property */
 		compatible = "richtek,rt6160",
