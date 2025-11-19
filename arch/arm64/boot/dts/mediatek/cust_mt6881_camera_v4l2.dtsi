@@ -230,6 +230,7 @@
 		dovdd-supply = <&camera_vcamd_pmu>;  // iovdd 1.8v share
 		base-supply = <&rt5133_base>;
 
+#if 0
 		clocks = <&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_192M_D32>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_192M_D16>,
 			<&cksys_reg_clk CLK_CKSYS_REG_F26M_CK_D2>,
@@ -241,7 +242,7 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG1_SEL>;
 
 		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
-
+#endif
 
 		status = "okay";
 		port {
@@ -300,6 +301,7 @@
 		dovdd-supply = <&camera_vcamd_pmu>;
 		base-supply = <&rt5133_base>;
 
+#if 0
 		clocks = <&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_192M_D32>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_192M_D16>,
 			<&cksys_reg_clk CLK_CKSYS_REG_F26M_CK_D2>,
@@ -309,7 +311,9 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_OSC_D10>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D6_D8>,
 			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG0_SEL>;
+
 		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
+#endif
 
 		status = "okay";
 		port {
@@ -370,6 +374,7 @@
 		dovdd-supply = <&camera_vcamd_pmu>;
 		base-supply = <&rt5133_base>;
 
+#if 0
 		clocks = <&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_192M_D32>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_192M_D16>,
 			<&cksys_reg_clk CLK_CKSYS_REG_F26M_CK_D2>,
@@ -379,7 +384,9 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_OSC_D10>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D6_D8>,
 			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG4_SEL>;
+
 		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
+#endif
 
 		status = "okay";
 		port {
@@ -449,6 +456,7 @@
 		dovdd-supply = <&camera_vcamd_pmu>;
 		base-supply = <&rt5133_base>;
 
+#if 0
 		clocks = <&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_192M_D32>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_192M_D16>,
 			<&cksys_reg_clk CLK_CKSYS_REG_F26M_CK_D2>,
@@ -460,7 +468,7 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG2_SEL>;
 
 		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
-
+#endif
 
 		status = "okay";
 		port {

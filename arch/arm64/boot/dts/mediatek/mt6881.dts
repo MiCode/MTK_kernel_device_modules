@@ -8223,6 +8223,7 @@
 			 */
 			cdphy-dvfs-step0 = <4500 4500>, <4500 4500>, <312>, <550000 550000>;
 
+#if 0
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_RAW>,
 				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MAIN_CAM_RAW>,
 				<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAM_RAW>,
@@ -8251,7 +8252,7 @@
 				 "clk_top_ap_step0",
 				 "clk_hw_ccf_csi_bs",
 				 "mmdvfs_mux";
-
+#endif
 			csi-top {
 				#address-cells = <2>;
 				#size-cells = <2>;
