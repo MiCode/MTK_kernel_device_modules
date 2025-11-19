@@ -684,6 +684,8 @@ struct mtk_disp_oddmr_dbi_data {
 	void __iomem *spm_base;
 
 	unsigned int remap_target_manual;
+
+	struct mtk_drm_oddmr_dbv_chg_cfg dbv_change_cfg_nomask;
 };
 
 
