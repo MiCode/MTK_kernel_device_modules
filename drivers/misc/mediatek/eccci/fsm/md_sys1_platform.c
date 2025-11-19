@@ -458,7 +458,7 @@ static void md_cd_dump_debug_register(struct ccci_modem *md, bool isr_skip_dump)
 
 	/* EMI debug feature */
 #if IS_ENABLED(CONFIG_MTK_EMI)
-	//mtk_emidbg_dump();
+	mtk_emidbg_dump();
 #endif
 
 	boot_status_val = get_expected_boot_status_val();
