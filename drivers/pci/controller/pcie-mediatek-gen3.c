@@ -3218,6 +3218,52 @@ int mtk_pcie_soft_on(struct pci_bus *bus)
 }
 EXPORT_SYMBOL(mtk_pcie_soft_on);
 
+static int mtk_pcie_pre_init_6881(struct mtk_pcie_port *port)
+{
+	u32 val;
+
+	/* Make PCIe RC wait apsrc_ack signal before access EMI */
+	val = readl_relaxed(port->base + PCIE_RESOURCE_CTRL);
+	val |= PCIE_APSRC_ACK;
+	writel_relaxed(val, port->base + PCIE_RESOURCE_CTRL);
+
+	/* Don't let PCIe AXI0 port reply slave error */
+	val = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
+	val |= PCIE_AXI0_SLV_RESP_MASK;
+	writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
+
+	/* Enable cplto record config space address */
+	val = readl_relaxed(port->base + PCIE_PEX_SPC2_REG);
+	val |= PCIE_RECORD_CFG_ADDR_EN;
+	writel_relaxed(val, port->base + PCIE_PEX_SPC2_REG);
+
+	/* Set write completion timeout to 4ms */
+	writel_relaxed(WCPL_TIMEOUT_4MS, port->base + PCIE_WCPL_TIMEOUT);
+
+	/* Adjust SYS_CLK_RDY_TIME to 10us to avoid glitch */
+	val = readl_relaxed(port->base + PCIE_RESOURCE_CTRL);
+	val &= ~SYS_CLK_RDY_TIME;
+	val |= SYS_CLK_RDY_TIME_TO_10US;
+	writel_relaxed(val, port->base + PCIE_RESOURCE_CTRL);
+
+	/* Switch DN port will exit L1PM when UP port exit L1 */
+	val = readl_relaxed(port->base + PCIE_MAC_CTR1);
+	val |= SWITCH_DN_L1PM;
+	writel_relaxed(val, port->base + PCIE_MAC_CTR1);
+
+	/* wifi request response data is all zero when completion timeout */
+	val = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
+	val |= SW_CPLTO_DATA_SEL;
+	writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
+
+	return 0;
+}
+
+static const struct mtk_pcie_data mt6881_data = {
+	.pre_init = mtk_pcie_pre_init_6881,
+	.ipm_version = IPM_VERSION_TRUNK_98,
+};
+
 static int mtk_pcie_pre_init_6985(struct mtk_pcie_port *port)
 {
 	u32 val;
@@ -3670,6 +3716,7 @@ static const struct mtk_pcie_data mt6993_data = {
 
 static const struct of_device_id mtk_pcie_of_match[] = {
 	{ .compatible = "mediatek,mt8192-pcie" },
+	{ .compatible = "mediatek,mt6881-pcie", .data = &mt6881_data },
 	{ .compatible = "mediatek,mt6985-pcie", .data = &mt6985_data },
 	{ .compatible = "mediatek,mt6989-pcie", .data = &mt6989_data },
 	{ .compatible = "mediatek,mt6991-pcie", .data = &mt6991_data },
