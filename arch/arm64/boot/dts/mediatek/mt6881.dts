@@ -9172,6 +9172,18 @@
 	regulator-always-on;
 };
 
+&mt6363_vufs18 {
+	regulator-always-on;
+};
+
+&mt6363_vufs12 {
+	regulator-always-on;
+};
+
+&mt6363_vemc {
+	regulator-always-on;
+};
+
 &mt6368_vbuck5 {
 	regulator-always-on;
 };
