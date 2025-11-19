@@ -577,7 +577,7 @@ static void __gpufreq_dump_bringup_status(struct platform_device *pdev)
 		"SPM2GPUPM_CON", DRV_Reg32(SPM_SPM2GPUPM_CON));
 	GPUFREQ_LOGI("[MFG] %s=0x%08lx, %s=0x%08x, %s=0x%08x",
 		"MFG_PWR_STATUS", MFG_PWR_STATUS,
-		"MFG0_PWR_CON", DRV_Reg32(MFG_RPC_MFG0_PWR_CON),
+		"MFG0_PWR_CON", DRV_Reg32(SPM_MFG0_PWR_CON),
 		"MFG1_PWR_CON", DRV_Reg32(MFG_RPC_MFG1_PWR_CON));
 	GPUFREQ_LOGI("[TOP] %s=0x%08x, %s=%d, %s=%d, %s=0x%08lx",
 		"PLL_CON0", DRV_Reg32(MFG_PLL0_CON0),
