@@ -6459,19 +6459,19 @@
 
 #if 0
 			clocks =
-				<&topckgen_clk CLK_TOP_UFS_SEL>,
-				<&topckgen_clk CLK_TOP_AES_UFSFDE_SEL>,
-				<&topckgen_clk CLK_TOP_UFS_MBIST_SEL>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS>,
-				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SAP_CFG>,
-				<&ufscfg_ao_clk CLK_UFSAO_PHY_TOP_AHB_S_BUS>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AHB>,
-				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AXI>;
+				<&cksys_reg_clk CLK_CKSYS_REG_UFS_SEL>,
+				<&cksys_reg_clk CLK_CKSYS_REG_AES_UFSFDE_SEL>,
+				<&cksys_reg_clk CLK_CKSYS_REG_UFS_MBIST_SEL>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_TX_SYM_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM0_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_RX_SYM1_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SYS_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UNIPRO_SAP_CFG_UFS>,
+				<&ufscfg_ao_clk CLK_UFSAO_UFS_PHY_TOP_AHB_S_BUS_UFS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_UFS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_AES_UFS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_AHB_UFS>,
+				<&ufscfg_pdn_clk CLK_UFSPDN_UFSHCI_UFS_AXI_UFS>;
 
 			clock-names =
 				"ufs_sel",
@@ -6505,6 +6505,7 @@
 
 			vcc-supply  = <&mt6363_vemc>;
 			vccq-supply = <&mt6363_vufs12>;
+			vccq2-supply = <&mt6363_vufs18>;
 
 			resets =      <&ufscfgpdn_rst 0>,
 				      <&ufscfgpdn_rst 1>,
@@ -6513,7 +6514,6 @@
 				      "crypto_rst",
 				      "hci_rst";
 #endif
-			mediatek,ufs-mphy-debug;
 			mediatek,ufs-disable-mcq;
 			/* Should be removed after SB */
 			mediatek,ufs-disable-ah8;
