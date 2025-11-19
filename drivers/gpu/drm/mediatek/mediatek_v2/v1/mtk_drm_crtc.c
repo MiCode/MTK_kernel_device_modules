@@ -2255,7 +2255,7 @@ void mtk_drm_crtc_mini_analysis(struct drm_crtc *crtc)
 	case MMSYS_MT6881:
 		DDPDUMP("== DUMP DISP pipe-0 ANALYSIS:0x%pa ==\n",
 			&mtk_crtc->config_regs_pa);
-		mmsys_config_dump_analysis_mt6878(crtc);
+		mmsys_config_dump_analysis_mt6881(crtc);
 		break;
 	case MMSYS_MT6873:
 	case MMSYS_MT6853:
@@ -2597,7 +2597,7 @@ void mtk_drm_crtc_analysis(struct drm_crtc *crtc)
 		}
 		break;
 	case MMSYS_MT6881:
-		mmsys_config_dump_analysis_mt6878(crtc);
+		mmsys_config_dump_analysis_mt6881(crtc);
 		mutex_dump_analysis_mt6878(mtk_crtc->mutex[0]);
 		// mtk_vidle_dpc_analysis();
 		// if (mtk_crtc->is_dual_pipe) {

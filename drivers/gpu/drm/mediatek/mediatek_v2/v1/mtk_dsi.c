@@ -3166,7 +3166,11 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		}
 
 		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			output_valid_us = ultra_lo_fifo_us + 5;
+			if (dsi->driver_data->output_vld_fifo_pct) {
+				output_valid_us = DIV_ROUND_UP(buf_con * dsi->driver_data->output_vld_fifo_pct,
+							consume_rate * 100);
+			} else
+				output_valid_us = ultra_lo_fifo_us + 5;
 			output_valid_us = dbg_output_valid ? dbg_output_valid : output_valid_us;
 			output_valid = DIV_ROUND_UP(output_valid_us * consume_rate, 1000);
 			output_valid = output_valid < (u32)buf_con ? output_valid : (u32)buf_con;
@@ -17042,21 +17046,21 @@ static const struct mtk_dsi_driver_data mt6881_dsi_driver_data = {
 	.disable_te_timeout_by_set_cnt = true,
 	.buffer_unit = 32,
 	.sram_unit = 32,
-	// .calc_golden_by_pct = true,
-	// .ultra_lo_fifo_pct = 18000 * 80 / 32,
-	// .ultra_hi_fifo_pct = 18000 * 90 / 32,
-	// .urgent_lo_fifo_pct_cmd = 18000 * 60 / 32,
-	// .urgent_hi_fifo_pct_cmd = 18000 * 80 / 32,
-	// .urgent_lo_fifo_pct_vdo = 18000 * 45 / 32,
-	// .urgent_hi_fifo_pct_vdo = 18000 * 75 / 32,
-	.urgent_lo_fifo_us = 14,
-	.urgent_hi_fifo_us = 15,
+	.calc_golden_by_pct = true,
+	.ultra_lo_fifo_pct = 18000 * 80 / 32,
+	.ultra_hi_fifo_pct = 18000 * 90 / 32,
+	.urgent_lo_fifo_pct_cmd = 18000 * 60 / 32,
+	.urgent_hi_fifo_pct_cmd = 18000 * 80 / 32,
+	.urgent_lo_fifo_pct_vdo = 18000 * 45 / 32,
+	.urgent_hi_fifo_pct_vdo = 18000 * 75 / 32,
+	.output_vld_fifo_pct = 90 * 1000,
 	.max_vfp = 0x7ffe,
 	.dsi0_pa = 0x1401a000,
 	.dsi1_pa = 0x1401b000,
 	.mmclk_by_datarate = mtk_dsi_set_mmclk_by_datarate_V2,
 	.n_verion = VER_N4,
 	.support_frame_tb_v5 = true,
+	.bubble_rate = 115,
 	// .dsi_cmdq_size = 128,
 	// .dsi_cmdq_page = 4,
 	// .dsi_cmdq_rd_max_sz_cpu = 512,
