@@ -73,6 +73,7 @@ unsigned int            g_plat_inf;
 struct dpmaif_ctrl     *g_dpmaif_ctrl;
 
 atomic_t                g_tx_busy_assert_on;
+static atomic_t         dpmaif_clock_on;
 
 #ifdef DPMAIF_REDUCE_RX_FLUSH
 int                     g_rx_flush_pkt_cnt;
@@ -686,6 +687,10 @@ static void dpmaif_set_clk(unsigned int on, struct dpmaif_clk_node *clk)
 			"[%s] error: clk is NULL.\n", __func__);
 		return;
 	}
+
+	// on=1时，只有原值为0才打开；on=0时，只有原值为1才关闭
+	if (atomic_cmpxchg(&dpmaif_clock_on, !on, on) != !on)
+		return;
 
 	while (clk->clk_name) {
 		if (!clk->clk_ref) {
@@ -3524,6 +3529,7 @@ static int dpmaif_probe(struct platform_device *pdev)
 	if (dpmaif_init_com(&pdev->dev))
 		return -1;
 
+	atomic_set(&dpmaif_clock_on, 0);
 	time_total = sched_clock() - time_total;
 	pr_info("%s cost: %llu\n", __func__, time_total);
 
