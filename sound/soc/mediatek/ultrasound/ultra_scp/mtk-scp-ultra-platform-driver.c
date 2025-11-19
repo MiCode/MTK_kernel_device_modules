@@ -197,7 +197,7 @@ static int ultra_stop_memif_and_irq(struct mtk_base_scp_ultra *scp_ultra)
 	// clear invalid irq
 	if (scp_ultra->usnd_state == SCP_ULTRA_STATE_START) {
 		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_CLR_IRQ,
-			       true,
+			       0,
 			       0,
 			       NULL,
 			       ULTRA_IPI_BYPASS_ACK);
@@ -225,7 +225,7 @@ static int ultra_stop_memif_and_irq(struct mtk_base_scp_ultra *scp_ultra)
 	// stop scp
 	if (scp_ultra->usnd_state == SCP_ULTRA_STATE_START) {
 		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_STOP,
-			       true,
+			       0,
 			       0,
 			       NULL,
 			       ULTRA_IPI_NEED_ACK);
@@ -345,7 +345,7 @@ static int mtk_scp_ultra_dump_set(struct snd_kcontrol *kcontrol,
 		payload[2] = ultra_dump->dump_flag;
 
 		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_PCMDUMP_ON,
-					 true,
+					 0,
 					 3,
 					 &payload[0],
 					 ULTRA_IPI_NEED_ACK);
@@ -355,7 +355,7 @@ static int mtk_scp_ultra_dump_set(struct snd_kcontrol *kcontrol,
 		pcm_dump_switch = false;
 
 		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_PCMDUMP_OFF,
-					 true,
+					 0,
 					 0,
 					 NULL,
 					 ULTRA_IPI_NEED_ACK);
@@ -434,7 +434,7 @@ static int mtk_scp_ultra_gain_config_set(struct snd_kcontrol *kcontrol,
 	pr_info("%s() mic_gain=%d, receiver_gain=%d\n",
 		__func__, gain_config.mic_gain, gain_config.receiver_gain);
 	ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_ANALOG_GAIN,
-		       true,
+		       0,
 		       2,
 		       &payload[0],
 		       ULTRA_IPI_BYPASS_ACK);
@@ -458,7 +458,7 @@ static int mtk_scp_ultra_clr_irq(struct mtk_base_scp_ultra *scp_ultra,
 
 	pr_info("send USND_MSG_ID_CLR_IRQ.\n");
 	ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_CLR_IRQ,
-			true,
+			0,
 			0,
 			NULL,
 			ULTRA_IPI_BYPASS_ACK);
@@ -534,7 +534,7 @@ static int mtk_scp_ultra_set_scp_state(int state)
 		payload[5] = param_config.period_in_size;
 		payload[6] = param_config.target_out_channel;
 		ret_val = ultra_ipi_send_msg(AUDIO_TASK_USND_MSG_ID_ON,
-					     true,
+					     0,
 					     7,
 					     &payload[0],
 					     ULTRA_IPI_NEED_ACK,
@@ -560,7 +560,7 @@ static int mtk_scp_ultra_set_scp_state(int state)
 		afe->memif[scp_ultra_memif_ul_id].scp_ultra_enable = false;
 
 		ret_val = ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_OFF,
-					 true,
+					 0,
 					 0,
 					 NULL,
 					 ULTRA_IPI_NEED_ACK);
@@ -584,7 +584,7 @@ static int mtk_scp_ultra_set_scp_state(int state)
 			return -1;
 		}
 		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_START,
-			       true,
+			       0,
 			       0,
 			       NULL,
 			       ULTRA_IPI_NEED_ACK);
@@ -597,7 +597,7 @@ static int mtk_scp_ultra_set_scp_state(int state)
 
 		mtk_scp_ultra_clr_irq(scp_ultra, afe, ultra_mem);
 		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_STOP,
-			       true,
+			       0,
 			       0,
 			       NULL,
 			       ULTRA_IPI_NEED_ACK);
@@ -615,14 +615,14 @@ static int mtk_scp_ultra_set_scp_state(int state)
 
 			mtk_scp_ultra_clr_irq(scp_ultra, afe, ultra_mem);
 			ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_STOP,
-				       true,
+				       0,
 				       0,
 				       NULL,
 				       ULTRA_IPI_NEED_ACK);
 			pm_runtime_put(afe->dev);
 		}
 		ultra_ipi_send(AUDIO_TASK_USND_MSG_ID_OFF,
-			       true,
+			       0,
 			       0,
 			       NULL,
 			       ULTRA_IPI_NEED_ACK);
