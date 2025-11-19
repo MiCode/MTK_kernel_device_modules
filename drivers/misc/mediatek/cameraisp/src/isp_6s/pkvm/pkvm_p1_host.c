@@ -27,9 +27,10 @@
 
 
 /*******************************************************************************
- * MACRO Definitions
+ * Variable Definitions
  ******************************************************************************/
 static bool isPkvmSupport;
+static bool isSecureEnable;
 static int pkvm_p1_sec_config;
 static int pkvm_p1_set_sec_cam;
 static int pkvm_p1_set_dapc_auth;
@@ -38,6 +39,8 @@ static int pkvm_p1_APC_CamIspProtCtl;
 static int pkvm_p1_get_sec_fh_info;
 static int pkvm_p1_uninit;
 
+/*prevent race condition */
+static struct mutex sec_on_mutex;
 
 /*******************************************************************************
  * IOCTL Handling
@@ -89,6 +92,10 @@ static long pkvm_p1_ioctl(struct file *filep, unsigned int cmd, unsigned long Pa
 		if (likely(copy_from_user(&port, (void *)Param, sizeof(uint32_t)) == 0)) {
 			LOG_NOTICE("CAM_PKVM_SEC_CONFIG: port = %d\n", port);
 			ret = pkvm_el2_mod_call(pkvm_p1_sec_config, port);
+
+			mutex_lock(&sec_on_mutex);
+			isSecureEnable = MTRUE;
+			mutex_unlock(&sec_on_mutex);
 		} else {
 			LOG_NOTICE("CAM_PKVM_SEC_CONFIG: copy_from_user FAILED\n");
 			ret = -EFAULT;
@@ -99,8 +106,8 @@ static long pkvm_p1_ioctl(struct file *filep, unsigned int cmd, unsigned long Pa
 	case CAM_PKVM_SET_DAPC_REG:
 	{
 		struct SecMgr_RegInfo_PKVM reginfo_pkvm;
-		bool dapc_auth_result = false;
-		bool isEnable = true;
+		bool dapc_auth_result = MFALSE;
+		bool isEnable = MTRUE;
 
 		if (likely(copy_from_user(&reginfo_pkvm, (void *)Param, sizeof(struct SecMgr_RegInfo_PKVM)) == 0)) {
 			LOG_NOTICE("CAM_PKVM_SET_DAPC_REG: CamModule=%d", reginfo_pkvm.CamModule);
@@ -112,7 +119,7 @@ static long pkvm_p1_ioctl(struct file *filep, unsigned int cmd, unsigned long Pa
 				reginfo_pkvm.dapc_cq[DAPC_IDX_REG_CAMCTL_R1_CAMCTL_SEL],
 				reginfo_pkvm.dapc_cq[DAPC_IDX_REG_CAMCTL_R1_LCES_OUT_SIZE]);
 
-			if (dapc_auth_result == true) {
+			if (dapc_auth_result == MTRUE) {
 				for (int i = 0; i < DAPC_NUM_WRITE; i++) {
 					LOG_NOTICE("Data: 0x%x\n", reginfo_pkvm.dapc_cq[i]);
 					ret |= pkvm_el2_mod_call(pkvm_p1_set_dapc_reg,
@@ -130,7 +137,7 @@ static long pkvm_p1_ioctl(struct file *filep, unsigned int cmd, unsigned long Pa
 	case CAM_PKVM_SET_SEC_CAM:
 	{
 		uint32_t CamModule;
-		bool isEnable = true;
+		bool isEnable = MTRUE;
 
 		if (likely(copy_from_user(&CamModule, (void *)Param, sizeof(uint32_t)) == 0)) {
 			LOG_NOTICE("CAM_PKVM_SET_SEC_CAM: CamModule=%d", CamModule);
@@ -184,6 +191,10 @@ static long pkvm_p1_ioctl(struct file *filep, unsigned int cmd, unsigned long Pa
 	{
 		LOG_NOTICE("CAM_PKVM_UNINIT");
 		ret = pkvm_el2_mod_call(pkvm_p1_uninit);
+
+		mutex_lock(&sec_on_mutex);
+		isSecureEnable = MFALSE;
+		mutex_unlock(&sec_on_mutex);
 		break;
 	}
 	default:
@@ -234,11 +245,11 @@ static int __init pkvm_p1_init(void)
 
 	if (!is_protected_kvm_enabled()) {
 		LOG_NOTICE("INFO: pkvm is NOT supported!\n");
-		isPkvmSupport = false;
+		isPkvmSupport = MFALSE;
 		return 0;
 	}
 	LOG_NOTICE("INFO: pkvm is supported!\n");
-	isPkvmSupport = true;
+	isPkvmSupport = MTRUE;
 
 	ret = pkvm_load_el2_module(kvm_nvhe_sym(p1_hyp_init), &token);
 	if (ret) {
@@ -258,11 +269,44 @@ static int __init pkvm_p1_init(void)
 		return ret;
 	}
 
+	mutex_init(&sec_on_mutex);
+
 	LOG_NOTICE("- INFO: success to load pkvm p1 module\n");
 
 	return 0;
 }
 
+int pkvm_p1_uninit_by_isp(void)
+{
+	int ret = 0;
+
+	LOG_NOTICE(" +\n");
+
+	if (!is_protected_kvm_enabled()) {
+		LOG_NOTICE("NOTE: PKVM is not supported, do nothing\n");
+		return ret;
+	}
+
+	mutex_lock(&sec_on_mutex);
+	if (!isSecureEnable) {
+		mutex_unlock(&sec_on_mutex);
+		LOG_NOTICE("NOTE: secure disabled, do nothing\n");
+		return ret;
+	}
+
+	ret = pkvm_el2_mod_call(pkvm_p1_uninit);
+	if (ret < 0)
+		LOG_NOTICE("ERROR: pkvm_p1_uninit by ISP FAILED\n");
+	else
+		LOG_NOTICE("INFO: pkvm_p1_uninit by ISP success\n");
+
+	isSecureEnable = MFALSE;
+	mutex_unlock(&sec_on_mutex);
+
+	return ret;
+}
+
 
 module_init(pkvm_p1_init);
 MODULE_LICENSE("GPL");
+EXPORT_SYMBOL(pkvm_p1_uninit_by_isp);

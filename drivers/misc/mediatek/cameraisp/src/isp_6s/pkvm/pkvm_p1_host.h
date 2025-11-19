@@ -71,3 +71,5 @@ void kvm_nvhe_sym(pkvm_p1_hyp_set_dapc_reg)(struct user_pt_regs *);
 void kvm_nvhe_sym(pkvm_p1_hyp_APC_CamIspProtCtl)(struct user_pt_regs *);
 void kvm_nvhe_sym(pkvm_p1_hyp_get_sec_fh_info)(struct user_pt_regs *);
 void kvm_nvhe_sym(pkvm_p1_hyp_uninit)(struct user_pt_regs *);
+
+int pkvm_p1_uninit_by_isp(void);
