@@ -1255,6 +1255,7 @@
 
 /* SW sync token for HWCCF voting mutex control */
 #define CMDQ_SYNC_TOKEN_DPC_VOTE_HWCCF			647
+#define CMDQ_SYNC_TOKEN_DBI_COUNT_CFG_END		648
 
 #define CMDQ_SYNC_TOKEN_CONFIG_DIRTY_1			694
 #define CMDQ_SYNC_TOKEN_STREAM_EOF_1			695
