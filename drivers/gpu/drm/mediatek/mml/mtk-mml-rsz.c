@@ -96,9 +96,14 @@ enum rsz_dbg_ver {
 	RSZ_DBG_MT6989,
 };
 
+enum rsz_tput_ver {
+	RSZ_TPUT_MT6993 = 1,
+};
+
 struct rsz_data {
 	u32 tile_width;
 	u8 rsz_dbg;
+	u8 rsz_tput;
 	u8 px_per_tick;
 	bool aal_crop_disable;	/* WA: crop aal loss from rsz */
 	bool wrot_pending;	/* WA: enable wrot yuv422/420 pending zero */
@@ -201,12 +206,14 @@ static const struct rsz_data mt6993_mmlt_rsz2_data = {
 static const struct rsz_data mt6993_mmlf_rsz2_data = {
 	.tile_width = 3872,
 	.rsz_dbg = RSZ_DBG_MT6989,
+	.rsz_tput = RSZ_TPUT_MT6993,
 	.px_per_tick = 4,
 };
 
 static const struct rsz_data mt6993_mmlf_rsz3_data = {
 	.tile_width = 544,
 	.rsz_dbg = RSZ_DBG_MT6989,
+	.rsz_tput = RSZ_TPUT_MT6993,
 	.px_per_tick = 4,
 };
 
@@ -220,6 +227,7 @@ struct mml_comp_rsz {
 /* meta data for each different frame config */
 struct rsz_frame_data {
 	u32 line_bubble;
+	struct mml_frame_size in_size;
 	struct mml_frame_size max_size;
 
 	bool relay_mode:1;
@@ -651,6 +659,8 @@ static s32 rsz_config_tile(struct mml_comp *comp, struct mml_task *task,
 	else
 		bubble = 2;
 	rsz_frm->line_bubble += bubble;
+	rsz_frm->in_size.width += rsz_input_w;
+	rsz_frm->in_size.height = max_t(u32, rsz_input_h, rsz_frm->in_size.height);
 	rsz_frm->max_size.width += max_t(u32, rsz_input_w, rsz_output_w);
 	rsz_frm->max_size.height = max_t(u32, rsz_input_h, rsz_output_h);
 
@@ -663,8 +673,17 @@ static s32 rsz_post(struct mml_comp *comp, struct mml_task *task, struct mml_com
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
 	struct rsz_frame_data *rsz_frm = rsz_frm_data(ccfg);
 
-	dvfs_cache_sz(cache, rsz_frm->max_size.width / rsz->data->px_per_tick,
-		rsz_frm->max_size.height, rsz_frm->line_bubble, 0);
+	struct mml_frame_config *cfg = task->config;
+	struct mml_dev *mml = cfg->mml;
+
+	if (rsz->data->rsz_tput == RSZ_TPUT_MT6993)
+		dvfs_cache_sz_rsz(cache, rsz->data->px_per_tick,
+			rsz_frm->in_size.width, rsz_frm->in_size.height,
+			cfg->frame_out[ccfg->node->out_idx].width, cfg->frame_out[ccfg->node->out_idx].height,
+			rsz_frm->line_bubble, 0);
+	else
+		dvfs_cache_sz(mml, cache, rsz_frm->max_size.width / rsz->data->px_per_tick,
+			rsz_frm->max_size.height, rsz_frm->line_bubble, 0);
 	dvfs_cache_log(cache, comp, "rsz");
 
 	return 0;

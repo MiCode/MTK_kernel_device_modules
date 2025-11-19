@@ -2387,10 +2387,11 @@ static s32 wdma_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 	struct wdma_frame_data *wdma_frm = wdma_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	struct mml_dev *mml = task->config->mml;
 
 	/* accmulate data size and use max pixel */
 	cache->total_datasize += wdma_frm->datasize;
-	dvfs_cache_sz(cache, wdma_frm->max_size.width / wdma->data->px_per_tick,
+	dvfs_cache_sz(mml, cache, wdma_frm->max_size.width / wdma->data->px_per_tick,
 		wdma_frm->max_size.height, 0, 0);
 	dvfs_cache_log(cache, comp, "wdma");
 

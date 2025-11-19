@@ -233,8 +233,9 @@ static s32 merge_post(struct mml_comp *comp, struct mml_task *task, struct mml_c
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
 	struct merge_frame_data *merge_frm = merge_frm_data(ccfg);
 	u32 px_per_tick = task->config->merge_2p ? 2 : merge->data->px_per_tick;
+	struct mml_dev *mml = task->config->mml;
 
-	dvfs_cache_sz(cache, merge_frm->max_size.width / px_per_tick,
+	dvfs_cache_sz(mml, cache, merge_frm->max_size.width / px_per_tick,
 		merge_frm->max_size.height, 0, 0);
 	dvfs_cache_log(cache, comp, "merge");
 

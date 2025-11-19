@@ -22,6 +22,8 @@ int mml_sys_bind(struct device *dev, struct device *master,
 void mml_sys_unbind(struct device *dev, struct device *master,
 	struct mml_sys *sys, void *data);
 
+u8 mml_sys_get_dvfs_ver(struct mml_sys *sys);
+
 /*
  * mml_set_uid - Call sspm to config uid/aid for mml
  *

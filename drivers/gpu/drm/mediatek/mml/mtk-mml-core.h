@@ -594,21 +594,6 @@ struct mml_comp_config {
 	void *data;
 };
 
-#define dvfs_cache_sz(c, w, h, b, l) do { \
-	c->max_frame_size.width = max(c->max_frame_size.width, (w)); \
-	c->max_frame_size.height = max(c->max_frame_size.height, (h)); \
-	c->total_line_bubble += (b); \
-	c->total_latency += (l); \
-	c->max_tput_pixel = (c->max_frame_size.width + c->total_line_bubble) * \
-		(c->max_frame_size.height + c->total_latency); \
-} while (0)
-
-#define dvfs_cache_log(cache, comp, name) \
-	mml_msg("[dvfs]tput cache %5s %2u bubble %u latency %u pixel %ux%u data %u", \
-		name, comp->id, cache->total_line_bubble, cache->total_latency, \
-		cache->max_frame_size.width, cache->max_frame_size.height, \
-		cache->total_datasize)
-
 struct mml_pipe_cache {
 	/* command reuse */
 	u32 label_cnt;

@@ -2718,10 +2718,11 @@ static s32 wrot_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 	struct wrot_frame_data *wrot_frm = wrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	struct mml_dev *mml = task->config->mml;
 
 	/* accmulate data size and use max pixel */
 	cache->total_datasize += wrot_frm->datasize;
-	dvfs_cache_sz(cache, wrot_frm->max_size.width / wrot->data->px_per_tick,
+	dvfs_cache_sz(mml, cache, wrot_frm->max_size.width / wrot->data->px_per_tick,
 		wrot_frm->max_size.height, 0, 0);
 	dvfs_cache_log(cache, comp, "wrot");
 

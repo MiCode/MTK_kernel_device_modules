@@ -171,6 +171,7 @@ struct mml_data {
 	u8 sof_grp_bit;
 	u8 cb_sof_grp_bit;
 	bool wla20;
+	u8 dvfs_ver;
 };
 
 enum mml_mux_type {
@@ -360,6 +361,11 @@ static inline struct mml_sys *ddp_comp_to_sys(struct mtk_ddp_comp *ddp_comp)
 u16 mml_sys_get_reg_ready_sel(struct mml_comp *comp)
 {
 	return comp_to_sys(comp)->inline_ready_sel;
+}
+
+u8 mml_sys_get_dvfs_ver(struct mml_sys *sys)
+{
+	return sys->data->dvfs_ver;
 }
 
 static s32 sys_config_prepare(struct mml_comp *comp, struct mml_task *task,
@@ -1096,6 +1102,7 @@ static s32 sys_post(struct mml_comp *comp, struct mml_task *task,
 		    struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
+	struct mml_dev *mml = cfg->mml;
 	struct sys_frame_data *sys_frm = sys_frm_data(ccfg);
 	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
 	enum mml_mode mode = task->config->info.mode;
@@ -1131,7 +1138,7 @@ static s32 sys_post(struct mml_comp *comp, struct mml_task *task,
 		sys_addr_update(comp, task, ccfg);
 
 		if (cfg->max_size.width && cfg->max_size.height) {
-			dvfs_cache_sz(cache, cfg->max_size.width / sys->data->px_per_tick,
+			dvfs_cache_sz(mml, cache, cfg->max_size.width / sys->data->px_per_tick,
 				cfg->max_size.height, 0, 0);
 			dvfs_cache_log(cache, comp, "sys");
 		}
@@ -2661,6 +2668,7 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 		   struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
+	struct mml_dev *mml = cfg->mml;
 
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
 		struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
@@ -2670,7 +2678,7 @@ static s32 dl_post(struct mml_comp *comp, struct mml_task *task,
 		if (dl_frm && dl_frm->max_size.width && dl_frm->max_size.height) {
 			u32 w = dl_frm->max_size.width / sys->data->px_per_tick;
 
-			dvfs_cache_sz(cache, w, dl_frm->max_size.height,
+			dvfs_cache_sz(mml, cache, w, dl_frm->max_size.height,
 				cfg->dl_out[ccfg->pipe].left, 0);
 			dvfs_cache_log(cache, comp, dl_frm->name);
 		}
@@ -3511,6 +3519,7 @@ static const struct mml_data mt6993_mmlt_data = {
 	.reg = sys_mt6993,
 	.sof_grp_bit = 12,
 	.cb_sof_grp_bit = 28,
+	.dvfs_ver = mml_dvfs_cache_sz_wxh,
 };
 
 static const struct mml_data mt6993_mmlf_data = {
@@ -3541,6 +3550,7 @@ static const struct mml_data mt6993_mmlf_data = {
 	.reg = sys_mt6993,
 	.sof_grp_bit = 12,
 	.cb_sof_grp_bit = 28,
+	.dvfs_ver = mml_dvfs_cache_sz_wxh,
 };
 
 static const struct mml_data mt6993_mmld_data = {
@@ -3573,6 +3583,7 @@ static const struct mml_data mt6993_mmld_data = {
 	.cb_sof_grp_bit = 28,
 	.irq = true,
 	.wla20 = true,
+	.dvfs_ver = mml_dvfs_cache_sz_wxh,
 };
 
 const struct of_device_id mtk_mml_of_ids[] = {

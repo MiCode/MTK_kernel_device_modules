@@ -2383,13 +2383,14 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 	struct mml_frame_config *cfg = task->config;
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
+	struct mml_dev *mml = task->config->mml;
 
 	/* ufo case */
 	if (MML_FMT_UFO(cfg->info.src.format))
 		rdma_frm->datasize = (u32)div_u64((u64)rdma_frm->datasize * 7, 10);
 
 	cache->total_datasize += rdma_frm->datasize;
-	dvfs_cache_sz(cache, rdma_frm->max_size.width / rdma->data->px_per_tick,
+	dvfs_cache_sz(mml, cache, rdma_frm->max_size.width / rdma->data->px_per_tick,
 		rdma_frm->max_size.height, 0, 0);
 	dvfs_cache_log(cache, comp, "rdma");
 

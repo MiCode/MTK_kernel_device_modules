@@ -30,6 +30,7 @@ struct mml_m2m_ctx;
 struct mml_topology_cache;
 struct mml_task;
 struct mml_comp_config;
+struct mml_pipe_cache;
 struct mml_topology_path;
 struct mml_isr_node;
 
@@ -556,6 +557,22 @@ s32 mml_drv_sys_pw_enable(struct mml_dev *mml, enum mml_mode mode, bool by_mminf
 
 s32 mml_drv_sys_pw_disable(struct mml_dev *mml, enum mml_mode mode, bool by_mminfra,
 	s32 (*pw_enable)(struct mml_comp *comp, const s8 mode, bool pw_by_mminfra));
+
+#define dvfs_cache_log(cache, comp, name) \
+	mml_msg("[dvfs]tput cache %5s %2u bubble %u latency %u pixel %ux%u data %u", \
+		name, comp->id, cache->total_line_bubble, cache->total_latency, \
+		cache->max_frame_size.width, cache->max_frame_size.height, \
+		cache->total_datasize)
+
+void dvfs_cache_sz_rsz(struct mml_pipe_cache *c, u32 np,
+	u32 in_w, u32 in_h, u32 out_w, u32 out_h, u32 b, u32 l);
+void dvfs_cache_sz(struct mml_dev *mml,
+	struct mml_pipe_cache *c, u32 w, u32 h, u32 b, u32 l);
+
+enum mml_dvfs_cache_sz_ver {
+	mml_dvfs_cache_sz,
+	mml_dvfs_cache_sz_wxh
+};
 
 extern struct platform_driver mml_sys_driver;
 extern struct platform_driver mml_aal_driver;

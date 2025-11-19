@@ -339,6 +339,7 @@ static s32 color_config_post(struct mml_comp *comp, struct mml_task *task,
 {
 	const struct mml_comp_color *color = comp_to_color(comp);
 	struct mml_frame_config *cfg = task->config;
+	struct mml_dev *mml = cfg->mml;
 	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct color_frame_data *color_frm = color_frm_data(ccfg);
@@ -346,7 +347,8 @@ static s32 color_config_post(struct mml_comp *comp, struct mml_task *task,
 
 	if (dest->pq_config.en_region_pq)
 		px_per_tick = 1;
-	dvfs_cache_sz(cache, color_frm->max_size.width / px_per_tick,
+
+	dvfs_cache_sz(mml, cache, color_frm->max_size.width / px_per_tick,
 		color_frm->max_size.height, 0, 0);
 	dvfs_cache_log(cache, comp, "color");
 

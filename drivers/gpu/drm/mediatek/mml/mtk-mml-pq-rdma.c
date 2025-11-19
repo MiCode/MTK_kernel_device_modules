@@ -1019,12 +1019,14 @@ static s32 rdma_post(struct mml_comp *comp, struct mml_task *task,
 	struct rdma_frame_data *rdma_frm = rdma_frm_data(ccfg);
 	struct mml_frame_data *src = &task->config->info.seg_map;
 	struct mml_pipe_cache *cache = &task->config->cache[ccfg->pipe];
+	struct mml_dev *mml = task->config->mml;
 
 	/* Data size add to task and pixel,
 	 * it is ok for rdma to directly assign and accumulate in wrot.
 	 */
 	cache->total_datasize += rdma_frm->datasize;
-	dvfs_cache_sz(cache, rdma_frm->pixel_acc / rdma->data->px_per_tick, src->height, 0, 0);
+
+	dvfs_cache_sz(mml, cache, rdma_frm->pixel_acc / rdma->data->px_per_tick, src->height, 0, 0);
 	dvfs_cache_log(cache, comp, "rdma2");
 
 	return 0;

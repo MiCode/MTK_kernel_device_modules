@@ -210,6 +210,8 @@ struct mml_dev {
 	struct device *mmu_dev_sec; /* for secure dmabuf to secure iova */
 	struct mml_v4l2_dev *v4l2_dev;
 
+	void (*dev_dvfs_cache_sz)(struct mml_pipe_cache *c, u32 w, u32 h, u32 b, u32 l);
+
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 	struct mutex frm_dump_mutex;
 	struct mml_frm_dump_data frm_dumps[mml_max_sys][mml_frm_dump_count];
@@ -236,6 +238,71 @@ static const char *mml_kt_name[mml_kt_total] = {
 	[mml_kt_config0]	= "mml_work0",
 	[mml_kt_config1]	= "mml_work1",
 };
+
+void dvfs_cache_sz_rsz(struct mml_pipe_cache *c, u32 np,
+	u32 in_w, u32 in_h, u32 out_w, u32 out_h, u32 b, u32 l)
+{
+	u32 tput_in, tput_out;
+
+	/* rsz in */
+	if (2 * out_w > in_w)
+		tput_in = ((2 * out_w - in_w) * out_h + in_w * in_h) / np;
+	else
+		tput_in = in_w * in_h / np;
+
+	/* rsz out */
+	if (in_h > out_h)
+		tput_out = (in_h + out_h) * out_w / 2 / 2;
+	else
+		tput_out = out_w * out_h / 2;
+	mml_msg("tput_in %d tput_out %d", tput_in, tput_out);
+
+	c->total_line_bubble += (b);
+	c->total_latency += (l);
+	c->max_tput_pixel = max(tput_in, tput_out);
+}
+
+static void dvfs_cache_sz_wxh(struct mml_pipe_cache *c, u32 w, u32 h, u32 b, u32 l)
+{
+	c->total_line_bubble += (b);
+	c->total_latency += (l);
+	if (w * h > c->max_frame_size.width * c->max_frame_size.height) {
+		c->max_frame_size.width = w;
+		c->max_frame_size.height = h;
+		c->max_tput_pixel = (c->max_frame_size.width + c->total_line_bubble) *
+			(c->max_frame_size.height + c->total_latency);
+	}
+}
+
+static void dvfs_cache_sz_w_h(struct mml_pipe_cache *c, u32 w, u32 h, u32 b, u32 l)
+{
+	c->max_frame_size.width = max(c->max_frame_size.width, (w));
+	c->max_frame_size.height = max(c->max_frame_size.height, (h));
+	c->total_line_bubble += (b);
+	c->total_latency += (l);
+	c->max_tput_pixel = (c->max_frame_size.width + c->total_line_bubble) *
+		(c->max_frame_size.height + c->total_latency);
+}
+
+static int get_tput_formula(struct mml_dev *mml, u8 ver)
+{
+	switch (ver) {
+	case mml_dvfs_cache_sz_wxh:
+		mml->dev_dvfs_cache_sz = dvfs_cache_sz_wxh;
+		break;
+	default:
+		mml->dev_dvfs_cache_sz = dvfs_cache_sz_w_h;
+		break;
+	}
+
+	return 0;
+}
+
+void dvfs_cache_sz(struct mml_dev *mml,
+	struct mml_pipe_cache *c, u32 w, u32 h, u32 b, u32 l)
+{
+	mml->dev_dvfs_cache_sz(c, w, h, b, l);
+}
 
 int mml_comp_add(u32 id, struct device *dev, const struct component_ops *ops)
 {
@@ -552,6 +619,9 @@ static void create_dev_topology_locked(struct mml_dev *mml)
 			mml->cmdq_clts, mml->cmdq_clt_cnt);
 		if (!IS_ERR_OR_NULL(mml->topology))
 			mml->topology->dvfs = &mml->dvfs;
+
+		if (get_tput_formula(mml, mml_sys_get_dvfs_ver(mml->sys)))
+			mml_err("fail to bind tput formula!");
 	}
 	if (IS_ERR(mml->topology))
 		mml_err("topology create fail %ld", PTR_ERR(mml->topology));

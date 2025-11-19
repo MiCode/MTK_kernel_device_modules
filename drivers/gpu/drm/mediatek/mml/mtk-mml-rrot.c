@@ -2297,6 +2297,7 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 		     struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
+	struct mml_dev *mml = task->config->mml;
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	const struct mml_comp_rrot *rrot = comp_to_rrot(comp);
@@ -2326,7 +2327,7 @@ static s32 rrot_post(struct mml_comp *comp, struct mml_task *task,
 	/* add rrot rotate max latency for safe */
 	latency = rrot_frm->rotate == MML_ROT_0 ? 0 : 32;
 
-	dvfs_cache_sz(cache, tput_w, tput_h, 0, latency);
+	dvfs_cache_sz(mml, cache, tput_w, tput_h, 0, latency);
 	dvfs_cache_log(cache, comp, "rrot");
 
 	rrot_backup_crc(comp, task, ccfg);
