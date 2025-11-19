@@ -293,6 +293,7 @@ static void free_core_cpus(void)
 		kfree(curr_core_cpus);
 		curr_core_cpus = next_core_cpus;
 	}
+	core_cpus_head = NULL;
 }
 
 static struct core_cpus_struct *new_core_cpus(int start, int end)
