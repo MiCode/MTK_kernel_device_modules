@@ -15838,6 +15838,12 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 				if (dsi->slave_dsi)
 					mtk_dsi_phy_timconfig(dsi->slave_dsi, handle);
 			}
+		} else {
+			if (dsi->data_rate == 0)
+				mtk_dsi_set_data_rate(dsi);
+			mtk_dsi_phy_timconfig(dsi, handle);
+			if (dsi->slave_dsi)
+				mtk_dsi_phy_timconfig(dsi->slave_dsi, handle);
 		}
 		/* if change hfp, get hfp */
 		if (dsi && dsi->ext && dsi->ext->params
@@ -15994,6 +16000,12 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 						mtk_dsi_phy_timconfig(dsi->slave_dsi, handle);
 				}
 			}
+		} else {
+			if (dsi->data_rate == 0)
+				mtk_dsi_set_data_rate(dsi);
+			mtk_dsi_phy_timconfig(dsi, handle);
+			if (dsi->slave_dsi)
+				mtk_dsi_phy_timconfig(dsi->slave_dsi, handle);
 		}
 		if (dsi && dsi->ext && dsi->ext->params
 			&& (dsi->mipi_hopping_sta
