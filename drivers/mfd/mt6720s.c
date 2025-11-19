@@ -168,6 +168,7 @@ static const struct regmap_config mt6720_regmap_config = {
 	.val_bits = 8,
 	.reg_format_endian = REGMAP_ENDIAN_BIG,
 	.max_register = 0x9ff,
+	.use_raw_spinlock = true,
 };
 
 /*
