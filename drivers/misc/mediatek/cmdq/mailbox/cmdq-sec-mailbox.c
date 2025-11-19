@@ -1581,7 +1581,7 @@ void cmdq_sec_mbox_stop(struct cmdq_client *cl)
 	}
 
 	mutex_unlock(&cmdq->exec_lock);
-	if (!work_pending(&cmdq->irq_notify_work))
+	if (!work_pending(&cmdq->irq_notify_work) && task)
 		queue_work(cmdq->notify_wq, &cmdq->irq_notify_work);
 #endif
 }
