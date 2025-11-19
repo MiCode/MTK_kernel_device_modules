@@ -643,9 +643,12 @@ static void mtk_dp_dvo_config(struct mtk_ddp_comp *comp,
 
 	hsize = dp_dvo->mode.hdisplay;
 	vsize = dp_dvo->mode.vdisplay;
-	hpw = (dp_dvo->mode.hsync_end - dp_dvo->mode.hsync_start) / pixel_per_tick;
-	hfp = (dp_dvo->mode.hsync_start - dp_dvo->mode.hdisplay) / pixel_per_tick;
-	hbp = (dp_dvo->mode.htotal - dp_dvo->mode.hsync_end) / pixel_per_tick;
+	hpw = dp_dvo->mode.hsync_end - dp_dvo->mode.hsync_start;
+	hpw = ((hpw / pixel_per_tick) == 0) ? 1 : (hpw / pixel_per_tick);
+	hfp = dp_dvo->mode.hsync_start - dp_dvo->mode.hdisplay;
+	hfp = ((hfp / pixel_per_tick) == 0) ? 1 : (hfp / pixel_per_tick);
+	hbp = dp_dvo->mode.htotal - dp_dvo->mode.hsync_end;
+	hbp = ((hbp / pixel_per_tick) == 0) ? 1 : (hbp / pixel_per_tick);
 	vpw = dp_dvo->mode.vsync_end - dp_dvo->mode.vsync_start;
 	vfp = dp_dvo->mode.vsync_start - dp_dvo->mode.vdisplay;
 	vbp = dp_dvo->mode.vtotal - dp_dvo->mode.vsync_end;
