@@ -273,6 +273,28 @@ TRACE_EVENT(loom_bind_to_specify_cpu,
 		__entry->aff_cpu[2], __entry->aff_cpu[3], __entry->dup_set, __entry->ret)
 );
 
+TRACE_EVENT(loom_affinity_ctl,
+	TP_PROTO(int parent_pid, int dedi_cpu, int child_pid, unsigned int child_aff),
+	TP_ARGS(parent_pid, dedi_cpu, child_pid, child_aff),
+
+	TP_STRUCT__entry(
+		__field(int, parent_pid)
+		__field(int, dedi_cpu)
+		__field(int, child_pid)
+		__field(unsigned int, child_aff)
+	),
+
+	TP_fast_assign(
+		__entry->parent_pid = parent_pid;
+		__entry->dedi_cpu = dedi_cpu;
+		__entry->child_pid = child_pid;
+		__entry->child_aff = child_aff;
+	),
+
+	TP_printk("parent_pid=%d, dedi_cpu=%d, child_pid=%d, child_aff=%x",
+		__entry->parent_pid, __entry->dedi_cpu, __entry->child_pid, __entry->child_aff)
+);
+
 #endif /*_TRACE_VIP_ENGINE_H */
 
 #undef TRACE_INCLUDE_PATH
