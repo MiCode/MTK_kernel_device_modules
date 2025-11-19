@@ -46,6 +46,9 @@ static const char *aud_clks[CLK_NUM] = {
 	[CLK_AFE_DL0_DAC_AUDIO] = "afe_dl0_dac_audio",
 	[CLK_AFE_DL0_DAC_HIRES_AUDIO] = "afe_dl0_dac_hires_audio",
 	[CLK_AFE_DL0_PREDIS_AUDIO] = "afe_dl0_predis_audio",
+	[CLK_AFE_DL1_DAC_AUDIO] = "afe_dl1_dac_audio",
+	[CLK_AFE_DL1_DAC_HIRES_AUDIO] = "afe_dl1_dac_hires_audio",
+	[CLK_AFE_DL1_PREDIS_AUDIO] = "afe_dl1_predis_audio",
 	[CLK_AFE_UL0_ADC_AUDIO] = "afe_ul0_adc_audio",
 	[CLK_AFE_UL0_ADC_HIRES_AUDIO] = "afe_ul0_adc_hires_audio",
 	[CLK_AFE_UL1_ADC_AUDIO] = "afe_ul1_adc_audio",
@@ -385,7 +388,7 @@ int mt6881_afe_apll_init(struct mtk_base_afe *afe)
 	/* APLL1_CON2 = 0x6f28bd4c
 	 * APLL2_CON2 = 0x78FD5264
 	 * APLL1_TUNER_CON0 = 0x6f28bd4d
-	 * APLL2_TUNER_CON0 = 0x78fd5264
+	 * APLL2_TUNER_CON0 = 0x78fd5265
 	 */
 	regmap_write(afe_priv->apmixed, APLL1_TUNER_CON0, 0x6f28bd4d);
 	regmap_write(afe_priv->apmixed, APLL2_TUNER_CON0, 0x78fd5265);

@@ -1321,6 +1321,10 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 	SND_SOC_DAPM_CLOCK_SUPPLY("afe_dl0_dac_hires_audio"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("afe_dl0_predis_audio"),
 
+	SND_SOC_DAPM_CLOCK_SUPPLY("afe_dl1_dac_audio"),
+	SND_SOC_DAPM_CLOCK_SUPPLY("afe_dl1_dac_hires_audio"),
+	SND_SOC_DAPM_CLOCK_SUPPLY("afe_dl1_predis_audio"),
+
 	SND_SOC_DAPM_CLOCK_SUPPLY("afe_ul0_adc_audio"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("afe_ul0_adc_hires_audio"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("afe_ul1_adc_audio"),
