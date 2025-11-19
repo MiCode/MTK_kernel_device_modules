@@ -256,6 +256,7 @@ struct lvts_data {
 	bool ap_domain_no_irq;
 	bool debug_addr_v2;
 	bool lvts_int_debug;
+	bool init_flow_in_kernel;
 };
 
 struct soc_temp_tz {
