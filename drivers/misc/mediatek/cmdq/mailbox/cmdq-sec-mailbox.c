@@ -1693,7 +1693,6 @@ task_err_callback:
 			task->pkt->err_cb.cb(cb_data);
 
 		task->pkt->done = true;
-		task->pkt->task_alloc = false;
 		cb_data.data = task->pkt->cb.data;
 		if (task->pkt->cb.cb)
 			task->pkt->cb.cb(cb_data);
