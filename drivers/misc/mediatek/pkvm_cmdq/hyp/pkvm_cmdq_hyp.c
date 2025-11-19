@@ -1126,7 +1126,7 @@ struct TaskStruct *cmdq_pkvm_acquire_task_with_metadata(int32_t hwid_thrd,
 
 	threadID = thread - CMDQ_MIN_SECURE_THREAD_ID;
 	pTask = list_peek_head_type(&gCmdqFreeTask[hwid][threadID], struct TaskStruct, listEntry);
-	if (is_mdp_thread(hwid, thread) && !pTask && pTask->taskState == TASK_STATE_MDP_RDY) {
+	if (is_mdp_thread(hwid, thread) && pTask && pTask->taskState == TASK_STATE_MDP_RDY) {
 		/* remove task form free list*/
 		list_delete(&(pTask->listEntry));
 		CALL_FROM_OPS(puts, "select init done task");
