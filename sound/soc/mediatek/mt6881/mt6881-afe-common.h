@@ -27,7 +27,7 @@
 
 /* define SKIP_SB to skip all feature */
 #ifdef SKIP_SB
-#define SKIP_ACCDET
+/* #define SKIP_ACCDET */
 #define SKIP_SB_BTCVSD
 #define SKIP_SB_CLK
 #define SKIP_SB_DSP
