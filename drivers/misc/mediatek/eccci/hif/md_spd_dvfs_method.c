@@ -332,7 +332,7 @@ unsigned int s_task_affinity, s_rps;
 
 static inline void apply_qos_cpu_freq(void)
 {
-	unsigned int i, need_update = 0;
+	unsigned int i;
 	const struct dvfs_ref *dl_ref, *ul_ref;
 
 	dl_ref = &s_dl_dvfs_tbl[s_curr_dl_idx];
@@ -343,14 +343,10 @@ static inline void apply_qos_cpu_freq(void)
 			s_final_cpu_freq[i] = dl_ref->cx_freq[i];
 		else
 			s_final_cpu_freq[i] = ul_ref->cx_freq[i];
-
-		if (s_final_cpu_freq[i] > -1)
-			need_update = 1;
 	}
 
-	if (need_update)
-		mtk_ccci_qos_cpu_cluster_freq_update(
-				s_final_cpu_freq, MAX_C_NUM);
+	mtk_ccci_qos_cpu_cluster_freq_update(
+		s_final_cpu_freq, MAX_C_NUM);
 }
 
 static inline void apply_qos_dram_freq(void)
