@@ -910,6 +910,10 @@ static void mmprofile_log_int(mmp_event event, enum mmp_log_type type,
 		p_event = (struct mmprofile_event_t *)
 			&(p_mmprofile_ring_buffer[index]);
 	}
+
+	if (p_event == NULL)
+		return;
+
 	system_time(&(p_event->time_low), &(p_event->time_high));
 	p_event->id = event;
 	p_event->flag = type;
