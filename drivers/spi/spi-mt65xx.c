@@ -229,6 +229,22 @@ static const struct mtk_spi_compatible mt2712_compat = {
 	.must_tx = true,
 };
 
+static const struct mtk_spi_compatible mt6881_compat = {
+	.need_pad_sel = true,
+	.must_rx = false,
+	.must_tx = false,
+	.enhance_timing = true,
+	.dma_ext = true,
+	.ipm_design = true,
+	.support_quad = true,
+	.sw_cs = true,
+	.enhance_packet_len = true,
+	.slice_en = true,
+	.dummy_cycle = true,
+	.infra_req = false,
+	.hw_reset = true,
+};
+
 static const struct mtk_spi_compatible mt6858_compat = {
 	.need_pad_sel = true,
 	.must_rx = false,
@@ -403,6 +419,9 @@ static const struct of_device_id mtk_spi_of_match[] = {
 	{ .compatible = "mediatek,mt6858-spi",
 		.data = (void *)&mt6858_compat,
 	},
+	{ .compatible = "mediatek,mt6881-spi",
+		.data = (void *)&mt6881_compat,
+	},
 	{}
 };
 MODULE_DEVICE_TABLE(of, mtk_spi_of_match);
@@ -506,7 +525,7 @@ static void mtk_spi_error_dump(struct spi_controller *ctrl,
 	spin_lock_irqsave(&mdata->eh_spi_lock, flags);
 
 	if (mdata->use_spimem || ctrl->can_dma(ctrl, NULL, mdata->cur_transfer)) {
-		mt_irq_dump_status(mdata->irq);
+//		mt_irq_dump_status(mdata->irq);
 		/* timeout occurred due to no response to irq, check if IP irq bit is raised.*/
 		spi_debug("status0:0x%.8x\n", readl(mdata->base + SPI_STATUS0_REG));
 	}
