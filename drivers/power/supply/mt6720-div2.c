@@ -1114,7 +1114,7 @@ static const struct charger_properties mt6720_div2_props = {
 	.alias_name = "mt6720_div2",
 };
 
-int mt6720_div2_init_chgdev(struct mt6720_data *data)
+static int mt6720_div2_init_chgdev(struct mt6720_data *data)
 {
 	struct mt6720_div2_platform_data *pdata = dev_get_platdata(data->dev);
 
@@ -1145,8 +1145,8 @@ const struct mt6720_div2_dtprop mt6720_div2_dtprops[] = {
 	MT6720_DIV2_DTPROP("wdt-timer", wdt_tmr, F_WDT_TMR, DTPROP_U32),
 };
 
-void mt6720_div2_parse_dt_helper(struct device *dev, void *pdata,
-				 const struct mt6720_div2_dtprop *dp)
+static void mt6720_div2_parse_dt_helper(struct device *dev, void *pdata,
+					const struct mt6720_div2_dtprop *dp)
 {
 	void *val = pdata + dp->offset;
 	int ret = 0;

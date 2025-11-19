@@ -22,6 +22,8 @@
 #include "mt6379-charger.h"
 #include "ufcs_class.h"
 
+#define ROUND_UP_BASE(x, base)	((((x) + (base) - 1) / (base)) * (base))
+
 #define DEFAULT_PMIC_UVLO_MV	2000
 #define DPDM_OV_THRESHOLD_MV	3850
 
@@ -258,7 +260,6 @@ static const struct linear_range mt6379_charger_ranges[MT6379_RANGE_F_MAX] = {
 	LINEAR_RANGE_IDX(MT6379_RANGE_F_IRCMP_V, 0, 0x0, 0x14, 10),
 	LINEAR_RANGE_IDX(MT6379_RANGE_F_CHRD_UV, 2600000, 0x0, 0xB, 100000),
 };
-
 
 static struct mt6379_charger_field mt6379_charger_fields[F_MAX] = {
 	MT6379_CHARGER_FIELD(F_MREN, MT6379_REG_CORE_CTRL0, 4, 4),
@@ -886,7 +887,7 @@ static const char *const mt6379_attach_trig_names[] = {
 static void __maybe_unused mt6379_charger_check_dpdm_ov(struct mt6379_charger_data *cdata,
 							int attach)
 {
-	struct chgdev_notify *mtk_chg_noti = &(cdata->chgdev->noti);
+	struct chgdev_notify *mtk_chg_noti = &cdata->chgdev->noti;
 	int ret = 0, vdp = 0, vdm = 0;
 
 	if (attach == ATTACH_TYPE_NONE)
@@ -1141,9 +1142,6 @@ static inline int __maybe_unused mt6379_get_bat2_vbat_monitor(struct mt6379_char
 	return mt6379_get_vbat_monitor(cdata, MT6379_BATPRO_SRC_VBAT_MON2, vbat_mon_val);
 }
 
-static const struct linear_range mt6720_ibus_aicr_range;
-static const struct linear_range mt6720_vbus_mivr_range;
-
 static int mt6379_fsw_control(struct mt6379_charger_data *cdata);
 static int mt6379_charger_get_property(struct power_supply *psy, enum power_supply_property psp,
 				       union power_supply_propval *val)
@@ -1164,18 +1162,12 @@ static int mt6379_charger_get_property(struct power_supply *psy, enum power_supp
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
 		return mt6379_charger_field_get(cdata, F_CC, &val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
-		if (cdata->id == CHARGER_ID_MT6720)
-			val->intval = linear_range_get_max_value(&mt6720_ibus_aicr_range);
-		else
-			val->intval = linear_range_get_max_value(&mt6379_charger_ranges[MT6379_RANGE_F_CC]);
+		val->intval = linear_range_get_max_value(mt6379_charger_fields[F_CC].range);
 		return 0;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
 		return mt6379_charger_field_get(cdata, F_CV, &val->intval);
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE_MAX:
-		if (cdata->id == CHARGER_ID_MT6720)
-			val->intval = linear_range_get_max_value(&mt6720_vbus_mivr_range);
-		else
-			val->intval = linear_range_get_max_value(&mt6379_charger_ranges[MT6379_RANGE_F_CV]);
+		val->intval = linear_range_get_max_value(mt6379_charger_fields[F_CV].range);
 		return 0;
 	case POWER_SUPPLY_PROP_INPUT_CURRENT_LIMIT:
 		return mt6379_charger_field_get(cdata, F_IBUS_AICR, &val->intval);
@@ -1221,7 +1213,6 @@ static int mt6379_charger_get_property(struct power_supply *psy, enum power_supp
 	}
 }
 
-#define ROUND_UP_BASE(x, base)	((((x) + (base) - 1) / (base)) * (base))
 static int mt6379_charger_set_property(struct power_supply *psy, enum power_supply_property psp,
 				       const union power_supply_propval *val)
 {
@@ -1272,7 +1263,7 @@ static int mt6379_charger_set_property(struct power_supply *psy, enum power_supp
 		if (ret)
 			dev_info(cdata->dev, "%s, set F_IBUS_AICR failed\n", __func__);
 
-		if (cdata->enable_fsw && (value != aicr)) {
+		if (cdata->enable_fsw && value != aicr) {
 			dev_info(cdata->dev, "%s, new aicr = %d, old aicr = %d\n",
 				 __func__, aicr, value);
 			cdata->fsw_check_nr = 0;
@@ -1689,7 +1680,7 @@ static int mt6379_check_diff_between_icc_and_gauge_ibat(struct mt6379_charger_da
 		*valid &= current_valid;
 
 		dev_info(dev, "%s, cnt:%d %s, ICC(%d uA)  - gauge ibat(%d uA) = %d uA\n",
-			 __func__, i + 1, current_valid ? "ok": "ng",
+			 __func__, i + 1, current_valid ? "ok" : "ng",
 			 (int)icc, gauge_ibat, diff_val);
 
 		mdelay(MT6379_READ_GAUGE_INTERVAL_MS);
@@ -1961,7 +1952,7 @@ static ssize_t current_icc_offset_step_show(struct device *dev, struct device_at
 static DEVICE_ATTR_RO(current_icc_offset_step);
 
 static ssize_t icc_cali_mode_store(struct device *dev, struct device_attribute *attr,
-					 const char *buf, size_t count)
+				   const char *buf, size_t count)
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
 	unsigned long magic = 0;
@@ -1998,8 +1989,8 @@ static ssize_t icc_cali_mode_show(struct device *dev, struct device_attribute *a
 static DEVICE_ATTR_RW(icc_cali_mode);
 
 static ssize_t force_set_icc_offset_step_store(struct device *dev,
-						    struct device_attribute *attr,
-						    const char *buf, size_t count)
+					       struct device_attribute *attr,
+					       const char *buf, size_t count)
 {
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
 	int ret = 0, offset = 0;
@@ -2858,8 +2849,8 @@ const struct mt6379_charger_dtprop mt6379_charger_dtprops[] = {
 	MT6379_CHG_DTPROP("nr-port", nr_port, F_MAX, DTPROP_U32),
 };
 
-void mt6379_charger_parse_dt_helper(struct device *dev, void *pdata,
-				    const struct mt6379_charger_dtprop *dp)
+static void mt6379_charger_parse_dt_helper(struct device *dev, void *pdata,
+					   const struct mt6379_charger_dtprop *dp)
 {
 	void *val = pdata + dp->offset;
 	int ret = 0;
@@ -3150,7 +3141,7 @@ static void mt6379_fsw_control_func(struct work_struct *work)
 
 static enum alarmtimer_restart mt6379_chg_alarm_call(struct alarm *alarm, ktime_t now)
 {
-	struct mt6379_charger_data *cdata = container_of(alarm, struct mt6379_charger_data , alarm);
+	struct mt6379_charger_data *cdata = container_of(alarm, struct mt6379_charger_data, alarm);
 
 	schedule_work(&cdata->fsw_control_work);
 	return ALARMTIMER_NORESTART;
@@ -3477,7 +3468,6 @@ static irqreturn_t mt6379_fl_bc12_dn_handler(int irq, void *data)
 	bool toggle_by_ufcs = false;
 	const char *attach_name;
 	int attach = 0;
-
 
 	mutex_lock(&cdata->attach_lock);
 	attach = atomic_read(&cdata->attach[0]);

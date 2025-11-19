@@ -204,7 +204,7 @@ enum mt6379_fg_rg_list {
 	MT6379_REG_FGADC_ZCV_CON2,			/* 0xB0 */
 	MT6379_REG_FGADC_ZCV_CON3,			/* 0xB2 */
 	MT6379_REG_FGADC_ZCVTH_CON0,			/* 0xB6 */
-	MT6379_REG_FGADC_R_CON0	,			/* 0xE5 */
+	MT6379_REG_FGADC_R_CON0,			/* 0xE5 */
 	MT6379_REG_FGADC_CUR_CON0,			/* 0xE7	: CIC1 output */
 	MT6379_REG_FGADC_CUR_CON3,			/* 0xED	: CIC2 output */
 	MT6379_REG_FGADC_GAIN_CON0,			/* 0xF6	: sw gain err sel */
@@ -1085,7 +1085,7 @@ static int reg_to_current(struct mtk_gauge *gauge, unsigned int regval)
 #else
 	temp_value = div_s64(temp_value, 100000);
 #endif
-	retval = (unsigned int) temp_value;
+	retval = (unsigned int)temp_value;
 
 	bm_trace(gauge->gm, "[%s]regval:0x%x,uvalue16:0x%x,dvalue:0x%x,temp_value:0x%x,retval:0x%x,is_charging:%d\n",
 		 __func__, regval, uvalue16, dvalue, (int)temp_value, retval, is_charging);
@@ -4485,7 +4485,7 @@ static int mt6379_sysfs_create_group(struct mtk_gauge *gauge)
 	return sysfs_create_group(&gauge->psy->dev.kobj, &mt6379_sysfs_attr_group);
 }
 
-signed int battery_meter_meta_tool_cali_car_tune(struct mtk_battery *gm, int meta_current)
+static signed int battery_meter_meta_tool_cali_car_tune(struct mtk_battery *gm, int meta_current)
 {
 	struct mtk_gauge *gauge = gm->gauge;
 	struct mt6379_priv *priv = container_of(gauge, struct mt6379_priv, gauge);

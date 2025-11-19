@@ -38,7 +38,7 @@ extern unsigned int dbg_log_level;
 			dev_info(dev, fmt, ##__VA_ARGS__);		\
 			break;						\
 		}							\
-	} while(0)
+	} while (0)
 
 #define M_TO_U(val)			((val) * 1000)
 #define U_TO_M(val)			((val) / 1000)
@@ -120,7 +120,6 @@ extern unsigned int dbg_log_level;
 
 #define MT6379_REG_FGADC_SYS_INFO_CON0	(0x7F9)
 #define MT6379_REG_FGADC_SYS_INFO_CON2	(0x7FD)
-
 
 #define MT6720_REG_VSYS_INTB		(0x19)
 #define MT6720_REG_CHG_IBUS_AICR	(0x10A)
@@ -417,9 +416,13 @@ struct mt6379_charger_data {
 	struct work_struct fsw_control_work;
 	struct alarm alarm;
 	struct mutex attach_lock;
+	//cv_lock: protecting change CV Level
 	struct mutex cv_lock;
+	//tm_lock: protecting enter/exit test mode
 	struct mutex tm_lock;
+	//pe_lock: protecting running PE
 	struct mutex pe_lock;
+	//ramp_lock: protecting ramp setting control
 	struct mutex ramp_lock;
 	unsigned int irq_nums[MT6379_IRQ_MAX];
 	bool batprotect_en;
@@ -446,6 +449,7 @@ struct mt6379_charger_data {
 
 	bool enable_fsw;
 	bool enable_fon_osc;
+	//icc_trim_lock: protecting icc trim control
 	struct mutex icc_trim_lock;
 	bool icc_needs_trim;
 	bool icc_trimmed;
