@@ -511,6 +511,7 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 	uint32_t panel_height;
 	int mode_id;
 	struct mtk_dbi_count_hw_param *count_param;
+	static int _cnt;
 
 	if (!mtk_crtc->dbi_data.support)
 		return;
@@ -528,6 +529,7 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 	session_id = mtk_get_session_id(&mtk_crtc->base);
 	mtk_dbi_count_srt_cal(dbi_count, enable, slice_num);
 	if (enable) {
+		_cnt = 0;
 		if (atomic_read(&mtk_crtc->dbi_data.disable_finish) == 1) {
 			/* enable again*/
 			if (mtk_crtc->dbi_data.slice_idx >= mtk_crtc->dbi_data.slice_num) {
@@ -535,7 +537,8 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 				mtk_crtc->dbi_data.slice_num = slice_num;
 				mtk_crtc->dbi_data.real_idx = slice_size;
 				count_data->buffer_time += count_data->current_freq * 1000;
-				DBI_COUNT_INFO("%d %d\n", count_data->buffer_time, count_data->buffer_cfg.sw_timer_ms);
+				DBI_COUNT_INFO("buffer_time %d sw_timer_ms %d _cnt %d\n",
+					count_data->buffer_time, count_data->buffer_cfg.sw_timer_ms, _cnt);
 				if (count_data->buffer_time >= count_data->buffer_cfg.sw_timer_ms){
 					count_data->buffer_time = 0;
 					CRTC_MMP_MARK(0, dbi_merge, 0, 0);
@@ -575,8 +578,8 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 					count_data->current_freq * 1000, count_data->count_buffer.iova, count_param);
 			CRTC_MMP_MARK(crtc_index, dbi_trigger, (unsigned long)mtk_crtc->dbi_data.real_idx,
 				(unsigned long)((mtk_crtc->dbi_data.slice_num << 16) | mtk_crtc->dbi_data.slice_idx));
-			DBI_COUNT_INFO("%d %d %d\n", mtk_crtc->dbi_data.slice_idx,
-				mtk_crtc->dbi_data.slice_num, mtk_crtc->dbi_data.real_idx);
+			DBI_COUNT_INFO("slice_idx %d slice_num %d real_idx %d cnt %d\n", mtk_crtc->dbi_data.slice_idx,
+				mtk_crtc->dbi_data.slice_num, mtk_crtc->dbi_data.real_idx, _cnt);
 			mtk_crtc->dbi_data.slice_idx++;
 			mtk_crtc->dbi_data.real_idx++;
 			if(mtk_crtc->dbi_data.real_idx >= mtk_crtc->dbi_data.slice_num)
@@ -599,10 +602,14 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 				session_id, mtk_crtc->dbi_data.fence_idx);
 			mtk_crtc->dbi_data.fence_unreleased = 0;
 		}
-		if(!atomic_read(&mtk_crtc->dbi_data.disable_finish)){
+		if(_cnt >= 1 && !atomic_read(&mtk_crtc->dbi_data.disable_finish)){
+			DBI_COUNT_INFO("disable cnt %d\n", _cnt);
+			cmdq_pkt_write(handle, dbi_count->cmdq_base,
+				dbi_count->regs_pa + REG_DBI_COUNT_UDMA_W_EN, 0, ~0);
 			atomic_set(&mtk_crtc->dbi_data.disable_finish, 1);
 			wake_up_all(&mtk_crtc->dbi_data.disable_finish_wq);
 		}
+		_cnt++;
 	}
 
 	dbi_timer = &mtk_crtc->dbi_data.dbi_timer;
