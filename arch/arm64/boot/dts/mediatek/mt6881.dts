@@ -8007,7 +8007,7 @@
 			gpueb-diagnosis-mode = <0>;
 		};
 
-		gpufreq: gpufreq@3a000000 {
+		gpufreq: gpufreq@3a500000 {
 			compatible = "mediatek,gpufreq";
 			reg =
 				<0 0x3a500000 0 0x10000>, /* MFG_TOP_CONFIG */
@@ -9623,6 +9623,10 @@
 #include "mediatek/mt6368.dtsi"
 #include "mediatek/cust_mt6881_msdc.dtsi"
 
+&mt6363_vbuck2 {
+	regulator-always-on;
+};
+
 &mt6363_vbuck4 {
 	regulator-always-on;
 };
@@ -9673,6 +9677,10 @@
 
 /* Add regulator-read-only for CPU nodes */
 &mt6363_vsram_cpub {
+	regulator-read-only;
+};
+
+&mt6363_vsram_cpum {
 	regulator-read-only;
 };
 
