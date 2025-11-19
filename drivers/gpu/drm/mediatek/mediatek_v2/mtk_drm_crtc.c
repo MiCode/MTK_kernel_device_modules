@@ -470,6 +470,9 @@ void set_bif_enable(struct drm_crtc *crtc, bool en, int line)
 	if (!mtk_crtc->bif_info)
 		return;
 
+	if (!mtk_crtc->bif_info->bif_init)
+		return;
+
 	if (en)
 		mtk_crtc->bif_info->bif_enable = priv->bif_support_mode;
 	else {
@@ -510,6 +513,9 @@ int bif_enabled(struct drm_crtc *crtc)
 
 	priv = crtc->dev->dev_private;
 	if (!priv)
+		return en;
+
+	if (bif_mode < 0)
 		return en;
 
 	mtk_crtc = to_mtk_crtc(crtc);
@@ -5320,6 +5326,9 @@ void mtk_crtc_update_bif_roi(struct mtk_drm_crtc *mtk_crtc)
 		return;
 	}
 
+	if (!mtk_crtc->bif_info->bif_init)
+		return;
+
 	bif_info = mtk_crtc->bif_info;
 	w = (crtc->state->adjusted_mode.hdisplay == 0)?bif_info->lcm_width:crtc->state->adjusted_mode.hdisplay;
 	h = (crtc->state->adjusted_mode.vdisplay == 0)?bif_info->lcm_height:crtc->state->adjusted_mode.vdisplay;
@@ -5338,7 +5347,7 @@ void mtk_crtc_update_bif_roi(struct mtk_drm_crtc *mtk_crtc)
 	/* w/ dsc, 3:dsc_compress_rate */
 	bif_info->src_roi.width = w_dsc + bif_info->wdma_offset;
 	bif_info->src_roi.height = h;
-	DDPINFO("%s,{%dx%d:%d)\n", __func__,
+	DDPBIF("%s,{%dx%d:%d)\n", __func__,
 		bif_info->src_roi.width, bif_info->src_roi.height, bif_info->wdma_offset);
 
 	if (unlikely(bif_mode)) {
@@ -17757,6 +17766,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	mtk_crtc_divide_default_path_by_rsz(mtk_crtc);
 
 	if (mtk_crtc->bif_info) {
+		mtk_crtc->bif_info->bif_init = true;
 		mtk_crtc_update_bif_roi(mtk_crtc);
 
 		if (bif_enabled(crtc)) {
