@@ -3801,7 +3801,7 @@ irqreturn_t mtk_dpc_disp_irq_handler(int irq, void *dev_id)
 	u32 status, merge_status;
 	irqreturn_t ret = IRQ_NONE;
 
-	if (IS_ERR_OR_NULL(priv))
+	if (IS_ERR_OR_NULL(priv) || !dbg_irq)
 		return IRQ_HANDLED;
 
 	if (dpc_pm_ctrl(true, __func__)) {
@@ -3938,7 +3938,7 @@ irqreturn_t mtk_dpc_mml_irq_handler(int irq, void *dev_id)
 	irqreturn_t ret = IRQ_NONE;
 	unsigned int val = 0;
 
-	if (IS_ERR_OR_NULL(priv))
+	if (IS_ERR_OR_NULL(priv) || !dbg_irq)
 		return IRQ_HANDLED;
 
 	if (dpc_pm_ctrl(true, __func__)) {
