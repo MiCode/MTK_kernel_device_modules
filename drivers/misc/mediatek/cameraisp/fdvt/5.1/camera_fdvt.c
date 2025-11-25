@@ -195,7 +195,7 @@ struct FDVT_CLK_STRUCT fdvt_clk;
 #define FDVT_DEV_NAME "camera-fdvt"
 //#define EP_NO_CLKMGR // GASPER ADD
 #define BYPASS_REG (0)
-/* #define FDVT_WAITIRQ_LOG */
+#define FDVT_WAITIRQ_LOG
 #define FDVT_USE_GCE
 /* #define FDVT_DEBUG_USE */
 #define DUMMY_FDVT (0)
@@ -2483,7 +2483,7 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
 		//cmdq_dump_pkt(normal_pkt, 0, true);
 		log_dbg("[NORMAL THREAD] cmdq_pkt_flush_async+\n");
 		cmdq_pkt_flush_async(normal_pkt, FDVTCmdqNorCB, NULL);	/* flush and destry in cmdq*/
-		log_dbg("[NORMAL THREAD] cmdq_pkt_flush_async-: %d\n");
+		log_dbg("[NORMAL THREAD] cmdq_pkt_flush_async-\n");
 		cmdq_pkt_wait_complete(normal_pkt);
 		cmdq_pkt_destroy(normal_pkt);
 	/* cmdq_dump_pkt(pkt, 0, true); */
@@ -3251,14 +3251,11 @@ static signed int fdvt_wait_irq(FDVT_WAIT_IRQ_STRUCT *wait_irq)
 	}
 
 #ifdef FDVT_WAITIRQ_LOG
-	log_inf("before wait_event:Tout(%d), clear(%d), type(%d), IrqStat(0x%08X),
-		WaitStat(0x%08X), usrKey(%d)\n",
-		wait_irq->timeout, wait_irq->clear, wait_irq->type,
-	irqStatus, wait_irq->status, wait_irq->user_key);
-	log_inf("before wait_event:ProcID(%d), FdvtIrq(0x%08X), WriteReq(0x%08X),
-		ReadReq(0x%08X), which_req(%d)\n",
+	log_inf("before wait_event:Tout(%d), IrqStat(0x%08X), WaitStat(0x%08X), usrKey(%d)\n",
+		wait_irq->timeout, irqStatus, wait_irq->status, wait_irq->user_key);
+	log_inf("before wait_event:ProcID(%d), FdvtIrq(0x%08X), WriteReq(0x%08X), ReadReq(0x%08X)\n",
 		wait_irq->process_id, fdvt_info.irq_info.fdvt_irq_cnt,
-		fdvt_info.write_req_idx, fdvt_info.read_req_idx, which_req);
+		fdvt_info.write_req_idx, fdvt_info.read_req_idx);
 #endif
 
 	/* 2. start to wait signal */
@@ -3358,16 +3355,11 @@ static signed int fdvt_wait_irq(FDVT_WAIT_IRQ_STRUCT *wait_irq)
 		}
 
 #ifdef FDVT_WAITIRQ_LOG
-		log_inf("no timeout:Tout(%d), clr(%d), type(%d), IrqStat(0x%08X),
-			WaitStat(0x%08X), usrKey(%d)\n",
-			wait_irq->timeout, wait_irq->clear,
-			wait_irq->type, irqStatus, wait_irq->status,
-			wait_irq->user_key);
-		log_inf("no timeout:ProcID(%d),FdvtIrq(0x%08X), WriteReq(0x%08X),
-			ReadReq(0x%08X),which_req(%d)\n",
+		log_inf("no timeout:Tout(%d), IrqStat(0x%08X), WaitStat(0x%08X), usrKey(%d)\n",
+			wait_irq->timeout, irqStatus, wait_irq->status, wait_irq->user_key);
+		log_inf("no timeout:ProcID(%d),FdvtIrq(0x%08X), WriteReq(0x%08X), ReadReq(0x%08X)\n",
 			wait_irq->process_id, fdvt_info.irq_info.fdvt_irq_cnt,
-			fdvt_info.write_req_idx, fdvt_info.read_req_idx,
-			which_req);
+			fdvt_info.write_req_idx, fdvt_info.read_req_idx);
 #endif
 
 #ifdef __FDVT_KERNEL_PERFORMANCE_MEASURE__
