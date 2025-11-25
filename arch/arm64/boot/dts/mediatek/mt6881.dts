@@ -487,18 +487,18 @@
 	};
 
 	clkchk {
-		//compatible = "mediatek,mt6881-clkchk";
+		compatible = "mediatek,mt6881-clkchk";
 		//interrupts = <GIC_SPI 395 IRQ_TYPE_LEVEL_HIGH 0>;
 		//interrupt-names = "hwv_irq";
 	};
 
 	pdchk {
-		//compatible = "mediatek,mt6881-pdchk";
+		compatible = "mediatek,mt6881-pdchk";
 		//interrupts = <GIC_SPI 395 IRQ_TYPE_LEVEL_HIGH 0>;
 		//interrupt-names = "hwv_irq";
 	};
 	clocks {
-		//compatible = "clk-ftrace";
+		compatible = "clk-ftrace";
 		clk26m: clk26m {
 			compatible = "fixed-clock";
 			#clock-cells = <0>;
@@ -676,29 +676,28 @@
 		compatible = "mediatek,mt6881-scpsys", "syscon";
 		reg = <0 0x1c001000 0 0x1000>;
 		#power-domain-cells = <1>;
-		//genpd pre-clk settings comment for bringup AO
-		//clocks = <&cksys_reg_clk CLK_CKSYS_REG_AUD_INTBUS_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_DISP0_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_MMINFRA_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_MMUP_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_IMG1_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_VDEC_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_VENC_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_IPE_SEL>,
-		//	<&cksys_reg_clk CLK_CKSYS_REG_CAM_SEL>,
-		//	<&dispsys_config_clk CLK_MM_SMI_COMMON_GENPD>,
-		//	<&mdpsys_config_clk CLK_MDP_SMI0_GENPD>;
-		//clock-names = "audio_0",
-		//	"dis0_0",
-		//	"mm_infra_0",
-		//	"mm_proc_0",
-		//	"img1_0",
-		//	"vde0_0",
-		//	"ven0_0",
-		//	"ipe_0",
-		//	"cam_0",
-		//	"dis0-0",
-		//	"dis0_lp-0";
+		clocks = <&cksys_reg_clk CLK_CKSYS_REG_AUD_INTBUS_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_DISP0_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_MMINFRA_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_MMUP_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_IMG1_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_VDEC_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_VENC_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_IPE_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_CAM_SEL>,
+			<&dispsys_config_clk CLK_MM_SMI_COMMON_GENPD>,
+			<&mdpsys_config_clk CLK_MDP_SMI0_GENPD>;
+		clock-names = "audio_0",
+			"dis0_0",
+			"mm_infra_0",
+			"mm_proc_0",
+			"img1_0",
+			"vde0_0",
+			"ven0_0",
+			"ipe_0",
+			"cam_0",
+			"dis0-0",
+			"dis0_lp-0";
 		//genpd buck for isp-vcore and cam-vcore comment for bringup AO
 		//isp-vcore-supply = <&mt6363_vbuck1>
 		//cam-vcore-supply = <&mt6363_vbuck1>
@@ -10590,7 +10589,7 @@
 /* PMIC TODO: add pmic-lvsys-notify after bring up */
 
 #include "mediatek/mt6881-clkitg.dtsi"
-// #include "mediatek/mt6881-disable-unused.dtsi"
+#include "mediatek/mt6881-disable-unused.dtsi"
 
 &i2c6 {
 	gate_ic: gate-ic@11 {
