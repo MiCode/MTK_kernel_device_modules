@@ -313,13 +313,18 @@ static void enable_mmio_trap(struct mtk_iommu_device *dev)
 static void map_dev(struct mtk_iommu_device *dev)
 {
 	struct mtk_iommu_reg *reg;
+	unsigned long va = 0UL;
+	int ret;
 
 	for (u32 i = 0; i < MAX_BANK; i++) {
 		if (!dev->bank_reg[i].reg_base)
 			break;
 
 		reg = &dev->bank_reg[i];
-		reg->base_va = mod_ops->hyp_va(reg->reg_base);
+		ret = mod_ops->create_private_mapping(reg->reg_base, reg->reg_size,
+				PAGE_HYP_DEVICE, &va);
+		if (!ret)
+			reg->base_va = (void *)va;
 #if (DEBUG_IOMMU)
 		MOD_PUTS3("map_dev", i, reg->reg_base, reg->base_va);
 #endif
