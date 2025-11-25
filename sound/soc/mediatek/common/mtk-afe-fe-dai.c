@@ -649,8 +649,10 @@ int mtk_afe_fe_hw_free(struct snd_pcm_substream *substream,
 	 * To prevent the audio server from unexpectedly terminating and leaving
 	 * the memory interface open, ensure that the memory interface is
 	 * disabled before it is freed.
+	 *
+	 * need to set memif disable for adsp unexpectedly recovery
 	 */
-	if (is_afe_need_triggered(memif)) {
+	if (is_afe_need_triggered(memif) || memif->use_adsp_share_mem) {
 		regmap_read(afe->regmap, memif->data->enable_reg, &reg);
 		if (reg & BIT(memif->data->enable_shift)) {
 			dev_err(afe->dev, "%s: %s(%d) was not disabled before being freed",
