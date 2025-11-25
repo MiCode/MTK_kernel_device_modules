@@ -113,6 +113,8 @@ static struct mtk_afe_adda_priv *get_adda_priv_by_name(struct mtk_base_afe *afe,
 	else if (strncmp(name, "aud_dl1_dac_hires_clk", 21) == 0 ||
 		 strncmp(name, "aud_ul1_adc_hires_clk", 21) == 0)
 		dai_id = MT6993_DAI_ADDA_CH34;
+	else if (strncmp(name, "aud_ul2_adc_hires_clk", 21) == 0)
+		dai_id = MT6993_DAI_ADDA_CH56;
 	else
 		return NULL;
 
@@ -449,6 +451,7 @@ static int mtk_adda_ul_event(struct snd_soc_dapm_widget *w,
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	struct mt6993_afe_private *afe_priv = afe->platform_priv;
 	int mtkaif_dmic = afe_priv->mtkaif_dmic;
+	int mtkaif_adda6_only = afe_priv->mtkaif_adda6_only;
 
 	dev_info(afe->dev, "%s(), name %s, event 0x%x, mtkaif_dmic %d\n",
 		 __func__, w->name, event, mtkaif_dmic);
@@ -469,6 +472,17 @@ static int mtk_adda_ul_event(struct snd_soc_dapm_widget *w,
 					   0x0);
 			mtk_adda_ul_src_dmic(afe, MT6993_DAI_ADDA);
 		}
+
+		/* when using adda6 without adda enabled,
+		 * RG_ADDA6_MTKAIF_RX_SYNC_WORD2_DISABLE_SFT need to be set or
+		 * data cannot be received.
+		 */
+		if (mtkaif_adda6_only) {
+			regmap_update_bits(afe->regmap,
+					   AFE_MTKAIF1_RX_CFG2,
+					   RG_MTKAIF1_RXIF_SYNC_WORD1_DISABLE_MASK_SFT,
+					   0x1);
+		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
@@ -477,6 +491,13 @@ static int mtk_adda_ul_event(struct snd_soc_dapm_widget *w,
 
 		/* reset dmic */
 		afe_priv->mtkaif_dmic = 0;
+
+		if (mtkaif_adda6_only) {
+			regmap_update_bits(afe->regmap,
+					   AFE_MTKAIF1_RX_CFG2,
+					   RG_MTKAIF1_RXIF_SYNC_WORD1_DISABLE_MASK_SFT,
+					   0x0);
+		}
 		break;
 	default:
 		break;
@@ -1519,6 +1540,8 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul0_adc_hires_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul1_adc_clk"),
 	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul1_adc_hires_clk"),
+	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul2_adc_clk"),
+	SND_SOC_DAPM_CLOCK_SUPPLY("aud_ul2_adc_hires_clk"),
 #endif
 };
 
