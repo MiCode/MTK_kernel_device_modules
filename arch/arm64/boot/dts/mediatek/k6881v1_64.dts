@@ -160,7 +160,7 @@
 		};
 	};
 	panel2@1 {
-	    compatible = "jdi,nt36672e,vdo,60hz";
+	    compatible = "jdi,nt36672e,vdo,120hz,frameratev5";
 		reg = <1>;
 		pm-enable-gpios = <&pio 135 0>;
 		reset-gpios = <&pio 60 0>;
