@@ -16,7 +16,7 @@
 #include <linux/pm_domain.h>
 #include <linux/delay.h>
 #include <linux/clk.h>
-#include <mt-plat/mtk-vmm-avs-mt6993.h>
+#include <mt-plat/mtk-vmm-avs-isp8s.h>
 #include <soc/mediatek/mmdvfs_v3.h>
 #include <mt-plat/mtk-vmm-notifier.h>
 #include <linux/of_address.h>
@@ -421,6 +421,7 @@ EXPORT_SYMBOL_GPL(vmm_cvfs_dump);
 static int vmm_locked_buck_ctrl(bool enable)
 {
 	int ret = 0;
+
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 	int pre_cnt = vmm_user_counter;
 
@@ -448,11 +449,12 @@ static int vmm_locked_buck_ctrl(bool enable)
 int mtk_vmm_ctrl_dbg_use(bool enable)
 {
 	int ret = 0;
+
 #if IS_ENABLED(CONFIG_MTK_HWCCF)
 	int vote_val;
 
 
-	ISP_LOGI("[%s][%d] vmm mtk_vmm_ctrl_dbg_use[%u]", __func__, __LINE__, enable);
+	ISP_LOGI("[%s][%d] vmm [%u]", __func__, __LINE__, enable);
 
 	vote_val = MUX_PARSE_VOTE(0, enable);
 	ISP_LOGI("vote: 0x%0x", vote_val);
@@ -1357,6 +1359,7 @@ static unsigned int vmm_cal_cross_avs20_phase1(unsigned int OPP)
 static void vmm_compare_cross_floor_phase1(bool enable_avs)
 {
 	unsigned int degrade = 0;
+
 	if (enable_avs == false)
 		return;
 
@@ -1414,6 +1417,7 @@ static int vmm_compare_ceiling(unsigned int OPP, unsigned int vol, unsigned int 
 static int vmm_cvfs_reg_show(struct seq_file *m, void *v)
 {
 	unsigned int recover_degrade = 0;
+
 	vmm_regs.vmm_efuse_va = ioremap(0x10165A00, 0x200);
 	vmm_regs.vmm_cvfs_va = ioremap(0x31AC4000, 0x1000);
 

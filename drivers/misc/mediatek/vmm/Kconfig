@@ -1,5 +1,14 @@
 # SPDX-License-Identifier: GPL-2.0
 
+config MTK_VMM_NOTIFIER_DUMMY
+	tristate "MediaTek VMM Notifier driver dummy"
+	help
+	  This driver is for the Multimedia Infrastructure in MediaTek SoCs.
+	  The VMM notifier driver mainly help to nofify MM MCU that camera
+	  related mtcmos status. If one of camera mtcmos is on, VMM DVFS has
+	  limitation of adjusting voltage, therefore notify camera mtcmos
+	  status is necessary for sake of hardware stability.
+
 config MTK_VMM_NOTIFIER
 	tristate "MediaTek VMM Notifier driver"
 	help
@@ -18,11 +27,17 @@ config MTK_VMM_NOTIFIER_MT6991
 	  limitation of adjusting voltage, therefore notify camera mtcmos
 	  status is necessary for sake of hardware stability.
 
-config MTK_VMM_NOTIFIER_MT6993
-	tristate "MediaTek VMM Notifier driver MT6993"
+config MTK_VMM_NOTIFIER_ISP8S
+	tristate "MediaTek VMM Notifier driver ISP8S"
 	help
-	  This driver is for the Multimedia Infrastructure in MediaTek SoCs.
-	  The VMM notifier driver mainly help to nofify MM MCU that camera
-	  related mtcmos status. If one of camera mtcmos is on, VMM DVFS has
-	  limitation of adjusting voltage, therefore notify camera mtcmos
-	  status is necessary for sake of hardware stability.
+	  This option enables the MediaTek VMM (Voltage Management Module) notifier driver for ISP8S.
+	  The driver is used in MediaTek SoCs to support the Multimedia Infrastructure, specifically
+	  for camera-related MTCMOS (Multi-Threshold CMOS) power management.
+
+	  When any camera MTCMOS is powered on, the VMM DVFS (Dynamic Voltage and Frequency Scaling)
+	  module must limit voltage adjustments to ensure hardware stability. This driver notifies
+	  the MM MCU (Multimedia Microcontroller Unit) about the status of camera MTCMOS, allowing
+	  the system to safely manage voltage and power states.
+
+	  If you are using a MediaTek SoC with ISP8S and require camera power management integration
+	  with VMM DVFS, enable this option. Otherwise, you can disable it.

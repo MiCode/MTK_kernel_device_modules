@@ -28,8 +28,9 @@ filegroup(
 )
 
 PLATFORMS = [
+    "dummy",
     "mt6991",
-    "mt6993",
+    "isp8s",
 ]
 
 define_mgk_ddk_ko(
@@ -56,7 +57,7 @@ define_mgk_ddk_ko(
 )
 
 [define_mgk_ddk_ko(
-    name = "mtk-vmm-notifier-{}".format(p),
+    name = "mtk-vmm-notifier-{}".format("mt6993" if p == "isp8s" else p),
     includes = [
         ".",
     ],
