@@ -95,16 +95,36 @@ static ssize_t mgmt_inframpu_protection_fops_write(struct file *file, const char
 	return count;
 }
 
-/* Define proc_ops: *_proc_show function will be called when file is opened */
-#define DEFINE_PROC_FOPS_RO(name)			\
+static ssize_t mgmt_smmu_protection_fops_write(struct file *file, const char __user *buffer,
+			  size_t count, loff_t *data)
+{
+	long cmd;
+	int ret;
+
+	cmd = fops_write(file, buffer, count, data);
+	if (cmd) {
+		ret = pkvm_el2_mod_call(hyp_pmm_debug_hypmmu_hcall, ENABLE_SMMU_PROTECTION);
+		if (ret == 0)
+			protection_status[SMMU_PROTECTION] = true;
+	} else {
+		ret = pkvm_el2_mod_call(hyp_pmm_debug_hypmmu_hcall, DISABLE_SMMU_PROTECTION);
+		if (ret == 0)
+			protection_status[SMMU_PROTECTION] = false;
+	}
+
+	return count;
+}
+
+#define DEFINE_PROC_WRITE_FOPS(name)			\
 	static const struct proc_ops name = {			\
 		.proc_read		= seq_read,		\
 		.proc_write		= name ## _write,	\
 	}
 
-DEFINE_PROC_FOPS_RO(mgmt_cpu_protection_fops);
-DEFINE_PROC_FOPS_RO(mgmt_gpu_protection_fops);
-DEFINE_PROC_FOPS_RO(mgmt_inframpu_protection_fops);
+DEFINE_PROC_WRITE_FOPS(mgmt_cpu_protection_fops);
+DEFINE_PROC_WRITE_FOPS(mgmt_gpu_protection_fops);
+DEFINE_PROC_WRITE_FOPS(mgmt_inframpu_protection_fops);
+DEFINE_PROC_WRITE_FOPS(mgmt_smmu_protection_fops);
 
 static bool is_loading_hypmmu(void)
 {
@@ -133,7 +153,9 @@ static int mgmt_dump_show(struct seq_file *s, void *v)
 	if (is_loading_hypmmu()) {
 		seq_printf(s, "GPU       : %d\n", protection_status[GPU_PROTECTION]);
 		seq_printf(s, "INFRA-MPU : %d\n", protection_status[INFRA_MPU_PROTECTION]);
-	}
+	} else
+		seq_printf(s, "SMMU : %d\n", protection_status[SMMU_PROTECTION]);
+
 
 	pkvm_el2_mod_call(hyp_pmm_debug_hypmmu_hcall, DUMP_PROTECTION_STATUS);
 
@@ -161,8 +183,11 @@ static int mgmt_create_debug_entry(void)
 	root_dir = proc_mkdir("pkvm_mgmt", NULL);
 	debug_root = proc_mkdir("debug", root_dir);
 	proc_create_data("cpu", 0664, debug_root, &mgmt_cpu_protection_fops, NULL);
-	proc_create_data("gpu", 0664, debug_root, &mgmt_gpu_protection_fops, NULL);
-	proc_create_data("infra-mpu", 0664, debug_root, &mgmt_inframpu_protection_fops, NULL);
+	if (is_loading_hypmmu()) {
+		proc_create_data("gpu", 0664, debug_root, &mgmt_gpu_protection_fops, NULL);
+		proc_create_data("infra-mpu", 0664, debug_root, &mgmt_inframpu_protection_fops, NULL);
+	} else
+		proc_create_data("smmu", 0664, debug_root, &mgmt_smmu_protection_fops, NULL);
 	proc_create_data("dump_protection_status", 0664, debug_root, &mgmt_dump_protection, NULL);
 
 	return 0;

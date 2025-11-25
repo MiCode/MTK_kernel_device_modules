@@ -323,6 +323,14 @@ void hyp_pmm_debug_hypmmu(struct user_pt_regs *regs)
 		dis_name = "infra-mpu";
 		enabled = true;
 		break;
+	case DISABLE_SMMU_PROTECTION:
+		dis_name = "mtk-smmu";
+		enabled = false;
+		break;
+	case ENABLE_SMMU_PROTECTION:
+		dis_name = "mtk-smmu";
+		enabled = true;
+		break;
 	case DUMP_PROTECTION_STATUS:
 		dis_name = "";
 		break;

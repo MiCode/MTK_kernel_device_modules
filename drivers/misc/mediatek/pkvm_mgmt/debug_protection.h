@@ -12,6 +12,8 @@ enum mgmt_command {
 	ENABLE_GPU_PROTECTION        = 4,
 	DISABLE_INFRA_MPU_PROTECTION = 5,
 	ENABLE_INFRA_MPU_PROTECTION  = 6,
+	DISABLE_SMMU_PROTECTION      = 7,
+	ENABLE_SMMU_PROTECTION       = 8,
 	DUMP_PROTECTION_STATUS       = 9,
 	INVALID_COMMAND              = 10,
 };
@@ -20,7 +22,8 @@ enum protection_type {
 	CPU_PROTECTION       = 0,
 	GPU_PROTECTION       = 1,
 	INFRA_MPU_PROTECTION = 2,
-	TOTAL_PROTECTION     = 3,
+	SMMU_PROTECTION      = 3,
+	TOTAL_PROTECTION     = 4,
 };
 
 int debug_protection_init(void);
