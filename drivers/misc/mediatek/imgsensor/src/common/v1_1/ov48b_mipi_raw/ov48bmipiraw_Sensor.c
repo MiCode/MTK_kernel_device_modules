@@ -713,7 +713,6 @@ static void sensor_init(void)
 	ov48b2q_table_write_cmos_sensor(
 		addr_data_pair_init_ov48b2q,
 		sizeof(addr_data_pair_init_ov48b2q) / sizeof(kal_uint16));
-	LOG_INF("%s end\n", __func__);
 }
 
 static void preview_setting(void)
@@ -1610,9 +1609,6 @@ static kal_uint32 set_video_mode(UINT16 framerate)
 static kal_uint32 set_auto_flicker_mode(kal_bool enable,
 			UINT16 framerate)
 {
-	pr_debug("enable = %d, framerate = %d\n",
-		enable, framerate);
-
 	spin_lock(&imgsensor_drv_lock);
 	if (enable) //enable auto flicker
 		imgsensor.autoflicker_en = KAL_TRUE;
