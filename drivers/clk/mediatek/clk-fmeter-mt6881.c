@@ -98,7 +98,7 @@ static struct fmeter_data subsys_fm[] = {
 };
 
 const char *comp_list[] = {
-	[FM_CKSYS_REG] = "mediatek,mt6881-cksys_reg",
+	[FM_CKSYS_REG] = "mediatek,mt6881-topckgen",
 	[FM_APMIXEDSYS] = "mediatek,mt6881-apmixedsys",
 	[FM_VLP_CKSYS_TOP] = "mediatek,mt6881-vlp_cksys_top",
 	[FM_ARMPLL_LL] = "mediatek,mt6881-armpll_ll_pll_ctrl",

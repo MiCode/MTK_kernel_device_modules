@@ -494,6 +494,7 @@ static void dump_subsys_reg(unsigned int id)
 }
 
 unsigned int pd_list[] = {
+	MT6881_CHK_PD_CONN,
 	MT6881_CHK_PD_AUDIO,
 	MT6881_CHK_PD_ISP_MAIN,
 	MT6881_CHK_PD_ISP_DIP1,

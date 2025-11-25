@@ -14,7 +14,7 @@
 
 #include <dt-bindings/clock/mt6881-clk.h>
 
-#define MT_CCF_BRINGUP		1 //FIXME
+#define MT_CCF_BRINGUP		0
 
 /* Regular Number Definition */
 #define INV_OFS			-1

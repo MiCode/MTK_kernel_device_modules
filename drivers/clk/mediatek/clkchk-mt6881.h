@@ -8,7 +8,7 @@
 #define __DRV_CLKCHK_MT6881_H
 
 // Bypass CLK/PWR check before suspend is ready
-#define BYPASS_SUSPEND_CLK_PWR_CHK	0
+#define BYPASS_SUSPEND_CLK_PWR_CHK	1
 
 enum chk_sys_id {
 	cksys_reg = 0,
