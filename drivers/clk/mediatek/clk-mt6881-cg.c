@@ -1994,12 +1994,23 @@ static const struct mtk_gate_regs mminfra_config0_cg_regs = {
 	.sta_ofs = 0x100,
 };
 
+static const struct mtk_gate_regs mminfra_config0_hwv_regs = {
+	.set_ofs = 0x0000,
+	.clr_ofs = 0x0004,
+	.sta_ofs = 0x1C00,
+};
+
 static const struct mtk_gate_regs mminfra_config1_cg_regs = {
 	.set_ofs = 0x114,
 	.clr_ofs = 0x118,
 	.sta_ofs = 0x110,
 };
 
+static const struct mtk_gate_regs mminfra_config1_hwv_regs = {
+	.set_ofs = 0x0008,
+	.clr_ofs = 0x000C,
+	.sta_ofs = 0x1C04,
+};
 #define GATE_MMINFRA_CONFIG0(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -2015,6 +2026,18 @@ static const struct mtk_gate_regs mminfra_config1_cg_regs = {
 		.parent_name = _parent,		 \
 	}
 
+#define GATE_HWV_MMINFRA_CONFIG0(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "hw-voter-regmap",				\
+		.regs = &mminfra_config0_cg_regs,			\
+		.hwv_regs = &mminfra_config0_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER,				\
+	}
 #define GATE_MMINFRA_CONFIG1(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -2030,22 +2053,34 @@ static const struct mtk_gate_regs mminfra_config1_cg_regs = {
 		.parent_name = _parent,		 \
 	}
 
+#define GATE_HWV_MMINFRA_CONFIG1(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "hw-voter-regmap",				\
+		.regs = &mminfra_config1_cg_regs,			\
+		.hwv_regs = &mminfra_config1_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER,				\
+	}
 static const struct mtk_gate mminfra_config_clks[] = {
 	/* MMINFRA_CONFIG0 */
-	GATE_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_D, "mminfra_gce_d",
+	GATE_HWV_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_D, "mminfra_gce_d",
 			"cksys_mminfra_ck"/* parent */, 0),
 	GATE_MMINFRA_CONFIG0_V(CLK_MMINFRA_GCE_D_GCE, "mminfra_gce_d_gce",
-			"mminfra_gce_d"/* parent */),
-	GATE_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_M, "mminfra_gce_m",
+		"mminfra_gce_d"/* parent */),
+	GATE_HWV_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_M, "mminfra_gce_m",
 			"cksys_mminfra_ck"/* parent */, 1),
 	GATE_MMINFRA_CONFIG0_V(CLK_MMINFRA_GCE_M_GCE, "mminfra_gce_m_gce",
-			"mminfra_gce_m"/* parent */),
-	GATE_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_M2, "mminfra_gce_m2",
+		"mminfra_gce_m"/* parent */),
+	GATE_HWV_MMINFRA_CONFIG0(CLK_MMINFRA_GCE_M2, "mminfra_gce_m2",
 			"cksys_mminfra_ck"/* parent */, 4),
 	GATE_MMINFRA_CONFIG0_V(CLK_MMINFRA_GCE_M2_GCE, "mminfra_gce_m2_gce",
 			"mminfra_gce_m2"/* parent */),
 	/* MMINFRA_CONFIG1 */
-	GATE_MMINFRA_CONFIG1(CLK_MMINFRA_GCE_26M, "mminfra_gce_26m",
+	GATE_HWV_MMINFRA_CONFIG1(CLK_MMINFRA_GCE_26M, "mminfra_gce_26m",
 			"cksys_mminfra_ck"/* parent */, 17),
 	GATE_MMINFRA_CONFIG1_V(CLK_MMINFRA_GCE_26M_GCE, "mminfra_gce_26m_gce",
 			"mminfra_gce_26m"/* parent */),
@@ -2060,6 +2095,12 @@ static const struct mtk_gate_regs pericfg_ao_reg0_cg_regs = {
 	.set_ofs = 0x24,
 	.clr_ofs = 0x28,
 	.sta_ofs = 0x10,
+};
+
+static const struct mtk_gate_regs pericfg_ao_reg0_hwv_regs = {
+	.set_ofs = 0x0010,
+	.clr_ofs = 0x0014,
+	.sta_ofs = 0x1C08,
 };
 
 static const struct mtk_gate_regs pericfg_ao_reg1_cg_regs = {
@@ -2089,6 +2130,18 @@ static const struct mtk_gate_regs pericfg_ao_reg2_cg_regs = {
 		.parent_name = _parent,		 \
 	}
 
+#define GATE_HWV_PERICFG_AO_REG0(_id, _name, _parent, _shift) {	\
+		.id = _id,						\
+		.name = _name,						\
+		.parent_name = _parent,					\
+		.hwv_comp = "hw-voter-regmap",				\
+		.regs = &pericfg_ao_reg0_cg_regs,			\
+		.hwv_regs = &pericfg_ao_reg0_hwv_regs,		\
+		.shift = _shift,					\
+		.ops = &mtk_clk_gate_ops_hwv,				\
+		.dma_ops = &mtk_clk_gate_ops_setclr,			\
+		.flags = CLK_USE_HW_VOTER,				\
+	}
 #define GATE_PERICFG_AO_REG1(_id, _name, _parent, _shift) {	\
 		.id = _id,				\
 		.name = _name,				\
@@ -2161,35 +2214,35 @@ static const struct mtk_gate pericfg_ao_reg_clks[] = {
 			"cksys_disp_pwm_ck"/* parent */, 9),
 	GATE_PERICFG_AO_REG0_V(CLK_PERICFG_AO_REG_PERI_DISP_PWM1_DISP_PWM_1, "peri_ao_disp_pwm1_disp_pwm_1",
 			"peri_ao_disp_pwm1"/* parent */),
-	GATE_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI0_B, "peri_ao_spi0_b",
+	GATE_HWV_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI0_B, "peri_ao_spi0_b",
 			"cksys_spi0_ck"/* parent */, 10),
 	GATE_PERICFG_AO_REG0_V(CLK_PERICFG_AO_REG_PERI_SPI0_B_SPI, "peri_ao_spi0_b_spi",
 			"peri_ao_spi0_b"/* parent */),
-	GATE_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI1_B, "peri_ao_spi1_b",
+	GATE_HWV_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI1_B, "peri_ao_spi1_b",
 			"cksys_spi1_ck"/* parent */, 11),
 	GATE_PERICFG_AO_REG0_V(CLK_PERICFG_AO_REG_PERI_SPI1_B_SPI, "peri_ao_spi1_b_spi",
 			"peri_ao_spi1_b"/* parent */),
-	GATE_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI2_B, "peri_ao_spi2_b",
+	GATE_HWV_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI2_B, "peri_ao_spi2_b",
 			"cksys_spi2_ck"/* parent */, 12),
 	GATE_PERICFG_AO_REG0_V(CLK_PERICFG_AO_REG_PERI_SPI2_B_SPI, "peri_ao_spi2_b_spi",
 			"peri_ao_spi2_b"/* parent */),
-	GATE_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI3_B, "peri_ao_spi3_b",
+	GATE_HWV_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI3_B, "peri_ao_spi3_b",
 			"cksys_spi3_ck"/* parent */, 13),
 	GATE_PERICFG_AO_REG0_V(CLK_PERICFG_AO_REG_PERI_SPI3_B_SPI, "peri_ao_spi3_b_spi",
 			"peri_ao_spi3_b"/* parent */),
-	GATE_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI4_B, "peri_ao_spi4_b",
+	GATE_HWV_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI4_B, "peri_ao_spi4_b",
 			"cksys_spi4_ck"/* parent */, 14),
 	GATE_PERICFG_AO_REG0_V(CLK_PERICFG_AO_REG_PERI_SPI4_B_SPI, "peri_ao_spi4_b_spi",
 			"peri_ao_spi4_b"/* parent */),
-	GATE_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI5_B, "peri_ao_spi5_b",
+	GATE_HWV_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI5_B, "peri_ao_spi5_b",
 			"cksys_spi5_ck"/* parent */, 15),
 	GATE_PERICFG_AO_REG0_V(CLK_PERICFG_AO_REG_PERI_SPI5_B_SPI, "peri_ao_spi5_b_spi",
 			"peri_ao_spi5_b"/* parent */),
-	GATE_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI6_B, "peri_ao_spi6_b",
+	GATE_HWV_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI6_B, "peri_ao_spi6_b",
 			"cksys_spi6_ck"/* parent */, 16),
 	GATE_PERICFG_AO_REG0_V(CLK_PERICFG_AO_REG_PERI_SPI6_B_SPI, "peri_ao_spi6_b_spi",
 			"peri_ao_spi6_b"/* parent */),
-	GATE_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI7_B, "peri_ao_spi7_b",
+	GATE_HWV_PERICFG_AO_REG0(CLK_PERICFG_AO_REG_PERI_SPI7_B, "peri_ao_spi7_b",
 			"cksys_spi7_ck"/* parent */, 17),
 	GATE_PERICFG_AO_REG0_V(CLK_PERICFG_AO_REG_PERI_SPI7_B_SPI, "peri_ao_spi7_b_spi",
 			"peri_ao_spi7_b"/* parent */),
