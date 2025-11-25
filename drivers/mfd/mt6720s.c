@@ -40,7 +40,9 @@
 
 #define MT6720_IRQEVT_RGCNT		14
 #define MT6720_IRQNSPARSE_RGCNT		27
-#define MT6720_VENDOR_ID		0x70
+#define MT6720_VID_UMC			0x70
+#define MT6720_VID_PSMC			0x60
+#define MT6720_VID_R12C			0x50
 #define MT6720_WRRD_WAIT_US		8
 #define MT6720_DEFAULT_SVID		0x0E
 
@@ -480,7 +482,10 @@ static int mt6720_probe(struct spmi_device *sdev)
 		return ret;
 	}
 
-	if ((ven_id & MT6720_VENID_MASK) != MT6720_VENDOR_ID) {
+	dev_info(dev, "%s, MT6720 dev_info: 0x%02x\n", __func__, ven_id);
+
+	ven_id &= MT6720_VENID_MASK;
+	if (ven_id != MT6720_VID_UMC && ven_id != MT6720_VID_PSMC && ven_id != MT6720_VID_R12C) {
 		dev_info(dev, "Incorrect vendor id (0x%02x)\n", ven_id);
 		return -ENODEV;
 	}

@@ -34,7 +34,9 @@
 
 #define MT6720_IRQEVT_RGCNT	14
 #define MT6720_IRQNSPARSE_RGCNT	27
-#define MT6720_VENDOR_ID	0x70
+#define MT6720_VID_UMC		0x70
+#define MT6720_VID_PSMC		0x60
+#define MT6720_VID_R12C		0x50
 #define MT6720_MAX_I2C_ADDR	10
 #define MT6720_MAX_ADDRLEN	2
 #define MT6720_I2C_TM_BANKID	3
@@ -398,7 +400,10 @@ static int mt6720_probe(struct i2c_client *i2c)
 	if (ret)
 		return dev_err_probe(dev, ret, "Failed to read device information\n");
 
-	if ((ven_id & MT6720_VENID_MASK) != MT6720_VENDOR_ID)
+	dev_info(dev, "%s, MT6720 dev_info: 0x%02x\n", __func__, ven_id);
+
+	ven_id &= MT6720_VENID_MASK;
+	if (ven_id != MT6720_VID_UMC && ven_id != MT6720_VID_PSMC && ven_id != MT6720_VID_R12C)
 		return dev_err_probe(dev, -ENODEV, "Incorrect vendor id (0x%02x)\n", ven_id);
 
 	ret = mt6720_register_interrupt(info);
