@@ -5473,6 +5473,7 @@ int mtk_crtc_user_cmd_impl(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 	bool is_ccorr_type = false;
 	int index = 0;
 	int ret = 0;
+	bool blank_locked = false;
 
 	if ((!crtc) || (!comp)) {
 		DDPPR_ERR("%s:%d, invalid arg:(0x%p,0x%p)\n",
@@ -5499,6 +5500,9 @@ int mtk_crtc_user_cmd_impl(struct drm_crtc *crtc, struct mtk_ddp_comp *comp,
 		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 		if (index == 0)
 			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
+	} else if (index == 0 && mtk_crtc->crtc_blank) {
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
+		blank_locked = true;
 	}
 
 	if (!mtk_crtc->enabled) {
@@ -5614,7 +5618,8 @@ out2:
 		if (index == 0)
 			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-	}
+	} else if (index == 0 && blank_locked)
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 
 	return ret;
 }

@@ -11506,6 +11506,8 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 	DDP_PROFILE("[PROFILE] %s+\n", __func__);
 	DDP_COMMIT_LOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	if (crtc_idx == 0)
+		DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 
 	if (!mtk_crtc->enabled) {
 		DDPPR_ERR("%s: crtc is not enabled!\n", __func__);
@@ -11613,6 +11615,8 @@ int mtk_drm_ioctl_retrig(struct drm_device *dev, void *data,
 
 retrig_end:
 	CRTC_MMP_EVENT_END((int)drm_crtc_index(crtc), retrig, 0, 0);
+	if (crtc_idx == 0)
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 	DDP_COMMIT_UNLOCK(&private->commit.lock, __func__, retrig->present_fence_idx);
 	DDP_PROFILE("[PROFILE] %s-\n", __func__);

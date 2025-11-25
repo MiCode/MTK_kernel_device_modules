@@ -1154,15 +1154,21 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 		cb_data->cmdq_handle = pq_cmdq_handle;
 		cb_data->misc = need_wait_done;
 
-		if (user_lock)
+		if (user_lock) {
 			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+			if (index == 0)
+				DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
+		}
 
 		if (!(mtk_crtc->enabled)) {
 			DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
 			cmdq_pkt_destroy(pq_cmdq_handle);
 			kfree(cb_data);
-			if (user_lock)
+			if (user_lock) {
+				if (index == 0)
+					DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 				DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+			}
 			if (need_wait_done) {
 				need_wait_done = false;
 				atomic_set(&pq_data->cfg_done, 1);
@@ -1200,6 +1206,8 @@ int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_han
 
 		if (user_lock) {
 			mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+			if (index == 0)
+				DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->blank_lock, __func__, __LINE__, false);
 			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 		}
 
