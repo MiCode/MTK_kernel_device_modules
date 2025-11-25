@@ -85,7 +85,8 @@
 			    androidboot.hardware=mt6881 \
 			    vmalloc=400M swiotlb=noforce cma=64M \
 			    firmware_class.path=/vendor/firmware \
-			    kvm-arm.mode=none \
+			    kvm-arm.protected_prefault=9 \
+			    kvm-arm.protected_modules=pkvm_mgmt \
 			    maxcpus=5";
 	};
 
@@ -9938,7 +9939,7 @@
 	};
 
 	pkvm: pkvm {
-		status = "disabled";
+		status = "okay";
 	};
 
 	battery_manager: battery-manager {
