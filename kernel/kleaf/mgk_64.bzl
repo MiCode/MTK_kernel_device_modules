@@ -1626,6 +1626,7 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-mt6879":"mt6879",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-isp":"mt6983 mt6895 mt6879",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-isp8s":"mt6993",
+	"//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-hsf-dummy":"mt6881",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:cam-isp7_1-ut":"mt6983 mt6895 mt6879",
     "//vendor/mediatek/kernel_modules/mtkcam/camsys:mtk-cam-plat-util":"mt6983 mt6895 mt6879",
     "//vendor/mediatek/kernel_modules/mtkcam/ccusys:mtk_ccuv":"mt6993 mt6991 mt6983 mt6879 mt6895",
