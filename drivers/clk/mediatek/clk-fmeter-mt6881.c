@@ -16,14 +16,22 @@
 #define FM_TIMEOUT			30
 #define SUBSYS_PLL_NUM			4
 #define VLP_FM_WAIT_TIME		40	/* ~= 38.64ns * 1023 */
-
+#define FM_RST_BITS			(1 << 15)
 #define FM_PLL_CK			0
+/* cksys fm setting */
+#define FM_PLL_TST_CK			0
 #define FM_PLL_CKDIV_CK			1
+
 #define FM_CKDIV_SHIFT			(7)
 #define FM_CKDIV_MASK			GENMASK(10, 7)
 #define FM_POSTDIV_SHIFT		(24)
 #define FM_POSTDIV_MASK			GENMASK(26, 24)
 #define FM_TEST_CLK_EN			(1 << 15)
+/* subsys fm setting */
+#define SUBSYS_CKDIV_EN			(1 << 16)
+#define SUBSYS_TST_EN			((1 << 12) | (1 << 19))
+#define SUBSYS_CKDIV_SHIFT			(7)
+#define SUBSYS_CKDIV_MASK			GENMASK(10, 7)
 
 static DEFINE_SPINLOCK(meter_lock);
 #define fmeter_lock(flags)   spin_lock_irqsave(&meter_lock, flags)
@@ -86,7 +94,7 @@ static struct fmeter_data subsys_fm[] = {
 	[FM_ARMPLL_LL] = {FM_ARMPLL_LL, "fm_armpll_ll",
 		MCU_CPU0_PLL1U_PLL_CON0, MCU_CPU0_PLL1U_PLL_CON1,
 		MCU_CPU0_PLL1U_FQMTR_CON0, MCU_CPU0_PLL1U_FQMTR_CON1},
-	[FM_ARMPLL_BL] = {FM_ARMPLL_LL, "fm_armpll_bl",
+	[FM_ARMPLL_BL] = {FM_ARMPLL_BL, "fm_armpll_bl",
 		MCU_CPU1_PLL1U_PLL_CON0, MCU_CPU1_PLL1U_PLL_CON1,
 		MCU_CPU1_PLL1U_FQMTR_CON0, MCU_CPU1_PLL1U_FQMTR_CON1},
 	[FM_BUSPLL] = {FM_BUSPLL, "fm_buspll",
@@ -262,6 +270,10 @@ static const struct fmeter_clk fclks[] = {
 	FMCLK2(VLPCK, FM_APXGPT_26M_CK, "fm_apxgpt_26m_ck", 0x0038, 31, 1),
 	FMCLK2(VLPCK, FM_KP_IRQ_GEN_CK, "fm_kp_irq_gen_ck", 0x0044, 7, 1),
 	/* SUBSYS Part */
+	FMCLK(SUBSYS, FM_ARMPLL_LL, "fm_armpll_ll", 1),
+	FMCLK(SUBSYS, FM_ARMPLL_BL, "fm_armpll_bl", 1),
+	FMCLK(SUBSYS, FM_BUSPLL, "fm_buspll", 1),
+	FMCLK(SUBSYS, FM_PTPPLL, "fm_ptppll", 1),
 	{},
 };
 
@@ -425,26 +437,41 @@ static int __mt_get_freq(unsigned int ID, int type)
 
 /* implement ckgen&abist api (example as below) */
 
+
 static int __mt_get_freq2(unsigned int  type, unsigned int id)
 {
+	void __iomem *pll_con0 = fm_base[type] + subsys_fm[type].pll_con0;
+	void __iomem *pll_con1 = fm_base[type] + subsys_fm[type].pll_con1;
 	void __iomem *con0 = fm_base[type] + subsys_fm[type].con0;
 	void __iomem *con1 = fm_base[type] + subsys_fm[type].con1;
-	unsigned int temp;
+	unsigned int temp, clk_div = 1, post_div = 1, ckdiv_en = -1;
 	unsigned long flags;
+
 	int output = 0, i = 0;
 
 	fmeter_lock(flags);
 
-	/* PLL4H_FQMTR_CON1[15]: rst 1 -> 0 */
-	clk_writel(con0, clk_readl(con0) & 0xFFFF7FFF);
-	/* PLL4H_FQMTR_CON1[15]: rst 0 -> 1 */
-	clk_writel(con0, clk_readl(con0) | 0x8000);
+	if (type != FM_VLP_CKSYS_TOP) {
+		// check ckdiv_en
+		if (clk_readl(pll_con0) & SUBSYS_CKDIV_EN)
+			ckdiv_en = 1;
+		// pll con0[19] = 1, pll con0[16] = 1, pll con0[12] = 1
+		// select pll_ckdiv, enable pll_ckdiv, enable test clk
+		clk_writel(pll_con0, (clk_readl(pll_con0) | (SUBSYS_CKDIV_EN | SUBSYS_TST_EN)));
+	}
+	if (type == FM_VLP_CKSYS_TOP) {
+		/* PLL4H_FQMTR_CON1[15]: rst 1 -> 0 */
+		clk_writel(con0, clk_readl(con0) & 0xFFFF7FFF);
+		/* PLL4H_FQMTR_CON1[15]: rst 0 -> 1 */
+		clk_writel(con0, clk_readl(con0) | 0x8000);
+	}
 
 	/* sel fqmtr_cksel */
 	if (type == FM_VLP_CKSYS_TOP)
 		clk_writel(con0, (clk_readl(con0) & 0xFFE0FFFF) | (id << 16));
 	else
 		clk_writel(con0, (clk_readl(con0) & 0x00FFFFF8) | (id << 0));
+
 	/* set ckgen_load_cnt to 1024 */
 	clk_writel(con1, (clk_readl(con1) & 0xFC00FFFF) | (0x1FF << 16));
 
@@ -474,12 +501,26 @@ static int __mt_get_freq2(unsigned int  type, unsigned int id)
 	temp = clk_readl(con1) & 0xFFFF;
 	output = ((temp * 26000)) / 512; // Khz
 
-	clk_writel(con0, 0x8000);
+	if (type != FM_VLP_CKSYS_TOP) {
+		clk_div = (clk_readl(pll_con0) & SUBSYS_CKDIV_MASK) >> SUBSYS_CKDIV_SHIFT;
+		if (ckdiv_en)
+			clk_writel(pll_con0, (clk_readl(pll_con0) & ~(SUBSYS_TST_EN)));
+		else
+			clk_writel(pll_con0, (clk_readl(pll_con0)
+				& ~(SUBSYS_CKDIV_EN | SUBSYS_TST_EN)));
+	}
+
+	if (clk_div == 0)
+		clk_div = 1;
+
+	if (type != FM_VLP_CKSYS_TOP)
+		post_div = 1 << ((clk_readl(pll_con1) & FM_POSTDIV_MASK) >> FM_POSTDIV_SHIFT);
+
+	clk_writel(con0, FM_RST_BITS);
 
 	fmeter_unlock(flags);
 
-	/* Fmeter is div by 4 */
-	return (output * 4);
+	return (output * 4 * clk_div) / post_div;
 }
 
 static unsigned int mt6881_get_ckgen_freq(unsigned int ID)
@@ -508,7 +549,7 @@ static unsigned int mt6881_get_subsys_freq(unsigned int ID)
 
 	subsys_fmeter_lock(flags);
 
-	output = __mt_get_freq2(ID, FM_PLL_CKDIV_CK);
+	output = __mt_get_freq2(ID, FM_PLL_TST_CK);
 
 	subsys_fmeter_unlock(flags);
 
