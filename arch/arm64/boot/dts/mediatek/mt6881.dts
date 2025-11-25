@@ -9871,6 +9871,16 @@
 			iommus = <&apu_iommu0 M4U_PORT_L50_APU_CODE>;
 		};
 
+		mdla {
+			#address-cells = <2>;
+			#size-cells = <2>;
+			compatible = "mediatek, mdla-rv";
+			core-num = <1>;
+			version = <0x68810505>;
+			dma-ranges = <0x0 0x0 0x0 0x0 0x1 0x0>;
+			iommus = <&apu_iommu0 M4U_PORT_L50_APU_CODE>;
+		};
+
 		mali: mali@3a000000 {
 			compatible = "mediatek,mali", "arm,mali-valhall";
 			reg = <0 0x3a000000 0 0x480000>;
