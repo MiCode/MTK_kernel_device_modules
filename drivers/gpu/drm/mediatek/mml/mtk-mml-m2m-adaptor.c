@@ -1539,6 +1539,7 @@ static int m2m_queue_init(void *priv,
 	src_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	src_vq->dev = mmu_dev;
 	src_vq->lock = &ctx->q_mutex;
+	src_vq->bidirectional = 1;
 
 	ret = vb2_queue_init(src_vq);
 	if (ret)
@@ -1553,6 +1554,7 @@ static int m2m_queue_init(void *priv,
 	dst_vq->timestamp_flags = V4L2_BUF_FLAG_TIMESTAMP_COPY;
 	dst_vq->dev = mmu_dev;
 	dst_vq->lock = &ctx->q_mutex;
+	dst_vq->bidirectional = 1;
 
 	return vb2_queue_init(dst_vq);
 }
