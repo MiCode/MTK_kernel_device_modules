@@ -31,6 +31,7 @@
 #define CODEC_SYS_DEBUG_SIZE (1024 * 32)
 
 static unsigned int bypass_vant18;
+static unsigned int bypass_zcd;
 
 static ssize_t mt6369_codec_sysfs_read(struct file *filep, struct kobject *kobj,
 				       struct bin_attribute *attr,
@@ -307,6 +308,10 @@ static void zcd_enable(struct mt6369_priv *priv, bool enable, int device)
 {
 	dev_info(priv->dev, "%s(), enable: %d, device: %d\n",
 			 __func__, enable, device);
+	if(bypass_zcd) {
+		dev_info(priv->dev, "%s(), bypass zcd enable\n",__func__);
+		enable = 0;
+	}
 	if (enable) {
 		switch (device) {
 		case DEVICE_RCV:
@@ -7446,6 +7451,13 @@ static int mt6369_parse_dt(struct mt6369_priv *priv)
 	}
 
 	dev_info(dev, "%s() bypass-vant18 = %d\n", __func__, bypass_vant18);
+
+	/* get bypass zcd */
+	ret = of_property_read_u32(np, "mediatek,bypass-zcd", &bypass_zcd);
+	if (ret) {
+		dev_info(dev, "%s() not setting bypass_zcd, default not bypass\n",__func__);
+		bypass_zcd = 0;
+	}
 
 	/* get mic type */
 	ret = of_property_read_u32(np, "mediatek,dmic-mode",
