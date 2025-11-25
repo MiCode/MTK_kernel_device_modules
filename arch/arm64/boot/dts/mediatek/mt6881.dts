@@ -6029,7 +6029,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		reg = <0 0x15230000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm0 0>;
 		mediatek,larb-id = <11>;
-		mediatek,smi-ssc-ostdl = <&smi_mdp_sub_comm1 0>;
+		mediatek,smi-ssc-ostdl = <&smi_mdp_sub_comm1 1>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
 			 <&wpe_eis_dip1_clk CLK_WPE_EIS_DIP1_LARB_U0_SMI>;
@@ -6066,7 +6066,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		reg = <0 0x15720000 0 0x1000>;
 		mediatek,smi-supply = <&smi_img_sub_comm0 0>;
 		mediatek,larb-id = <28>;
-		mediatek,smi-ssc-ostdl = <&smi_mdp_sub_comm1 0>;
+		mediatek,smi-ssc-ostdl = <&smi_mdp_sub_comm1 1>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
 			 <&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>;
