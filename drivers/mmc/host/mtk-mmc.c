@@ -4331,12 +4331,14 @@ static int msdc_of_clock_parse(struct platform_device *pdev,
 	int ret = 0;
 
 	host->src_clk = devm_clk_get(&pdev->dev, "source");
-	if (IS_ERR(host->src_clk))
+	if (IS_ERR(host->src_clk)) {
+		dev_info(&pdev->dev, "Cannot get source clk\n");
 		return PTR_ERR(host->src_clk);
+	}
 
 	host->h_clk = devm_clk_get(&pdev->dev, "hclk");
 	if (IS_ERR(host->h_clk))
-		return PTR_ERR(host->h_clk);
+		host->h_clk = NULL;
 
 	host->bus_clk = devm_clk_get_optional(&pdev->dev, "bus_clk");
 	if (IS_ERR(host->bus_clk))
