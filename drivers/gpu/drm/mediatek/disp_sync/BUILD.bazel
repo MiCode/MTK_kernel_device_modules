@@ -28,22 +28,18 @@ filegroup(
 
 define_mgk_ddk_ko(
     name = "mtk_disp_sync",
-    srcs = [],
-    conditional_srcs = {
-       "CONFIG_MTK_DISP_SYNC": {
-            True: ["disp_sync.c"],
-        },
-    },
+    srcs = ["disp_sync.c",],
     hdrs = glob([
         "**/*.h",
     ]),
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
-        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/v1",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2",
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2/v1:mediatek_drm_v1".format(kernel_version),
+	"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_sync".format(kernel_version),
     ],
 )
 

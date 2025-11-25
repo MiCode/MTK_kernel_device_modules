@@ -696,7 +696,7 @@ static int  disp_sync_probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, disp_sync);
 
 
-	my_class =  class_create(THIS_MODULE, "disp_sync");
+	my_class =  class_create("disp_sync");
 	if (IS_ERR(my_class)) {
 		cdev_del(disp_sync_dev);
 		unregister_chrdev_region(disp_sync_dev_no, 1);
@@ -712,7 +712,7 @@ static int  disp_sync_probe(struct platform_device *pdev)
 	return 0;
 }
 
-static int  disp_sync_remove(struct platform_device *pdev)
+static void  disp_sync_remove(struct platform_device *pdev)
 {
 	struct mtk_disp_sync *priv_data = platform_get_drvdata(pdev);
 
@@ -721,8 +721,6 @@ static int  disp_sync_remove(struct platform_device *pdev)
     // Unregister the character device
 	cdev_del(disp_sync_dev);
 	unregister_chrdev_region(disp_sync_dev_no, 1);
-
-	return 0;
 }
 
 static const struct of_device_id disp_sync_driver_dt_match[] = {

@@ -223,6 +223,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
         "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
         "//kernel_device_modules-{}/drivers/interconnect/mediatek:mmqos-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/virtio_disp:virtio_disp".format(kernel_version),
         "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
     ] +
     (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]

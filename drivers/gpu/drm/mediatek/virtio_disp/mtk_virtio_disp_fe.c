@@ -312,13 +312,20 @@ EXPORT_SYMBOL(virtio_disp_cmd_submit);
 
 static int virtio_disp_probe(struct virtio_device *vdev)
 {
-	vq_callback_t *vq_cbs[VIRTIO_DISP_Q_COUNT] = {
-			disp_cmd_done,
-			disp_evt_done
-	};
-	const char *names[VIRTIO_DISP_Q_COUNT] = { "command", "event" };
 	struct virtio_disp *disp;
 	int err = -EINVAL;
+	struct virtqueue_info vq_config[VIRTIO_DISP_Q_COUNT] = {
+		{
+			.callback = disp_cmd_done,
+			.name = "command",
+			.ctx = false,
+		},
+		{
+			.callback = disp_evt_done,
+			.name = "event",
+			.ctx = false,
+		},
+	};
 
 	disp = kzalloc(sizeof(*disp), GFP_KERNEL);
 	if (!disp)
@@ -329,8 +336,7 @@ static int virtio_disp_probe(struct virtio_device *vdev)
 	spin_lock_init(&disp->cmd_lock);
 	spin_lock_init(&disp->evt_lock);
 
-	err = virtio_find_vqs(vdev, VIRTIO_DISP_Q_COUNT, disp->vqs, vq_cbs, names,
-			      NULL);
+	err = virtio_find_vqs(vdev, VIRTIO_DISP_Q_COUNT, disp->vqs, vq_config, NULL);
 	if (err)
 		goto err;
 

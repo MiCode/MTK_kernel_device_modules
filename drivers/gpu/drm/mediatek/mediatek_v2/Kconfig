@@ -117,3 +117,4 @@ config MTK_SE_SUPPORT
 	  reduce the driver's footprint.
 
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_edp/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/v1/mtk_drm_auto/Kconfig"
