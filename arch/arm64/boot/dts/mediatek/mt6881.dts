@@ -11180,6 +11180,26 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		interrupts = <GIC_SPI 486 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
+	connscp: connscp {
+		compatible = "mediatek,mt8875-conn_scp";
+
+		/* batching */
+		report-region-idx = <3>;
+		report-buf-addr = <0>;
+		report-buf-size = <0>;
+		batch-region-idx = <9>;
+
+		ipi-mbox-size = <64>;
+
+		/* dfd */
+		dfd-region-idx = <4>;
+		dfd-cmd-addr = <0>;
+		dfd-cmd-size = <0>;
+		dfd-value-addr = <0>;
+		dfd-value-size = <0>;
+		dfd-value-region-size = <0x3000>;
+	};
+
 	connsys_emi_config: connsys-emi-config {
 		/* emi layout settings */
 		emi-alignment = <0x1000000>;
@@ -11267,6 +11287,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mt6376-gpio = <&pio 105 0>,
 				<&pio 106 0>;
 		interrupts = <105 IRQ_TYPE_EDGE_FALLING>;
+		status = "disabled";
 	};
 
 	pkvm: pkvm {
