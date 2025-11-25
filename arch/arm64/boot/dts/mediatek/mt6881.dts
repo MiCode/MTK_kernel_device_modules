@@ -23,6 +23,8 @@
 #include <dt-bindings/mfd/mt6720.h>
 #include <dt-bindings/power/mt6375-gauge.h>
 #include <dt-bindings/reset/ti-syscon.h>
+#include <dt-bindings/memory/mtk-smi-user.h>
+
 
 / {
 	model = "MT6881";
@@ -4080,6 +4082,464 @@
 			<&mminfra_config_clk CLK_MMINFRA_GCE_M2_GCE>,
 			<&mminfra_config_clk CLK_MMINFRA_GCE_26M_GCE>;
 		clock-names = "clk0", "clk1", "clk2", "clk3";
+	};
+
+	smi_ssc0_smi_sub_common: smi-ssc0-smi-sub-common@1e807000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x1e807000 0 0x1000>;
+		mediatek,common-id = <3>;
+		init-power-on;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+		smi-user-id = <MTK_SMI_MMINFRA>;
+	};
+
+	smi_ssc1_smi_sub_common: smi-ssc1-smi-sub-common@1e808000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x1e808000 0 0x1000>;
+		mediatek,common-id = <4>;
+		init-power-on;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+		smi-user-id = <MTK_SMI_MMINFRA>;
+	};
+
+	smi_disp_common: smi-disp-common@1e801000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon";
+		reg = <0 0x1e801000 0 0x1000>;
+		mediatek,smi-supply = <&smi_ssc0_smi_sub_common 0 &smi_ssc1_smi_sub_common 0>;
+		mediatek,common-id = <0>;
+		init-power-on;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+		smi-common;
+		smi-user-id = <MTK_SMI_MMINFRA>;
+	};
+
+	smi_mdp_sub_comm0: smi-mdp-sub-comm0@1e809000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x1e809000 0 0x1000>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,common-id = <9>;
+		init-power-on;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+		smi-user-id = <MTK_SMI_MMINFRA>;
+	};
+
+	smi_mdp_sub_comm1: smi-mdp-sub-comm1@1e80a000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x1e80a000 0 0x1000>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,common-id = <10>;
+		init-power-on;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+		smi-user-id = <MTK_SMI_MMINFRA>;
+	};
+
+	smi_larb0: smi-larb0@1401e000 {
+		compatible = "mediatek,smi-larb0",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1401e000 0 0x1000>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,larb-id = <0>;
+		init-power-on;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_DIS0_SHUTDOWN>;
+		clocks = <&dispsys_config_clk CLK_MM_SMI_COMMON_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_larb1: smi-larb1@1401f000 {
+		compatible = "mediatek,smi-larb1",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1401f000 0 0x1000>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,larb-id = <1>;
+		init-power-on;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_DIS0_SHUTDOWN>;
+		clocks = <&dispsys_config_clk CLK_MM_SMI_COMMON_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_larb2: smi-larb2@1f002000 {
+		compatible = "mediatek,smi-larb2",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1f002000 0 0x1000>;
+		mediatek,smi-supply = <&smi_mdp_sub_comm0 0>;
+		mediatek,larb-id = <2>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_DIS0_SHUTDOWN>;
+		clocks = <&mdpsys_config_clk CLK_MDP_SMI0_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_img_vcore_sub_comm0: smi-img-vcore-sub-comm0@15781000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x15781000 0 0x1000>;
+		mediatek,smi-supply = <&smi_mdp_sub_comm1 0>;
+		mediatek,common-id = <11>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_VCORE>;
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_img_vcore_sub_comm1: smi-img-vcore-sub-comm0@15782000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x15782000 0 0x1000>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,common-id = <12>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_VCORE>;
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_img_sub_comm0: smi-img-sub-comm0@15013000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x15013000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_vcore_sub_comm0 0>;
+		mediatek,common-id = <5>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_MAIN>;
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>,
+			 <&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_img_sub_comm1: smi-img-sub-comm1@15014000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x15014000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_vcore_sub_comm1 0>;
+		mediatek,common-id = <6>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_MAIN>;
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>,
+			 <&imgsys_main_clk CLK_IMG_SUB_COMMON1_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_img_sub_comm3: smi-img-sub-comm3@15019000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x15019000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_vcore_sub_comm0 0>;
+		mediatek,common-id = <7>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_MAIN>;
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB0_SMI>,
+			 <&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_img_sub_comm4: smi-img-sub-comm4@1501a000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x1501a000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_vcore_sub_comm1 0>;
+		mediatek,common-id = <8>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_MAIN>;
+		clocks = <&img_vcore_d1a_clk CLK_IMG_VCORE_SUB1_SMI>,
+			 <&imgsys_main_clk CLK_IMG_SUB_COMMON4_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb9: smi-larb9@15011000 {
+		compatible = "mediatek,smi-larb9",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x15011000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_sub_comm4 0>;
+		mediatek,larb-id = <9>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_MAIN>;
+		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON4_SMI>,
+			 <&imgsys_main_clk CLK_IMG_LARB9_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb11: smi-larb11@15230000 {
+		compatible = "mediatek,smi-larb11",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x15230000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_sub_comm0 0>;
+		mediatek,larb-id = <11>;
+		mediatek,smi-ssc-ostdl = <&smi_mdp_sub_comm1 0>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
+		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
+			 <&wpe_eis_dip1_clk CLK_WPE_EIS_DIP1_LARB_U0_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb12: smi-larb12@15300000 {
+		compatible = "mediatek,smi-larb12",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x15300000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_sub_comm4 0>;
+		mediatek,larb-id = <12>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_MAIN>;
+		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON4_SMI>,
+			 <&imgsys_main_clk CLK_IMG_LARB12_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb15: smi-larb15@15141000 {
+		compatible = "mediatek,smi-larb15",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x15141000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_sub_comm1 0>;
+		mediatek,larb-id = <15>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
+		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>,
+			 <&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb28: smi-larb28@15720000 {
+		compatible = "mediatek,smi-larb28",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x15720000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_sub_comm0 0>;
+		mediatek,larb-id = <28>;
+		mediatek,smi-ssc-ostdl = <&smi_mdp_sub_comm1 0>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
+		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
+			 <&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb38: smi-larb38@15143000 {
+		compatible = "mediatek,smi-larb38",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x15143000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_sub_comm3 0>;
+		mediatek,larb-id = <38>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
+		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>,
+			 <&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB38_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb48: smi-larb48@15520000 {
+		compatible = "mediatek,smi-larb48",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x15520000 0 0x1000>;
+		mediatek,smi-supply = <&smi_img_sub_comm1 0>;
+		mediatek,larb-id = <48>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
+		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON1_SMI>,
+			 <&wpe_tnr_dip1_clk CLK_WPE_TNR_DIP1_LARB_U0_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_cam_sub_comm0: smi-cam-sub-comm0@1a032000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x1a032000 0 0x1000>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,common-id = <13>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
+		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_SUB_COMM_0C_0_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_cam_sub_comm1: smi-cam-sub-comm1@1a033000 {
+		compatible = "mediatek,mt6881-smi-common",
+			"mediatek,smi-common", "syscon", "mediatek,smi-sub-common";
+		reg = <0 0x1a033000 0 0x1000>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,common-id = <14>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
+		clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_SUB_COMM_1_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_larb13: smi-larb13@1a019000 {
+		compatible = "mediatek,smi-larb13",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1a019000 0 0x1000>;
+		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
+		mediatek,larb-id = <13>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
+		clocks = <&camsys_mraw_clk CLK_CAM_MR_LARB13_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_larb14: smi-larb14@1a01a000 {
+		compatible = "mediatek,smi-larb14",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1a01a000 0 0x1000>;
+		mediatek,smi-supply = <&smi_cam_sub_comm1 0>;
+		mediatek,larb-id = <14>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
+		clocks = <&camsys_mraw_clk CLK_CAM_MR_LARB14_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_larb16: smi-larb16@1a014000 {
+		compatible = "mediatek,smi-larb16",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1a014000 0 0x1000>;
+		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
+		mediatek,larb-id = <16>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBA>;
+		clocks = <&camsys_rawa_clk CLK_CAM_RA_CAM>,
+			 <&camsys_rawa_clk CLK_CAM_RA_LARBX_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb17: smi-larb17@1a013000 {
+		compatible = "mediatek,smi-larb17",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1a013000 0 0x1000>;
+		mediatek,smi-supply = <&smi_cam_sub_comm1 0>;
+		mediatek,larb-id = <17>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBA>;
+		clocks = <&camsys_rawa_clk CLK_CAM_RA_CAM>,
+			 <&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb33: smi-larb33@1a016000 {
+		compatible = "mediatek,smi-larb33",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1a016000 0 0x1000>;
+		mediatek,smi-supply = <&smi_cam_sub_comm1 0>;
+		mediatek,larb-id = <33>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBB>;
+		clocks = <&camsys_rawb_clk CLK_CAM_RB_CAM>,
+			 <&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb34: smi-larb34@1a015000 {
+		compatible = "mediatek,smi-larb34",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1a015000 0 0x1000>;
+		mediatek,smi-supply = <&smi_cam_sub_comm0 0>;
+		mediatek,larb-id = <34>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBB>;
+		clocks = <&camsys_rawb_clk CLK_CAM_RB_CAM>,
+			 <&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>;
+		clock-names = "apb", "smi";
+	};
+
+	smi_larb25: smi-larb25@1a01c000 {
+		compatible = "mediatek,smi-larb25",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1a01c000 0 0x1000>;
+		mediatek,smi-supply = <&smi_cam_sub_comm1 0>;
+		mediatek,larb-id = <25>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
+		clocks = <&camsys_mraw_clk CLK_CAM_MR_LARB25_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_larb4: smi-larb4@1602e000 {
+		compatible = "mediatek,smi-larb4",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x1602e000 0 0x1000>;
+		mediatek,smi-supply = <&smi_mdp_sub_comm1 0>;
+		mediatek,larb-id = <4>;
+		mediatek,smi-ssc-ostdl = <&smi_mdp_sub_comm1 0>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_VDE0>;
+	};
+
+	smi_larb7: smi-larb7@17010000 {
+		compatible = "mediatek,smi-larb7",
+			"mediatek,mt6881-smi-larb", "mediatek,smi-larb";
+		reg = <0 0x17010000 0 0x1000>;
+		mediatek,smi-supply = <&smi_disp_common 0>;
+		mediatek,larb-id = <7>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_VEN0>;
+		clocks = <&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>;
+		clock-names = "apb";
+	};
+
+	smi_pd_dis0: smi-pd-dis0 {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common &smi_mdp_sub_comm0>;
+		mediatek,suspend-check-port = <0x3 0x2>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_DIS0_SHUTDOWN>;
+		init-power-on;
+		suspend-check;
+	};
+
+	smi_pd_isp_vcore: smi-pd-vcore {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_mdp_sub_comm1 &smi_disp_common>;
+		mediatek,suspend-check-port = <0x2 0x20>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_VCORE>;
+		suspend-check;
+	};
+
+	smi_pd_isp_main: smi-pd-main {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_img_vcore_sub_comm0 &smi_img_vcore_sub_comm1>;
+		mediatek,suspend-check-port = <0x3 0x3>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_MAIN>;
+		suspend-check;
+	};
+
+	smi_pd_isp_dip1: smi-pd-dip1 {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_img_sub_comm0 &smi_img_sub_comm1 &smi_img_sub_comm3>;
+		mediatek,suspend-check-port = <0x3 0x3 0x1>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
+		suspend-check;
+	};
+
+	smi_pd_cam_main: smi-pd-cam-main {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common>;
+		mediatek,suspend-check-port = <0xc0>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
+		suspend-check;
+	};
+
+	smi_pd_cam_suba: smi-pd-cam-suba {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_cam_sub_comm0 &smi_cam_sub_comm1>;
+		mediatek,suspend-check-port = <0x1 0x1>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBA>;
+		suspend-check;
+	};
+
+	smi_pd_cam_subb: smi-pd-cam-subb {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_cam_sub_comm0 &smi_cam_sub_comm1>;
+		mediatek,suspend-check-port = <0x2 0x2>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBB>;
+		suspend-check;
+	};
+
+	smi_pd_ven0: smi-pd-ven0 {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_disp_common>;
+		mediatek,suspend-check-port = <0x10>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_VEN0>;
+		suspend-check;
+	};
+
+	smi_pd_vde0: smi-pd-vde0 {
+		compatible = "mediatek,smi-pd";
+		mediatek,suspend-check-dev-supply = <&smi_mdp_sub_comm1>;
+		mediatek,suspend-check-port = <0x1>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_VDE0>;
+		suspend-check;
+	};
+
+	smi_dbg: smi-dbg {
+		compatible = "mediatek,mtk-smi-dbg";
+		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb9 &smi_larb11
+					&smi_larb12 &smi_larb15 &smi_larb28 &smi_larb38 &smi_larb48
+					&smi_larb13 &smi_larb14 &smi_larb16 &smi_larb17 &smi_larb33
+					&smi_larb34 &smi_larb25 &smi_larb4 &smi_larb7>;
+		mediatek-common-supply = <&smi_ssc0_smi_sub_common &smi_ssc1_smi_sub_common
+					  &smi_disp_common &smi_mdp_sub_comm0 &smi_mdp_sub_comm1
+					  &smi_img_vcore_sub_comm0 &smi_img_vcore_sub_comm1
+					  &smi_img_sub_comm0 &smi_img_sub_comm1
+					  &smi_img_sub_comm3 &smi_img_sub_comm4
+					  &smi_cam_sub_comm0 &smi_cam_sub_comm1>;
+		dbg-version = <2>;
+		hwccf-support;
 	};
 
 	soc {
