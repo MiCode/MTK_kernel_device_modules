@@ -1058,7 +1058,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		unsigned int *addr = NULL;
 
 		mtk_crtc_bif_backup_path_mutex(mtk_crtc);
-		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST);
+		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST, __LINE__);
 
 		if (mtk_crtc->bif_info->sram_en) {
 			mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
@@ -1101,7 +1101,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 			mtk_disp_set_hrt_bw(mtk_crtc, 0);
 		mtk_crtc_bif_apsrc_ddren_control(mtk_crtc, NULL, false);
 
-		set_bif_stage(mtk_crtc, READ_MODE);
+		set_bif_stage(mtk_crtc, BIF_READ_MODE);
 	}
 
 	if (perf) {
@@ -1159,11 +1159,11 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	if (perf)
 		start_time = local_clock();
 
-	if (stage == READ_MODE) {
+	if (stage == BIF_READ_MODE) {
 		mtk_crtc_bif_apsrc_ddren_control(mtk_crtc, NULL, true);
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 			mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
-		set_bif_stage(mtk_crtc, DEFAULT_MODE);
+		set_bif_stage(mtk_crtc, BIF_DEFAULT_MODE);
 	}
 
 	mtk_crtc_pkt_create(&handle, crtc, client);
@@ -1194,7 +1194,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		*trace |= BIT(31);
 	}
 
-	if (stage == READ_MODE) {
+	if (stage == BIF_READ_MODE) {
 		struct mtk_cmdq_cb_data *cb_data;
 
 		CRTC_MMP_MARK(0, leave_idle, 0, (unsigned long)handle);

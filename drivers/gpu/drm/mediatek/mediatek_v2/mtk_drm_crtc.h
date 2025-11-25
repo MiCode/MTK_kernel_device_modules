@@ -1056,9 +1056,9 @@ enum BIF_SLBC {
 	SLBC_FORCE_RELEASE = 2,
 };
 enum BIF_STAGE {
-	UNKNOWN_MODE = 0,
-	DEFAULT_MODE = 1,
-	READ_MODE = 2,
+	BIF_UNKNOWN_MODE = 0,
+	BIF_DEFAULT_MODE = 1,
+	BIF_READ_MODE = 2,
 };
 
 struct mtk_bif_info {
@@ -2046,7 +2046,7 @@ enum mtk_ddp_comp_id mtk_addon_path_get_cmp(struct drm_crtc *crtc, unsigned int 
 void mtk_crtc_bif_enable_racing(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
 void mtk_crtc_bif_restore_path_mutex(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
 void mtk_crtc_bif_backup_path_mutex(struct mtk_drm_crtc *mtk_crtc);
-bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC bif_slbc);
+bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc, int line);
 void mtk_crtc_bif_keep_read_path(struct drm_crtc *crtc, struct cmdq_pkt *handle);
 void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc);
 void mtk_crtc_bif_apsrc_ddren_control(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en);

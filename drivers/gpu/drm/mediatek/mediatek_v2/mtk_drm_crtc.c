@@ -493,9 +493,9 @@ void set_bif_stage(struct mtk_drm_crtc *mtk_crtc, enum BIF_STAGE stage)
 enum BIF_STAGE get_bif_stage(struct mtk_drm_crtc *mtk_crtc)
 {
 	if (!mtk_crtc)
-		return UNKNOWN_MODE;
+		return BIF_UNKNOWN_MODE;
 	if (!mtk_crtc->bif_info)
-		return UNKNOWN_MODE;
+		return BIF_UNKNOWN_MODE;
 
 	return mtk_crtc->bif_info->stage;
 }
@@ -5116,10 +5116,11 @@ void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc)
 	}
 	DDPBIF("%s -\n", __func__);
 }
-bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc)
+bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc, int line)
 {
 	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
 	int ret = 0;
+	enum BIF_STAGE stage = get_bif_stage(mtk_crtc);
 
 	if (slbc == SLBC_REQUEST) {
 		if (bif_info->sram_en)
@@ -5140,6 +5141,8 @@ bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc
 	} else {
 		if (!bif_info->sram_en)
 			return true;
+		if (stage == BIF_READ_MODE)
+			return true;
 
 		bif_info->sram_en = false;
 
@@ -5151,7 +5154,8 @@ bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc
 		}
 	}
 
-	DDPBIF("%s[%d]\n", __func__, slbc);
+	DDPBIF("%s[%d][ln:%d]\n", __func__, slbc, __LINE__);
+	CRTC_MMP_MARK(0, bif_slbc, slbc, __LINE__);
 	if (slbc == SLBC_REQUEST)
 		CRTC_MMP_EVENT_START(0, bif_slbc, slbc, 0);
 	else
@@ -5250,7 +5254,7 @@ err:
 void mtk_bif_slbc_release_wq(struct mtk_drm_crtc *mtk_crtc)
 {
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
-	mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE);
+	mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE, __LINE__);
 	atomic_set(&mtk_crtc->bif_info->bif_release, 0);
 	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 }
@@ -13163,6 +13167,9 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
+	if (bif_enabled(crtc))
+		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE, __LINE__);
+
 	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
 		ovl_status = mtk_drm_crtc_check_ovl_status(crtc, cb_data);
 
@@ -13361,9 +13368,6 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	mtk_drm_del_cb_data(data, id);
 #endif
 	mtk_crtc_release_cmdq_pkt(cb_data->pkt_info);
-
-	if (bif_enabled(crtc))
-		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE);
 
 	CRTC_MMP_EVENT_END(id, frame_cfg, 0, mtk_crtc->skip_check_trigger);
 }
@@ -17880,7 +17884,7 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 		mtk_crtc_update_bif_roi(mtk_crtc);
 
 		if (bif_enabled(crtc)) {
-			if (!mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST))
+			if (!mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST, __LINE__))
 				set_bif_enable(crtc, false, __LINE__);
 			DDPMSG("%s,bif_enable:%d,\n", __func__, mtk_crtc->bif_info->bif_enable);
 		}
@@ -19575,7 +19579,7 @@ void mtk_drm_crtc_suspend(struct drm_crtc *crtc)
 
 	/* release bif slbc */
 	if (mtk_crtc->bif_info)
-		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_FORCE_RELEASE);
+		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_FORCE_RELEASE, __LINE__);
 
 	/* no need to consider cam throttle between suspend and first LR after suspend */
 	if (index == 0)
