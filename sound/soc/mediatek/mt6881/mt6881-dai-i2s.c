@@ -2846,7 +2846,7 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 	default:
 		dev_info(afe->dev, "%s(), id %d not support\n",
 			 __func__, id);
-		return -EINVAL;
+		return 0;
 	}
 
 	/* set share i2s */
