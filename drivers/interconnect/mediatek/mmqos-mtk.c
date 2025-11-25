@@ -530,6 +530,8 @@ static bool is_srt_comm_port(u8 hrt_type)
 		return true;
 	if (hrt_type == SRT_MML)
 		return true;
+	if (hrt_type == HRT_SRT_MIX)
+		return true;
 
 	return false;
 }
@@ -551,6 +553,11 @@ static void set_total_bw_to_emi(struct common_node *comm_node, u32 peak_emi_bw,
 			if (log_level & 1 << log_debug)
 				MMQOS_DBG("ignore disp comm port bw");
 		} else if (mmqos_state & MMPC_ENABLE || mmqos_state & MMPC_V2_ENABLE) {
+			if (comm_port_node->hrt_type == HRT_SRT_MIX) {
+				normalize_peak_bw = MULTIPLY_RATIO(div_u64(comm_port_node->latest_peak_bw,
+							mtk_mmqos_get_hrt_ratio(HRT_MML)));
+				peak_bw += normalize_peak_bw;
+			}
 			if (is_srt_comm_port(comm_port_node->hrt_type))
 				avg_bw += comm_port_node->latest_avg_bw;
 		} else {

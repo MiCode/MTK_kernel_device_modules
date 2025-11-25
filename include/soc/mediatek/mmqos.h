@@ -24,6 +24,7 @@ enum hrt_type {
 	SRT_VENC,
 	SRT_MDP,
 	SRT_MML,
+	HRT_SRT_MIX,
 };
 
 enum {
