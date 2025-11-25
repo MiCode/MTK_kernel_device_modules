@@ -5031,5 +5031,8 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/bt/linux_v2_ce:btmtk_unify")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4-mt79xx:wlan_mt7902")
 
+    if "vm_uos.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/vmctl:vmctl")
+
 
 get_overlay_modules_list()
