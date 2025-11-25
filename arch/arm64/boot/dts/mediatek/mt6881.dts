@@ -24,7 +24,7 @@
 #include <dt-bindings/power/mt6375-gauge.h>
 #include <dt-bindings/reset/ti-syscon.h>
 #include <dt-bindings/memory/mtk-smi-user.h>
-
+#include <dt-bindings/interconnect/mtk,mmqos.h>
 
 / {
 	model = "MT6881";
@@ -4539,6 +4539,45 @@
 					  &smi_cam_sub_comm0 &smi_cam_sub_comm1>;
 		dbg-version = <2>;
 		hwccf-support;
+	};
+
+	mmqos-wrapper {
+			compatible = "mediatek,mt6881-mmqos-wrapper";
+	};
+
+	mmqos: interconnect {
+		compatible = "mediatek,mt6881-mmqos";
+		#mtk-interconnect-cells = <1>;
+		mediatek,larbs-supply = <&smi_larb0 &smi_larb1 &smi_larb2
+					&smi_larb4  &smi_larb7 &smi_larb9
+					&smi_larb11 &smi_larb12 &smi_larb13
+					&smi_larb14 &smi_larb15 &smi_larb16
+					&smi_larb17 &smi_larb25 &smi_larb28
+					&smi_larb33 &smi_larb34 &smi_larb38
+					&smi_larb48>;
+		mediatek,commons-supply = <&smi_disp_common>;
+		mmqos-state = <0x0>;
+		mmqos-log-level = <0>;
+		interconnects = <&dvfsrc MT6873_MASTER_MMSYS &dvfsrc MT6873_SLAVE_DDR_EMI>,
+				<&dvfsrc MT6873_MASTER_HRT_MMSYS
+				&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+		interconnect-names = "icc-bw", "icc-hrt-bw";
+		vmmrc-base = <0x1ec00000>;
+		vmmrc-mask = <0x2e814>;
+		vmmrc-mask-bit = <8>;
+		vmmrc-on-table = <0x2e788>;
+		vmmrc-off-table = <0x2e7a8>;
+		mminfra-base = <0x1e800000>;
+		w-hrt-ostdl = <1>;
+		r-srt-ostdl = <4>;
+		dvfsrc-level-base = <0x1c00f000>;
+		required-opps = <&dvfsrc_freq_opp0>,
+				<&dvfsrc_freq_opp1>,
+				<&dvfsrc_freq_opp2>,
+				<&dvfsrc_freq_opp3>,
+				<&dvfsrc_freq_opp4>,
+				<&dvfsrc_freq_opp5>;
+		mediatek,mmqos-met-not-freerun;
 	};
 
 	soc {
