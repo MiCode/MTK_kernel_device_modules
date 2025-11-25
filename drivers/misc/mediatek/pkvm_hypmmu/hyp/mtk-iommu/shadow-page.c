@@ -1011,6 +1011,8 @@ void register_iova_debug_info(struct user_pt_regs *regs)
 	iommu_info_rb.tags = (char *)init_shared_page(info_pfn, total_page);
 	if (iommu_info_rb.tags == NULL)
 		mod_ops->puts("init iova debug page fail");
+
+	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 #else
 void save_iova_debug_info(u32 sec, u32 nsec, u64 iova_start, u64 iova_end,
@@ -1025,5 +1027,6 @@ struct iova_info *query_iova_debug_info(u64 iova, bool iova_map)
 
 void register_iova_debug_info(struct user_pt_regs *regs)
 {
+	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 #endif

@@ -357,7 +357,7 @@ void hyp_pmm_debug_hypmmu(struct user_pt_regs *regs)
 #else
 void hyp_pmm_debug_hypmmu(struct user_pt_regs *regs)
 {
-	regs->regs[0] = SMCCC_RET_INVALID_PARAMETER;
+	regs->regs[0] = SMCCC_RET_SUCCESS;
 }
 #endif
 
