@@ -9994,6 +9994,95 @@
 		interrupts = <GIC_SPI 486 IRQ_TYPE_LEVEL_HIGH 0>;
 	};
 
+	connsys_emi_config: connsys-emi-config {
+		/* emi layout settings */
+		emi-alignment = <0x1000000>;
+		emi-min-addr = <0x80000000>;
+		emi-max-addr = <0xf0000000>;
+
+		/* EMI Layout */
+		/* idx - region size */
+		emi-layout-region =
+			<0 0x00c00000>, /* 6639 WiFi MCU */
+			<1 0x003c0000>, /* Connsys RO */
+			<2 0x00085000>, /* Connsys RW */
+			<3 0x0004b000>, /* SCP batching data */
+			<4 0x00012000>, /* SCP DFD dump */
+			<5 0x0000e000>, /* Reserved for alignment */
+			<6 0x00040000>, /* Connsys shared data */
+			<7 0x00140000>, /* GPS_EMI */
+			<8 0x002fa000>, /* MNL/MPE BIN data */
+			<9 0x000d6000>, /* Connsys/SCP shared */
+			<10 0x000a0000>, /* WF MISC */
+			<11 0x01900000>; /* WFDMA1 */
+
+		/* block_name start_idx end_idx mapping */
+		emi-alloc-block =
+			<0 0 0>,
+			<1 9 0>,
+			<10 10 0>,
+			<11 11 0>;
+
+		emi-alloc-block-name =
+			"consys_wifi_emi",
+			"consys_emi",
+			"shared-dma-pool_wifi-misc-reserve-memory_dma",
+			"shared-dma-pool_wifi-reserve-memory_dma";
+
+		/* mpu region */
+		/* start_idx end_idx MPU_id */
+		emi-mpu-region =
+			<0 0 62>,
+			<1 1 44>,
+			<2 5 45>,
+			<6 11 47>,
+			<8 9 46>;
+
+		/* emi region to atf: start_idx end_idx */
+		emi-region-to-atf = <1 7>;
+		gps-emi-to-atf = <7 7>;
+	};
+
+	connv3: connv3 {
+		compatible = "mediatek,mt8875-connv3";
+		/* BT, WIFI, GPS, FM */
+		radio-support = "wifi", "bt", "md";
+		/* radio-off-mode: 0 means turn off pmic when all radio off */
+		radio-off-mode = <0>;
+		co-clock = <0>;
+		ext-32k-ticks = <32500>;
+		pinctrl-names = "connsys-pin-pmic-en-default",
+			"connsys-pin-pmic-en-set",
+			"connsys-pin-pmic-en-clr",
+			"connsys-pin-pmic-faultb-default",
+			"connsys-pin-pmic-faultb-enable",
+			"connsys-combo-gpio-init",
+			"connsys-combo-gpio-pre-on",
+			"connsys-combo-gpio-on",
+			"connsys-pin-dfd-init",
+			"connsys-pin-dfd-trigger",
+			"connsys-pin-dfd-release",
+			"connsys-pin-por-reset-trigger",
+			"connsys-pin-por-reset-done";
+		pinctrl-0 = <&connsys_pin_pmic_en_default>;
+		pinctrl-1 = <&connsys_pin_pmic_en_set>;
+		pinctrl-2 = <&connsys_pin_pmic_en_clr>;
+		pinctrl-3 = <&connsys_pin_pmic_faultb_default>;
+		pinctrl-4 = <&connsys_pin_pmic_faultb_enable>;
+		pinctrl-5 = <&connsys_combo_gpio_init>;
+		pinctrl-6 = <&connsys_combo_gpio_pre_on>;
+		pinctrl-7 = <&connsys_combo_gpio_on>;
+		pinctrl-8 = <&connsys_pin_dfd_init>;
+		pinctrl-9 = <&connsys_pin_dfd_trigger>;
+		pinctrl-10 = <&connsys_pin_dfd_release>;
+		pinctrl-11 = <&connsys_pin_por_reset_trigger>;
+		pinctrl-12 = <&connsys_pin_por_reset_done>;
+		interrupt-parent = <&pio>;
+		mt6376-gpio = <&pio 105 0>,
+				<&pio 106 0>;
+		interrupts = <105 IRQ_TYPE_EDGE_FALLING>;
+	};
+
 	pkvm: pkvm {
 		status = "okay";
 	};
@@ -10656,6 +10745,111 @@
 		};
 	};
 };
+
+/* CONNV3 GPIO start */
+&pio {
+	connsys_pin_pmic_en_default: connsys-pin-pmic-en-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO106__FUNC_GPIO106>;
+			output-low;
+		};
+	};
+	connsys_pin_pmic_en_set: connsys-pin-pmic-en-set {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO106__FUNC_GPIO106>;
+			output-high;
+		};
+	};
+	connsys_pin_pmic_en_clr: connsys-pin-pmic-en-clr {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO106__FUNC_GPIO106>;
+			output-low;
+		};
+	};
+	connsys_pin_pmic_faultb_default: connsys-pin-pmic-faultb-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO105__FUNC_GPIO105>;
+			input-enable;
+			bias-pull-down;
+		};
+	};
+	connsys_pin_pmic_faultb_enable: connsys-pin-pmic-faultb-enable {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO105__FUNC_GPIO105>;
+			input-enable;
+			bias-pull-up;
+		};
+	};
+	connsys_combo_gpio_init: connsys-combo-gpio-init {
+		/* 239 SCP_WB_UTXD */
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO97__FUNC_GPIO97>;
+			slew-rate = <0>;
+			bias-pull-down;
+		};
+		/* 240 SCP_WB_URXD */
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO98__FUNC_GPIO98>;
+			slew-rate = <0>;
+			bias-pull-down;
+		};
+	};
+	connsys_combo_gpio_pre_on: connsys-combo-gpio-pre-on {
+		/* 97 SCP_WB_UTXD */
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO97__FUNC_GPIO97>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+		/* 98 SCP_WB_URXD */
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO98__FUNC_GPIO98>;
+			slew-rate = <0>;
+			bias-pull-up;
+		};
+	};
+	connsys_combo_gpio_on: connsys-combo-gpio-on {
+		/* 97 SCP_WB_UTXD */
+		pins-cmd1-dat {
+			pinmux = <PINMUX_GPIO97__FUNC_TP_UTXD2_VLP>;
+		};
+		/* 98 SCP_WB_URXD */
+		pins-cmd2-dat {
+			pinmux = <PINMUX_GPIO98__FUNC_TP_URXD2_VLP>;
+		};
+	};
+	connsys_pin_dfd_init: connsys-pin-dfd-init {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO83__FUNC_GPIO83>;
+			slew-rate = <0>;
+		};
+	};
+	connsys_pin_dfd_trigger: connsys-pin-dfd-trigger {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO83__FUNC_GPIO83>;
+			output-high;
+		};
+	};
+	connsys_pin_dfd_release: connsys-pin-dfd-release {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO83__FUNC_GPIO83>;
+			output-low;
+		};
+	};
+	connsys_pin_por_reset_trigger: connsys-pin-por-reset-trigger {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO102__FUNC_GPIO102>;
+			output-high;
+		};
+	};
+	connsys_pin_por_reset_done: connsys-pin-por-reset-done {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO102__FUNC_GPIO102>;
+			output-low;
+		};
+	};
+};
+/* CONNV3 GPIO end */
 
 &spmi {
 	/* PMIC TODO: add mt6363_dynamic_loading_throttling after bring up*/
