@@ -2598,6 +2598,18 @@ static const struct mml_comp_hw_ops rdma_hw_ops = {
 	.task_done = rdma_task_done,
 };
 
+static const struct mml_comp_hw_ops rdma_auto_hw_ops = {
+	.init_frame_done_event = &rdma_init_frame_done_event,
+	.clk_enable = &mml_auto_clk_enable,
+	.clk_disable = &mml_auto_clk_disable,
+	.qos_datasize_get = &rdma_datasize_get,
+	.qos_stash_bw_get = &rdma_qos_stash_bw_get,
+	.qos_format_get = &rdma_format_get,
+	.qos_set = &mml_comp_qos_set,
+	.qos_clear = &mml_comp_qos_clear,
+	.task_done = rdma_task_done,
+};
+
 static const char *rdma_state(u32 state)
 {
 	switch (state) {
@@ -2883,6 +2895,7 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_rdma *priv;
 	s32 ret;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -2891,16 +2904,24 @@ static int probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, priv);
 	priv->data = of_device_get_match_data(dev);
 
-	if (smmu_v3_enabled()) {
-		/* shared smmu device, setup 34bit in dts */
-		priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
-		priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
-	} else {
+	if (mml_drv_auto_guest_support(mml)) {
 		priv->mmu_dev = dev;
 		priv->mmu_dev_sec = dev;
 		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 		if (ret)
 			mml_err("fail to config rdma dma mask %d", ret);
+	} else {
+		if (smmu_v3_enabled()) {
+			/* shared smmu device, setup 34bit in dts */
+			priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+			priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+		} else {
+			priv->mmu_dev = dev;
+			priv->mmu_dev_sec = dev;
+			ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+			if (ret)
+				mml_err("fail to config rdma dma mask %d", ret);
+		}
 	}
 
 	ret = mml_comp_init(pdev, &priv->comp);
@@ -2935,7 +2956,10 @@ static int probe(struct platform_device *pdev)
 	/* assign ops */
 	priv->comp.tile_ops = &rdma_tile_ops;
 	priv->comp.config_ops = &rdma_cfg_ops;
-	priv->comp.hw_ops = &rdma_hw_ops;
+	if (mml_drv_auto_guest_support(mml))
+		priv->comp.hw_ops = &rdma_auto_hw_ops;
+	else
+		priv->comp.hw_ops = &rdma_hw_ops;
 	priv->comp.debug_ops = &rdma_debug_ops;
 
 	dbg_probed_components[dbg_probed_count++] = priv;

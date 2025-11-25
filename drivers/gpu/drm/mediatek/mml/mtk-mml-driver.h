@@ -449,10 +449,6 @@ void mml_backup_crc_update(struct mml_task *task, struct mml_comp_config *ccfg,
  */
 u32 mml_backup_crc_get(struct mml_task *task, struct mml_comp_config *ccfg, u32 crc_idx);
 
-#if IS_ENABLED(CONFIG_VHOST_CMDQ)
-void cmdq_set_client(struct mml_dev *mml);
-#endif
-
 #if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
 enum mml_frm_dump_buf {
 	/* dump once */
@@ -593,6 +589,18 @@ enum mml_dvfs_cache_sz_ver {
 	mml_dvfs_cache_sz,
 	mml_dvfs_cache_sz_wxh
 };
+
+s32 mml_auto_clk_enable(struct mml_comp *comp);
+
+s32 mml_auto_clk_disable(struct mml_comp *comp, bool dpc);
+
+void mml_auto_set_cmdq_client(struct mml_dev *mml);
+
+bool mml_drv_auto_host_support(struct mml_dev *mml);
+
+bool mml_drv_auto_guest_support(struct mml_dev *mml);
+
+struct mml_dev *auto_get_mml_dev(void);
 
 extern struct platform_driver mml_sys_driver;
 extern struct platform_driver mml_aal_driver;

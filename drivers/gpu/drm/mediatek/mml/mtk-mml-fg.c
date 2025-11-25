@@ -1037,6 +1037,17 @@ static const struct mml_comp_hw_ops fg_hw_ops = {
 	.qos_clear = &mml_comp_qos_clear,
 };
 
+static const struct mml_comp_hw_ops fg_auto_hw_ops = {
+	.clk_enable = &mml_auto_clk_enable,
+	.clk_disable = &mml_auto_clk_disable,
+	.task_done = fg_task_done,
+	.qos_datasize_get = &fg_datasize_get,
+	.qos_stash_bw_get = &fg_qos_stash_bw_get,
+	.qos_format_get = &fg_format_get,
+	.qos_set = &mml_comp_qos_set,
+	.qos_clear = &mml_comp_qos_clear,
+};
+
 static void fg_debug_dump(struct mml_comp *comp)
 {
 	struct mml_comp_fg *fg = comp_to_fg(comp);
@@ -1219,6 +1230,7 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_fg *priv;
 	s32 ret;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -1258,7 +1270,10 @@ static int probe(struct platform_device *pdev)
 	/* assign ops */
 	priv->comp.tile_ops = &fg_tile_ops;
 	priv->comp.config_ops = &fg_cfg_ops;
-	priv->comp.hw_ops = &fg_hw_ops;
+	if (mml_drv_auto_guest_support(mml))
+		priv->comp.hw_ops = &fg_auto_hw_ops;
+	else
+		priv->comp.hw_ops = &fg_hw_ops;
 	priv->comp.debug_ops = &fg_debug_ops;
 
 	priv->tuning = 0;

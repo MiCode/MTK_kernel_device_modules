@@ -2757,6 +2757,19 @@ static const struct mml_comp_hw_ops rrot_hw_ops = {
 	.irq_off = rrot_irq_off,
 };
 
+static const struct mml_comp_hw_ops rrot_auto_hw_ops = {
+	.init_frame_done_event = &rrot_init_frame_done_event,
+	.clk_enable = &mml_auto_clk_enable,
+	.clk_disable = &rrot_clk_disable,
+	.qos_datasize_get = &rrot_datasize_get,
+	.qos_stash_bw_get = &rrot_qos_stash_bw_get,
+	.qos_format_get = &rrot_format_get,
+	.qos_set = &mml_comp_qos_set,
+	.qos_clear = &mml_comp_qos_clear,
+	.task_done = rrot_task_done,
+	.irq_off = rrot_irq_off,
+};
+
 static const char *rrot_state(u32 state)
 {
 	switch (state) {
@@ -3076,6 +3089,7 @@ static int probe(struct platform_device *pdev)
 	struct mml_comp_rrot *priv;
 	s32 ret;
 	int irq;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -3084,16 +3098,24 @@ static int probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, priv);
 	priv->data = of_device_get_match_data(dev);
 
-	if (smmu_v3_enabled()) {
-		/* shared smmu device, setup 34bit in dts */
-		priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
-		priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
-	} else {
+	if (mml_drv_auto_guest_support(mml)) {
 		priv->mmu_dev = dev;
 		priv->mmu_dev_sec = dev;
 		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 		if (ret)
 			mml_err("fail to config rrot dma mask %d", ret);
+	} else {
+		if (smmu_v3_enabled()) {
+			/* shared smmu device, setup 34bit in dts */
+			priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+			priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+		} else {
+			priv->mmu_dev = dev;
+			priv->mmu_dev_sec = dev;
+			ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+			if (ret)
+				mml_err("fail to config rrot dma mask %d", ret);
+		}
 	}
 
 	ret = mml_comp_init(pdev, &priv->comp);
@@ -3133,7 +3155,10 @@ static int probe(struct platform_device *pdev)
 	/* assign ops */
 	priv->comp.tile_ops = &rrot_tile_ops;
 	priv->comp.config_ops = &rrot_cfg_ops;
-	priv->comp.hw_ops = &rrot_hw_ops;
+	if (mml_drv_auto_guest_support(mml))
+		priv->comp.hw_ops = &rrot_auto_hw_ops;
+	else
+		priv->comp.hw_ops = &rrot_hw_ops;
 	priv->comp.debug_ops = &rrot_debug_ops;
 
 	dbg_probed_components[dbg_probed_count++] = priv;

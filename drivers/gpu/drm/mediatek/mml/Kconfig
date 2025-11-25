@@ -24,3 +24,18 @@ config MTK_MML_LEGACY
 	  This driver provides kernel mode setting and
 	  buffer management to display driver.
 
+config MTK_MML_AUTO_GUEST
+	tristate "DRM MML hypervisor Guest Support for Mediatek SoCs"
+	help
+	  Choose this option if you have a Mediatek SoCs.
+	  The module will be called hyp mml in mediatek-drm
+	  This driver provides kernel mode setting and
+	  buffer management to display driver.
+
+config MTK_MML_AUTO_HOST
+	tristate "DRM MML hypervisor Host Support for Mediatek SoCs"
+	help
+	  Choose this option if you have a Mediatek SoCs.
+	  The module will be called hyp mml in mediatek-drm
+	  This driver provides kernel mode setting and
+	  buffer management to display driver.

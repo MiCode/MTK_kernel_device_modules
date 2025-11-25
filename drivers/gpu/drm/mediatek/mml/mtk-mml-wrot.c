@@ -557,6 +557,9 @@ struct mml_comp_wrot {
 	u8 dest_cnt;
 	struct workqueue_struct *wrot_ai_callback_wq;
 	struct work_struct wrot_ai_callback_task;
+
+	s32 (*clk_enable)(struct mml_comp *comp);
+	s32 (*clk_disable)(struct mml_comp *comp, bool dpc);
 };
 
 /* meta data for each different frame config */
@@ -2928,9 +2931,10 @@ static void wrot_task_done(struct mml_comp *comp, struct mml_task *task,
 static s32 mml_wrot_comp_clk_enable(struct mml_comp *comp)
 {
 	int ret;
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 
 	/* original clk enable */
-	ret = mml_comp_clk_enable(comp);
+	ret = wrot->clk_enable(comp);
 	if (ret < 0)
 		return ret;
 
@@ -2943,9 +2947,10 @@ static s32 mml_wrot_comp_clk_disable(struct mml_comp *comp,
 				     bool dpc)
 {
 	int ret;
+	struct mml_comp_wrot *wrot = comp_to_wrot(comp);
 
 	/* original clk enable */
-	ret = mml_comp_clk_disable(comp, dpc);
+	ret = wrot->clk_disable(comp, dpc);
 	if (ret < 0)
 		return ret;
 	mml_mmp(clk_disable, MMPROFILE_FLAG_PULSE, comp->id, 0);
@@ -3243,6 +3248,7 @@ static int probe(struct platform_device *pdev)
 	struct mml_comp_wrot *priv;
 	s32 ret;
 	int irq = -1;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -3252,16 +3258,28 @@ static int probe(struct platform_device *pdev)
 	priv->data = of_device_get_match_data(dev);
 	priv->reg = priv->data->reg;
 
-	if (smmu_v3_enabled()) {
-		/* shared smmu device, setup 34bit in dts */
-		priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
-		priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
-	} else {
+	if (mml_drv_auto_guest_support(mml)) {
+		priv->clk_enable = mml_auto_clk_enable;
+		priv->clk_disable = mml_auto_clk_disable;
 		priv->mmu_dev = dev;
 		priv->mmu_dev_sec = dev;
 		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
 		if (ret)
 			mml_err("fail to config wrot dma mask %d", ret);
+	} else {
+		priv->clk_enable = mml_comp_clk_enable;
+		priv->clk_disable = mml_comp_clk_disable;
+		if (smmu_v3_enabled()) {
+			/* shared smmu device, setup 34bit in dts */
+			priv->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+			priv->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+		} else {
+			priv->mmu_dev = dev;
+			priv->mmu_dev_sec = dev;
+			ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+			if (ret)
+				mml_err("fail to config wrot dma mask %d", ret);
+		}
 	}
 
 	ret = mml_comp_init(pdev, &priv->comp);

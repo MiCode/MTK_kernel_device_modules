@@ -1052,6 +1052,13 @@ static const struct mml_comp_hw_ops tdshp_hw_ops = {
 	.task_done = tdshp_task_done_readback,
 };
 
+static const struct mml_comp_hw_ops tdshp_auto_hw_ops = {
+	.init_frame_done_event = &tdshp_init_frame_done_event,
+	.clk_enable = &mml_auto_clk_enable,
+	.clk_disable = &mml_auto_clk_disable,
+	.task_done = tdshp_task_done_readback,
+};
+
 static u32 read_reg_value(struct mml_comp *comp, u16 reg)
 {
 	void __iomem *base = comp->base;
@@ -1394,6 +1401,7 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_tdshp *priv;
 	s32 ret;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -1420,7 +1428,10 @@ static int probe(struct platform_device *pdev)
 	/* assign ops */
 	priv->comp.tile_ops = &tdshp_tile_ops;
 	priv->comp.config_ops = &tdshp_cfg_ops;
-	priv->comp.hw_ops = &tdshp_hw_ops;
+	if (mml_drv_auto_guest_support(mml))
+		priv->comp.hw_ops = &tdshp_auto_hw_ops;
+	else
+		priv->comp.hw_ops = &tdshp_hw_ops;
 	priv->comp.debug_ops = &tdshp_debug_ops;
 
 	dbg_probed_components[dbg_probed_count++] = priv;

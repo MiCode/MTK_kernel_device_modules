@@ -364,6 +364,9 @@ struct mml_comp_wdma {
 	u8 dest_cnt;
 	struct workqueue_struct *wdma_ai_callback_wq;
 	struct work_struct wdma_ai_callback_task;
+
+	s32 (*clk_enable)(struct mml_comp *comp);
+	s32 (*clk_disable)(struct mml_comp *comp, bool dpc);
 };
 
 /* meta data for each different frame config */
@@ -2597,9 +2600,10 @@ static void wdma_task_done(struct mml_comp *comp, struct mml_task *task,
 static s32 mml_wdma_comp_clk_enable(struct mml_comp *comp)
 {
 	int ret;
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 
 	/* original clk enable */
-	ret = mml_comp_clk_enable(comp);
+	ret = wdma->clk_enable(comp);
 	if (ret < 0)
 		return ret;
 
@@ -2612,9 +2616,10 @@ static s32 mml_wdma_comp_clk_disable(struct mml_comp *comp,
 				     bool dpc)
 {
 	int ret;
+	struct mml_comp_wdma *wdma = comp_to_wdma(comp);
 
 	/* original clk enable */
-	ret = mml_comp_clk_disable(comp, dpc);
+	ret = wdma->clk_disable(comp, dpc);
 	if (ret < 0)
 		return ret;
 	mml_mmp(clk_disable, MMPROFILE_FLAG_PULSE, comp->id, 0);
@@ -2891,6 +2896,7 @@ static int probe(struct platform_device *pdev)
 	struct mml_comp_wdma *priv;
 	s32 ret;
 	int irq = -1;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -2899,6 +2905,14 @@ static int probe(struct platform_device *pdev)
 	platform_set_drvdata(pdev, priv);
 	priv->data = of_device_get_match_data(dev);
 	priv->reg = priv->data->reg;
+
+	if (mml_drv_auto_guest_support(mml)) {
+		priv->clk_enable = mml_auto_clk_enable;
+		priv->clk_disable = mml_auto_clk_disable;
+	} else {
+		priv->clk_enable = mml_comp_clk_enable;
+		priv->clk_disable = mml_comp_clk_disable;
+	}
 
 	if (smmu_v3_enabled()) {
 		/* shared smmu device, setup 34bit in dts */

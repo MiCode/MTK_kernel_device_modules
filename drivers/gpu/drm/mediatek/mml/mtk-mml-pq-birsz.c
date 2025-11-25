@@ -364,6 +364,11 @@ static const struct mml_comp_hw_ops birsz_hw_ops = {
 	.clk_disable = &mml_comp_clk_disable,
 };
 
+static const struct mml_comp_hw_ops birsz_auto_hw_ops = {
+	.clk_enable = &mml_auto_clk_enable,
+	.clk_disable = &mml_auto_clk_disable,
+};
+
 static void birsz_debug_dump(struct mml_comp *comp)
 {
 	void __iomem *base = comp->base;
@@ -494,6 +499,7 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_birsz *priv;
 	s32 ret;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -510,7 +516,10 @@ static int probe(struct platform_device *pdev)
 	/* assign ops */
 	priv->comp.tile_ops = &birsz_tile_ops;
 	priv->comp.config_ops = &birsz_cfg_ops;
-	priv->comp.hw_ops = &birsz_hw_ops;
+	if (mml_drv_auto_guest_support(mml))
+		priv->comp.hw_ops = &birsz_auto_hw_ops;
+	else
+		priv->comp.hw_ops = &birsz_hw_ops;
 	priv->comp.debug_ops = &birsz_debug_ops;
 
 	dbg_probed_components[dbg_probed_count++] = priv;

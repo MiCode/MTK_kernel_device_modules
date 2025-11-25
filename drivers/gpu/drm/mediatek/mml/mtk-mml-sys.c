@@ -1839,6 +1839,12 @@ static const struct mml_comp_hw_ops sys_hw_ops_mminfra = {
 	.task_done = &mml_sys_taskdone,
 };
 
+static const struct mml_comp_hw_ops sys_auto_hw_ops_mminfra = {
+	.clk_enable = &mml_auto_clk_enable,
+	.clk_disable = &mml_auto_clk_disable,
+	.task_done = &mml_sys_taskdone,
+};
+
 static const struct mml_comp_hw_ops sys_hw_ops_mminfra_mt6993 = {
 	.pw_enable = mml_sys_pw_enable_mt6993,
 	.pw_disable = mml_sys_pw_disable_mt6993,
@@ -2884,6 +2890,17 @@ static const struct mml_comp_hw_ops dl_hw_ops = {
 	 */
 };
 
+static const struct mml_comp_hw_ops dl_auto_hw_ops = {
+	.init_frame_done_event = dl_init_frame_done_event,
+	.clk_enable = mml_auto_clk_enable,
+	.clk_disable = mml_auto_clk_disable,
+	/* TODO: pmqos_op
+	 * .qos_datasize_get = dl_datasize_get,
+	 * .qos_set = mml_comp_qos_set,
+	 * .qos_clear = mml_comp_qos_clear,
+	 */
+};
+
 static int dl_comp_init(struct device *dev, struct mml_sys *sys,
 			struct mml_comp *comp)
 {
@@ -2891,6 +2908,7 @@ static int dl_comp_init(struct device *dev, struct mml_sys *sys,
 	char name[32] = "";
 	u16 offset = 0;
 	int ret = 0;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	/* init larb for mtcmos */
 	ret = mml_comp_init_larb(comp, dev);
@@ -2927,7 +2945,10 @@ static int dl_comp_init(struct device *dev, struct mml_sys *sys,
 	sys->dl_relays[++sys->dl_cnt] = offset;
 	sys->adjacency[comp->id][comp->id] = sys->dl_cnt;
 	comp->config_ops = &dl_config_ops;
-	comp->hw_ops = &dl_hw_ops;
+	if (mml_drv_auto_guest_support(mml))
+		comp->hw_ops = &dl_auto_hw_ops;
+	else
+		comp->hw_ops = &dl_hw_ops;
 	return 0;
 }
 
@@ -3510,7 +3531,11 @@ static const struct mml_data mt6991_mmlt_data = {
 		[MML_CT_DL_OUT] = &dl_mml_comp_init,
 	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
+#if IS_ENABLED(CONFIG_MTK_MML_AUTO_GUEST)
+	.hw_ops = &sys_auto_hw_ops_mminfra,
+#else
 	.hw_ops = &sys_hw_ops_mminfra,
+#endif
 	.debug_ops = &sys_debug_ops_mt6991_mml0,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
 	.px_per_tick = 2,
@@ -3536,7 +3561,11 @@ static const struct mml_data mt6991_mmlf_data = {
 		[MML_CT_DL_OUT] = &dl_ddp_funcs,
 	},
 	.aid_sel = sys_config_aid_sel_bits_sys,
+#if IS_ENABLED(CONFIG_MTK_MML_AUTO_GUEST)
+	.hw_ops = &sys_auto_hw_ops_mminfra,
+#else
 	.hw_ops = &sys_hw_ops_mminfra,
+#endif
 	.debug_ops = &sys_debug_ops_mt6991,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.px_per_tick = 2,

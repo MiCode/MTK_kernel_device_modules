@@ -1132,6 +1132,17 @@ static const struct mml_comp_hw_ops rdma_hw_ops = {
 	.qos_clear = &mml_comp_qos_clear,
 };
 
+static const struct mml_comp_hw_ops rdma_auto_hw_ops = {
+	.init_frame_done_event = &rdma_init_frame_done_event,
+	.clk_enable = &mml_auto_clk_enable,
+	.clk_disable = &mml_auto_clk_disable,
+	.qos_datasize_get = &pq_rdma_datasize_get,
+	.qos_stash_bw_get = &pq_rdma_qos_stash_bw_get,
+	.qos_format_get = &pq_rdma_format_get,
+	.qos_set = &mml_comp_qos_set,
+	.qos_clear = &mml_comp_qos_clear,
+};
+
 static const char *rdma_state(u32 state)
 {
 	switch (state) {
@@ -1323,6 +1334,7 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_rdma *priv;
 	s32 ret;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -1371,7 +1383,10 @@ static int probe(struct platform_device *pdev)
 	/* assign ops */
 	priv->comp.tile_ops = &rdma_tile_ops;
 	priv->comp.config_ops = &rdma_cfg_ops;
-	priv->comp.hw_ops = &rdma_hw_ops;
+	if (mml_drv_auto_guest_support(mml))
+		priv->comp.hw_ops = &rdma_auto_hw_ops;
+	else
+		priv->comp.hw_ops = &rdma_hw_ops;
 	priv->comp.debug_ops = &rdma_debug_ops;
 
 	dbg_probed_components[dbg_probed_count++] = priv;

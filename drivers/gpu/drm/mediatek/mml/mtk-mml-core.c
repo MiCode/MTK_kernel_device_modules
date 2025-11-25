@@ -953,9 +953,12 @@ static s32 core_enable(struct mml_task *task, u32 pipe)
 
 	mml_clock_lock(cfg->mml);
 
-	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);
-	cmdq_mbox_enable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
-	mml_trace_ex_end();
+	if (!mml_drv_auto_guest_support(cfg->mml)) {
+		mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);
+		cmdq_mbox_enable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
+		mml_trace_ex_end();
+	}
+
 	mml_trace_ex_begin("%s_%s_%u", __func__, "pw", pipe);
 	call_hw_op(path->mmlsys, pw_enable, cfg->info.mode, false);
 	if (path->mmlsys2)
@@ -1078,9 +1081,11 @@ static s32 core_disable(struct mml_task *task, u32 pipe, bool skip_clock)
 
 	mml_trace_ex_end();
 
-	mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);
-	cmdq_mbox_disable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
-	mml_trace_ex_end();
+	if (!mml_drv_auto_guest_support(cfg->mml)) {
+		mml_trace_ex_begin("%s_%s_%u", __func__, "cmdq", pipe);
+		cmdq_mbox_disable(((struct cmdq_client *)task->pkts[pipe]->cl)->chan);
+		mml_trace_ex_end();
+	}
 
 	/* callback disp to turn off dispsys */
 	if (pipe == 0 && cfg->task_ops->dispen)
@@ -2007,11 +2012,13 @@ static void core_taskdone(struct kthread_work *work)
 	if (cfg->isr_count)
 		mml_isr_wait(cfg->mml, task);
 
-	/* remove task in qos list and setup next */
-	if (task->pkts[0])
-		mml_core_dvfs_end(task, 0);
-	if (cfg->dual && task->pkts[1])
-		mml_core_dvfs_end(task, 1);
+	if (!mml_drv_auto_guest_support(cfg->mml) && !mml_drv_auto_host_support(cfg->mml)) {
+		/* remove task in qos list and setup next */
+		if (task->pkts[0])
+			mml_core_dvfs_end(task, 0);
+		if (cfg->dual && task->pkts[1])
+			mml_core_dvfs_end(task, 1);
+	}
 
 	if (mml_hw_perf && task->pkts[0]) {
 		perf = cmdq_pkt_get_perf_ret(task->pkts[0]);
@@ -2052,8 +2059,10 @@ static void core_taskdone(struct kthread_work *work)
 	core_buffer_unmap(task);
 
 	/* task life time dpc off */
-	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
-		mml_dpc_task_cnt_dec(task);
+	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON) {
+		if (!mml_drv_auto_guest_support(cfg->mml))
+			mml_dpc_task_cnt_dec(task);
+	}
 
 	if (!clock_delay) {
 		mml_dpc_exc_release_path(cfg->mml, path);
@@ -2459,8 +2468,8 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 			task->pkts[pipe]->self_loop = true;
 	}
 
-	/* do dvfs/bandwidth calc right before flush to cmdq */
-	mml_core_dvfs_begin(task, pipe);
+	if (!mml_drv_auto_guest_support(cfg->mml) && !mml_drv_auto_host_support(cfg->mml))
+		mml_core_dvfs_begin(task, pipe);
 
 	mml_trace_ex_begin("%s_cmdq", __func__);
 	task->flush_time[pipe] = sched_clock();
@@ -2616,8 +2625,10 @@ static void core_config_task(struct mml_task *task)
 	/* enable mminfra and except flow during config */
 	mml_core_mminfra_enable(cfg->mml, 0, cfg->path[0]->mmlsys);
 	mml_dpc_exc_keep_path(cfg->mml, cfg->path[0]);
-	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON)
-		mml_dpc_task_cnt_inc(task);
+	if (cfg->dpc && cfg->info.mode != MML_MODE_DDP_ADDON) {
+		if (!mml_drv_auto_guest_support(cfg->mml))
+			mml_dpc_task_cnt_inc(task);
+	}
 
 	/* create dual work_thread[1] */
 	if (cfg->dual) {

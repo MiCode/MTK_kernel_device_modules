@@ -752,6 +752,12 @@ static const struct mml_comp_hw_ops mutex_hw_ops = {
 	.task_done = mutex_taskdone,
 };
 
+static const struct mml_comp_hw_ops mutex_auto_hw_ops = {
+	.clk_enable = mml_auto_clk_enable,
+	.clk_disable = mutex_clk_disable,
+	.task_done = mutex_taskdone,
+};
+
 static void mutex_debug_dump(struct mml_comp *comp)
 {
 	void __iomem *base = comp->base;
@@ -1229,6 +1235,7 @@ static int probe(struct platform_device *pdev)
 	s32 id_count, i, ret;
 	bool add_ddp = true;
 	int irq;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -1312,7 +1319,10 @@ static int probe(struct platform_device *pdev)
 	INIT_LIST_HEAD(&priv->isr_nodes);
 
 	priv->comp.config_ops = priv->data->config_ops;
-	priv->comp.hw_ops = &mutex_hw_ops;
+	if (mml_drv_auto_guest_support(mml))
+		priv->comp.hw_ops = &mutex_auto_hw_ops;
+	else
+		priv->comp.hw_ops = &mutex_hw_ops;
 	priv->comp.debug_ops = &mutex_debug_ops;
 
 	if (!of_property_read_u16(dev->of_node, "event-pipe0-mml", &priv->event_pipe0_mml))

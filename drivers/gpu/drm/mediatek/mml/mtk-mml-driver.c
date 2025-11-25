@@ -166,6 +166,8 @@ struct mml_dev {
 	struct mutex ctx_mutex;
 	struct mutex clock_mutex;
 
+	struct notifier_block auto_pm_notify;
+
 	spinlock_t isr_lock;
 	wait_queue_head_t isr_waitq;
 	s32 alive_cnt;
@@ -178,6 +180,9 @@ struct mml_dev {
 	bool v4l2_en;
 	bool smmu_en;
 	u8 max_layer;
+
+	bool auto_guest_support;
+	bool auto_host_support;
 
 	/* sram operation */
 	struct slbc_data sram_data[mml_sram_mode_total];
@@ -308,6 +313,41 @@ void dvfs_cache_sz(struct mml_dev *mml,
 	mml->dev_dvfs_cache_sz(c, w, h, b, l);
 }
 
+struct mml_dev *auto_get_mml_dev(void)
+{
+	struct device_node *node;
+	struct platform_device *pdev;
+	const char *compatible = "mediatek,mt6991-mml1";
+
+	node = of_find_compatible_node(NULL, NULL, compatible);
+	if (!node) {
+		mml_err("Failed to find node\n");
+		return NULL;
+	}
+	pdev = of_find_device_by_node(node);
+	of_node_put(node);
+	if (!pdev)
+		return NULL;
+
+	return platform_get_drvdata(pdev);
+}
+
+bool mml_drv_auto_host_support(struct mml_dev *mml)
+{
+	if (!mml)
+		return false;
+
+	return mml->auto_host_support;
+}
+
+bool mml_drv_auto_guest_support(struct mml_dev *mml)
+{
+	if (!mml)
+		return false;
+
+	return mml->auto_guest_support;
+}
+
 int mml_comp_add(u32 id, struct device *dev, const struct component_ops *ops)
 {
 	int ret = component_add(dev, ops);
@@ -400,20 +440,31 @@ s32 mml_dev_couple_inc(struct mml_dev *mml, enum mml_mode mode)
 	return cnt;
 }
 
-#if IS_ENABLED(CONFIG_VHOST_CMDQ)
-void cmdq_set_client(struct mml_dev *mml)
+void __weak vhost_cmdq_set_client(void *client, uint32_t hwid)
 {
-	int cnt;
-
-	if (!mml->gce_thread_cnt) {
-		mml_err("%s gce_thread_cnt is %u!", __func__,mml->gce_thread_cnt);
-		return;
-	}
-
-	for (cnt = 0; cnt < mml->gce_thread_cnt; cnt++)
-		vhost_cmdq_set_client((void *)(mml->cmdq_clts[cnt]), 0);
 }
-#endif
+
+void mml_auto_set_cmdq_client(struct mml_dev *mml)
+{
+	if (mml_drv_auto_host_support(mml)) {
+		int i;
+
+		if (mml->cmdq_clt_cnt > MML_MAX_CMDQ_CLTS) {
+			mml_err("%s client cnt %d is invalid!", __func__, mml->cmdq_clt_cnt);
+			return;
+		}
+
+		/* set client for hypervisor */
+		for (i = 0; i < mml->cmdq_clt_cnt; i++) {
+			if (mml->cmdq_clts[i]) {
+				mml_log("mml set cmdq client: %d, cmdq_client_num %d\n",
+					i, mml->cmdq_clt_cnt);
+				vhost_cmdq_set_client((void *)mml->cmdq_clts[i], 0);
+			}
+		}
+	}
+}
+EXPORT_SYMBOL(mml_auto_set_cmdq_client);
 
 s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode)
 {
@@ -804,9 +855,151 @@ done:
 	return base_pa;
 }
 
+static int mml_auto_set_clk(struct device *dev, bool enable)
+{
+	struct mml_dev *mml = dev_get_drvdata(dev);
+	int i = 0, j = 0, ret = 0;
+
+	for (i = 0; i < MML_MAX_COMPONENTS; i++) {
+		struct mml_comp *comp = mml->comps[i];
+
+		if (!comp)
+			continue;
+
+		for (j = 0; j < ARRAY_SIZE(comp->clks); j++) {
+
+			if (IS_ERR_OR_NULL(comp->clks[j]))
+				break;
+
+			if (enable)
+				ret = clk_prepare_enable(comp->clks[j]);
+			else
+				clk_disable_unprepare(comp->clks[j]);
+
+			if (ret)
+				mml_err("%s %s clk fail %d", __func__, comp->name, j);
+			else
+				mml_log("%s %s clk[%d] set done %d", __func__, comp->name, j, enable);
+		}
+	}
+	return ret;
+}
+
+static int mml_auto_set_pwr(struct device *dev, bool enable)
+{
+	struct mml_dev *mml = dev_get_drvdata(dev);
+	int ret = 0, i = 0;
+
+	if (enable) {
+		ret = pm_runtime_resume_and_get(dev);
+		if (ret)
+			mml_err("%s %s mminfra pwr fail %d", __func__, dev->init_name, ret);
+		for (i = 0; i < MML_MAX_COMPONENTS; i++) {
+			if (!mml->comps[i] || !mml->comps[i]->larb_dev)
+				continue;
+
+			ret = pm_runtime_resume_and_get(mml->comps[i]->larb_dev);
+			if (ret)
+				mml_err("%s %s larb[%d] pwr fail %d",
+					__func__, mml->comps[i]->larb_dev->init_name, i, ret);
+			dev_info(mml->comps[i]->larb_dev, "%s mminfra and larb pwr done", __func__);
+		}
+	} else {
+		for (i = 0; i < MML_MAX_COMPONENTS; i++) {
+			if (!mml->comps[i] || !mml->comps[i]->larb_dev)
+				continue;
+
+			pm_runtime_put_sync(mml->comps[i]->larb_dev);
+		}
+
+		pm_runtime_put_sync(dev);
+	}
+
+	return 0;
+}
+
+static int mml_auto_pm_notifier_cb(struct notifier_block *nb,
+	unsigned long event, void *ptr)
+{
+	struct mml_dev *mml = container_of(nb, struct mml_dev, auto_pm_notify);
+	int i;
+
+	if (!mml)
+		mml_err("mml pm notify get mml dev fail");
+	switch (event) {
+	case PM_SUSPEND_PREPARE:	/* Going to suspend the system */
+		mml_log("mml suspend enter");
+		for (i = 0; i < MML_MAX_CMDQ_CLTS; i++)
+			if (mml->cmdq_clts[i]->chan)
+				cmdq_mbox_disable(mml->cmdq_clts[i]->chan);
+
+		mml_auto_set_clk(&mml->pdev->dev, false);
+		mml_auto_set_pwr(&mml->pdev->dev, false);
+
+		return NOTIFY_DONE;	/* don't care this event */
+	case PM_POST_SUSPEND:
+		mml_log("mml resume enter");
+		for (i = 0; i < MML_MAX_CMDQ_CLTS; i++)
+			if (mml->cmdq_clts[i]->chan)
+				cmdq_mbox_enable(mml->cmdq_clts[i]->chan);
+
+		mml_auto_set_pwr(&mml->pdev->dev, true);
+		mml_auto_set_clk(&mml->pdev->dev, true);
+
+		return NOTIFY_OK;	/* process done */
+	default:
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_DONE;
+}
+
+static int mml_auto_clk_pwr_init(struct device *dev)
+{
+	int ret;
+	struct mml_dev *mml = dev_get_drvdata(dev);
+
+	ret = mml_auto_set_pwr(dev, true);
+	if (ret)
+		mml_err("init pwr failed");
+	ret = mml_auto_set_clk(dev, true);
+	if (ret)
+		mml_err("init clk failed");
+
+	for (int i = 0; i < MML_MAX_CMDQ_CLTS; i++)
+		if(mml->cmdq_clts[i])
+			cmdq_mbox_enable(mml->cmdq_clts[i]->chan);
+
+	/* register pm notifier */
+	mml->auto_pm_notify.notifier_call = mml_auto_pm_notifier_cb;
+	mml->auto_pm_notify.priority = 5;
+
+	ret = register_pm_notifier(&mml->auto_pm_notify);
+	if (ret != 0) {
+		mml_err("Failed to register_pm_notifier(%d)", ret);
+		return -ENODEV;
+	}
+	return ret;
+}
+
 static int master_bind(struct device *dev)
 {
-	return component_bind_all(dev, NULL);
+	int ret;
+	struct mml_dev *mml = dev_get_drvdata(dev);
+
+	ret = component_bind_all(dev, NULL);
+	if (ret) {
+		mml_err("Failed to bind all components: %d", ret);
+		return ret;
+	}
+
+	if (mml_drv_auto_guest_support(mml)) {
+		ret = mml_auto_clk_pwr_init(dev);
+		if (ret) {
+			mml_err("Failed to initialize clocks and power: %d", ret);
+			return ret;
+		}
+	}
+	return ret;
 }
 
 static void master_unbind(struct device *dev)
@@ -1277,6 +1470,11 @@ s32 mml_comp_clk_enable(struct mml_comp *comp)
 	return 0;
 }
 
+s32 mml_auto_clk_enable(struct mml_comp *comp)
+{
+	return 0;
+}
+
 #define call_hw_op(_comp, op, ...) \
 	(_comp->hw_ops->op ? _comp->hw_ops->op(_comp, ##__VA_ARGS__) : 0)
 
@@ -1301,6 +1499,11 @@ s32 mml_comp_clk_disable(struct mml_comp *comp, bool dpc)
 	}
 	mml_mmp(clk_disable, MMPROFILE_FLAG_END, comp->id, 0);
 
+	return 0;
+}
+
+s32 mml_auto_clk_disable(struct mml_comp *comp, bool dpc)
+{
 	return 0;
 }
 
@@ -1838,6 +2041,11 @@ static const struct mml_comp_hw_ops mml_hw_ops = {
 	.clk_disable = &mml_comp_clk_disable,
 };
 
+static const struct mml_comp_hw_ops mml_auto_hw_ops = {
+	.clk_enable = &mml_auto_clk_enable,
+	.clk_disable = &mml_auto_clk_disable,
+};
+
 void __iomem *mml_sram_get(struct mml_dev *mml, enum mml_sram_mode mode)
 {
 #ifndef MML_FPGA
@@ -2036,8 +2244,12 @@ s32 mml_register_comp(struct device *master, struct mml_comp *comp)
 	mml->comps[comp->id] = comp;
 	comp->bound = true;
 
-	if (!comp->hw_ops)
-		comp->hw_ops = &mml_hw_ops;
+	if (!comp->hw_ops) {
+		if (mml_drv_auto_guest_support(mml))
+			comp->hw_ops = &mml_auto_hw_ops;
+		else
+			comp->hw_ops = &mml_hw_ops;
+	}
 
 	return 0;
 }
@@ -2916,17 +3128,46 @@ static int mml_probe(struct platform_device *pdev)
 	/* init each mml dvfs interface */
 	mml_dvfs_init(mml, pdev);
 
-	if (smmu_v3_enabled()) {
-		/* shared smmu device, setup 34bit in dts */
-		mml->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
-		mml->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
-		mml->smmu_en = true;
-	} else {
+	mml->auto_host_support = of_property_read_bool(dev->of_node, "auto-host-enable");
+	mml->auto_guest_support = of_property_read_bool(dev->of_node, "auto-guest-enable");
+
+	if (mml_drv_auto_guest_support(mml)) {
+		struct device_node *np = NULL;
+		struct platform_device *np_pdev = NULL;
+
+		np = of_parse_phandle(pdev->dev.of_node, "mml,sec", 0);
+		if (np) {
+			np_pdev = of_find_device_by_node(np);
+			of_node_put(np);
+		} else
+			mml_log("[warning] of_parse_phandle mml,sec failed");
+
+		if (!np_pdev) {
+			mml_log("[warning] get mml sec dev failed");
+			mml->mmu_dev_sec = dev;
+		} else
+			mml->mmu_dev_sec = &np_pdev->dev;
+
 		mml->mmu_dev = dev;
-		mml->mmu_dev_sec = dev;
-		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+		ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(35));
 		if (ret)
 			mml_err("fail to config sys dma mask %d", ret);
+		ret = dma_set_mask_and_coherent(mml->mmu_dev_sec, DMA_BIT_MASK(35));
+		if (ret)
+			mml_err("fail to config sec dma mask %d", ret);
+	} else {
+		if (smmu_v3_enabled()) {
+		/* shared smmu device, setup 34bit in dts */
+			mml->mmu_dev = mml_smmu_get_shared_device(dev, "mtk,smmu-shared");
+			mml->mmu_dev_sec = mml_smmu_get_shared_device(dev, "mtk,smmu-shared-sec");
+			mml->smmu_en = true;
+		} else {
+			mml->mmu_dev = dev;
+			mml->mmu_dev_sec = dev;
+			ret = dma_set_mask_and_coherent(dev, DMA_BIT_MASK(34));
+			if (ret)
+				mml_err("fail to config sys dma mask %d", ret);
+		}
 	}
 
 #if defined(MML_DL_SUPPORT)

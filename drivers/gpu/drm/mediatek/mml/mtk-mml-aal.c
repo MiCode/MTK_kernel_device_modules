@@ -2224,6 +2224,14 @@ static const struct mml_comp_hw_ops aal_hw_ops = {
 	.task_done = aal_task_done_readback,
 };
 
+static const struct mml_comp_hw_ops aal_auto_hw_ops = {
+	.init_frame_done_event = &aal_init_frame_done_event,
+	.clk_enable = &mml_auto_clk_enable,
+	.clk_disable = &mml_auto_clk_disable,
+	.qos_clear = &mml_comp_qos_clear,
+	.task_done = aal_task_done_readback,
+};
+
 static u32 read_reg_value(struct mml_comp *comp, u16 reg)
 {
 	void __iomem *base = comp->base;
@@ -2560,6 +2568,7 @@ static int probe(struct platform_device *pdev)
 	struct mml_comp_aal *priv;
 	s32 ret;
 	int irq = -1;
+	struct mml_dev *mml = auto_get_mml_dev();
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -2594,7 +2603,10 @@ static int probe(struct platform_device *pdev)
 	/* assign ops */
 	priv->comp.tile_ops = &aal_tile_ops;
 	priv->comp.config_ops = &aal_cfg_ops;
-	priv->comp.hw_ops = &aal_hw_ops;
+	if (mml_drv_auto_guest_support(mml))
+		priv->comp.hw_ops = &aal_auto_hw_ops;
+	else
+		priv->comp.hw_ops = &aal_hw_ops;
 	priv->comp.debug_ops = &aal_debug_ops;
 
 	if (aal_get_rb_mode(priv) == RB_EOF_MODE) {
