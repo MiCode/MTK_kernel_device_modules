@@ -7464,6 +7464,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			event-ir-mml-ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_MML_READY>;
 			event-ir-disp-ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_DISP_READY>;
 			event-ir-mml-stop = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
+			event-ir-disp-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>;
+			event-ir-eof = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>;
+			event-mml-config = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_STREAM_CONFIG>;
 			event-racing-pipe0 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE0>;
 			event-racing-pipe1 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1>;
 			event-racing-pipe1-next = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1_NEXT>;
@@ -9190,7 +9193,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					/bits/ 16 <CMDQ_SYNC_TOKEN_PREBUILT_DISP_LOCK>,
 					/bits/ 16 <CMDQ_SYNC_TOKEN_DPC_VOTE_HWCCF>,
 					/bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>,
-					/bits/ 16 <CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>;
+					/bits/ 16 <CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>,
+					/bits/ 16 <CMDQ_SYNC_TOKEN_MML_STREAM_CONFIG>;
 			mboxes = <&gce 13 0 CMDQ_THR_PRIO_HIGHEST>;
 			mediatek,smi = <&smi_mdp_common &smi_sram_sub_comm4>;
 			mtk,smmu-shared = <&mm_smmu_gce_d>;
@@ -9926,7 +9930,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"disp_vdo_sof",
 				"disp_dbi_count_eof",
 				"disp_token_dbi_count_cfg_end",
-				"disp_ovlsys0_sof0";
+				"disp_ovlsys0_sof0",
+				"mml_stream_config",
+				"ovlsys0_mutex0_sof";
 
 			gce-events =
 				<&gce CMDQ_EVENT_DISP1_A_STREAM_DONE_ENG_EVENT_0>,
@@ -9988,6 +9994,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&gce CMDQ_EVENT_DISP1_A_DISP_DSI0_ENG_EVENT_6>,
 				<&gce CMDQ_EVENT_DISP1_A_GCE_FRAME_DONE_6>,
 				<&gce CMDQ_SYNC_TOKEN_DBI_COUNT_CFG_END>,
+				<&gce CMDQ_EVENT_OVL0_STREAM_SOF_0>,
+				<&gce CMDQ_SYNC_TOKEN_MML_STREAM_CONFIG>,
 				<&gce CMDQ_EVENT_OVL0_STREAM_SOF_0>;
 
 			helper-name = "MTK_DRM_OPT_STAGE",
@@ -10072,6 +10080,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE",
 				"MTK_DRM_OPT_OVLSYS_CASCADE",
 				"MTK_DRM_OPT_LTPO_VM",
+				"MTK_DRM_OPT_MML_DL_SUB_CFG_CLINET",
 				"MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE",
 				"MTK_DRM_OPT_FRAME_SUBMIT",
 				"MTK_DRM_OPT_RETRIGGER",
@@ -10161,6 +10170,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE*/
 				<0>, /*"MTK_DRM_OPT_OVLSYS_CASCADE"*/
 				<0>, /*MTK_DRM_OPT_LTPO_VM*/
+				<0>, /*MTK_DRM_OPT_MML_DL_SUB_CFG_CLINET*/
 				<1>, /*MTK_DRM_OPT_DPINTF_UNDERFLOW_AEE*/
 				<1>, /*MTK_DRM_OPT_FRAME_SUBMIT*/
 				<1>, /*"MTK_DRM_OPT_RETRIGGER"*/
