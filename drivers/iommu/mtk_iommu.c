@@ -4058,8 +4058,8 @@ static const struct mtk_iommu_plat_data mt6881_data_disp = {
 static const struct mtk_iommu_plat_data mt6881_data_apu0 = {
 	.m4u_plat	= M4U_MT6881,
 	.flags          = TLB_SYNC_EN | PGTABLE_PA_35_EN |/*IOMMU_SEC_EN |*/
-			  GET_DOM_ID_LEGACY | IOVA_34_EN | /*LINK_WITH_APU |*/
-			  PM_OPS_SKIP | IOMMU_CLK_AO_EN | PM_DOMAIN_SKIP,
+			  GET_DOM_ID_LEGACY | IOVA_34_EN | APU_SEMPHONE_POWER |
+			  PM_OPS_SKIP | PM_DOMAIN_SKIP,
 	.hw_list        = &apu_iommu_list,
 	.inv_sel_reg    = REG_MMU_INV_SEL_GEN2,
 	.iommu_id	= APU_IOMMU0,
