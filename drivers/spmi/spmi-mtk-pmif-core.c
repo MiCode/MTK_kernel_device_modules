@@ -36,6 +36,7 @@
 
 #define GET_SWINF(x)	(((x) >> 1) & 0x7)
 #define GET_SWINF_ERR(x)	(((x) >> 18) & 0x1)
+#define GET_SWINF_SYS_BUSY(x)	(((x) >> 17) & 0x1)
 #define GET_SPMI_NACK_SLVID(x)	(((x) >> 8) & 0xf)
 #define GET_SPMI_NACK_ERR_TYPE(x)   (((x) >> 4) & 0xf)
 
@@ -1001,9 +1002,9 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		return -EINVAL;
 
 	raw_spin_lock_irqsave(&arb->lock_m, flags_m);
-	/* Wait for Software Interface FSM state to be IDLE. */
+	/* Wait for Software Interface SYS BUSY to be IDLE. */
 	ret = readl_poll_timeout_atomic(arb->pmif_base[spmidev[sid].path] + arb->regs[inf_reg->ch_sta],
-					data, GET_SWINF(data) == SWINF_IDLE,
+					data, GET_SWINF_SYS_BUSY(data) == SWINF_IDLE,
 					PMIF_DELAY_US, PMIF_TIMEOUT);
 	if (ret < 0) {
 		dev_err(&ctrl->dev, "check IDLE timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
@@ -1031,9 +1032,9 @@ static int pmif_spmi_write_cmd(struct spmi_controller *ctrl, u8 opc, u8 sid,
 		    opc_u32 | BIT(29) | sid_u32 | bc_u32 | addr_u32,
 		    inf_reg->ch_send);
 
-	/* Wait for Software Interface FSM state to be IDLE. */
+	/* Wait for Software Interface SYS BUSY to be IDLE. */
 	ret = readl_poll_timeout_atomic(arb->pmif_base[spmidev[sid].path] + arb->regs[inf_reg->ch_sta],
-					data, GET_SWINF(data) == SWINF_IDLE,
+					data, GET_SWINF_SYS_BUSY(data) == SWINF_IDLE,
 					PMIF_DELAY_US, PMIF_TIMEOUT);
 	if (ret < 0) {
 		dev_err(&ctrl->dev, "check IDLE timeout, read 0x%x, sta=0x%x, SPMI_DBG=0x%x\n",
