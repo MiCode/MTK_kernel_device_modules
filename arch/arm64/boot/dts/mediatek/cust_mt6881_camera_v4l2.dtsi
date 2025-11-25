@@ -83,7 +83,7 @@
 	camera_pins_cam2_dvdd_0: cam4@0 {
 		pins-1 {
 			pinmux = <PINMUX_MT6363_GPIO4__FUNC_GPIO4>;
-			drive-strengh = <7>;
+			drive-strength = <0>;
 			output-low;
 		};
 	};
@@ -91,7 +91,7 @@
 	camera_pins_cam2_dvdd_1: cam4@1 {
 		pins-1 {
 			pinmux = <PINMUX_MT6363_GPIO4__FUNC_GPIO4>;
-			drive-strengh = <7>;
+			drive-strength = <0>;
 			output-high;
 		};
 	};
@@ -99,14 +99,14 @@
 	camera_pins_cam4_avdd_0: cam4@4 {
 		pins-1 {
 			pinmux = <PINMUX_MT6363_GPIO7__FUNC_GPIO7>;
-			drive-strengh = <7>;
+			drive-strength = <0>;
 			output-low;
 		};
 	};
 	camera_pins_cam4_avdd_1: cam4@5 {
 		pins-1 {
 			pinmux = <PINMUX_MT6363_GPIO7__FUNC_GPIO7>;
-			drive-strengh = <7>;
+			drive-strength = <0>;
 			output-high;
 		};
 	};
@@ -114,7 +114,7 @@
 	camera_pins_cam4_dvdd_0: cam4@2 {
 		pins-1 {
 			pinmux = <PINMUX_MT6363_GPIO5__FUNC_GPIO5>;
-			drive-strengh = <7>;
+			drive-strength = <0>;
 			output-low;
 		};
 	};
@@ -122,7 +122,7 @@
 	camera_pins_cam4_dvdd_1: cam4@3 {
 		pins-1 {
 			pinmux = <PINMUX_MT6363_GPIO5__FUNC_GPIO5>;
-			drive-strengh = <7>;
+			drive-strength = <0>;
 			output-high;
 		};
 	};
@@ -130,14 +130,14 @@
 	camera_pins_cam4_oisvdd_0: cam4@6 {
 		pins-1 {
 			pinmux = <PINMUX_MT6363_GPIO6__FUNC_GPIO6>;
-			drive-strengh = <7>;
+			drive-strength = <0>;
 			output-low;
 		};
 	};
 	camera_pins_cam4_oisvdd_1: cam4@7 {
 		pins-1 {
 			pinmux = <PINMUX_MT6363_GPIO6__FUNC_GPIO6>;
-			drive-strengh = <7>;
+			drive-strength = <0>;
 			output-high;
 		};
 	};

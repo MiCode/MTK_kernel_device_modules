@@ -9519,17 +9519,17 @@
 				#size-cells = <2>;
 				ranges;
 
-				tsrec-no-max = <12>;
+				tsrec-no-max = <8>;
 
 				tsrec-top@1a410000 {
 					compatible = "mediatek,seninf-tsrec-top";
 					reg = <0 0x1a410000 0 0x1000>;
 					reg-names = "base";
 					base-shift = <0x10000>;
-					interrupts = <GIC_SPI 644 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 645 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 646 IRQ_TYPE_LEVEL_HIGH 0>,
-						<GIC_SPI 647 IRQ_TYPE_LEVEL_HIGH 0>;
+					interrupts = <GIC_SPI 283 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 284 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 285 IRQ_TYPE_LEVEL_HIGH 0>,
+						<GIC_SPI 286 IRQ_TYPE_LEVEL_HIGH 0>;
 				};
 
 				tsrec-a@1a420000 {
