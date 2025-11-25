@@ -143,6 +143,29 @@
 	};
 };
 
+&mtk_composite_v4l2_2 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	port@0 {
+		reg = <0>;
+		main_af_endpoint: endpoint {
+			remote-endpoint = <&main_af>;
+		};
+	};
+	port@1 {
+		reg = <1>;
+		main_af_cam1_endpoint: endpoint {
+			remote-endpoint = <&main_af_cam1>;
+		};
+	};
+	port@2 {
+		reg = <2>;
+		main_af_cam2_endpoint: endpoint {
+			remote-endpoint = <&main_af_cam2>;
+		};
+	};
+};
+
 &i2c6 {
 	lm3644:lm3644@63 {
 		compatible = "mediatek,lm3644";
@@ -181,6 +204,17 @@
 &i2c4 {
 	status = "okay";
 	clock-frequency = <1000000>;
+
+	camera-af-main@c {
+		compatible = "mediatek,main_vcm";
+		reg = <0x0c 0 0>;
+		vin-supply = <&rt5133_gpio1>;
+		port {
+			main_af: endpoint {
+				remote-endpoint = <&main_af_endpoint>;
+			};
+		};
+	};
 
 	sensor0: sensor0@36 {
 		compatible = "mediatek,imgsensor";
@@ -335,6 +369,17 @@
 	status = "okay";
 	clock-frequency = <1000000>;
 
+	camera-af-main-two@b {
+		compatible = "mediatek,main2_vcm";
+		reg = <0x0b>;
+		vin-supply = <&rt5133_ldo2>;
+		port {
+			main_af_cam1: endpoint {
+				remote-endpoint = <&main_af_cam1_endpoint>;
+			};
+		};
+	};
+
 	sensor2: sensor2@10 {
 		compatible = "mediatek,imgsensor";
 		sensor-names = "s5kjn1lite_mipi_raw";
@@ -408,6 +453,17 @@
 	#address-cells = <3>;
 	#size-cells = <0>;
 	status = "okay";
+
+	camera-af-main-three@c {
+		compatible = "mediatek,main3_vcm";
+		reg = <0x0c>;
+		vin-supply = <&rt5133_ldo2>;
+		port {
+			main_af_cam2: endpoint {
+				remote-endpoint = <&main_af_cam2_endpoint>;
+			};
+		};
+	};
 
 	sensor4: sensor4@10 {
 		compatible = "mediatek,imgsensor";
