@@ -65,8 +65,8 @@
 		rsz0 = &disp_rsz0;
 		rsz4 = &disp_rsz1;
 		postmask0 = &disp_postmask0;
-		dsc0 = &disp_dsc_wrap0;
 #endif
+		dsc0 = &disp_dsc_wrap0;
 	};
 
 	clkbuf_ctrl: clkbuf-ctrl {
@@ -7801,6 +7801,7 @@
 			interrupts = <GIC_SPI 453 IRQ_TYPE_NONE 0>;
 		};
 
+#endif
 		disp_dsc_wrap0: disp-dsc-wrap0@14019000 {
 			compatible = "mediatek,disp_dsc_wrap0",
 				"mediatek,mt6881-disp-dsc";
@@ -7808,7 +7809,6 @@
 			interrupts = <GIC_SPI 454 IRQ_TYPE_LEVEL_HIGH 0>;
 			// clocks = <&dispsys_config_clk CLK_MM_DISP_DSC_WRAP0>;
 		};
-#endif
 
 		dsi0: dsi@1401a000 {
 			compatible = "mediatek,dsi0",
