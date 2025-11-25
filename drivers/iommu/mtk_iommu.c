@@ -4040,7 +4040,7 @@ static const struct mtk_iommu_plat_data mt6879_data_apu0 = {
 static const struct mtk_iommu_plat_data mt6881_data_disp = {
 	.m4u_plat	= M4U_MT6881,
 	.flags          = OUT_ORDER_WR_EN | GET_DOM_ID_LEGACY |
-			  NOT_STD_AXI_MODE | TLB_SYNC_EN |/* IOMMU_SEC_EN |*/
+			  NOT_STD_AXI_MODE | TLB_SYNC_EN | IOMMU_SEC_EN |
 			  SKIP_CFG_PORT | IOVA_34_EN | SMI_DEV_LINK_SKIP | PGTABLE_PA_35_EN |
 			  HAS_SMI_SUB_COMM | SAME_SUBSYS |
 			  PM_OPS_SKIP | PM_DOMAIN_SKIP | IOMMU_CLK_AO_EN,
