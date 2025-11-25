@@ -46,7 +46,7 @@ static const char *reg_name[APUPW_MAX_REGS] = {
 };
 
 static struct apu_power apupw = {
-	.env = AO,
+	.env = MP,
 	.rcx = CE_FW,
 };
 
