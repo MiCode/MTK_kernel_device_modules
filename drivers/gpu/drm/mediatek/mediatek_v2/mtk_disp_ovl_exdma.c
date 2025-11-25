@@ -3718,7 +3718,7 @@ static void mtk_ovl_exdma_addon_config(struct mtk_ddp_comp *comp,
 				comp->regs_pa + regs[OVL_EXDMA_BURST_MON_CFG], bw_monitor_config, ~0);
 		}
 
-		mtk_ovl_exdma_golden_setting(comp, config->is_dc, handle);
+		//mtk_ovl_exdma_golden_setting(comp, config->is_dc, handle);
 
 		if (priv->data->ovl_exdma_rule &&
 		    (comp->id == mtk_addon_path_get_cmp(crtc, 0, ONE_SCALING, MTK_OVL_EXDMA) ||
