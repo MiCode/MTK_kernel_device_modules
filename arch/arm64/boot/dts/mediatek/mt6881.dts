@@ -7884,7 +7884,6 @@
 			dispsys-sel-offset = <0x170 0x174>;
 		};
 
-#if 0
 		dsi1: dsi1@1401b000 {
 			compatible = "mediatek,disp_dsi1",
 					"mediatek,mt6881-dsi";
@@ -7892,48 +7891,25 @@
 			interrupts = <GIC_SPI 457 IRQ_TYPE_LEVEL_HIGH 0>;
 			phys = <&mipi_tx_config1>;
 			phy-names = "dphy";
+#if 0
 			clocks = <&dispsys_config_clk CLK_MM_DISP_DSI1>,
 			<&dispsys_config_clk CLK_MM_DSI1>,
 			<&mipi_tx_config1>;
 			clock-names = "engine", "digital", "hs";
+#endif
 			status = "disabled";
-		};
-
-		disp_wdma1: disp-wdma1@1401c000 {
-			compatible = "mediatek,disp_wdma1",
-				"mediatek,mt6881-disp-wdma";
-			reg = <0 0x1401c000 0 0x1000>;
-			interrupts = <GIC_SPI 458 IRQ_TYPE_LEVEL_HIGH 0>;
-			clocks = <&dispsys_config_clk CLK_MM_DISP_WDMA1>;
-			fifo-size-1plane = <966>;
-			fifo-size-uv-1plane = <29>;
-			fifo-size-2plane = <640>;
-			fifo-size-uv-2plane = <320>;
-			fifo-size-3plane = <637>;
-			fifo-size-uv-3plane = <160>;
-			mediatek,larb = <&smi_larb1>;
-			mediatek,smi-id = <1>;
-			iommus = <&disp_iommu M4U_L1_P8_DISP_WDMA1>;
 		};
 
 		mipi_tx_config1: mipi-tx-config1@11e10000 {
 			compatible = "mediatek,mipi_tx_config1",
 						"mediatek,mt6881-mipi-tx";
 			reg = <0 0x11e10000 0 0x1000>;
-			clocks = <&clk26m>;
-			#clock-cells = <0>;
+			//clocks = <&clk26m>;
+			//#clock-cells = <0>;
 			#phy-cells = <0>;
-			clock-output-names = "mipi_tx1_pll";
+			//clock-output-names = "mipi_tx1_pll";
 			dispsys-sel-offset = <0x178 0x17c>;
 			status = "disabled";
-		};
-
-		disp_dsc_wrap1: disp-dsc-wrap1@14022000 {
-			compatible = "mediatek,disp_dsc_wrap1",
-				"mediatek,mt6881-disp-dsc";
-			reg = <0 0x14022000 0 0x1000>;
-			interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
-			// clocks = <&dispsys_config_clk CLK_MM_DISP_DSC_WRAP1>;
 		};
 
 		virt_dsi0: virt-dsi0@1401a000 {
@@ -7947,24 +7923,24 @@
 		};
 
 		disp_pwm: disp-pwm0@1100e000 {
-			compatible = "mediatek,disp_pwm0",
-				"mediatek,mt6881-disp-pwm0";
+			compatible = "mediatek,disp_pwm",
+				"mediatek,mt6881-disp-pwm";
 			reg = <0 0x1100e000 0 0x1000>;
-			interrupts = <GIC_SPI 254 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 599 IRQ_TYPE_LEVEL_HIGH 0>;
 			#pwm-cells = <2>;
-			clocks = <&cksys_clk CLK_CK_DISP_PWM_SEL>;
-			clock-names = "main";
+			//clocks = <&cksys_clk CLK_CK_DISP_PWM_SEL>;
+			//clock-names = "main";
 			status = "disabled";
 		};
 
 		disp_pwm1: disp-pwm1@1100f000 {
-			compatible = "mediatek,disp_pwm0",
-				"mediatek,mt6881-disp-pwm0";
+			compatible = "mediatek,disp_pwm",
+				"mediatek,mt6881-disp-pwm";
 			reg = <0 0x1100f000 0 0x1000>;
-			interrupts = <GIC_SPI 254 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts = <GIC_SPI 598 IRQ_TYPE_LEVEL_HIGH 0>;
 			#pwm-cells = <2>;
-			clocks = <&cksys_clk CLK_CK_DISP_PWM_SEL>;
-			clock-names = "main";
+			//clocks = <&cksys_clk CLK_CK_DISP_PWM_SEL>;
+			//clock-names = "main";
 			status = "disabled";
 		};
 
@@ -7988,6 +7964,31 @@
 				max-brightness = <255>;
 				pwm-names = "lcd-backlight1";
 			};
+		};
+#if 0
+		disp_wdma1: disp-wdma1@1401c000 {
+			compatible = "mediatek,disp_wdma1",
+				"mediatek,mt6881-disp-wdma";
+			reg = <0 0x1401c000 0 0x1000>;
+			interrupts = <GIC_SPI 458 IRQ_TYPE_LEVEL_HIGH 0>;
+			clocks = <&dispsys_config_clk CLK_MM_DISP_WDMA1>;
+			fifo-size-1plane = <966>;
+			fifo-size-uv-1plane = <29>;
+			fifo-size-2plane = <640>;
+			fifo-size-uv-2plane = <320>;
+			fifo-size-3plane = <637>;
+			fifo-size-uv-3plane = <160>;
+			mediatek,larb = <&smi_larb1>;
+			mediatek,smi-id = <1>;
+			iommus = <&disp_iommu M4U_L1_P8_DISP_WDMA1>;
+		};
+
+		disp_dsc_wrap1: disp-dsc-wrap1@14022000 {
+			compatible = "mediatek,disp_dsc_wrap1",
+				"mediatek,mt6881-disp-dsc";
+			reg = <0 0x14022000 0 0x1000>;
+			interrupts = <GIC_SPI 462 IRQ_TYPE_LEVEL_HIGH 0>;
+			// clocks = <&dispsys_config_clk CLK_MM_DISP_DSC_WRAP1>;
 		};
 #endif
 
