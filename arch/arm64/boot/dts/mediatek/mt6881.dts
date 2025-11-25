@@ -9948,6 +9948,14 @@
 		adie-sku = <1 2 0 1 1 2 0 0>;  /* mt6637 = 0, mt6631 = 1 , mt6631 + mt6686 = 2 */
 	};
 
+	fm: fm {
+		compatible = "mediatek,fm";
+		family-id = <0x6983>;
+		host-id = <0x6881>;
+		conn-id = <0x0205>;
+		interrupts = <GIC_SPI 486 IRQ_TYPE_LEVEL_HIGH 0>;
+	};
+
 	pkvm: pkvm {
 		status = "okay";
 	};
