@@ -261,6 +261,12 @@ static int mmdvfs_debug_v3_status_dump(struct seq_file *file)
 
 	mmdvfs_debug_dump_line(file, "VER3: mux controlled by vcp:");
 
+	//force opp
+	mmdvfs_debug_dump_line(file, "force power opp, default = 8");
+	for (i = 0; i < PWR_MMDVFS_NUM; i++)
+		mmdvfs_debug_dump_line(file, "force - power: %u opp: %u",
+			i, readl(MEM_FORCE_OPP_PWR(i)));
+
 	// power opp
 	i = readl(MEM_REC_PWR_CNT) % MEM_REC_CNT_MAX;
 	if (readl(MEM_REC_PWR_SEC(i)))
