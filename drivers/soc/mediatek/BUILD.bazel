@@ -170,6 +170,22 @@ define_mgk_ddk_ko(
         ],
 )
 
+define_mgk_ddk_ko(
+        name = "mtk-scpsys-mt6881-ivi",
+
+        srcs = [
+            "mtk-scpsys-mt6881-ivi.c",
+        ],
+
+        includes = ["."],
+
+        hdrs = glob(["**/*.h"]),
+
+        ko_deps = [
+            "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys".format(kernel_version),
+        ],
+)
+
 define_platform_scpsys_ko("mt6761")
 define_platform_scpsys_ko("mt6765")
 define_platform_scpsys_ko("mt6768")

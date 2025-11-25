@@ -1492,6 +1492,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6858".format(kernel_version): "mt6858",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6878".format(kernel_version): "mt6878",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6881".format(kernel_version): "mt6881",
+    "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6881-ivi".format(kernel_version): "mt6881",
     #"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6877".format(kernel_version): "mt6877",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6886".format(kernel_version): "mt6886",
     "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-scpsys-mt6895".format(kernel_version): "mt6895",

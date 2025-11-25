@@ -33,6 +33,11 @@
 		_BUS_PROT(_type, 0x0, 0x0,			\
 		_en_ofs, _sta_ofs, _mask, _ack_mask, true)
 
+#define BUS_PROT_ACK(_type, _set_ofs, _clr_ofs,	\
+		_en_ofs, _sta_ofs, _mask, _ack_mask)		\
+		_BUS_PROT(_type, _set_ofs, _clr_ofs,			\
+		_en_ofs, _sta_ofs, _mask, _ack_mask, true)
+
 #define MT2701_TOP_AXI_PROT_EN_MM_M0		BIT(1)
 #define MT2701_TOP_AXI_PROT_EN_CONN_M		BIT(2)
 #define MT2701_TOP_AXI_PROT_EN_CONN_S		BIT(8)
