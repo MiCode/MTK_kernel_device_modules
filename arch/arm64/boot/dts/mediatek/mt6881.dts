@@ -10269,6 +10269,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,iommu-banks = <&disp_iommu_bank1 &disp_iommu_bank2
 						&disp_iommu_bank3 &disp_iommu_bank4>;
 			interrupts = <GIC_SPI 406 IRQ_TYPE_LEVEL_HIGH 0>;
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
 			#iommu-cells = <1>;
 		};
 
