@@ -3937,7 +3937,7 @@
 	};
 
 	mmdvfs {
-		//compatible = "mediatek,mmdvfs";
+		compatible = "mediatek,mmdvfs";
 		mediatek,mmdvfs-clk = <&mmdvfs_clk>;
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		operating-points-v2 = <&opp_table_disp>;
@@ -3948,15 +3948,15 @@
 		mediatek,mux-mminfra = "TOP_MAINPLL_D4_D2",
 			"TOP_MAINPLL_D6", "TOP_MMPLL_D6",
 			"TOP_UNIVPLL_D4", "TOP_UNIVPLL_D3";
-		//clocks = <&cksys_reg_clk CLK_TOP_DISP0_SEL>,	/* 0 */
-		//	<&cksys_reg_clk CLK_TOP_MMINFRA_SEL>,    /* 1 */
-		//	<&cksys_reg_clk CLK_TOP_MAINPLL_D4_D2>,	/* 2 */
-		//	<&cksys_reg_clk CLK_TOP_MAINPLL_D6>,	/* 3 */
-		//	<&cksys_reg_clk CLK_TOP_MAINPLL_D4>,	/* 4 */
-		//	<&cksys_reg_clk CLK_TOP_MAINPLL_D3>,	/* 5 */
-		//	<&cksys_reg_clk CLK_TOP_UNIVPLL_D3>,	/* 6 */
-		//	<&cksys_reg_clk CLK_TOP_UNIVPLL_D4>,	/* 7 */
-		//	<&cksys_reg_clk CLK_TOP_MMPLL_D6>;	/* 8 */
+		clocks = <&cksys_reg_clk CLK_CKSYS_REG_DISP0_SEL>,	/* 0 */
+			<&cksys_reg_clk CLK_CKSYS_REG_MMINFRA_SEL>,    /* 1 */
+			<&cksys_reg_clk CLK_CKSYS_REG_MAINPLL_D4_D2>,	/* 2 */
+			<&cksys_reg_clk CLK_CKSYS_REG_MAINPLL_D6>,	/* 3 */
+			<&cksys_reg_clk CLK_CKSYS_REG_MAINPLL_D4>,	/* 4 */
+			<&cksys_reg_clk CLK_CKSYS_REG_MAINPLL_D3>,	/* 5 */
+			<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D3>,	/* 6 */
+			<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D4>,	/* 7 */
+			<&cksys_reg_clk CLK_CKSYS_REG_MMPLL_D6>;	/* 8 */
 		clock-names = "disp0",		/* 0 */
 			"mminfra",		/* 1 */
 			"TOP_MAINPLL_D4_D2",	/* 2 */
@@ -3970,7 +3970,7 @@
 	};
 
 	mmdvfs_clk: mmdvfs-clk {
-		//compatible = "mediatek,mtk-mmdvfs-v3";
+		compatible = "mediatek,mtk-mmdvfs-v3";
 		//mmdvfs-free-run;
 		mediatek,restore-step;
 		mmdvfs-ap-ccf-support;
@@ -4017,27 +4017,26 @@
 		//mediatek,ccu-rproc = <&ccu_rproc>;
 		#clock-cells = <1>;
 		clocks = <&mmdvfs_clk CLK_MMDVFS_VCORE>, <&mmdvfs_clk CLK_MMDVFS_VMM>,
-			<&mmdvfs_clk CLK_MMDVFS_MDP>, <&mmdvfs_clk CLK_MMDVFS_MML>,
-			<&mmdvfs_clk CLK_MMDVFS_JPEGENC>, <&mmdvfs_clk CLK_MMDVFS_CAM>,
-			<&mmdvfs_clk CLK_MMDVFS_IMG>;
-		clock-names = "pwr_vcore", "pwr_vmm", "rst_mdp", "rst_mml", "rst_jpgenc",
-			"rst_cam", "rst_img";
+			<&mmdvfs_clk CLK_MMDVFS_MML>, <&mmdvfs_clk CLK_MMDVFS_JPEGENC>,
+			<&mmdvfs_clk CLK_MMDVFS_CAM>, <&mmdvfs_clk CLK_MMDVFS_IMG>;
+		clock-names = "pwr_vcore", "pwr_vmm", "rst_mml", "rst_jpgenc",
+			"rst_cam";
 	};
 
 	mmdvfs-v3-start {
-		//compatible = "mediatek,mmdvfs-v3-start";
+		compatible = "mediatek,mmdvfs-v3-start";
 	};
 
 	mmdvfs_debug: mmdvfs-debug {
-		//compatible = "mediatek,mmdvfs-debug";
-		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
+		compatible = "mediatek,mmdvfs-debug";
+		//dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		//disp-dev = <&dispsys_config>;
 		force-step0 = <0>;	/* 0:opp0,  1:opp1, ... */
 		release-step0 = <1>;	/* 0:disable,  1:enable */
 		use-v3-pwr = <3>; /* OR operation of (1 << PWR_MMDVFS_XXX) */
 		clocks = <&mmdvfs_clk CLK_MMDVFS_VCORE>, <&mmdvfs_clk CLK_MMDVFS_VMM>;
 		clock-names = "vcore", "vmm";
-		//vcore-supply = <&mt6363_vbuck5>;
+		//vcore-supply = <&mt6319_vbuck4>;
 		vmm-pmic-supply = <&mt6363_vbuck1>;
 		fmeter-id = /bits/ 8 <5 6 40 41 51 52 53>;
 		fmeter-type = /bits/ 8 <3 3 3 3 3 3 3>;
