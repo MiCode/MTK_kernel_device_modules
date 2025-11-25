@@ -822,6 +822,27 @@
 		#clock-cells = <1>;
 	};
 
+	ivi_clkitg: ivi-clkitg {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	ivi_disable_unused: ivi-disable-unused {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	ivi_scpsys: ivi-scpsys@1c004000 {
+		compatible = "mediatek,mt6881-ivi-scpsys", "syscon";
+		reg = <0 0x1c004000 0 0x1000>;
+		#power-domain-cells = <1>;
+		status = "disabled";
+	};
+
 	qos:qos@11bb00 {
 		compatible = "mediatek,mt6893-qos";
 			reg = <0 0x0011bb00 0 0x100>,
