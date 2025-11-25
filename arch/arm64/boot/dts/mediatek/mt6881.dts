@@ -9186,7 +9186,7 @@
 
 		gpueb: gpueb@3d000000 {
 			compatible = "mediatek,gpueb";
-			gpueb-support = <0>;
+			gpueb-support = <1>;
 			ghpm-support = <0>;
 			gpueb-logger-support = <0>;
 			gpu-mpu-support = <0>;
