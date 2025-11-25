@@ -83,7 +83,7 @@
 			    8250.nr_uarts=3 \
 			    nosoftlockup \
 			    androidboot.hardware=mt6881 \
-			    vmalloc=400M swiotlb=noforce cma=64M \
+			    vmalloc=400M swiotlb=noforce \
 			    firmware_class.path=/vendor/firmware \
 			    kvm-arm.protected_prefault=9 \
 			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem \
@@ -9339,7 +9339,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
 				<0>, /*MTK_DRM_OPT_ODDMR_OD_AEE*/
 				<0>, /*MTK_DRM_OPT_ODDMR_DMR_AEE*/
-				<0>, /*MTK_DRM_OPT_HRT*/
+				<1>, /*MTK_DRM_OPT_HRT*/
 				<0>, /*MTK_DRM_OPT_HRT_MODE*/
 				<0>, /*MTK_DRM_OPT_DELAYED_TRIGGER*/
 				<0>, /*MTK_DRM_OPT_OVL_EXT_LAYER*/
