@@ -70,6 +70,21 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "scheduler_dummy",
+    srcs = [
+        "dummy.c",
+    ],
+    out = "scheduler_dummy.ko",
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(srctree)/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas",
+		"-I$(srctree)/kernel/",
+    ],
+)
+define_mgk_ddk_ko(
     name = "scheduler",
 	conditional_srcs = {
 		"CONFIG_MTK_CORE_PAUSE":{

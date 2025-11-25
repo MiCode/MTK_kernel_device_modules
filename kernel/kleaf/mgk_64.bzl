@@ -1772,7 +1772,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/regulator:wl2868c-regulator".format(kernel_version): "mt6789",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/modules/v6991:mtk_mbraink_v6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/modules/v6993:mtk_mbraink_v6993".format(kernel_version): "mt6993",
-
+    "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler_dummy".format(kernel_version): "mt6881",
 }
 
 mgk_64_kleaf_eng_device_modules = [
