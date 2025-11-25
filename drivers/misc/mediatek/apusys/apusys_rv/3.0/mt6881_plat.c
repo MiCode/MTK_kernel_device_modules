@@ -508,7 +508,7 @@ static int apu_power_ctrl(struct mtk_apu *apu, uint32_t op)
 	return ret;
 }
 
-static void timesync_update(struct mtk_apu *apu)
+static void mt6881_timesync_update(struct mtk_apu *apu)
 {
 	u64 timertick;
 	unsigned long flags;
@@ -518,7 +518,7 @@ static void timesync_update(struct mtk_apu *apu)
 	if (apu->platdata->flags & F_FPGA_EP)
 		sys_timer_clk_mhz = 150;
 	else
-		sys_timer_clk_mhz = 13;
+		sys_timer_clk_mhz = 1000;
 
 	spin_lock_irqsave(&apu->reg_lock, flags);
 	apu->conf_buf->time_offset = sched_clock();
@@ -641,7 +641,7 @@ static int mt6881_power_on_off_locked(struct mtk_apu *apu, u32 id, u32 on, u32 o
 				apu->sub_latency[1] = profile_end(&ts, &te);
 
 				profile_start(&ts);
-				timesync_update(apu);
+				mt6881_timesync_update(apu);
 				apu->sub_latency[2] = profile_end(&ts, &te);
 
 				profile_start(&ts);
@@ -1081,7 +1081,7 @@ static int mt6881_rproc_exit(struct mtk_apu *apu)
 
 const struct mtk_apu_platdata mt6881_platdata = {
 	.flags		= F_DEBUG_LOG_ON | F_APU_IPI_UT_SUPPORT |
-		F_FAST_ON_OFF | F_BRINGUP | F_AUTO_BOOT,
+		F_FAST_ON_OFF | F_BRINGUP | F_AUTO_BOOT | F_PRELOAD_FIRMWARE,
 	.ops		= {
 		.init	= mt6881_rproc_init,
 		.exit	= mt6881_rproc_exit,
@@ -1103,5 +1103,6 @@ const struct mtk_apu_platdata mt6881_platdata = {
 		.irq_affin_set = mt6881_irq_affin_set,
 		.irq_affin_unset = mt6881_irq_affin_unset,
 		.irq_affin_clear = mt6881_irq_affin_clear,
+		.timesync_update = mt6881_timesync_update,
 	},
 };
