@@ -14978,6 +14978,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,ccd = <&remoteproc_ccd>;
 			mediatek,camisp-vcore = <&camisp_vcore>;
 			mtk,smmu-shared = <&mm_smmu_cam>;
+			ccf-apply;
 			operating-points-v2 = <&opp_table_cam>;
 			//power-domains = <&hfrpsys MT6993_POWER_DOMAIN_CAM_MAIN>;
 			interrupts = <GIC_SPI 656 IRQ_TYPE_LEVEL_HIGH 0>,
