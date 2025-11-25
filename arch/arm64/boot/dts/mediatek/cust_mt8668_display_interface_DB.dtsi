@@ -1,0 +1,284 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 MediaTek Inc.
+ */
+
+&pio {
+	mtkfb_pins_lcm_rst_out1_gpio: lcm-rst-out1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO60__FUNC_GPIO60>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm-rst-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO60__FUNC_GPIO60>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_dsi_te: lcm-dsi-te {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO59__FUNC_DSI_TE>;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en1: lcm-led-en1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO195__FUNC_GPIO195>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO195__FUNC_GPIO195>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+&mtkfb {
+	pinctrl-names = "lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio";
+	pinctrl-0 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-1 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-2 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-3 = <&mtkfb_pins_lcm_led_en1>;
+	pinctrl-4 = <&mtkfb_pins_lcm_led_en0>;
+
+	status = "okay";
+};
+
+&dsi0 {
+	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	panel1 {
+		compatible = "boe,jd9365da";
+		reg = <0>;
+		power-gpios = <&pio 195 0>;
+		reset-gpios = <&pio 60 0>;
+		pinctrl-names = "default";
+		port {
+			panel1_in: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+
+	ports {
+		port {
+			reg = <0>;
+			dsi_out: endpoint {
+				remote-endpoint = <&max96789_in>;
+			};
+		};
+	};
+};
+
+&dsi1 {
+	status = "disabled";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	panel2 {
+		compatible = "boe,jd9365da";
+		reg = <1>;
+		power-gpios = <&pio 69 0>;
+		reset-gpios = <&pio 9 0>;
+		pinctrl-names = "default";
+		port {
+			panel2_in: endpoint {
+				remote-endpoint = <&dsi1_out>;
+			};
+		};
+	};
+
+	ports {
+		port {
+			dsi1_out: endpoint {
+				remote-endpoint = <&max96789_1_in>;
+			};
+		};
+	};
+};
+
+&virt_dsi0 {
+	reg = <0>;
+	ports {
+		port {
+			dsiv0_out: endpoint {
+				remote-endpoint = <&max96789_v0_in>;
+			};
+		};
+	};
+};
+
+&virt_dsi1 {
+	reg = <0>;
+	ports {
+		port {
+			dsiv1_out: endpoint {
+				remote-endpoint = <&max96789_v1_in>;
+			};
+		};
+	};
+};
+
+&i2c0 {
+	status = "okay";
+
+	max96789: max96789@40 {
+		compatible = "maxiam,max96789,dsi0";
+		status = "disabled";
+		reg = <0x40>;
+		reset-gpios = <&pio 155 0>;
+		//power-en-gpios = <&pio 116 0>; // set it default to high in dws.
+		// only for test
+		//interrupt-parent = <&pio>;
+		//interrupts = <187 IRQ_TYPE_EDGE_RISING>;
+		pinctrl-names = "default";
+		setting = <&config_compatible>;
+		port {
+			max96789_in: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+
+	max96789_v0: max96789-v0@4a {
+		compatible = "maxiam,max96789,dsi,virtual";
+		status = "disabled";
+		reg = <0x4a>;
+		master = <&max96789>;
+		port {
+			max96789_v0_in: endpoint {
+				remote-endpoint = <&dsiv0_out>;
+			};
+		};
+	};
+
+	bl0: bl0@1a { // for single panel
+		compatible = "mediatek,serdes-leds";
+		status = "disabled";
+		reg = <0x1a>;
+
+		// only used to make it probe behind the display
+		disp-supply = <&dispsys_config>;
+
+		conn-dev = <&dsi0>;
+		label = "lcd-backlight";
+		max-hw-brightness = <100>;
+	};
+
+	bl0_0: bl0-0@1b { // for super frame panel 1
+		compatible = "mediatek,serdes-leds";
+		status = "disabled";
+		reg = <0x1b>;
+
+		// only used to make it probe behind the display
+		disp-supply = <&dispsys_config>;
+
+		conn-dev = <&dsi0>;
+		label = "lcd-backlight_dsi0_0";
+		max-hw-brightness = <100>;
+	};
+
+	bl0_1: bl0-1@1c { // for super frame panel 2
+		compatible = "mediatek,serdes-leds";
+		status = "disabled";
+		reg = <0x1c>;
+
+		// only used to make it probe behind the display
+		disp-supply = <&dispsys_config>;
+
+		conn-dev = <&virt_dsi0>;
+		label = "lcd-backlight_dsi0_1";
+		max-hw-brightness = <100>;
+	};
+};
+
+&i2c1 {
+	status = "okay";
+
+	max96789_1: max96789-1@40 {
+		compatible = "maxiam,max96789,dsi1";
+		status = "disabled";
+		reg = <0x40>;
+		reset-gpios = <&pio 84 0>;
+		//power-en-gpios = <&pio 116 0>; // used same gpio as max96789
+		pinctrl-names = "default";
+		setting = <&config_compatible>;
+		port {
+			max96789_1_in: endpoint {
+				remote-endpoint = <&dsi1_out>;
+			};
+		};
+	};
+
+	max96789_v1: max96789-v1@4a {
+		compatible = "maxiam,max96789,dsi,virtual";
+		status = "disabled";
+		reg = <0x4a>;
+		master = <&max96789_1>;
+		port {
+			max96789_v1_in: endpoint {
+				remote-endpoint = <&dsiv1_out>;
+			};
+		};
+	};
+
+	bl1: bl1@1a { // for single panel
+		compatible = "mediatek,serdes-leds";
+		status = "disabled";
+		reg = <0x1a>;
+
+		// only used to make it probe behind the display
+		disp-supply = <&dispsys_config>;
+
+		conn-dev = <&dsi1>;
+		label = "lcd-backlight2";
+		max-hw-brightness = <100>;
+	};
+
+	bl1_0: bl1-0@1b { // for super frame panel 1
+		compatible = "mediatek,serdes-leds";
+		status = "disabled";
+		reg = <0x1b>;
+
+		// only used to make it probe behind the display
+		disp-supply = <&dispsys_config>;
+
+		conn-dev = <&dsi1>;
+		label = "lcd-backlight_dsi1_0";
+		max-hw-brightness = <100>;
+	};
+
+	bl1_1: bl1-1@1c { // for super frame panel 2
+		compatible = "mediatek,serdes-leds";
+		status = "disabled";
+		reg = <0x1c>;
+
+		// only used to make it probe behind the display
+		disp-supply = <&dispsys_config>;
+
+		conn-dev = <&virt_dsi1>;
+		label = "lcd-backlight_dsi1_1";
+		max-hw-brightness = <100>;
+	};
+};
+
+&mipi_tx_config0 {
+	status = "disabled";
+};
+
+&mipi_tx_config1 {
+	status = "disabled";
+};
+
+#include "mediatek/cust_mt8668_display_serdes_config.dtsi"
