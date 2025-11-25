@@ -195,7 +195,7 @@ struct FDVT_CLK_STRUCT fdvt_clk;
 #define FDVT_DEV_NAME "camera-fdvt"
 //#define EP_NO_CLKMGR // GASPER ADD
 #define BYPASS_REG (0)
-#define FDVT_WAITIRQ_LOG
+/* #define FDVT_WAITIRQ_LOG */
 #define FDVT_USE_GCE
 /* #define FDVT_DEBUG_USE */
 #define DUMMY_FDVT (0)
@@ -3251,10 +3251,10 @@ static signed int fdvt_wait_irq(FDVT_WAIT_IRQ_STRUCT *wait_irq)
 	}
 
 #ifdef FDVT_WAITIRQ_LOG
-	log_inf("before wait_event:Tout(%d), IrqStat(0x%08X), WaitStat(0x%08X), usrKey(%d)\n",
-		wait_irq->timeout, irqStatus, wait_irq->status, wait_irq->user_key);
-	log_inf("before wait_event:ProcID(%d), FdvtIrq(0x%08X), WriteReq(0x%08X), ReadReq(0x%08X)\n",
-		wait_irq->process_id, fdvt_info.irq_info.fdvt_irq_cnt,
+	/* log_inf("before wait_event:Tout(%d), IrqStat(0x%08X), WaitStat(0x%08X), usrKey(%d)\n", */
+	/*	wait_irq->timeout, irqStatus, wait_irq->status, wait_irq->user_key); */
+	log_inf("before wait_event:ProcID(%d), Tout(%d), WriteReq(0x%08X), ReadReq(0x%08X)\n",
+		wait_irq->process_id, wait_irq->timeout,
 		fdvt_info.write_req_idx, fdvt_info.read_req_idx);
 #endif
 
@@ -3355,10 +3355,10 @@ static signed int fdvt_wait_irq(FDVT_WAIT_IRQ_STRUCT *wait_irq)
 		}
 
 #ifdef FDVT_WAITIRQ_LOG
-		log_inf("no timeout:Tout(%d), IrqStat(0x%08X), WaitStat(0x%08X), usrKey(%d)\n",
-			wait_irq->timeout, irqStatus, wait_irq->status, wait_irq->user_key);
-		log_inf("no timeout:ProcID(%d),FdvtIrq(0x%08X), WriteReq(0x%08X), ReadReq(0x%08X)\n",
-			wait_irq->process_id, fdvt_info.irq_info.fdvt_irq_cnt,
+		/* log_inf("no timeout:Tout(%d), IrqStat(0x%08X), WaitStat(0x%08X), usrKey(%d)\n", */
+		/*	wait_irq->timeout, irqStatus, wait_irq->status, wait_irq->user_key); */
+		log_inf("no timeout:ProcID(%d),Tout(%d), WriteReq(0x%08X), ReadReq(0x%08X)\n",
+			wait_irq->process_id, wait_irq->timeout,
 			fdvt_info.write_req_idx, fdvt_info.read_req_idx);
 #endif
 
