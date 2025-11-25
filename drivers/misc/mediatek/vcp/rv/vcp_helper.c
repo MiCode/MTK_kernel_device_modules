@@ -2948,7 +2948,7 @@ static int vcp_io_device_probe(struct platform_device *pdev)
 		 &vcp_io_support);
 	if (vcp_io_support == 0 || vcp_io_support == 1) {
 		pr_info("Bypass the VCP driver probe\n");
-		return -1;
+		return 0;
 	}
 
 	// VCP iommu devices
