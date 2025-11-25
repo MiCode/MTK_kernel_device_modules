@@ -4400,6 +4400,16 @@ void dump_cur_pos(struct mtk_drm_crtc *mtk_crtc)
 	}
 }
 
+int mtk_hrt_issue_flag_set(bool is_hrt_issue)
+{
+	int ret = 0;
+
+	DDPINFO("%s No hrt debug HW\n", __func__);
+
+	return ret;
+}
+EXPORT_SYMBOL(mtk_hrt_issue_flag_set);
+
 irqreturn_t mtk_dsi_irq_status(int irq, void *dev_id)
 {
 	struct mtk_dsi *dsi = dev_id;
