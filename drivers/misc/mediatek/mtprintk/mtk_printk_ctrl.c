@@ -74,7 +74,11 @@ void update_uartlog_status(bool new_value, int value)
 		console_list_lock();
 		for_each_console(bcon) {
 			pr_info("console name: %s, status 0x%x.\n", bcon->name, bcon->flags);
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS) || IS_ENABLED(CONFIG_HYPER_YOCTO_UOS)
+			if (!strncmp(bcon->name, "vmlog", 5)) {
+#else
 			if (!strncmp(bcon->name, "ttyS", 4)) {
+#endif
 				WRITE_ONCE(bcon->flags, READ_ONCE(bcon->flags) & ~CON_ENABLED);
 				console_list_unlock();
 				return;
@@ -85,8 +89,13 @@ void update_uartlog_status(bool new_value, int value)
 		console_list_lock();
 		for_each_console(bcon) {
 			pr_info("console name: %s. status 0x%x.\n", bcon->name, bcon->flags);
-			if (!strncmp(bcon->name, "ttyS", 4))
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS) || IS_ENABLED(CONFIG_HYPER_YOCTO_UOS)
+			if (!strncmp(bcon->name, "vmlog", 5)) {
+#else
+			if (!strncmp(bcon->name, "ttyS", 4)) {
+#endif
 				bcon_ttys = bcon;
+			}
 
 			if (bcon->seq > max_seq)
 				max_seq = bcon->seq;
