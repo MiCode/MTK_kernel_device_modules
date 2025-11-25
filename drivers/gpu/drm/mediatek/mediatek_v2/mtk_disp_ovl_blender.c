@@ -573,7 +573,7 @@ static void mtk_ovl_blender_reset(struct mtk_ddp_comp *comp, struct cmdq_pkt *ha
 }
 
 static void mtk_ovl_blender_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
-			     unsigned int ext_idx, struct cmdq_pkt *handle)
+			     unsigned int ext_idx, struct mtk_plane_state *state, struct cmdq_pkt *handle)
 {
 	struct mtk_disp_ovl_blender *bld = comp_to_ovl_blender(comp);
 	const u16 *regs = bld->data->regs;
@@ -1208,7 +1208,7 @@ static void mtk_ovl_blender_layer_config(struct mtk_ddp_comp *comp, unsigned int
 					comp->regs_pa + regs[OVL_BLD_BGCLR_CLR], g_ovl_bgclr, ~0);
 			}
 		} else
-			mtk_ovl_blender_layer_on(comp, lye_idx, ext_lye_idx, handle);
+			mtk_ovl_blender_layer_on(comp, lye_idx, ext_lye_idx, state, handle);
 
 		if (mtk_crtc->bg_bld_id > 0) {
 			int bld_id = comp->id - mtk_crtc->first_blender->id;

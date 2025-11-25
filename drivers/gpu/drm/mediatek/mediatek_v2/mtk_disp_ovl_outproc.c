@@ -319,7 +319,7 @@ static void mtk_ovl_outproc_config(struct mtk_ddp_comp *comp,
 }
 
 static void mtk_ovl_outproc_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
-			     unsigned int ext_idx, struct cmdq_pkt *handle)
+			     unsigned int ext_idx, struct mtk_plane_state *state, struct cmdq_pkt *handle)
 {
 	DDPDBG("%s+ %s\n", __func__, mtk_dump_comp_str(comp));
 }

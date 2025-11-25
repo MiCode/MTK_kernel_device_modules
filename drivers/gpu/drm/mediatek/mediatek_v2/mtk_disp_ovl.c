@@ -1415,7 +1415,7 @@ static void mtk_ovl_config(struct mtk_ddp_comp *comp,
 }
 
 static void mtk_ovl_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
-			     unsigned int ext_idx, struct cmdq_pkt *handle)
+			     unsigned int ext_idx, struct mtk_plane_state *state, struct cmdq_pkt *handle)
 {
 	unsigned int con;
 
@@ -2948,7 +2948,7 @@ static void mtk_ovl_layer_config(struct mtk_ddp_comp *comp, unsigned int idx,
 		DDPDBG("%s, vtotal=%d, vact=%d\n",
 			__func__, vtotal, vact);
 
-		mtk_ovl_layer_on(comp, lye_idx, ext_lye_idx, handle);
+		mtk_ovl_layer_on(comp, lye_idx, ext_lye_idx, NULL, handle);
 
 		/*constant color :non RDMA source*/
 		/* TODO: cause RPO abnormal */

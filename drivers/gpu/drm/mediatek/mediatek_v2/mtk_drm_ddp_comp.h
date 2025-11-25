@@ -1561,7 +1561,7 @@ struct mtk_ddp_comp_funcs {
 	void (*disable_vblank)(struct mtk_ddp_comp *comp,
 			       struct cmdq_pkt *handle);
 	void (*layer_on)(struct mtk_ddp_comp *comp, unsigned int idx,
-			 unsigned int ext_idx, struct cmdq_pkt *handle);
+			 unsigned int ext_idx, struct mtk_plane_state *state, struct cmdq_pkt *handle);
 	void (*layer_off)(struct mtk_ddp_comp *comp, unsigned int idx,
 			  unsigned int ext_idx, struct cmdq_pkt *handle);
 	void (*layer_config)(struct mtk_ddp_comp *comp, unsigned int idx,
@@ -1756,10 +1756,10 @@ static inline void mtk_ddp_comp_disable_vblank(struct mtk_ddp_comp *comp,
 
 static inline void mtk_ddp_comp_layer_on(struct mtk_ddp_comp *comp,
 					 unsigned int idx, unsigned int ext_idx,
-					 struct cmdq_pkt *handle)
+					 struct mtk_plane_state *state, struct cmdq_pkt *handle)
 {
 	if (comp && comp->funcs && comp->funcs->layer_on && !comp->blank_mode)
-		comp->funcs->layer_on(comp, idx, ext_idx, handle);
+		comp->funcs->layer_on(comp, idx, ext_idx, state, handle);
 }
 
 static inline void mtk_ddp_comp_layer_off(struct mtk_ddp_comp *comp,

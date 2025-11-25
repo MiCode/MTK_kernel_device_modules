@@ -1120,17 +1120,35 @@ static void mtk_ovl_exdma_first_config(struct mtk_ddp_comp *comp,
 }
 
 static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
-			     unsigned int ext_idx, struct cmdq_pkt *handle)
+			     unsigned int ext_idx, struct mtk_plane_state *state, struct cmdq_pkt *handle)
 {
 	unsigned int con;
 	struct mtk_disp_ovl_exdma *exdma = (comp) ? comp_to_ovl_exdma(comp) : NULL;
 	const u16 *regs = (exdma) ? exdma->data->regs : NULL;
 	const u32 *reg_fld = (exdma) ? exdma->data->reg_fld : NULL;
+	struct drm_crtc *crtc = &comp->mtk_crtc->base;
+	struct mtk_crtc_state *mtk_crtc_state;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
+	struct mtk_plane_pending_state *pending = &state->pending;
+	unsigned int compress = (unsigned int)pending->prop_val[PLANE_PROP_COMPRESS];
+	unsigned int cmp_id = DDP_COMPONENT_ID_MAX;
+	unsigned int value = REG_FLD_VAL(reg_fld[FLD_L0_FBDC_EN], compress);
 
 	if (!comp)
 		return;
 
 	comp->layer_idx_bit |= (1 << ext_idx);
+
+	mtk_crtc_state = to_mtk_crtc_state(crtc->state);
+	mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.rpo_lye, &cmp_id, NULL);
+
+	if (comp->id == DDP_COMPONENT_OVL1_EXDMA2)
+		cmp_id = comp->id;
+	if ((!pending->addr && pending->pq_loop_type == 0) || pending->format == DRM_FORMAT_C8)
+		value |= LSRC_COLOR;
+	else if ((pending->pq_loop_type == 2) && (!priv->data->ovl_exdma_rule || comp->id != cmp_id))
+		value |= LSRC_PQ;
+	value |= ENABLE_OVL_L_EN;
 
 	DDPDBG("%s %s pkt:%p idx:%d, ext_idx:%d layer_idx_bit:0x%08x\n", __func__,
 		mtk_dump_comp_str(comp), handle, idx, ext_idx, comp->layer_idx_bit);
@@ -1148,12 +1166,10 @@ static void mtk_ovl_exdma_layer_on(struct mtk_ddp_comp *comp, unsigned int idx,
 			       comp->regs_pa + regs[OVL_EXDMA_DATAPATH_EXT_CON],
 			       con, con_mask);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, ext_idx - 1),
-			       ENABLE_OVL_L_EN, REG_FLD_MASK(reg_fld[FLD_L0_EN]));
+			       comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, ext_idx - 1), value, ~0);
 	} else
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + regs[OVL_EXDMA_L0_EN], ENABLE_OVL_L_EN,
-			REG_FLD_MASK(reg_fld[FLD_L0_EN]));
+			comp->regs_pa + regs[OVL_EXDMA_L0_EN], value, ~0);
 
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_EXDMA_RDMA0_CTRL], 0x1, ~0);
@@ -1239,10 +1255,6 @@ static void mtk_ovl_exdma_layer_off(struct mtk_ddp_comp *comp, unsigned int idx,
 				REG_FLD_MASK(reg_fld[FLD_L0_EN]) |
 				REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
 	} else {
-		/*cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->regs_pa + DISP_REG_OVL_DATAPATH_CON, 0,
-			       BIT(0));*/
-
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_EXDMA_L0_EN], 0,
 			REG_FLD_MASK(reg_fld[FLD_L0_EN]) |
@@ -2807,10 +2819,6 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			comp->regs_pa + OVL_EXDMA_ELX_CLRFMT(exdma, ext_lye_idx-1),
 			Ln_CLRFMT,	~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, ext_lye_idx-1), layer_src,
-			REG_FLD_MASK(reg_fld[FLD_L0_LAYER_SRC]));
-
-		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + OVL_EXDMA_ELX_CON(exdma, id), con,
 			~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2858,9 +2866,6 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_EXDMA_L0_CON2], con, ~0);
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + regs[OVL_EXDMA_L0_EN], layer_src,
-			REG_FLD_MASK(reg_fld[FLD_L0_LAYER_SRC]));
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + regs[OVL_EXDMA_L0_OFFSET], offset, ~0);
 		cmdq_pkt_write(handle, comp->cmdq_base,
@@ -2968,7 +2973,7 @@ static void mtk_ovl_exdma_layer_config(struct mtk_ddp_comp *comp, unsigned int i
 			__func__, vtotal, vact);
 
 		if (fmt != DRM_FORMAT_C8)
-			mtk_ovl_exdma_layer_on(comp, lye_idx, ext_lye_idx, handle);
+			mtk_ovl_exdma_layer_on(comp, lye_idx, ext_lye_idx, state, handle);
 		mtk_ovl_exdma_stash_config(comp, handle, lye_idx, ext_lye_idx, state);
 
 		/*constant color :non RDMA source*/
@@ -3247,9 +3252,6 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	if (ext_lye_idx != LYE_NORMAL) {
 		unsigned int id = ext_lye_idx - 1;
 
-		cmdq_pkt_write(handle, comp->cmdq_base,
-		       comp->regs_pa + OVL_EXDMA_ELX_EN(exdma, id), lx_fbdc_en << 4,
-		       REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
 		if (!old_pending || ((old_pending->mml_mode == MML_MODE_RACING) &&
 			!(pending->mml_mode == MML_MODE_RACING))) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
@@ -3263,9 +3265,6 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 				0, ~0);
 		}
 	} else {
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + regs[OVL_EXDMA_L0_EN],
-			lx_fbdc_en << 4, REG_FLD_MASK(reg_fld[FLD_L0_FBDC_EN]));
 		if (!old_pending || ((old_pending->mml_mode == MML_MODE_RACING) &&
 			!(pending->mml_mode == MML_MODE_RACING))) {
 			cmdq_pkt_write(handle, comp->cmdq_base,
