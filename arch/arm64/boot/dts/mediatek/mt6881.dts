@@ -12709,10 +12709,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	regulator-always-on;
 };
 
-&mtk_gauge {
-	disable-mtkbattery = <1>;
-	fixed-battery-temperature = <25>;
-};
 #include "mediatek/bat_setting/mt6881_battery_prop.dtsi"
 
 /delete-node/ &mt6363_vbuck1_sshub;
