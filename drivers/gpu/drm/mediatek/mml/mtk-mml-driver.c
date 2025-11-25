@@ -169,8 +169,10 @@ struct mml_dev {
 	spinlock_t isr_lock;
 	wait_queue_head_t isr_waitq;
 	s32 alive_cnt;
+	bool isr_need_notify;
 
 	bool dl_en;
+	bool dl_vdo;
 	bool racing_en;
 	bool dpc_disable;
 	bool v4l2_en;
@@ -188,6 +190,8 @@ struct mml_dev {
 	u16 event_disp_ready;
 	u16 event_mml_stop;
 	u16 event_mml_target;
+	u16 event_disp_done;
+	u16 event_mml_config;
 
 	/* wack lock to prevent system off */
 	struct wakeup_source *wake_lock;
@@ -1633,6 +1637,8 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	struct mml_dev *mml = cfg->mml;
+	const struct mml_frame_info *info = &cfg->info;
+	const struct mml_frame_dest *dest = &info->dest[0];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct mml_comp_bw *bw = &comp->bw[cfg->dpc];
 	u32 srt_bw = bw->srt_bw, hrt_bw = bw->hrt_bw;
@@ -1690,11 +1696,35 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 			hrt_icc = MBps_to_icc(hrt_bw);
 		}
 
+		if (dest->rotate != MML_ROT_0 && !MML_FMT_COMPRESS(info->src.format) &&
+			info->mode == MML_MODE_DIRECT_LINK) {
+			mml_msg_qos("org srt:%d hrt:%d stash_srt_bw:%d stash_hrt_bw:%d",
+				srt_icc, hrt_icc, stash_srt_bw, stash_hrt_bw);
+			srt_icc += 512;
+			hrt_icc = hrt_icc ? hrt_icc + 512 : 0;
+			stash_srt_bw = stash_srt_bw * 2;
+			stash_hrt_bw = stash_hrt_bw * 2;
+			mml_msg_qos("final srt:%d hrt:%d stash_srt_bw:%d stash_hrt_bw:%d",
+				srt_icc, hrt_icc, stash_srt_bw, stash_hrt_bw);
+		}
+
 		mtk_icc_set_bw(comp->icc_dpc_path, srt_icc, hrt_icc);
 		if (comp->icc_stash_path)
 			mtk_icc_set_bw(comp->icc_dpc_stash_path,
 				MBps_to_icc(stash_srt_bw), MBps_to_icc(stash_hrt_bw));
 	} else {
+		if (dest->rotate != MML_ROT_0 && !MML_FMT_COMPRESS(info->src.format) &&
+			info->mode == MML_MODE_DIRECT_LINK) {
+			mml_msg_qos("org srt:%d hrt:%d stash_srt_bw:%d stash_hrt_bw:%d",
+				srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw);
+			srt_bw += 512;
+			hrt_bw = hrt_bw ? hrt_bw + 512 : 0;
+			stash_srt_bw = stash_srt_bw * 2;
+			stash_hrt_bw = stash_hrt_bw * 2;
+			mml_msg_qos("final srt:%d hrt:%d stash_srt_bw:%d stash_hrt_bw:%d",
+				srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw);
+		}
+
 		mtk_icc_set_bw(comp->icc_path,
 			MBps_to_icc(srt_bw), MBps_to_icc(hrt_bw));
 		if (comp->icc_stash_path)
@@ -1874,6 +1904,12 @@ bool mml_dl_enable(struct mml_dev *mml)
 }
 EXPORT_SYMBOL_GPL(mml_dl_enable);
 
+bool mml_dl_vdo(struct mml_dev *mml)
+{
+	return mml->dl_vdo;
+}
+EXPORT_SYMBOL_GPL(mml_dl_vdo);
+
 bool mml_dpc_disable(struct mml_dev *mml)
 {
 	return mml->dpc_disable;
@@ -1921,6 +1957,16 @@ u16 mml_ir_get_mml_stop_event(struct mml_dev *mml)
 u16 mml_ir_get_target_event(struct mml_dev *mml)
 {
 	return mml->event_mml_target;
+}
+
+u16 mml_ir_get_disp_done_event(struct mml_dev *mml)
+{
+	return mml->event_disp_done;
+}
+
+u16 mml_ir_get_config_event(struct mml_dev *mml)
+{
+	return mml->event_mml_config;
 }
 
 struct cmdq_client *mml_get_cmdq_clt(struct mml_dev *mml, u32 id)
@@ -2532,6 +2578,8 @@ void mml_isr_prepare_irq(struct mml_dev *mml, const struct mml_topology_path *pa
 			node_idx++;
 	}
 	atomic_set(&task->isr_ref, cfg->isr_count);
+	if (!mml->alive_cnt)
+		mml->isr_need_notify = !cfg->disp_vdo;
 	alive = ++mml->alive_cnt;
 	spin_unlock_irqrestore(&mml->isr_lock, flags);
 
@@ -2560,6 +2608,14 @@ bool mml_isr_alive(struct mml_dev *mml, struct mml_comp *comp, struct list_head 
 	if (!alive)
 		mml_log("[warn]%s comp %u isr not alive %d", __func__, comp->id, mml->alive_cnt);
 	return alive;
+}
+
+bool mml_isr_need_notify(struct mml_dev *mml)
+{
+	if (mml->dl_vdo)
+		return false;
+	else
+		return true;
 }
 
 void mml_isr_notify(struct mml_dev *mml, struct mml_comp *comp, struct list_head *isr_nodes)
@@ -2596,43 +2652,72 @@ void mml_isr_wait(struct mml_dev *mml, struct mml_task *task)
 		__func__, task->job.jobid, cfg->isr_count, mml->alive_cnt,
 		atomic_read(&task->isr_ref));
 
-	ret = wait_event_interruptible_timeout(mml->isr_waitq,
-		atomic_read(&task->isr_ref) == 0, msecs_to_jiffies(10));
-	if (ret <= 1) {
+	if (cfg->disp_vdo) {
 		const struct mml_topology_path *path = task->config->path[0];
 		u32 i;
 
-		mml_err("%s timeout as isr_ref %d ret %ld",
-			__func__, atomic_read(&task->isr_ref), ret);
+		if (task->isr_nodes) {
+			unsigned long flags = 0;
+			u32 i;
+			bool warning = false;
+
+			spin_lock_irqsave(&mml->isr_lock, flags);
+			for (i = 0; i < cfg->isr_count; i++) {
+				struct mml_isr_node *node = task->isr_nodes;
+				struct list_head *list = &node[i].entry;
+
+				if (list->next != list && list->prev != list) {
+					list_del_init(list);
+					warning = true;
+				}
+			}
+			mml->alive_cnt--;
+			spin_unlock_irqrestore(&mml->isr_lock, flags);
+		}
 
 		for (i = 0; i < path->node_cnt; i++) {
 			struct mml_comp *comp = path->nodes[i].comp;
 
 			call_hw_op(comp, irq_off, task);
 		}
-	}
+	} else {
+		ret = wait_event_interruptible_timeout(mml->isr_waitq,
+			atomic_read(&task->isr_ref) == 0, msecs_to_jiffies(10));
+		if (ret <= 1) {
+			const struct mml_topology_path *path = task->config->path[0];
+			u32 i;
 
-	if (task->isr_nodes) {
-		unsigned long flags = 0;
-		u32 i;
-		bool warning = false;
+			mml_err("%s timeout as isr_ref %d ret %ld",
+				__func__, atomic_read(&task->isr_ref), ret);
 
-		spin_lock_irqsave(&mml->isr_lock, flags);
-		for (i = 0; i < cfg->isr_count; i++) {
-			struct mml_isr_node *node = task->isr_nodes;
-			struct list_head *list = &node[i].entry;
+			for (i = 0; i < path->node_cnt; i++) {
+				struct mml_comp *comp = path->nodes[i].comp;
 
-			if (list->next != list && list->prev != list) {
-				list_del_init(list);
-				warning = true;
+				call_hw_op(comp, irq_off, task);
 			}
 		}
-		mml->alive_cnt--;
-		spin_unlock_irqrestore(&mml->isr_lock, flags);
+		if (task->isr_nodes) {
+			unsigned long flags = 0;
+			u32 i;
+			bool warning = false;
 
-		if (warning)
-			mml_err("%s task job %u isr not remove node",
-				__func__, task->job.jobid);
+			spin_lock_irqsave(&mml->isr_lock, flags);
+			for (i = 0; i < cfg->isr_count; i++) {
+				struct mml_isr_node *node = task->isr_nodes;
+				struct list_head *list = &node[i].entry;
+
+				if (list->next != list && list->prev != list) {
+					list_del_init(list);
+					warning = true;
+				}
+			}
+			mml->alive_cnt--;
+			spin_unlock_irqrestore(&mml->isr_lock, flags);
+
+			if (warning)
+				mml_err("%s task job %u isr not remove node",
+					__func__, task->job.jobid);
+		}
 	}
 }
 
@@ -2848,6 +2933,10 @@ static int mml_probe(struct platform_device *pdev)
 	mml->dl_en = of_property_read_bool(dev->of_node, "dl-enable");
 	if (mml->dl_en)
 		mml_log("direct link mode enable");
+
+	mml->dl_vdo = of_property_read_bool(dev->of_node, "dl-vdo");
+	if (mml->dl_vdo)
+		mml_log("direct link mode vdo enable");
 #endif
 	mml->dpc_disable = of_property_read_bool(dev->of_node, "dpc-disable");
 	if (mml->dpc_disable)
@@ -2878,6 +2967,10 @@ static int mml_probe(struct platform_device *pdev)
 		mml_log("racing event_mml_stop %u", mml->event_mml_stop);
 	if (!of_property_read_u16(dev->of_node, "event-ir-eof", &mml->event_mml_target))
 		mml_log("racing event_mml_target %u", mml->event_mml_target);
+	if (!of_property_read_u16(dev->of_node, "event-ir-disp-done", &mml->event_disp_done))
+		mml_log("racing event_disp_done %u", mml->event_disp_done);
+	if (!of_property_read_u16(dev->of_node, "event-mml-config", &mml->event_mml_config))
+		mml_log("racing event_mml_config %u", mml->event_mml_config);
 
 	thread_cnt = of_count_phandle_with_args(
 		dev->of_node, "mboxes", "#mbox-cells");

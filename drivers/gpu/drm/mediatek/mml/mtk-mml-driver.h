@@ -251,6 +251,24 @@ u16 mml_ir_get_mml_stop_event(struct mml_dev *mml);
 u16 mml_ir_get_target_event(struct mml_dev *mml);
 
 /*
+ * mml_ir_get_disp_done_event - get disp done event mark by trig loop
+ *
+ * @mml:	The mml driver instance
+ *
+ * Return:	The event id of disp done
+ */
+u16 mml_ir_get_disp_done_event(struct mml_dev *mml);
+
+/*
+ * mml_ir_get_config_event - get target line event
+ *
+ * @mml:	The mml driver instance
+ *
+ * Return:	The event id of mml config
+ */
+u16 mml_ir_get_config_event(struct mml_dev *mml);
+
+/*
  * mml_ir_get_cmdq_clt - get cmdq clt
  *
  * @mml:	The mml driver instance
@@ -545,6 +563,8 @@ void mml_isr_queue_task_locked(struct mml_dev *mml, struct mml_comp *comp,
 	struct list_head *isr_nodes, struct mml_isr_node *isr_node, struct mml_task *task);
 
 bool mml_isr_alive(struct mml_dev *mml, struct mml_comp *comp, struct list_head *isr_nodes);
+
+bool mml_isr_need_notify(struct mml_dev *mml);
 
 void mml_isr_notify(struct mml_dev *mml, struct mml_comp *comp, struct list_head *isr_nodes);
 

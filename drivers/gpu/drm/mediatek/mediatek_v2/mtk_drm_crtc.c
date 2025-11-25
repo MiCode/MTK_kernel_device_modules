@@ -6232,6 +6232,7 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 	addon_config->config_type.type = ADDON_DISCONNECT;
 	addon_config->config_type.module = addon_module->module;
 	addon_config->addon_mml_config.ctx = mml_ctx;
+	addon_config->addon_mml_config.submit.disp_vdo = !mtk_crtc_is_frame_trigger_mode(crtc);
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (output_comp &&
@@ -9068,8 +9069,76 @@ void mtk_crtc_skip_merge_trigger(struct mtk_drm_crtc *mtk_crtc)
 void mtk_crtc_load_round_corner_pattern(struct drm_crtc *crtc,
 					struct cmdq_pkt *handle);
 
+void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
+{
+	u8 i = 0;
+	struct mtk_addon_config_type c;
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mml_drm_ctx *mml_ctx;
+	struct mtk_drm_private *priv = NULL;
+	struct mtk_ddp_comp *comp = NULL;
+	struct mtk_crtc_state *mtk_crtc_state = NULL;
+	const enum mtk_ddp_comp_id id[] = {DDP_COMPONENT_INLINE_ROTATE0,
+					   DDP_COMPONENT_INLINE_ROTATE1};
+
+	if (!crtc || !cmdq_handle)
+		return;
+
+	mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
+	if (!mml_ctx)
+		return;
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	priv = crtc->dev->dev_private;
+	mtk_crtc_state = to_mtk_crtc_state(crtc->state);
+
+	switch (mtk_crtc->mml_link_state) {
+	case MML_IR_ENTERING:
+		DDP_PROFILE("MML_IR_ENTERING\n");
+		mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.mml_ir_lye, &c.tgt_comp, &c.tgt_layer);
+		for (; i <= mtk_crtc->is_dual_pipe; ++i) {
+			comp = priv->ddp_comp[id[i]];
+			comp->mtk_crtc = mtk_crtc;
+			mtk_ddp_comp_reset(comp, cmdq_handle);
+			mtk_ddp_comp_io_cmd(comp, cmdq_handle, INLINEROT_CONFIG, &c);
+			mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, id[i], false, cmdq_handle, 0);
+		}
+		fallthrough;
+	case MML_DIRECT_LINKING:
+		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+			DDP_PROFILE("MML DL start vidle: %d\n", mtk_crtc->mml_link_state);
+			mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_MML_CMDQ, cmdq_handle,
+				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
+		}
+		mml_drm_racing_config_sync(mml_ctx, cmdq_handle, mtk_crtc->cur_present_fence_idx);
+		break;
+	case MML_DC_ENTERING:
+		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
+			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+			DDP_PROFILE("MML DC start vidle: %d\n", mtk_crtc->mml_link_state);
+			mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_MML_CMDQ, cmdq_handle,
+				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
+			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
+		}
+		break;
+	case MML_STOP_LINKING:
+		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
+			DDP_PROFILE("MML DL stop vidle: %d\n", mtk_crtc->mml_link_state);
+		else
+			DDP_PROFILE("MML_STOP_LINKING\n");
+		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
+		break;
+	default:
+		break;
+	}
+
+	mml_drm_put_context(mml_ctx);	/* ref cnt dec */
+}
+
 void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
-	struct drm_crtc_state *old_state)
+	struct drm_crtc_state *old_state, struct cmdq_pkt *atomic_cmdq_handle)
 {
 	int i, j;
 	struct drm_crtc *crtc = &mtk_crtc->base;
@@ -9079,6 +9148,8 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 	struct mtk_ddp_config scaling_cfg = {0};
 	struct mtk_ddp_comp *comp;
 	struct mtk_ddp_comp *output_comp;
+	/* true:vdo merge pkt, false:cmd split pkt*/
+	bool bmerge_pkt = false;
 
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 	if (!output_comp) {
@@ -9129,13 +9200,28 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 		cmdq_pkt_destroy(cevent_cmdq_handle);
 	}
 
-	mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
+	if (atomic_cmdq_handle == NULL) {
+		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
 				mtk_crtc->gce_obj.client[CLIENT_CFG]);
+		bmerge_pkt = false;
+
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY))
+			mml_cmdq_pkt_init(crtc, cmdq_handle);
+	} else {
+		//Combine atomic & ap config
+		cmdq_handle = atomic_cmdq_handle;
+		bmerge_pkt = true;
+		/*Avoid to dup call mml_cmdq_pkt_init, remove it*/
+	}
+
 
 	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 		/* vdo mode wait frame done */
-		cmdq_pkt_wfe(cmdq_handle,
-		mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+		if (!bmerge_pkt)
+			cmdq_pkt_wfe(cmdq_handle,
+				mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
+		if (mtk_crtc->mml_link_state == MML_STOP_LINKING)
+			mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
 	}
 
 	if (mtk_crtc->is_dual_pipe &&
@@ -9286,8 +9372,11 @@ void mtk_crtc_mode_switch_on_ap_config(struct mtk_drm_crtc *mtk_crtc,
 
 	drm_update_dal(&mtk_crtc->base, cmdq_handle);
 
-	cmdq_pkt_flush(cmdq_handle);
-	cmdq_pkt_destroy(cmdq_handle);
+	if (bmerge_pkt == false) {
+		cmdq_pkt_flush(cmdq_handle);
+		cmdq_pkt_destroy(cmdq_handle);
+	}
+
 	CRTC_MMP_MARK((int) drm_crtc_index(crtc), mode_switch, 0, 2);
 
 	mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE, old_state);
@@ -9625,9 +9714,16 @@ static void mtk_crtc_disp_mode_switch_begin(struct drm_crtc *crtc,
 		&& (mtk_crtc->res_switch == RES_SWITCH_ON_DDIC))
 		mtk_crtc_mode_switch_config(mtk_crtc, old_state);
 	else if ((mode_chg_index & MODE_DSI_RES)
-		&& (mtk_crtc->res_switch == RES_SWITCH_ON_AP))
-		mtk_crtc_mode_switch_on_ap_config(mtk_crtc, old_state);
-	else if (output_comp) {/* Change DSI mipi clk & send LCM cmd */
+		&& (mtk_crtc->res_switch == RES_SWITCH_ON_AP)) {
+
+		if (mtk_crtc_is_frame_trigger_mode(crtc)) {
+			/* cmd phone keep original split ap & frame config handle */
+			mtk_crtc_mode_switch_on_ap_config(mtk_crtc, old_state, NULL);
+		} else {
+			/* vdo phone combine ap & frame config handle */
+			mtk_crtc_mode_switch_on_ap_config(mtk_crtc, old_state, cmdq_handle);
+		}
+	}else if (output_comp) {/* Change DSI mipi clk & send LCM cmd */
 		//mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_TIMING_CHANGE, old_state);
 		/* Use thread to accelerate mode_switch */
 		mtk_crtc->old_mode_switch_state = old_state;
@@ -19588,73 +19684,6 @@ void mtk_crtc_disable_secure_state(struct drm_crtc *crtc)
 	DDPINFO("%s-\n", __func__);
 }
 
-void mml_cmdq_pkt_init(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle)
-{
-	u8 i = 0;
-	struct mtk_addon_config_type c;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
-	struct mml_drm_ctx *mml_ctx;
-	struct mtk_drm_private *priv = NULL;
-	struct mtk_ddp_comp *comp = NULL;
-	struct mtk_crtc_state *mtk_crtc_state = NULL;
-	const enum mtk_ddp_comp_id id[] = {DDP_COMPONENT_INLINE_ROTATE0,
-					   DDP_COMPONENT_INLINE_ROTATE1};
-
-	if (!crtc || !cmdq_handle)
-		return;
-
-	mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
-	if (!mml_ctx)
-		return;
-
-	mtk_crtc = to_mtk_crtc(crtc);
-	priv = crtc->dev->dev_private;
-	mtk_crtc_state = to_mtk_crtc_state(crtc->state);
-
-	switch (mtk_crtc->mml_link_state) {
-	case MML_IR_ENTERING:
-		DDP_PROFILE("MML_IR_ENTERING\n");
-		mtk_addon_get_comp(crtc, mtk_crtc_state->lye_state.mml_ir_lye, &c.tgt_comp, &c.tgt_layer);
-		for (; i <= mtk_crtc->is_dual_pipe; ++i) {
-			comp = priv->ddp_comp[id[i]];
-			comp->mtk_crtc = mtk_crtc;
-			mtk_ddp_comp_reset(comp, cmdq_handle);
-			mtk_ddp_comp_io_cmd(comp, cmdq_handle, INLINEROT_CONFIG, &c);
-			mtk_disp_mutex_add_comp_with_cmdq(mtk_crtc, id[i], false, cmdq_handle, 0);
-		}
-		fallthrough;
-	case MML_DIRECT_LINKING:
-		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-			DDP_PROFILE("MML DL start vidle: %d\n", mtk_crtc->mml_link_state);
-			mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_MML_CMDQ, cmdq_handle,
-				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
-			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
-		}
-		mml_drm_racing_config_sync(mml_ctx, cmdq_handle, mtk_crtc->cur_present_fence_idx);
-		break;
-	case MML_DC_ENTERING:
-		if (mtk_vidle_is_ff_enabled() && !mtk_drm_helper_get_opt(priv->helper_opt,
-			MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-			DDP_PROFILE("MML DC start vidle: %d\n", mtk_crtc->mml_link_state);
-			mtk_vidle_clear_wfe_event(DISP_VIDLE_USER_MML_CMDQ, cmdq_handle,
-				  mtk_crtc->gce_obj.event[EVENT_DPC_DISP1_PRETE]);
-			mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_DISP_CMDQ, cmdq_handle, 0);
-		}
-		break;
-	case MML_STOP_LINKING:
-		if (!mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO))
-			DDP_PROFILE("MML DL stop vidle: %d\n", mtk_crtc->mml_link_state);
-		else
-			DDP_PROFILE("MML_STOP_LINKING\n");
-		mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle, false);
-		break;
-	default:
-		break;
-	}
-
-	mml_drm_put_context(mml_ctx);	/* ref cnt dec */
-}
 static void mtk_crtc_partial_update_wait_cabc(struct drm_crtc *crtc,
 	struct cmdq_pkt *handle)
 {
@@ -19736,7 +19765,10 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		mtk_crtc->gce_obj.pkt_info =
 			mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_SEC_CFG,
 			crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
-	} else if (mtk_crtc_is_dc_mode(crtc) || mtk_crtc->is_mml) {
+	} else if (mtk_crtc_is_dc_mode(crtc) || mtk_crtc->is_mml ||
+		(mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_DL_SUB_CFG_CLINET) &&
+		(!mtk_crtc_is_frame_trigger_mode(crtc)) &&
+		(mtk_crtc->is_mml_dl || mtk_crtc->mml_link_state == MML_STOP_LINKING))) {
 		mtk_crtc->gce_obj.pkt_info =
 			mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_SUB_CFG,
 			crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
@@ -19762,10 +19794,19 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 				  mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_TRIG_TICK(12)), CMDQ_THR_SPR_IDX3);
 	}
 
-	/* mml need to power on InlineRotate and sync with mml */
-	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) &&
-		need_sync_mml)
-		mml_cmdq_pkt_init(crtc, cmdq_handle);
+	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
+		/* vdo make atomic to stop mml sync*/
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) && need_sync_mml)
+			mml_cmdq_pkt_init(crtc, cmdq_handle);
+	} else {
+		/* mml need to power on InlineRotate and sync with mml */
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_PRIMARY) &&
+			need_sync_mml && old_crtc_state && !(crtc->state->adjusted_mode.hdisplay !=
+			old_crtc_state->adjusted_mode.hdisplay &&
+			(old_mtk_state->prop_val[CRTC_PROP_DISP_MODE_IDX] !=
+			 crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX])))
+			mml_cmdq_pkt_init(crtc, cmdq_handle);
+	}
 
 	/*Msync 2.0 change to check vfp period token instead of EOF*/
 	if (!mtk_crtc_is_frame_trigger_mode(crtc) &&
@@ -20991,6 +21032,7 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 #ifndef DRM_CMDQ_DISABLE
 	struct cmdq_client *client;
 #endif
+	bool need_sync_mml = true;
 
 	if (unlikely(crtc_idx >= MAX_CRTC)) {
 		DDPPR_ERR("%s invalid crtc_idx %u\n", __func__, crtc_idx);
@@ -21129,9 +21171,15 @@ static void mtk_drm_crtc_atomic_begin(struct drm_crtc *crtc,
 		mtk_drm_ovl_bw_monitor_ratio_prework(crtc, atomic_state);
 	}
 #endif
+	if (mtk_crtc->is_mml_dl) {
+		if (mtk_crtc->mml_link_state == MML_STOP_LINKING)
+			need_sync_mml = true;
+		else
+			need_sync_mml = mtk_crtc->is_mml_submit;
+	}
 
 	mtk_crtc_state->cmdq_handle =
-		mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, mtk_crtc->is_mml_submit);
+		mtk_crtc_gce_commit_begin(crtc, old_crtc_state, mtk_crtc_state, need_sync_mml);
 	CRTC_MMP_MARK(index, atomic_begin, (unsigned long)mtk_crtc_state->cmdq_handle, 0);
 	drm_trace_tag_mark("atomic_begin");
 	if (!mtk_crtc_is_frame_trigger_mode(crtc)) {
@@ -24412,6 +24460,11 @@ static void mtk_drm_crtc_atomic_flush(struct drm_crtc *crtc,
 	if ((mtk_crtc->is_mml || mtk_crtc->is_mml_dl) && mtk_crtc->is_mml_submit)
 		mtk_drm_wait_mml_submit_done(&(mtk_crtc->mml_cb));
 
+	if ((mtk_crtc->esd_reset_dli) && (mtk_crtc->is_mml_dl)) {
+		mtk_crtc_reset_ovlsys_dli(crtc, cmdq_handle);
+		mtk_crtc->esd_reset_dli = false;
+	}
+
 	mtk_vidle_dvfs_trigger(__func__);
 
 	if (mtk_crtc_state->lye_state.need_repaint) {
@@ -24943,6 +24996,12 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 	case EVENT_OVLSYS_DISP_OVL0_SOF:
 		len = snprintf(buf, buf_len, "disp_ovlsys0_sof%d",
 					drm_crtc_index(&mtk_crtc->base));
+		break;
+	case EVENT_MML_STREAM_CONFIG:
+		len = snprintf(buf, buf_len, "mml_stream_config");
+		break;
+	case EVENT_OVLSYS0_MUTEX0_SOF:
+		len = snprintf(buf, buf_len, "ovlsys0_mutex0_sof");
 		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);
@@ -29963,5 +30022,40 @@ void mtk_crtc_vdisp_ao_config(struct drm_crtc *crtc)
 		priv->data->vdisp_ao_irq_config(crtc->dev);
 	if (priv->data->vdisp_ao_qos_config)
 		priv->data->vdisp_ao_qos_config(crtc->dev);
+}
+
+void mtk_crtc_reset_ovlsys_dli(struct drm_crtc *crtc,  struct cmdq_pkt *cmdq_handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = NULL;
+	struct mtk_drm_private *priv = NULL;
+
+	if (!crtc) {
+		DDPPR_ERR("%s: crtc is NULL\n", __func__);
+		return;
+	}
+
+	if (!cmdq_handle) {
+		DDPPR_ERR("%s: cmdq_handle is NULL\n", __func__);
+		return;
+	}
+
+	mtk_crtc = to_mtk_crtc(crtc);
+	if (!mtk_crtc) {
+		DDPPR_ERR("%s: mtk_crtc is NULL\n", __func__);
+		return;
+	}
+
+	priv = crtc->dev->dev_private;
+	if (priv->data->mmsys_id == MMSYS_MT6991 ||
+		priv->data->mmsys_id == MMSYS_MT6993) {
+		if (mtk_crtc->ovlsys0_regs_pa) {
+			DDPINFO("%s: Reset ovlsys for DL\n", __func__);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				   mtk_crtc->ovlsys0_regs_pa + MT6993_OVLSYS_MISC,
+				   OVLSYS_RESET_FLOW, OVLSYS_RESET_FLOW);
+			cmdq_pkt_write(cmdq_handle, mtk_crtc->gce_obj.base,
+				   mtk_crtc->ovlsys0_regs_pa + MT6993_OVLSYS_MISC, 0, OVLSYS_RESET_FLOW);
+		}
+	}
 }
 

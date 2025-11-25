@@ -602,6 +602,10 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 					call_cfg_op(comp, reset, task, &ccfg[i]);
 				}
 			}
+
+			/* mmlsys may prepare ops after tile and before mutex start */
+			call_cfg_op(path->mmlsys, mutex, task, &ccfg[path->mmlsys_idx]);
+
 			/* first tile must wait eof before trigger */
 			path->mutex->config_ops->mutex(path->mutex, task,
 						       &ccfg[path->mutex_idx]);
@@ -641,6 +645,11 @@ static s32 command_make(struct mml_task *task, u32 pipe)
 			}
 		}
 	}
+
+	/* force mutex path off */
+	call_cfg_op(path->mutex, mutex_off, task, &ccfg[i]);
+	if (path->mutex2)
+		call_cfg_op(path->mutex2, mutex_off, task, &ccfg[i]);
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
@@ -1312,6 +1321,9 @@ static u32 mml_core_calc_tput_couple(struct mml_task *task, u32 pixel, u32 pipe)
 			task_tput = (u32)((u64)task_tput * cfg->panel_w / dest->data.width);
 		/* always increase urate */
 		task_tput = task_tput * mml_urate / 100;
+
+		if (dest->rotate != MML_ROT_0 && !MML_FMT_COMPRESS(info->src.format))
+			task_tput = task_tput * 3 / 2;
 	}
 
 	task->pipe[pipe].throughput[dpc] = task_tput;

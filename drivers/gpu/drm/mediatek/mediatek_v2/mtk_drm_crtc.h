@@ -757,6 +757,8 @@ enum CRTC_GCE_EVENT_TYPE {
 	EVENT_DBI_COUNT_EOF,
 	EVENT_SYNC_TOKEN_DBI_COUNT_CFG_END,
 	EVENT_OVLSYS_DISP_OVL0_SOF,
+	EVENT_MML_STREAM_CONFIG,
+	EVENT_OVLSYS0_MUTEX0_SOF,
 	EVENT_TYPE_MAX,
 };
 
@@ -1577,6 +1579,8 @@ struct mtk_drm_crtc {
 	struct mtk_bif_info *bif_info;
 	bool is_frame_trigger_mode;
 
+	bool esd_reset_dli;
+
 	/* Mark if need layer config in mtk_drm_crtc_plane_update() */
 	bool need_layer_config;
 };
@@ -2062,5 +2066,6 @@ struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn(struct drm_crtc *crtc, enum a
 struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn_dual(struct drm_crtc *crtc, enum addon_scenario scn);
 
 enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state);
+void mtk_crtc_reset_ovlsys_dli(struct drm_crtc *crtc,  struct cmdq_pkt *cmdq_handle);
 #endif /* MTK_DRM_CRTC_H */
 bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc);

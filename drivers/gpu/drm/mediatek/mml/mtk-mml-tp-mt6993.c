@@ -1186,6 +1186,8 @@ static bool tp_check_tput_dl(struct mml_frame_info *info, struct mml_topology_ca
 
 	pixel = max(tputw / 2, destw) * max(tputh, desth) * 11 / 10;
 	tput = pixel / (info->act_time / 1000);
+	if (rotate != MML_ROT_0 && !MML_FMT_COMPRESS(info->src.format))
+		tput = tput * 3 / 2;
 	if (tput < tp->dvfs->opp_speeds[tp->dvfs->opp_cnt - 1]) {
 		*dual = mml_rrot_single == 1 ? false : true;
 		goto find_opp;

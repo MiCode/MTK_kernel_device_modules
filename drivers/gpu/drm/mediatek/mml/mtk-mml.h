@@ -335,6 +335,7 @@ struct mml_submit {
 	struct mml_pq_param *pq_param[MML_MAX_OUTPUTS];
 	u32 disp_id;
 	bool update;
+	bool disp_vdo;
 };
 
 #endif	/* __MTK_MML_H__ */

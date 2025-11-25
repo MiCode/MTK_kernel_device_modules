@@ -3060,7 +3060,8 @@ static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
 
 no_status:
 	mml_dpc_isr_release();
-	mml_isr_notify(rrot->mml, comp, &rrot->isr_nodes);
+	if (mml_isr_need_notify(rrot->mml))
+		mml_isr_notify(rrot->mml, comp, &rrot->isr_nodes);
 
 out:
 	return IRQ_HANDLED;

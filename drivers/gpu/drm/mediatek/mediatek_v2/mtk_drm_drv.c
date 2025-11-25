@@ -1652,9 +1652,11 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	}
 
 	ret = mtk_crtc->gce_obj.event[EVENT_MML_DISP_DONE_EVENT];
+
 	if (ret)
 		submit_kernel->info.disp_done_event = ret;
 
+	submit_kernel->disp_vdo = !mtk_crtc_is_frame_trigger_mode(crtc);
 	mml_drm_split_info(submit_kernel, submit_pq);
 
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
@@ -1856,6 +1858,8 @@ static void mtk_atomic_mml(struct drm_device *dev,
 				plane_state->comp_state.layer_caps &= ~MTK_MML_DISP_DIRECT_LINK_LAYER;
 				plane_state->pending.enable = 0;
 				plane_state->pending.mml_mode = 0;
+				if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+					mtk_crtc->mml_link_state = MML_STOP_LINKING;
 				break;
 			}
 		}

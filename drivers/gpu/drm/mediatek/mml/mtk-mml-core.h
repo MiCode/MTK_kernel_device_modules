@@ -85,6 +85,15 @@ enum mml_hrt_mode {
 extern int mtk_mml_hrt_mode;
 extern int mml_hrt_bound;
 
+extern int mml_mutex_dl_sof;
+#define mutex_dl_disp_en	(mml_mutex_dl_sof & BIT(0))
+#define mutex_dl_perf_en	(mml_mutex_dl_sof & BIT(1))
+#define mutex_dl_perf_log	(mml_mutex_dl_sof & BIT(2))
+#define mutex_dl_nodone		(mml_mutex_dl_sof & BIT(3))
+#define mutex_dl_noprete	(mml_mutex_dl_sof & BIT(4))
+#define mutex_dl_disp_sof_vdo	(mml_mutex_dl_sof & BIT(5))
+#define mutex_dl_nopoll_dlo	(mml_mutex_dl_sof & BIT(6))	/* for vdo disable dlo poll */
+
 /* define in mtk-mml-wrot.c */
 extern int mml_wrot_bkgd_en;
 extern int mml_rrot_debug;
@@ -948,6 +957,8 @@ struct mml_comp_config_ops {
 		    struct mml_comp_config *ccfg, u32 idx);
 	void (*reset)(struct mml_comp *comp, struct mml_task *task,
 		      struct mml_comp_config *ccfg);
+	s32 (*mutex_off)(struct mml_comp *comp, struct mml_task *task,
+			 struct mml_comp_config *ccfg);
 	s32 (*post)(struct mml_comp *comp, struct mml_task *task,
 		    struct mml_comp_config *ccfg);
 	s32 (*done)(struct mml_comp *comp, struct mml_task *task,

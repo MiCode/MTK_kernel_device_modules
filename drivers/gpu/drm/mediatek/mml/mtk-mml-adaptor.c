@@ -56,9 +56,6 @@ struct mml_frame_config *frame_config_find_reuse(struct mml_ctx *ctx,
 		if (!idx)
 			mode = cfg->info.mode;
 
-		if (submit->update && cfg->last_jobid == submit->job->jobid)
-			goto done;
-
 		if (check_frame_wo_change(submit, cfg) && !cfg->err)
 			goto done;
 

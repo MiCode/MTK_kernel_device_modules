@@ -1220,8 +1220,11 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 		/* also mark begin so that disp clear target line event */
 		if (mml_dev_couple_inc(ctx->mml, cfg->info.mode) == 1)
 			dctx->racing_begin = true;
-	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK)
-		mml_dev_couple_inc(ctx->mml, cfg->info.mode);
+	} else if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		/* also mark begin so that disp clear target line event */
+		if (mml_dev_couple_inc(ctx->mml, cfg->info.mode) == 1 && submit->disp_vdo)
+			dctx->racing_begin = true;
+	}
 
 	/* make sure id unique and cached last */
 	task->job.jobid = atomic_inc_return(&ctx->job_serial);
@@ -1794,6 +1797,7 @@ static void mml_drm_split_info_racing(struct mml_submit *submit, struct mml_subm
 	for (i = 0; i < MML_MAX_OUTPUTS; i++)
 		if (submit_pq->pq_param[i] && submit->pq_param[i])
 			*submit_pq->pq_param[i] = *submit->pq_param[i];
+	submit_pq->disp_vdo = submit->disp_vdo;
 
 	if (dest->rotate == MML_ROT_0 ||
 	    dest->rotate == MML_ROT_180) {
@@ -1935,6 +1939,7 @@ static void mml_drm_split_info_dl(struct mml_submit *submit, struct mml_submit *
 		if (submit_pq->pq_param[i] && submit->pq_param[i])
 			*submit_pq->pq_param[i] = *submit->pq_param[i];
 	submit_pq->info.mode = MML_MODE_DIRECT_LINK;
+	submit_pq->disp_vdo = submit->disp_vdo;
 
 	/* display layer pixel */
 	if (!submit->layer.width || !submit->layer.height) {
