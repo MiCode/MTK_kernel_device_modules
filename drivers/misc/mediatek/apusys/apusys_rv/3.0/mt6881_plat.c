@@ -300,11 +300,13 @@ static void apu_start_mp(struct mtk_apu *apu)
 		iowrite32(0x0, apu->apu_ao_ctl + MD32_RUNSTALL);
 		spin_unlock_irqrestore(&apu->reg_lock, flags);
 
-		for (i = 0; i < 20; i++) {
-			dev_info(dev, "apu boot: pc=%08x, sp=%08x\n",
-			ioread32(apu->md32_sysctrl + 0x838),
-				ioread32(apu->md32_sysctrl+0x840));
-			usleep_range(0, 20);
+		if (apu->platdata->flags & F_BRINGUP) {
+			for (i = 0; i < 20; i++) {
+				dev_info(dev, "apu boot: pc=%08x, sp=%08x\n",
+				ioread32(apu->md32_sysctrl + 0x838),
+					ioread32(apu->md32_sysctrl+0x840));
+				usleep_range(0, 20);
+			}
 		}
 	}
 }
@@ -1080,8 +1082,8 @@ static int mt6881_rproc_exit(struct mtk_apu *apu)
 }
 
 const struct mtk_apu_platdata mt6881_platdata = {
-	.flags		= F_DEBUG_LOG_ON | F_APU_IPI_UT_SUPPORT |
-		F_FAST_ON_OFF | F_BRINGUP | F_AUTO_BOOT | F_PRELOAD_FIRMWARE,
+	.flags		= F_APU_IPI_UT_SUPPORT |
+		F_FAST_ON_OFF | F_AUTO_BOOT | F_PRELOAD_FIRMWARE,
 	.ops		= {
 		.init	= mt6881_rproc_init,
 		.exit	= mt6881_rproc_exit,
