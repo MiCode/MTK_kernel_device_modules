@@ -51,6 +51,18 @@
 	};
 };
 
+&i2c6 {
+	spk: speaker-amp@5c {
+		compatible = "richtek,rt5512";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#sound-dai-cells = <0>;
+		reg = <0x5c>;
+		status = "okay";
+		sound-name-prefix = "Left";
+	};
+};
+
 &connfem {
 /* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
 #if 0
@@ -218,6 +230,13 @@
 	reg = <0 0x11070000 0 0x4000>;
 	mode-size = <0x4000>;
 	afe-reserved;
+};
+
+&sound {
+	mediatek,spk-i2s = <23 22>;
+	mediatek,speaker-codec {
+		sound-dai = <&spk>;
+	};
 };
 
 #include <k6881v1_64/cust.dtsi>
