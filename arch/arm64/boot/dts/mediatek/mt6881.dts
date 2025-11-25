@@ -5809,12 +5809,10 @@
 			scp-u2-type = "ABIST";
 			scp-adsp-pll-type = "ABIST";
 
-			/* real chip en !!*/
-			/* scp-infracfg = <&infra_infracfg_ao_reg_clk>; */
+			scp-infracfg = <&infra_infracfg_ao_reg_clk>;
 
-			/* real chip en !!*/
 			/* awake timeout count plt setting */
-			awake-timeout = <100000>; /* 1000 ms, fpga */
+			awake-timeout = <10000>; /* 100 ms */
 
 			scp-recovery-db-cnt = <3>;
 		};
