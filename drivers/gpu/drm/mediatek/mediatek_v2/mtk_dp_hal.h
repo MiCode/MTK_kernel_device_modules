@@ -362,4 +362,6 @@ void mhal_DPTx_reset_all(struct mtk_dp *mtk_dp);
 void mhal_dump_reg(struct mtk_dp *mtk_dp);
 void mhal_DPTx_MacVideoPatternGenEn(struct mtk_dp *mtk_dp, bool enable);
 void mhal_DPTx_MacAudioPatternGenEn(struct mtk_dp *mtk_dp, bool enable);
+void mhal_DPTx_Set_Audio_N_Half(struct mtk_dp *mtk_dp);
+
 #endif //__DRTX_HAL_H__

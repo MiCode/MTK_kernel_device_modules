@@ -3665,7 +3665,6 @@ void mhal_DPTx_PhySSCenable(struct mtk_dp *mtk_dp, bool bENABLE)
 	DPTXMSG("Phy SSC enable = %d\n", bENABLE);
 }
 
-
 void mhal_DPTx_PhyTrainingConfig(struct mtk_dp *mtk_dp, u8 ubTargetLinkRate, u8 ubTargetLaneCount)
 {
 	mhal_DPTx_ResetSwingtPreEmphasis(mtk_dp);
@@ -3684,4 +3683,7 @@ void mhal_DPTx_PhyTrainingConfig(struct mtk_dp *mtk_dp, u8 ubTargetLinkRate, u8 
 	mhal_DPTx_PhyCheckReady(mtk_dp, ubTargetLaneCount);
 }
 
-
+void mhal_DPTx_Set_Audio_N_Half(struct mtk_dp *mtk_dp)
+{
+	msWrite2Byte(mtk_dp, REG_3058_DP_ENCODER0_P0, 0X4000 & 0xFFFF);
+}

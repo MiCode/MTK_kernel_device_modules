@@ -2965,7 +2965,9 @@ void mdrv_DPTx_I2S_Audio_Set_MDiv(struct mtk_dp *mtk_dp, u8 ucDiv)
 {
 	char bTable[7][5] = {"X2", "X4", "X8", "/2", "/4", "N/A", "/8"};
 
-	DPTXMSG("I2S Set Audio M Divider = %s\n", bTable[ucDiv-1]);
+	if (ucDiv > 0)
+		DPTXMSG("I2S Set Audio M Divider = %s\n", bTable[ucDiv-1]);
+
 	mhal_DPTx_Audio_M_Divider_Setting(mtk_dp, ucDiv);
 }
 
@@ -3042,7 +3044,8 @@ void mdrv_DPTx_I2S_Audio_Config(struct mtk_dp *mtk_dp)
 
 	mhal_DPTx_Audio_TDM_PG_EN(mtk_dp, ucChannel, ucFs, false);//DPTX audio for TDM
 
-	mdrv_DPTx_I2S_Audio_Set_MDiv(mtk_dp, 4);
+	mdrv_DPTx_I2S_Audio_Set_MDiv(mtk_dp, 0);
+	mhal_DPTx_Set_Audio_N_Half(mtk_dp);
 }
 
 void mdrv_DPTx_I2S_Audio_SDP_Channel_Setting(struct mtk_dp *mtk_dp,
