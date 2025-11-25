@@ -516,7 +516,7 @@ static const struct of_device_id mtk_disp_pwm_of_match[] = {
 	{ .compatible = "mediatek,mt6765-disp-pwm", .data = &mt6768_pwm_data},
 	{ .compatible = "mediatek,mt6781-disp-pwm", .data = &mt6768_pwm_data},
 	{ .compatible = "mediatek,mt6991-disp-pwm0", .data = &mt6991_pwm_data},
-	{ .compatible = "mediatek,mt6881-disp-pwm", .data = &mt6991_pwm_data},
+	{ .compatible = "mediatek,mt6881-disp-pwm", .data = &mt6881_pwm_data},
 	{ }
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_pwm_of_match);
