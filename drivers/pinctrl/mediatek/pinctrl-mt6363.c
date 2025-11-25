@@ -9,6 +9,7 @@
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/regmap.h>
 
 #include "pinctrl-mtk-common-v2.h"
 #include "pinctrl-paris.h"
@@ -173,6 +174,31 @@ static const struct mtk_pin_reg_calc mt6363_reg_cals[PINCTRL_PIN_REG_MAX] = {
 	[PINCTRL_PIN_REG_AD_SWITCH] = MTK_RANGE(mt6363_pin_ad_switch_range),
 };
 
+static int mt6363_lock(struct mtk_pinctrl *hw, int field, int enable)
+{
+	struct regmap *pinctrl_regmap;
+	int err = 0;
+
+	pinctrl_regmap = (struct regmap *)hw->base[0];
+	if (field == PINCTRL_PIN_REG_AD_SWITCH) {
+		if (!enable) {
+			err = regmap_write(pinctrl_regmap, 0x39e, 0x9c);
+			if (err)
+				return err;
+
+			err = regmap_write(pinctrl_regmap, 0x39f, 0x9c);
+		} else {
+			err = regmap_write(pinctrl_regmap, 0x39e, 0);
+			if (err)
+				return err;
+
+			err = regmap_write(pinctrl_regmap, 0x39f, 0);
+		}
+	}
+
+	return err;
+}
+
 static const struct mtk_pin_soc mt6363_data = {
 	.reg_cal = mt6363_reg_cals,
 	.pins = mtk_pins_mt6363,
@@ -181,6 +207,8 @@ static const struct mtk_pin_soc mt6363_data = {
 	.nfuncs = 2,
 	.gpio_m = 0,
 	.capability_flags = FLAG_GPIO_START_IDX_1 | FLAG_MT63XX | FLAG_NEED_AD_SWITCH,
+	.field_lock_flags[0] = 1 << PINCTRL_PIN_REG_AD_SWITCH,
+	.field_lock_ops = mt6363_lock,
 };
 
 static int mt6363_pinctrl_probe(struct platform_device *pdev)
