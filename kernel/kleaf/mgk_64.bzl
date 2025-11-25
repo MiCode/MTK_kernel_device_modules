@@ -5034,6 +5034,8 @@ def get_overlay_modules_list():
 
     if "vm_uos.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/vmctl:vmctl")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/samples:vcpu_sample")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/samples:virtio_hello")
 
 
 get_overlay_modules_list()
