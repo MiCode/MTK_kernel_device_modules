@@ -25004,8 +25004,8 @@ static void mtk_crtc_get_event_name(struct mtk_drm_crtc *mtk_crtc, char *buf,
 	case EVENT_MML_STREAM_CONFIG:
 		len = snprintf(buf, buf_len, "mml_stream_config");
 		break;
-	case EVENT_OVLSYS0_MUTEX0_SOF:
-		len = snprintf(buf, buf_len, "ovlsys0_mutex0_sof");
+	case EVENT_MML_STOP:
+		len = snprintf(buf, buf_len, "mml_stop");
 		break;
 	default:
 		DDPPR_ERR("%s invalid event_id:%d\n", __func__, event_id);

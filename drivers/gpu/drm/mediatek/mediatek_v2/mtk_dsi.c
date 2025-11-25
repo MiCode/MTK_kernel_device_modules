@@ -7927,6 +7927,17 @@ static int mtk_dsi_stop_vdo_mode(struct mtk_dsi *dsi, void *handle, const int li
 		   mtk_crtc->gce_obj.event[EVENT_CMD_EOF]);
 	}
 
+	if (mtk_crtc->mml_link_state == MML_STOP_LINKING ||
+		mtk_crtc->mml_link_state == MML_STOP_DC) {
+		if (mtk_crtc->gce_obj.event[EVENT_MML_STOP]) {
+			cmdq_pkt_wait_no_clear(handle,
+				mtk_crtc->gce_obj.event[EVENT_MML_STOP]);
+			DDPINFO("%s:%d, mml_link_state=%d, pkt=%#lx, wnc(EVENT_MML_STOP)\n",
+				__func__, __LINE__,
+				mtk_crtc->mml_link_state, (unsigned long)handle);
+		}
+	}
+
 	/* stop vdo mode */
 	_mtk_dsi_set_mode(&dsi->ddp_comp, handle, CMD_MODE, __LINE__);
 	if (dsi->slave_dsi)
