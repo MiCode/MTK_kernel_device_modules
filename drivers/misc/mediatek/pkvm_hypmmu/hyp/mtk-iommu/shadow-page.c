@@ -906,7 +906,7 @@ int io_pgtable_handler(u64 iova_start, u64 iova_size, u64 tid, u32 sec, u32 nsec
 
 		cur_iova += SZ_1M;
 #if (DEBUG_IOVA)
-		if (ARM_V7S_PTE_VALID_CMP(guest_pte, pre_pte) || cur_iova >= iova_end) {
+		if (ARM_V7S_PTE_VALID_CMP(guest_pte, pre_pte)) {
 			save_iova_debug_info(sec, nsec, pre_iova, cur_iova, ARM_V7S_PTE_IS_VALID(pre_pte));
 			pre_pte = guest_pte;
 			pre_iova = cur_iova;
