@@ -390,6 +390,8 @@ static irqreturn_t mtk_wdma_irq_handler(int irq, void *dev_id)
 			wake_up_interruptible(
 				&mtk_crtc->dc_main_path_commit_wq);
 		}
+		if (bif_enabled(&mtk_crtc->base) && mtk_crtc->bif_info->wb_comp)
+			drm_trace_tag_mark("bif_wdma_frame_done");
 		MMPathTraceDRM(wdma);
 	}
 	if ((val & BIT(1)) && !ufbc) {

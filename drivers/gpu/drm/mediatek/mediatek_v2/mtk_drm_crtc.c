@@ -5066,7 +5066,7 @@ void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc)
 	enum mtk_ddp_comp_id prev_id, next_id;
 	int i = 0;
 
-	for (i = 0; i < ddp_ctx->bif_write_comp_nr; i++) {
+	for (i = 0; i < ddp_ctx->bif_write_comp_nr-1; i++) {
 		comp = ddp_ctx->bif_write_comp[i];
 
 		if (i == 0) {
@@ -5090,7 +5090,7 @@ void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc)
 		mtk_ddp_add_comp_to_path(mtk_crtc, comp, prev_id, next_id);
 	}
 
-	for (i = 0; i < ddp_ctx->bif_read_comp_nr; i++) {
+	for (i = 0; i < ddp_ctx->bif_read_comp_nr-1; i++) {
 		comp = ddp_ctx->bif_read_comp[i];
 
 		if (i == 0) {
