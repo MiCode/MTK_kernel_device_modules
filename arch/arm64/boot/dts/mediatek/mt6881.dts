@@ -7810,7 +7810,7 @@
 			// clocks = <&dispsys_config_clk CLK_MM_DISP_DSC_WRAP0>;
 		};
 
-		dsi0: dsi@1401a000 {
+		dsi0: dsi0@1401a000 {
 			compatible = "mediatek,dsi0",
 					"mediatek,mt6881-dsi";
 			reg = <0 0x1401a000 0 0x1000>;
