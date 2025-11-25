@@ -3189,7 +3189,7 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	unsigned int buf_total_size = 0;
 
 	/* variable to config into register */
-	unsigned int lx_fbdc_en;
+//	unsigned int lx_fbdc_en;
 	dma_addr_t lx_addr, lx_hdr_addr;
 	unsigned int lx_pitch, lx_hdr_pitch;
 	unsigned int lx_clip, lx_src_size;
@@ -3247,37 +3247,43 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 	if (state->comp_state.layer_caps & (MTK_DISP_RSZ_LAYER))
 		rpo_check_flag = true;
 
+	/* sram config only for mml-ir, mml-dl does not have to config */
 	/* 1. cal & set OVL_LX_FBDC_EN */
-	lx_fbdc_en = (compress != 0);
-	if (ext_lye_idx != LYE_NORMAL) {
-		unsigned int id = ext_lye_idx - 1;
+//	lx_fbdc_en = (compress != 0);
+//	if (ext_lye_idx != LYE_NORMAL) {
+//		unsigned int id = ext_lye_idx - 1;
 
-		if (!old_pending || ((old_pending->mml_mode == MML_MODE_RACING) &&
-			!(pending->mml_mode == MML_MODE_RACING))) {
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_CFG(exdma, id), 0,
-				~0);
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_BUF0_ADDR(exdma, id),
-				0, ~0);
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_BUF1_ADDR(exdma, id),
-				0, ~0);
-		}
-	} else {
-		if (!old_pending || ((old_pending->mml_mode == MML_MODE_RACING) &&
-			!(pending->mml_mode == MML_MODE_RACING))) {
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + regs[OVL_EXDMA_L0_SYSRAM_CFG], 0,
-				~0);
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + regs[OVL_EXDMA_L0_BUF0_ADDR],
-				0, ~0);
-			cmdq_pkt_write(handle, comp->cmdq_base,
-				comp->regs_pa + regs[OVL_EXDMA_L0_BUF1_ADDR],
-				0, ~0);
-		}
-	}
+//		if (!old_pending || ((old_pending->mml_mode == MML_MODE_RACING) &&
+//			!(pending->mml_mode == MML_MODE_RACING))) {
+//			cmdq_pkt_write(handle, comp->cmdq_base,
+//				comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_CFG(exdma, id), 0,
+//				~0);
+//			cmdq_pkt_write(handle, comp->cmdq_base,
+//				comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_BUF0_ADDR(exdma, id),
+//				0, ~0);
+//			cmdq_pkt_write(handle, comp->cmdq_base,
+//				comp->regs_pa + OVL_EXDMA_ELX_SYSRAM_BUF1_ADDR(exdma, id),
+//				0, ~0);
+//		}
+//	} else {
+//		if (!old_pending || ((old_pending->mml_mode == MML_MODE_RACING) &&
+//			!(pending->mml_mode == MML_MODE_RACING))) {
+//			cmdq_pkt_write(handle, comp->cmdq_base,
+//				comp->regs_pa + regs[OVL_EXDMA_L0_SYSRAM_CFG], 0,
+//				~0);
+//			cmdq_pkt_write(handle, comp->cmdq_base,
+//				comp->regs_pa + regs[OVL_EXDMA_L0_BUF0_ADDR],
+//				0, ~0);
+//			cmdq_pkt_write(handle, comp->cmdq_base,
+//				comp->regs_pa + regs[OVL_EXDMA_L0_BUF1_ADDR],
+//				0, ~0);
+//		}
+//	}
+
+	/* setting SMI for read DRAM */
+	if (!exdma->data->skip_larb_con && comp->larb_cons)
+		cmdq_pkt_write(handle, comp->cmdq_base,
+			       comp->larb_cons[lye_idx], 0, GENMASK(19, 16));
 
 	/* if no compress, do common config and return */
 	if (compress == 0 || (pending->mml_mode == MML_MODE_RACING) ||
@@ -3285,11 +3291,6 @@ bool compr_ovl_exdma_l_config_AFBC_V1_2(struct mtk_ddp_comp *comp,
 		_ovl_exdma_common_config(comp, idx, state, handle);
 		return 0;
 	}
-
-	/* setting SMI for read DRAM */
-	if (!exdma->data->skip_larb_con && comp->larb_cons)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			       comp->larb_cons[lye_idx], 0, GENMASK(19, 16));
 
 	/* 2. pre-calculation */
 	if (Bpp == 0) {
