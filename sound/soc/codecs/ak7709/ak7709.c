@@ -660,10 +660,10 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x400275, 0x05 },   /* AK7709_C0_275_SDOUT10B_OUT_DATA_SEL */
 	{ 0x400276, 0x00 },   /* AK7709_C0_276_SDOUT10C_OUT_DATA_SEL */
 	{ 0x400277, 0x00 },   /* AK7709_C0_277_SDOUT10D_OUT_DATA_SEL */
-	{ 0x400278, 0x30 },   /* AK7709_C0_278_SDOUT11A_OUT_DATA_SEL */
-	{ 0x400279, 0x31 },   /* AK7709_C0_279_SDOUT11B_OUT_DATA_SEL */
-	{ 0x40027A, 0x32 },   /* AK7709_C0_27A_SDOUT11C_OUT_DATA_SEL */
-	{ 0x40027B, 0x33 },   /* AK7709_C0_27B_SDOUT11D_OUT_DATA_SEL */
+	{ 0x400278, 0x00 },   /* AK7709_C0_278_SDOUT11A_OUT_DATA_SEL */
+	{ 0x400279, 0x00 },   /* AK7709_C0_279_SDOUT11B_OUT_DATA_SEL */
+	{ 0x40027A, 0x00 },   /* AK7709_C0_27A_SDOUT11C_OUT_DATA_SEL */
+	{ 0x40027B, 0x00 },   /* AK7709_C0_27B_SDOUT11D_OUT_DATA_SEL */
 	{ 0x400290, 0x00 },   /* AK7709_C0_290_DSP11_DIN1_IN_DATA_SEL */
 	{ 0x400291, 0x00 },   /* AK7709_C0_291_DSP11_DIN2_IN_DATA_SEL */
 	{ 0x400292, 0x00 },   /* AK7709_C0_292_DSP11_DIN3_IN_DATA_SEL */
@@ -696,11 +696,11 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x4002AD, 0x00 },   /* AK7709_C0_2AD_DSP11_DIN30_IN_DATA_SEL */
 	{ 0x4002AE, 0x00 },   /* AK7709_C0_2AE_DSP11_DIN31_IN_DATA_SEL */
 	{ 0x4002AF, 0x00 },   /* AK7709_C0_2AF_DSP11_DIN32_IN_DATA_SEL */
-	{ 0x4002B0, 0xF6 },   /* AK7709_C0_2B0_HIFI4B_DIN1_IN_DATA_SEL */
-	{ 0x4002B1, 0xF7 },   /* AK7709_C0_2B1_HIFI4B_DIN2_IN_DATA_SEL */
-	{ 0x4002B2, 0xF8 },   /* AK7709_C0_2B2_HIFI4B_DIN3_IN_DATA_SEL */
-	{ 0x4002B3, 0xF9 },   /* AK7709_C0_2B3_HIFI4B_DIN4_IN_DATA_SEL */
-	{ 0x4002B4, 0xFA },   /* AK7709_C0_2B4_HIFI4B_DIN5_IN_DATA_SEL */
+	{ 0x4002B0, 0x00 },   /* AK7709_C0_2B0_HIFI4B_DIN1_IN_DATA_SEL */
+	{ 0x4002B1, 0x00 },   /* AK7709_C0_2B1_HIFI4B_DIN2_IN_DATA_SEL */
+	{ 0x4002B2, 0x00 },   /* AK7709_C0_2B2_HIFI4B_DIN3_IN_DATA_SEL */
+	{ 0x4002B3, 0x00 },   /* AK7709_C0_2B3_HIFI4B_DIN4_IN_DATA_SEL */
+	{ 0x4002B4, 0x00 },   /* AK7709_C0_2B4_HIFI4B_DIN5_IN_DATA_SEL */
 	{ 0x4002B5, 0x00 },   /* AK7709_C0_2B5_HIFI4B_DIN6_IN_DATA_SEL */
 	{ 0x4002B6, 0x00 },   /* AK7709_C0_2B6_HIFI4B_DIN7_IN_DATA_SEL */
 	{ 0x4002B7, 0x00 },   /* AK7709_C0_2B7_HIFI4B_DIN8_IN_DATA_SEL */
@@ -728,10 +728,10 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x4002CD, 0x00 },   /* AK7709_C0_2CD_HIFI4B_DIN30_IN_DATA_SEL */
 	{ 0x4002CE, 0x00 },   /* AK7709_C0_2CE_HIFI4B_DIN31_IN_DATA_SEL */
 	{ 0x4002CF, 0x00 },   /* AK7709_C0_2CF_HIFI4B_DIN32_IN_DATA_SEL */
-	{ 0x4002D0, 0x30 },   /* AK7709_C0_2D0_77DSP1_DIN1_IN_DATA_SEL */
-	{ 0x4002D1, 0x31 },   /* AK7709_C0_2D1_77DSP1_DIN2_IN_DATA_SEL */
-	{ 0x4002D2, 0x32 },   /* AK7709_C0_2D2_77DSP1_DIN3_IN_DATA_SEL */
-	{ 0x4002D3, 0x33 },   /* AK7709_C0_2D3_77DSP1_DIN4_IN_DATA_SEL */
+	{ 0x4002D0, 0x00 },   /* AK7709_C0_2D0_77DSP1_DIN1_IN_DATA_SEL */
+	{ 0x4002D1, 0x00 },   /* AK7709_C0_2D1_77DSP1_DIN2_IN_DATA_SEL */
+	{ 0x4002D2, 0x00 },   /* AK7709_C0_2D2_77DSP1_DIN3_IN_DATA_SEL */
+	{ 0x4002D3, 0x00 },   /* AK7709_C0_2D3_77DSP1_DIN4_IN_DATA_SEL */
 	{ 0x4002D4, 0x00 },   /* AK7709_C0_2D4_77DSP1_DIN5_IN_DATA_SEL */
 	{ 0x4002D5, 0x00 },   /* AK7709_C0_2D5_77DSP1_DIN6_IN_DATA_SEL */
 	{ 0x4002D6, 0x00 },   /* AK7709_C0_2D6_77DSP1_DIN7_IN_DATA_SEL */
@@ -747,25 +747,25 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x4002E3, 0x00 },   /* AK7709_C0_2E3_77DSP2_DIN4_IN_DATA_SEL */
 	{ 0x4002E4, 0x00 },   /* AK7709_C0_2E4_77DSP2_DIN5_IN_DATA_SEL */
 	{ 0x4002E5, 0x00 },   /* AK7709_C0_2E5_77DSP2_DIN6_IN_DATA_SEL */
-	{ 0x4002E6, 0x79 },   /* AK7709_C0_2E6_77DSP2_DIN7_IN_DATA_SEL */
-	{ 0x4002E7, 0x24 },   /* AK7709_C0_2E7_77DSP2_DIN8_IN_DATA_SEL */
-	{ 0x4002E8, 0x25 },   /* AK7709_C0_2E8_77DSP2_DIN9_IN_DATA_SEL */
-	{ 0x4002E9, 0x26 },   /* AK7709_C0_2E9_77DSP2_DIN10_IN_DATA_SEL */
-	{ 0x4002EA, 0x27 },   /* AK7709_C0_2EA_77DSP2_DIN11_IN_DATA_SEL */
-	{ 0x4002EB, 0x71 },   /* AK7709_C0_2EB_77DSP2_DIN12_IN_DATA_SEL */
-	{ 0x4002EC, 0x72 },   /* AK7709_C0_2EC_77DSP2_DIN13_IN_DATA_SEL */
+	{ 0x4002E6, 0x00 },   /* AK7709_C0_2E6_77DSP2_DIN7_IN_DATA_SEL */
+	{ 0x4002E7, 0x00 },   /* AK7709_C0_2E7_77DSP2_DIN8_IN_DATA_SEL */
+	{ 0x4002E8, 0x00 },   /* AK7709_C0_2E8_77DSP2_DIN9_IN_DATA_SEL */
+	{ 0x4002E9, 0x00 },   /* AK7709_C0_2E9_77DSP2_DIN10_IN_DATA_SEL */
+	{ 0x4002EA, 0x00 },   /* AK7709_C0_2EA_77DSP2_DIN11_IN_DATA_SEL */
+	{ 0x4002EB, 0x00 },   /* AK7709_C0_2EB_77DSP2_DIN12_IN_DATA_SEL */
+	{ 0x4002EC, 0x00 },   /* AK7709_C0_2EC_77DSP2_DIN13_IN_DATA_SEL */
 	{ 0x4002F0, 0x00 },   /* AK7709_C0_2F0_77DSP3_DIN1_IN_DATA_SEL */
 	{ 0x4002F1, 0x00 },   /* AK7709_C0_2F1_77DSP3_DIN2_IN_DATA_SEL */
 	{ 0x4002F2, 0x00 },   /* AK7709_C0_2F2_77DSP3_DIN3_IN_DATA_SEL */
 	{ 0x4002F3, 0x00 },   /* AK7709_C0_2F3_77DSP3_DIN4_IN_DATA_SEL */
 	{ 0x4002F4, 0x00 },   /* AK7709_C0_2F4_77DSP3_DIN5_IN_DATA_SEL */
 	{ 0x4002F5, 0x00 },   /* AK7709_C0_2F5_77DSP3_DIN6_IN_DATA_SEL */
-	{ 0x4002F6, 0x6C },   /* AK7709_C0_2F6_77DSP4_DIN1_IN_DATA_SEL */
-	{ 0x4002F7, 0x6D },   /* AK7709_C0_2F7_77DSP4_DIN2_IN_DATA_SEL */
-	{ 0x4002F8, 0x6E },   /* AK7709_C0_2F8_77DSP4_DIN3_IN_DATA_SEL */
-	{ 0x4002F9, 0x58 },   /* AK7709_C0_2F9_77DSP4_DIN4_IN_DATA_SEL */
-	{ 0x4002FA, 0x59 },   /* AK7709_C0_2FA_77DSP4_DIN5_IN_DATA_SEL */
-	{ 0x4002FB, 0x5A },   /* AK7709_C0_2FB_77DSP4_DIN6_IN_DATA_SEL */
+	{ 0x4002F6, 0x00 },   /* AK7709_C0_2F6_77DSP4_DIN1_IN_DATA_SEL */
+	{ 0x4002F7, 0x00 },   /* AK7709_C0_2F7_77DSP4_DIN2_IN_DATA_SEL */
+	{ 0x4002F8, 0x00 },   /* AK7709_C0_2F8_77DSP4_DIN3_IN_DATA_SEL */
+	{ 0x4002F9, 0x00 },   /* AK7709_C0_2F9_77DSP4_DIN4_IN_DATA_SEL */
+	{ 0x4002FA, 0x00 },   /* AK7709_C0_2FA_77DSP4_DIN5_IN_DATA_SEL */
+	{ 0x4002FB, 0x00 },   /* AK7709_C0_2FB_77DSP4_DIN6_IN_DATA_SEL */
 	{ 0x4002FE, 0x00 },   /* AK7709_C0_2FE_TIF_OUT_DATA_SEL1 */
 	{ 0x4002FF, 0x00 },   /* AK7709_C0_2FF_TIF_OUT_DATA_SEL2 */
 
@@ -1856,8 +1856,14 @@ static int setSDClock(struct snd_soc_component *component, int nSDNo)
 	if (sdv > 4)
 		sdv += 2;	// fs>=512
 
-	dev_info(ak7709->dev, "%s, fs = %d BICKfs = %d BDV=%d, SDV=%d\n",
-		__func__, fs, bickfs, bdv, sdbicktab[sdv]);
+	if (sdv < 7) {
+		dev_info(ak7709->dev, "%s, fs = %d BICKfs = %d BDV=%d, SDV=%d\n",
+			__func__, fs, bickfs, bdv, sdbicktab[sdv]);
+	} else {
+		dev_info(ak7709->dev, "%s: SDV Index out of bounds! SD No = %d, SDV = %d\n",
+			__func__, nSDNo, sdv);
+	}
+
 	bdv--;
 	if (bdv > 255) {
 		dev_info(ak7709->dev, "%s: BDV Error! SD No = %d, bdv bit = %d\n",
@@ -6439,6 +6445,8 @@ static int ak7709_write_ram(
 	unsigned int ckResetReg;
 	u8 *ramdata;
 
+	commandLen = 0;
+
 	if ((upRam[1] & 0x80) == 0) {
 		switch (upRam[0]) {
 		case CTRLIF_FORMAT_NORMAL_4BYTE:
@@ -6584,7 +6592,11 @@ static int ak7709_hifi_firmware_write(
 		nRamSize  = hifiBasicRam[sel-1].length;
 		ret = ak7709_write_hifi_ram(component, ram_basic, nRamSize);
 	} else {
-		sprintf(szFileName, "ak7709_%s.bin", ak7709_hifi_firmware[sel]);
+		ret = snprintf(szFileName, sizeof(szFileName), "ak7709_%s.bin", ak7709_hifi_firmware[sel]);
+		if (ret < 0) {
+			dev_info(ak7709->dev, "snprintf %s failed,ret = %d\n", szFileName, ret);
+			return -EINVAL;
+		}
 
 		ret = request_firmware(&fw, szFileName, ak7709->component->dev);
 		if (ret) {
@@ -6728,7 +6740,11 @@ static int ak7709_77dsp_firmware_write(
 		nRamSize  = ak77dspBasicRam[sel-1].length;
 		ret = ak7709_write_77dsp_ram(component, ram_basic, nRamSize);
 	} else {
-		sprintf(szFileName, "ak7709_%s.bin", ak7709_77dsp_firmware[sel]);
+		ret = snprintf(szFileName, sizeof(szFileName), "ak7709_%s.bin", ak7709_77dsp_firmware[sel]);
+		if (ret < 0) {
+			dev_info(ak7709->dev, "snprintf %s failed,ret = %d\n", szFileName, ret);
+			return -EINVAL;
+		}
 
 		ret = request_firmware(&fw, szFileName, ak7709->component->dev);
 		if (ret) {
@@ -10887,10 +10903,14 @@ static const struct snd_soc_dapm_widget ak7709_dapm_widgets[] = {
 	SND_SOC_DAPM_AIF_IN("SDIN10", SDIO10_LINK" Playback", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_IN("SDIN11", SDIO11_LINK" Playback", 0, SND_SOC_NOPM, 0, 0),
 
-	SND_SOC_DAPM_AIF_OUT("SDOUT1", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("SDOUT2", "AIF2 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("SDOUT3", "AIF3 Capture", 0, SND_SOC_NOPM, 0, 0),
-	SND_SOC_DAPM_AIF_OUT("SDOUT4", "AIF4 Capture", 0, SND_SOC_NOPM, 0, 0),
+	SND_SOC_DAPM_OUTPUT("SDOUT1"),
+	/* SND_SOC_DAPM_AIF_OUT("SDOUT1", "AIF1 Capture", 0, SND_SOC_NOPM, 0, 0),*/
+	SND_SOC_DAPM_OUTPUT("SDOUT2"),
+	/* SND_SOC_DAPM_AIF_OUT("SDOUT2", "AIF2 Capture", 0, SND_SOC_NOPM, 0, 0),*/
+	SND_SOC_DAPM_OUTPUT("SDOUT3"),
+	/* SND_SOC_DAPM_AIF_OUT("SDOUT3", "AIF3 Capture", 0, SND_SOC_NOPM, 0, 0),*/
+	SND_SOC_DAPM_OUTPUT("SDOUT4"),
+	/* SND_SOC_DAPM_AIF_OUT("SDOUT4", "AIF4 Capture", 0, SND_SOC_NOPM, 0, 0),*/
 	SND_SOC_DAPM_AIF_OUT("SDOUT5", "AIF5 Capture", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("SDOUT6", "AIF6 Capture", 0, SND_SOC_NOPM, 0, 0),
 	SND_SOC_DAPM_AIF_OUT("SDOUT7", "AIF7 Capture", 0, SND_SOC_NOPM, 0, 0),
@@ -51753,6 +51773,8 @@ static int ak7709_read_register(void *context,
 	ak7709 = dev_get_drvdata(dev);
 
 	regBlock = ((0xFF0000 & reg) >> 16);
+
+	rx[0] = 0;
 
 	tx[0] = (unsigned char)(CTRLIF_FORMAT_NORMAL_2BYTE);
 	tx[1] = (unsigned char)(regBlock);

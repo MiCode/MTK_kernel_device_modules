@@ -16,8 +16,12 @@ config DEVICE_MODULES_SND_SOC_ALL_CODECS
 	imply SND_SOC_RT5512
 	imply SND_SOC_AW883XX
 	imply SND_SOC_TFA9874
-        imply SND_SOC_RT5509
-        imply SND_SOC_FS16XX
+	imply SND_SOC_RT5509
+	imply SND_SOC_FS16XX
+	imply SND_SOC_ES8311_AUTO
+	imply SND_SOC_AK7709
+	imply SND_SOC_AW85601
+	imply SND_SOC_AW836XX
 	help
 	  Normally ASoC codec drivers are only built if a machine driver which
 	  uses them is also built since they are only usable with a machine
@@ -233,4 +237,29 @@ config SND_SOC_HFDA80X
 	help
 	  Config of hfda80x. It is a Smart amplifier
 	  It would be set to yes if device with HFDA801/HFDA803 on it.
+
+config SND_SOC_ES8311_AUTO
+	tristate "EVEREST ES8311 CODEC driver"
+	depends on I2C
+	help
+	  Config of ES8311.
+	  It would be set to yes if device with ES8311 on it.
+	  Select N if you don't have ES8311 on board.
+
+config SND_SOC_AW85601
+	tristate "SoC Audio for awinic AW85601 Speaker Amplifier"
+	depends on I2C
+	help
+	  Config of AW85601.
+	  It would be set to yes if device with AW85601 on it.
+	  Select N if you don't have AW85601 on board.
+
+config SND_SOC_AW836XX
+	tristate "SoC Audio for awinic AW836XX Smart K PA"
+	depends on I2C
+	help
+	  Config of AW836XX.
+	  AW836XX is Smart K PA.
+	  It would be set to yes if device with AW836XX on it.
+	  Select N if you don't have AW836XX on board.
 endmenu
