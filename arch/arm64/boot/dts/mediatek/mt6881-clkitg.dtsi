@@ -14,14 +14,6 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_MMINFRA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UART_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UART3_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SPI0_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SPI1_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SPI2_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SPI3_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SPI4_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SPI5_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SPI6_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SPI7_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_MSDC_MACRO_1P_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_MSDC30_1_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AUD_INTBUS_SEL>,
@@ -316,20 +308,6 @@
 			<&traw_dip1_clk CLK_TRAW_DIP1_LARB40_CAMERA_P2>,
 			<&traw_dip1_clk CLK_TRAW_DIP1_TRAW_CAMERA_P2>,
 			<&traw_cap_dip1_clk CLK_TRAW_CAP_DIP1_TRAW_CAP_CAMERA_P2>;
-	};
-
-	bring-up-spi@9 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x9>;
-		clocks =
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_SPI0_B_SPI>,
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_SPI1_B_SPI>,
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_SPI2_B_SPI>,
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_SPI3_B_SPI>,
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_SPI4_B_SPI>,
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_SPI5_B_SPI>,
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_SPI6_B_SPI>,
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_SPI7_B_SPI>;
 	};
 
 	bring-up-vdec@a {
