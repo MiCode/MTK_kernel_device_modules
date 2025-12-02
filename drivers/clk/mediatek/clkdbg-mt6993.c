@@ -1330,12 +1330,24 @@ static int clkdbg_thread_fn(void *data)
 							__clk_get_hw(TEST_CLK_TO_CLK(t_clks[i]))),
 						ret);
 					/* reset to original parent */
-					clk_set_parent(tmp_clk, tmp_clk_p);
+					ret = clk_set_parent(tmp_clk, tmp_clk_p);
+					if (ret)
+						pr_notice("%s: %s, %s fail to set parent(%d)\n",
+							current->comm,
+							clk_hw_get_name(__clk_get_hw(tmp_clk)),
+							clk_hw_get_name(__clk_get_hw(tmp_clk_p)),
+						ret);
 					goto ERR;
 				}
 			}
 			/* reset to original parent */
-			clk_set_parent(tmp_clk, tmp_clk_p);
+			ret = clk_set_parent(tmp_clk, tmp_clk_p);
+			if (ret)
+				pr_notice("%s: %s, %s fail to set parent(%d)\n",
+					current->comm,
+					clk_hw_get_name(__clk_get_hw(tmp_clk)),
+					clk_hw_get_name(__clk_get_hw(tmp_clk_p)),
+				ret);
 			break;
 		default:
 			pr_notice("unknown test type\n");
