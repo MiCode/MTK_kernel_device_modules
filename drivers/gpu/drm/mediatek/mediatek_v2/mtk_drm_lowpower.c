@@ -1059,7 +1059,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		}
 	}
 
-	if (bif_enabled(crtc)== BIF_HS_IDLE) {
+	if (bif_enabled(crtc)== BIF_HS_IDLE && !state->lye_state.mml_dl_lye) {
 		unsigned int *addr = NULL;
 
 		if (mtk_crtc->bif_info->sram_en) {
@@ -1098,7 +1098,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 	cmdq_pkt_flush(handle);
 	cmdq_pkt_destroy(handle);
 
-	if (bif_enabled(crtc) == BIF_HS_IDLE) {
+	if (bif_enabled(crtc) == BIF_HS_IDLE && !state->lye_state.mml_dl_lye) {
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 			mtk_disp_set_hrt_bw(mtk_crtc, 0);
 		mtk_crtc_bif_apsrc_ddren_control(mtk_crtc, NULL, false);
