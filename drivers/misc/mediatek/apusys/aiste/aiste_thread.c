@@ -18,19 +18,18 @@ static int record_count;
 struct RecordEntry *thread_record;
 struct mutex thread_record_lock;
 
-//TODO: Implement different CPU configurations for different platforms.
 const struct CpuBoostConfig cpuBoostConfigs[] = {
-	{.threshold = 0,   .uclamp_min = 0,     .uclamp_max = 1024},
-	{.threshold = 1,   .uclamp_min = 64,    .uclamp_max = 64},
-	{.threshold = 10,  .uclamp_min = 128,   .uclamp_max = 128},
-	{.threshold = 20,  .uclamp_min = 128,   .uclamp_max = 256},
-	{.threshold = 30,  .uclamp_min = 256,   .uclamp_max = 256},
-	{.threshold = 40,  .uclamp_min = 384,   .uclamp_max = 384},
-	{.threshold = 50,  .uclamp_min = 512,   .uclamp_max = 512},
-	{.threshold = 60,  .uclamp_min = 640,   .uclamp_max = 640},
-	{.threshold = 75,  .uclamp_min = 768,   .uclamp_max = 768},
-	{.threshold = 90,  .uclamp_min = 768,   .uclamp_max = 1024},
-	{.threshold = 100, .uclamp_min = 1024,  .uclamp_max = 1024},
+	{.threshold = 0,    .uclamp_min = 0,    .uclamp_max = 1024},
+	{.threshold = 1,    .uclamp_min = 64,   .uclamp_max = 64},
+	{.threshold = 10,   .uclamp_min = 64,   .uclamp_max = 128},
+	{.threshold = 20,   .uclamp_min = 128,  .uclamp_max = 192},
+	{.threshold = 30,   .uclamp_min = 192,  .uclamp_max = 256},
+	{.threshold = 40,   .uclamp_min = 256,  .uclamp_max = 384},
+	{.threshold = 50,   .uclamp_min = 384,  .uclamp_max = 512},
+	{.threshold = 60,   .uclamp_min = 512,  .uclamp_max = 640},
+	{.threshold = 70,   .uclamp_min = 640,  .uclamp_max = 768},
+	{.threshold = 80,   .uclamp_min = 768,  .uclamp_max = 896},
+	{.threshold = 90,   .uclamp_min = 896,  .uclamp_max = 1024},
 };
 
 void aiste_thread_init(void)
