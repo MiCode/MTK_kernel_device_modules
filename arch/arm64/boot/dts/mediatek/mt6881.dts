@@ -6211,8 +6211,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,smi-ssc-ostdl = <&smi_mdp_sub_comm1 1>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON0_SMI>,
-			 <&wpe_eis_dip1_clk CLK_WPE_EIS_DIP1_LARB_U0_SMI>;
-		clock-names = "apb", "smi";
+			 <&wpe_eis_dip1_clk CLK_WPE_EIS_DIP1_LARB_U0_SMI>,
+			 <&wpe_eis_dip1_clk CLK_WPE_EIS_DIP1_WPE_MACRO_CAMERA_P2>;
+		clock-names = "apb", "smi_0", "smi_1";
 	};
 
 	smi_larb12: smi-larb12@15300000 {
@@ -6235,8 +6236,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,larb-id = <15>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON3_SMI>,
-			 <&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15_SMI>;
-		clock-names = "apb", "smi";
+			 <&dip_top_dip1_clk CLK_DIP_TOP_DIP1_LARB15_SMI>,
+			 <&dip_nr2_dip1_clk CLK_DIP_NR2_DIP1_LARB15_CAMERA_P2>;
+		clock-names = "apb", "smi_0", "smi_1";
 	};
 
 	smi_larb28: smi-larb28@15720000 {
@@ -6272,8 +6274,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,larb-id = <48>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_DIP1>;
 		clocks = <&imgsys_main_clk CLK_IMG_SUB_COMMON1_SMI>,
-			 <&wpe_tnr_dip1_clk CLK_WPE_TNR_DIP1_LARB_U0_SMI>;
-		clock-names = "apb", "smi";
+			 <&wpe_tnr_dip1_clk CLK_WPE_TNR_DIP1_LARB_U0_SMI>,
+			 <&wpe_tnr_dip1_clk CLK_WPE_TNR_DIP1_WPE_MACRO_CAMERA_P2>;
+		clock-names = "apb", "smi_0", "smi_1";
 	};
 
 	smi_cam_sub_comm0: smi-cam-sub-comm0@1a032000 {
