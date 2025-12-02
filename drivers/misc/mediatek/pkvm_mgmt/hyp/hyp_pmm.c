@@ -268,7 +268,7 @@ void hyp_pmm_debug_hypmmu(struct user_pt_regs *regs)
 	char *dis_name;
 	struct pmm_hal *hal;
 	int i;
-	bool enabled;
+	bool enabled = true;
 	uint64_t debug_page_pa, total_page;
 
 	if (cmd == INIT_DEBUG_PAGE) {
