@@ -241,7 +241,7 @@ static const struct mtk_spi_compatible mt6881_compat = {
 	.enhance_packet_len = true,
 	.slice_en = true,
 	.dummy_cycle = true,
-	.infra_req = false,
+	.infra_req = true,
 	.hw_reset = true,
 };
 
@@ -525,7 +525,7 @@ static void mtk_spi_error_dump(struct spi_controller *ctrl,
 	spin_lock_irqsave(&mdata->eh_spi_lock, flags);
 
 	if (mdata->use_spimem || ctrl->can_dma(ctrl, NULL, mdata->cur_transfer)) {
-//		mt_irq_dump_status(mdata->irq);
+		mt_irq_dump_status(mdata->irq);
 		/* timeout occurred due to no response to irq, check if IP irq bit is raised.*/
 		spi_debug("status0:0x%.8x\n", readl(mdata->base + SPI_STATUS0_REG));
 	}
