@@ -37,7 +37,7 @@
 #include <linux/arm-smccc.h>
 
 static struct pt_regs saved_regs;
-
+#if !IS_ENABLED(CONFIG_HYPER_VM_UOS)
 static void aee_exception_reboot(int reboot_reason)
 {
 	struct arm_smccc_res res;
@@ -55,7 +55,7 @@ static void aee_exception_reboot(int reboot_reason)
 		PSCI_1_1_RESET2_TYPE_VENDOR | opt1,
 		opt2, 0, 0, 0, 0, 0, &res);
 }
-
+#endif
 
 #if defined(CONFIG_RANDOMIZE_BASE) && defined(CONFIG_ARM64)
 static inline void show_kaslr(void)
@@ -260,7 +260,9 @@ int mrdump_common_die(int reboot_reason, const char *msg,
 	default:
 		aee_nested_printf("num_die-%d, last_step-%d, next_step-%d\n",
 				  num_die, last_step, next_step);
+#if !IS_ENABLED(CONFIG_HYPER_VM_UOS)
 		aee_exception_reboot(reboot_reason);
+#endif
 		break;
 	}
 
@@ -293,7 +295,11 @@ static struct notifier_block die_blk = {
 static __init int mrdump_parse_chosen(struct mrdump_params *mparams)
 {
 	struct device_node *node;
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+	u64 reg[2];
+#else
 	u32 reg[2];
+#endif
 	const char *lkver, *ddr_rsv, *aee_enable;
 
 	memset(mparams, 0, sizeof(struct mrdump_params));
@@ -307,8 +313,13 @@ static __init int mrdump_parse_chosen(struct mrdump_params *mparams)
 				mparams->aee_enable = 2;
 		}
 
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+		if (of_property_read_u64_array(node, "mrdump,cblock",
+					       reg, ARRAY_SIZE(reg)) == 0) {
+#else
 		if (of_property_read_u32_array(node, "mrdump,cblock",
 					       reg, ARRAY_SIZE(reg)) == 0) {
+#endif
 			mparams->cb_addr = reg[0];
 			mparams->cb_size = reg[1];
 			pr_notice("%s: mrdump_cbaddr=%pa, mrdump_cbsize=%pa\n",

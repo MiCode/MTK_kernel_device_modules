@@ -600,9 +600,14 @@ static void mrdump_mini_fatal(const char *str)
 	pr_notice("minirdump: FATAL:%s\n", str);
 }
 
-static unsigned int mrdump_mini_addr;
 static unsigned int mrdump_mini_size;
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+static phys_addr_t mrdump_mini_addr;
+void mrdump_mini_set_addr_size(phys_addr_t addr, unsigned int size)
+#else
+static unsigned int mrdump_mini_addr;
 void mrdump_mini_set_addr_size(unsigned int addr, unsigned int size)
+#endif
 {
 	mrdump_mini_addr = addr;
 	mrdump_mini_size = size;
@@ -673,7 +678,11 @@ static void mrdump_mini_build_elf_misc(void)
 		task_info_pa = (unsigned long)(mrdump_mini_addr +
 				MRDUMP_MINI_HEADER_SIZE);
 	} else {
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+		pr_notice("minirdump: unexpected addr:0x%llx, size:0x%x(0x%x)\n",
+#else
 		pr_notice("minirdump: unexpected addr:0x%x, size:0x%x(0x%x)\n",
+#endif
 			mrdump_mini_addr, mrdump_mini_size,
 			(unsigned int)MRDUMP_MINI_HEADER_SIZE);
 		mrdump_mini_fatal("illegal addr size");
@@ -759,12 +768,20 @@ static void __init mrdump_mini_elf_header_init(void)
 		mrdump_mini_ehdr =
 		    remap_lowmem(mrdump_mini_addr,
 				 mrdump_mini_size);
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+		pr_notice("minirdump: [DT] reserved 0x%llx+0x%lx->%p\n",
+#else
 		pr_notice("minirdump: [DT] reserved 0x%x+0x%lx->%p\n",
+#endif
 			mrdump_mini_addr,
 			(unsigned long)mrdump_mini_size,
 			mrdump_mini_ehdr);
 	} else {
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+		pr_notice("minirdump: [DT] illegal value 0x%llx(0x%x)\n",
+#else
 		pr_notice("minirdump: [DT] illegal value 0x%x(0x%x)\n",
+#endif
 				mrdump_mini_addr,
 				mrdump_mini_size);
 		mrdump_mini_fatal("illegal addr size");

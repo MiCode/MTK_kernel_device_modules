@@ -78,3 +78,11 @@ config MTK_AEE_YOCTO
           are different from those on the Android system. aee
           driver needs to distinguish whether the current system
           is Yocto.
+
+ config MTK_AEE_PHY_ADDR_U64
+	bool "Use 64-bit physical addresses in MTK AEE module"
+	help
+	  Enabling this option means that the AEE module will use 'u64' type
+	  for storing and handling physical addresses. This is necessary for
+	  systems with physical address ranges that exceed 4GB, which cannot
+	  be represented by a 32-bit 'u32' type.

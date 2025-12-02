@@ -90,6 +90,11 @@ struct last_reboot_reason {
 	char last_shutdown_device[FUNC_NAME_LEN];
 	uint32_t hang_detect_timeout_count;
 	uint32_t gz_irq;
+
+#if IS_ENABLED(CONFIG_MTK_AEE_YOCTO) || IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	uint64_t nebula_bootticks_ticks;
+	uint64_t nebula_bootticks_freq;
+#endif
 };
 
 struct reboot_reason_pl {
@@ -416,6 +421,26 @@ enum MBOOT_PARAMS_DEF_TYPE {
 
 #define MEM_MAGIC1 0x61646472 /* "addr" */
 #define MEM_MAGIC2 0x73697a65 /* "size" */
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+struct mboot_params_memory_info {
+	u32 magic1;
+	phys_addr_t sram_plat_dbg_info_addr;
+	u32 sram_plat_dbg_info_size;
+	phys_addr_t sram_log_store_addr;
+	u32 sram_log_store_size;
+	phys_addr_t mrdump_addr;
+	u32 mrdump_size;
+	phys_addr_t dram_addr;
+	u32 dram_size;
+	phys_addr_t pstore_addr;
+	u32 pstore_size;
+	u32 pstore_console_size;
+	u32 pstore_pmsg_size;
+	phys_addr_t mrdump_mini_header_addr;
+	u32 mrdump_mini_header_size;
+	u32 magic2;
+};
+#else
 struct mboot_params_memory_info {
 	u32 magic1;
 	u32 sram_plat_dbg_info_addr;
@@ -434,6 +459,7 @@ struct mboot_params_memory_info {
 	u32 mrdump_mini_header_size;
 	u32 magic2;
 };
+#endif
 
 static void mboot_params_fatal(const char *str)
 {
@@ -466,9 +492,18 @@ static void mboot_params_parse_memory_info(struct mem_desc_t *sram,
 {
 	struct mboot_params_memory_info *memory_info;
 	u32 magic1, magic2;
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+	phys_addr_t mrdump_addr;
+	u32 mrdump_size;
+	phys_addr_t dram_addr;
+	u32 dram_size;
+	phys_addr_t mini_addr;
+	u32 mini_size;
+#else
 	u32 mrdump_addr, mrdump_size;
 	u32 dram_addr, dram_size;
 	u32 mini_addr, mini_size;
+#endif
 
 	if (sram->offset > sram->size) {
 		memory_info = ioremap_wc((sram->start + sram->offset),
@@ -490,17 +525,30 @@ static void mboot_params_parse_memory_info(struct mem_desc_t *sram,
 
 		if (magic1 == MEM_MAGIC1 && magic2 == MEM_MAGIC2) {
 			mrdump_mini_set_addr_size(mini_addr, mini_size);
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+			pr_notice("mboot_params: [DT] 0x%x@0x%llx\n",
+#else
 			pr_notice("mboot_params: [DT] 0x%x@0x%x\n",
+#endif
 					mini_size, mini_addr);
 			memcpy(p_memory_info, memory_info,
 				sizeof(struct mboot_params_memory_info));
 		} else {
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+			pr_info("[DT] self (0x%x@0x%x)-0x%x@0x%llx\n",
+					magic1, magic2,
+					dram_size, dram_addr);
+			pr_info("[DT] mrdump 0x%x@0x%llx-0x%x@0x%llx\n",
+					mini_size, mini_addr,
+					mrdump_size, mrdump_addr);
+#else
 			pr_info("[DT] self (0x%x@0x%x)-0x%x@0x%x\n",
 					magic1, magic2,
 					dram_size, dram_addr);
 			pr_info("[DT] mrdump 0x%x@0x%x-0x%x@0x%x\n",
 					mini_size, mini_addr,
 					mrdump_size, mrdump_addr);
+#endif
 			mboot_params_fatal("illegal magic number");
 		}
 	} else {
@@ -517,7 +565,12 @@ static int __init mboot_params_early_init(void)
 #ifdef CONFIG_OF
 	struct mem_desc_t sram = { 0 };
 	struct mboot_params_memory_info memory_info_data = {0};
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+	phys_addr_t start;
+	unsigned int size;
+#else
 	unsigned int start, size;
+#endif
 
 	if (dt_get_mboot_params(&sram)) {
 		mboot_params_parse_memory_info(&sram, &memory_info_data);
@@ -529,7 +582,11 @@ static int __init mboot_params_early_init(void)
 		} else if (sram.def_type == MBOOT_PARAMS_DEF_DRAM) {
 			start = mboot_params_reserve_memory();
 			size = MBOOT_PARAMS_DRAM_SIZE;
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+			pr_info("mboot_params: using dram:0x%llx(0x%x)\n",
+#else
 			pr_info("mboot_params: using dram:0x%x(0x%x)\n",
+#endif
 				start, size);
 			bufp = remap_lowmem(start, size);
 		} else {
@@ -546,7 +603,11 @@ static int __init mboot_params_early_init(void)
 		 * [-Werror,-Wint-to-pointer-cast])
 		 */
 		mboot_params_buffer_pa =
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+			(struct mboot_params_buffer *)(unsigned long long)start;
+#else
 			(struct mboot_params_buffer *)(unsigned long)start;
+#endif
 		if (bufp) {
 			buffer_size = size;
 			if (bufp->sig != REBOOT_REASON_SIG) {
@@ -555,7 +616,11 @@ static int __init mboot_params_early_init(void)
 				mboot_params_fatal("illegal sig");
 			}
 		} else {
+#if IS_ENABLED(CONFIG_MTK_AEE_PHY_ADDR_U64)
+			pr_info("mboot_params: ioremap failed, [0x%llx, 0x%x]\n",
+#else
 			pr_info("mboot_params: ioremap failed, [0x%x, 0x%x]\n",
+#endif
 					start, size);
 			mboot_params_fatal("ioremap failed");
 		}
@@ -886,6 +951,24 @@ void aee_rr_rec_hang_detect_timeout_count(unsigned int val)
 }
 EXPORT_SYMBOL(aee_rr_rec_hang_detect_timeout_count);
 
+#if IS_ENABLED(CONFIG_MTK_AEE_YOCTO) || IS_ENABLED(CONFIG_HYPER_VM_UOS)
+void aee_rr_rec_nebula_bootticks_ticks(u64 val)
+{
+	if (!mboot_params_init_done || !mboot_params_buffer)
+		return;
+	LAST_RR_SET(nebula_bootticks_ticks, val);
+}
+EXPORT_SYMBOL(aee_rr_rec_nebula_bootticks_ticks);
+
+void aee_rr_rec_nebula_bootticks_freq(u64 val)
+{
+	if (!mboot_params_init_done || !mboot_params_buffer)
+		return;
+	LAST_RR_SET(nebula_bootticks_freq, val);
+}
+EXPORT_SYMBOL(aee_rr_rec_nebula_bootticks_freq);
+#endif
+
 unsigned long *aee_rr_rec_gz_irq_pa(void)
 {
 	if (mboot_params_buffer_pa)
@@ -1123,6 +1206,21 @@ void aee_rr_show_last_bus(struct seq_file *m)
 	}
 }
 
+#if IS_ENABLED(CONFIG_MTK_AEE_YOCTO) || IS_ENABLED(CONFIG_HYPER_VM_UOS)
+void aee_rr_show_nebula_bootticks_ticks(struct seq_file *m)
+{
+	uint64_t ticks = LAST_RRR_VAL(nebula_bootticks_ticks);
+
+	seq_printf(m, "nebula_bootticks_ticks=%llu\n", ticks);
+}
+
+void aee_rr_show_nebula_bootticks_freq(struct seq_file *m)
+{
+	uint64_t freq = LAST_RRR_VAL(nebula_bootticks_freq);
+
+	seq_printf(m, "nebula_bootticks_freq=%llu\n", freq);
+}
+#endif
 
 last_rr_show_t aee_rr_show[] = {
 	aee_rr_show_wdt_status,
@@ -1133,6 +1231,10 @@ last_rr_show_t aee_rr_show[] = {
 	aee_rr_show_oops_in_progress_addr,
 	aee_rr_show_wdk_ktime,
 	aee_rr_show_wdk_systimer_cnt,
+#if IS_ENABLED(CONFIG_MTK_AEE_YOCTO) || IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	aee_rr_show_nebula_bootticks_ticks,
+	aee_rr_show_nebula_bootticks_freq,
+#endif
 	aee_rr_show_last_pc,
 	aee_rr_show_last_bus,
 
