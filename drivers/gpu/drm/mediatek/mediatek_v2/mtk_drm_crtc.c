@@ -5267,6 +5267,7 @@ err:
 void mtk_bif_slbc_release_wq(struct mtk_drm_crtc *mtk_crtc)
 {
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+	mtk_crtc_release_cmdq_pkt(mtk_crtc->bif_info->bif_pkt_info);
 	mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE, __LINE__);
 	atomic_set(&mtk_crtc->bif_info->bif_release, 0);
 	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);

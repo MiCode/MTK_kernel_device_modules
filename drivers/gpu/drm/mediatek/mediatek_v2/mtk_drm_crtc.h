@@ -1086,6 +1086,7 @@ struct mtk_bif_info {
 	struct task_struct *bif_task;
 	wait_queue_head_t bif_task_wq;
 	atomic_t bif_release;
+	struct mtk_cmdq_pkt_info *bif_pkt_info;
 };
 
 struct mtk_crtc_static_plane {

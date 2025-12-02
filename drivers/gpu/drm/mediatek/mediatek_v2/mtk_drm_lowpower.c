@@ -1139,8 +1139,10 @@ static void vdo_leave_idle_cb(struct cmdq_cb_data data)
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(cb_data->crtc);
 
-	atomic_set(&mtk_crtc->bif_info->bif_release, 1);
+	if (cb_data->pkt_info)
+		mtk_crtc->bif_info->bif_pkt_info = cb_data->pkt_info;
 
+	atomic_set(&mtk_crtc->bif_info->bif_release, 1);
 	wake_up_interruptible(&mtk_crtc->bif_info->bif_task_wq);
 
 	CRTC_MMP_MARK(0, leave_idle, 0xFFFFFFFF, (unsigned long)cb_data->cmdq_handle);
@@ -1150,13 +1152,14 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int i, j;
-	struct cmdq_pkt *handle;
+	struct cmdq_pkt *handle = NULL;
 	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
 	struct mtk_ddp_comp *comp;
 	unsigned int *trace;
 	struct mtk_drm_idlemgr_perf *perf = mtk_crtc->idlemgr->perf;
 	u64 start_time = 0, end_time = 0, cost = 0;
 	enum BIF_STAGE stage = get_bif_stage(mtk_crtc);
+	struct mtk_crtc_state *crtc_state = to_mtk_crtc_state(crtc->state);
 
 	if (perf)
 		start_time = local_clock();
@@ -1166,9 +1169,16 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 			mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
 		set_bif_stage(mtk_crtc, BIF_DEFAULT_MODE);
+
+		mtk_crtc->gce_obj.pkt_info = mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_CFG,
+			crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
+
+		mtk_crtc->bif_info->bif_pkt_info = mtk_crtc->gce_obj.pkt_info;
+		handle = (mtk_crtc->gce_obj.pkt_info == NULL) ? NULL : mtk_crtc->gce_obj.pkt_info->cmdq_handle;
 	}
 
-	mtk_crtc_pkt_create(&handle, crtc, client);
+	if (!handle)
+		mtk_crtc_pkt_create(&handle, crtc, client);
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				   MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ)) {
@@ -1202,22 +1212,33 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		CRTC_MMP_MARK(0, leave_idle, 0, (unsigned long)handle);
 
 		mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
-
 		if (priv->data->bif_path_remove)
 			priv->data->bif_path_remove(mtk_crtc, handle);
 
 		mtk_crtc_bif_restore_path_mutex(mtk_crtc, handle);
 		cmdq_pkt_write_value_addr(handle,
 			mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_BIF_EN), 0, ~0);
-		cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
-		if (cb_data) {
-			cb_data->cmdq_handle = handle;
+
+		if (mtk_crtc->bif_info->bif_pkt_info == NULL) {
+			cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
+			if (cb_data) {
+				cb_data->cmdq_handle = handle;
+				cb_data->crtc = crtc;
+				if (cmdq_pkt_flush_async(handle, vdo_leave_idle_cb, cb_data) < 0)
+					DDPPR_ERR("%s: %d,fail\n", __func__, __LINE__);
+			}
+			cmdq_pkt_wait_complete(handle);
+			cmdq_pkt_destroy(handle);
+			kfree(cb_data);
+		} else {
+			cb_data = mtk_crtc->gce_obj.pkt_info->cb_data;
 			cb_data->crtc = crtc;
-			cmdq_pkt_flush_async(handle, vdo_leave_idle_cb, cb_data);
+			cb_data->cmdq_handle = handle;
+			mtk_crtc->bif_info->bif_pkt_info->cb_data = cb_data;
+
+			if (cmdq_pkt_flush_async(handle, vdo_leave_idle_cb, cb_data) < 0)
+				DDPPR_ERR("%s: %d,fail\n", __func__, __LINE__);
 		}
-		cmdq_pkt_wait_complete(handle);
-		cmdq_pkt_destroy(handle);
-		kfree(cb_data);
 	} else {
 		cmdq_pkt_flush(handle);
 		cmdq_pkt_destroy(handle);
