@@ -340,8 +340,10 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6881 = {
 		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, HRT_NONE,
 			HRT_NONE, HRT_NONE, HRT_CAM, HRT_CAM },
 	},
-	.report_bw_larbs = { SLAVE_LARB(4), SLAVE_LARB(5), SLAVE_LARB(7), SLAVE_LARB(8)},
-	.report_bw_real_larbs = { SLAVE_LARB(4), SLAVE_LARB(4), SLAVE_LARB(7), SLAVE_LARB(7)},
+	.report_bw_larbs = { SLAVE_LARB(4), SLAVE_LARB(5), SLAVE_LARB(7), SLAVE_LARB(8),
+		SLAVE_LARB(28), SLAVE_LARB(11), SLAVE_LARB(9), SLAVE_LARB(15)},
+	.report_bw_real_larbs = { SLAVE_LARB(4), SLAVE_LARB(4), SLAVE_LARB(7), SLAVE_LARB(7),
+		SLAVE_LARB(28), SLAVE_LARB(11), SLAVE_LARB(9), SLAVE_LARB(15)},
 	.freq_mode = BY_VMMRC,
 };
 static const struct of_device_id mtk_mmqos_mt6881_of_ids[] = {

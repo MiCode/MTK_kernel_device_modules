@@ -404,6 +404,7 @@ static void mmqos_update_comm_ostdl(struct device *dev, u32 comm_port,
 	struct larb_node *larb_node = (struct larb_node *)larb->data;
 	u32 value;
 	u16 bw_ratio;
+	u32 final_comm_port;
 
 	bw_ratio = larb_node->bw_ratio;
 	if (bw_ratio == 0) {
@@ -419,12 +420,12 @@ static void mmqos_update_comm_ostdl(struct device *dev, u32 comm_port,
 	} else
 		value = 0;
 
-	mtk_smi_common_ostdl_set(dev,
-		larb_node->sub_comm_port >= 0? larb_node->sub_comm_port : comm_port,
+	final_comm_port = larb_node->sub_comm_port >= 0? larb_node->sub_comm_port : comm_port;
+	mtk_smi_common_ostdl_set(dev, final_comm_port,
 		larb_node->is_write, value);
 	if (log_level & 1 << log_bw)
-		dev_notice(dev, "%s larb_id=%d comm port=%d is_write=%d bw_ratio=%d avg_bw=%d ostdl=%d\n",
-			__func__, LARB_ID(larb->id), comm_port, larb_node->is_write,
+		MMQOS_DBG("%s larb_id=%d comm port=%d is_write=%d bw_ratio=%d avg_bw=%d ostdl=%d",
+			__func__, LARB_ID(larb->id), final_comm_port, larb_node->is_write,
 			bw_ratio, larb->avg_bw, value);
 }
 
@@ -669,13 +670,13 @@ static u32 get_max_channel_bw_in_common(u32 comm_id, u32 chnn_id, u32 record_idx
 			chn_srt_w_bw[comm_id][0], chn_srt_w_bw[comm_id][1]);
 
 		if (log_level & 1 << log_comm_freq) {
-			MMQOS_DBG("comm(%d) original data bw s_r[chn0]=%u s_r[chn1]=%u, s_w[chn0]=%u s_w[chn1]=%u\n",
+			MMQOS_DBG("comm(%d) original data bw s_r[chn0]=%u s_r[chn1]=%u, s_w[chn0]=%u s_w[chn1]=%u",
 				comm_id, chn_srt_r_bw[comm_id][0], chn_srt_r_bw[comm_id][1],
 				chn_srt_w_bw[comm_id][0], chn_srt_w_bw[comm_id][1]);
-			MMQOS_DBG("comm(%d) h_r[chn0]=%u h_r[chn1]=%u, h_w[chn0]=%u h_w[chn1]=%u\n",
+			MMQOS_DBG("comm(%d) h_r[chn0]=%u h_r[chn1]=%u, h_w[chn0]=%u h_w[chn1]=%u",
 				comm_id, chn_hrt_r_bw[comm_id][0], chn_hrt_r_bw[comm_id][1],
 				chn_hrt_w_bw[comm_id][0], chn_hrt_w_bw[comm_id][1]);
-			MMQOS_DBG("comm(%d) srt_r_urate=%d srt_w_urate=%d hrt_r_urate=%d hrt_w_urate=%d\n",
+			MMQOS_DBG("comm(%d) srt_r_urate=%d srt_w_urate=%d hrt_r_urate=%d hrt_w_urate=%d",
 				comm_id, srt_r_urate, srt_w_urate, hrt_r_urate, hrt_w_urate);
 		}
 		for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
@@ -692,7 +693,7 @@ static u32 get_max_channel_bw_in_common(u32 comm_id, u32 chnn_id, u32 record_idx
 			max_bw = max_t(u32, max_bw, final_h_w_bw[i]);
 			max_bw = max_t(u32, max_bw, final_s_w_bw[i]);
 			if (log_level & 1 << log_comm_freq)
-				MMQOS_DBG("comm(%d) chn=%d max_bw=%u apply urate s_r=%u h_r=%u, s_w=%u h_w=%u\n",
+				MMQOS_DBG("comm(%d) chn=%d max_bw=%u apply urate s_r=%u h_r=%u, s_w=%u h_w=%u",
 					comm_id, i, max_bw, final_s_r_bw[i], final_h_r_bw[i],
 					final_s_w_bw[i], final_h_w_bw[i]);
 			record_chn_bw_urate(comm_id, i,
@@ -725,7 +726,7 @@ static u32 get_max_channel_bw_in_common(u32 comm_id, u32 chnn_id, u32 record_idx
 			max_bw = max_t(u32, max_bw, chn_hrt_w_bw[comm_id][i] * 10 / 7);
 			max_bw = max_t(u32, max_bw, chn_srt_w_bw[comm_id][i] * 10 / 7);
 			if (log_level & 1 << log_comm_freq) {
-				MMQOS_DBG("comm(%d) chn=%d without urate max_bw=%u s_r=%u h_r=%u, s_w=%u h_w=%u\n",
+				MMQOS_DBG("comm(%d) chn=%d without urate max_bw=%u s_r=%u h_r=%u, s_w=%u h_w=%u",
 					comm_id, i, max_bw, chn_srt_r_bw[comm_id][i] * 10 / 7,
 					chn_hrt_r_bw[comm_id][i] * 10 / 7,
 					chn_srt_w_bw[comm_id][i] * 10 / 7,
@@ -786,10 +787,10 @@ static u32 get_max_channel_bw_in_emi(u32 comm_id, bool *emi_urate)
 		*emi_urate = false;
 
 	if (log_level & 1 << log_comm_freq) {
-		pr_notice("%s comm(%d) emi_h[chn0]=%u emi_h[chn1]=%u, emi_s[chn0]=%u emi_s[chn1]=%u\n",
+		MMQOS_DBG("%s comm(%d) emi_h[chn0]=%u emi_h[chn1]=%u, emi_s[chn0]=%u emi_s[chn1]=%u",
 			__func__, comm_id, emi_chn_hrt_bw[comm_id][0], emi_chn_hrt_bw[comm_id][1],
 			emi_chn_srt_bw[comm_id][0], emi_chn_srt_bw[comm_id][1]);
-		pr_notice("%s comm(%d) hrt_urate=%d srt_urate=%d emi_urate:%d\n",
+		MMQOS_DBG("%s comm(%d) hrt_urate=%d srt_urate=%d emi_urate:%d",
 			__func__, comm_id, hrt_urate, srt_urate, *emi_urate);
 	}
 	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
@@ -797,7 +798,7 @@ static u32 get_max_channel_bw_in_emi(u32 comm_id, bool *emi_urate)
 		final_s_bw = emi_chn_srt_bw[comm_id][i] * 100 / srt_urate;
 
 		if (log_level & 1 << log_comm_freq)
-			pr_notice("%s comm(%d) chn=%d apply urate h_bw=%u s_bw=%u (KB/s)\n",
+			MMQOS_DBG("%s comm(%d) chn=%d apply urate h_bw=%u s_bw=%u (KB/s)",
 				__func__, comm_id, i, final_h_bw, final_s_bw);
 
 		record_emi_bw(comm_id, i,
@@ -875,7 +876,8 @@ static u32 change_to_unit(u32 bw)
 
 	bw_unit = (icc_to_MBps(bw)) >> CHNN_BW_UNIT_SHIFT;
 	if (bw_unit >= MAX_BW_UNIT) {
-		MMQOS_DBG("bw is over %d*16MB/s", MAX_BW_UNIT);
+		if (log_level & 1 << log_comm_freq)
+			MMQOS_DBG("bw is over %d*16MB/s", MAX_BW_UNIT);
 		bw_unit = MAX_BW_UNIT;
 	}
 	if (log_level & 1 << log_comm_freq && bw > 0)
