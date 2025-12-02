@@ -11838,6 +11838,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL2_D4>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL_IN1_MCK_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_CK_DIV_IN1>,
+			<&cksys_reg_clk CLK_CKSYS_REG_APLL_FMI2S_MCK_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_CK_DIV_FMI2S>,
 			<&cksys_reg_clk CLK_CKSYS_REG_TCK_26M_MX9>;
 		clock-names = "afe_apll1_audio",
 			"afe_apll2_audio",
@@ -11872,6 +11874,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"top_apll2_d4",
 			"apll_i2sin1_mck_sel",
 			"top_apll12_div_i2sin1",
+			"ck_fmi2s_m_sel",
+			"ck_apll12_div_fmi2s",
 			"tck_26m_mx9_ck";
 #endif
 		pinctrl-names = "aud-dat-mosi0-off",
