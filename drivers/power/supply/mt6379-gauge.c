@@ -33,6 +33,10 @@
 #include <mt-plat/aee.h>
 #endif
 
+/* Dummy REG for enter test mode */
+#define MT6720_REG_DUMMY_TM			0xFF
+#define MT6720_GAUGE_TM_MASK			BIT(1)
+
 /* Commom REG */
 #define MT6379_REG_CORE_CTRL0			0x001
 #define MT6379_REG_TM_PAS_CODE1			0x007
@@ -532,17 +536,15 @@ struct mt6379_priv {
 static int mt6379_enable_tm(struct mt6379_priv *priv, bool en)
 {
 	static u8 mt6379_tm_pascode[] = { 0x69, 0x96, 0x63, 0x79 };
-	static u8 mt6720_tm_pascode[] = { 0x69, 0x96, 0x67, 0x20 };
 	u32 code_size, i;
 	u8 *tm_pascode;
 
-	if (strstr(dev_name(priv->dev), "mt6720")) {
-		tm_pascode = mt6720_tm_pascode;
-		code_size = ARRAY_SIZE(mt6720_tm_pascode);
-	} else {
-		tm_pascode = mt6379_tm_pascode;
-		code_size = ARRAY_SIZE(mt6379_tm_pascode);
-	}
+	if (strstr(dev_name(priv->dev), "mt6720"))
+		return en ? regmap_set_bits(priv->regmap, MT6720_REG_DUMMY_TM, MT6720_GAUGE_TM_MASK) :
+		       regmap_clear_bits(priv->regmap, MT6720_REG_DUMMY_TM, MT6720_GAUGE_TM_MASK);
+
+	tm_pascode = mt6379_tm_pascode;
+	code_size = ARRAY_SIZE(mt6379_tm_pascode);
 
 	for (i = 0; i < code_size; i++)
 		dev_info(priv->dev, "%s, %d: 0x%02X\n", __func__, i, tm_pascode[i]);

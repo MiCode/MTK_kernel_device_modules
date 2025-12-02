@@ -52,6 +52,14 @@ struct mt6720_info {
 	u8 irqmask_buffer[MT6720_IRQEVT_RGCNT];
 	struct mutex irq_chip_lock;
 	bool bypass_retrigger;
+	/*
+	 * Record which feature enter TM
+	 * bit[0] : Charger
+	 * bit[1] : Gauge
+	 * bit[2] : Power Throttle
+	 * bit[7:3] : reserved
+	 */
+	u8 tm_val;
 };
 
 static int mt6720_regmap_read(void *context, const void *reg_buf,
@@ -76,22 +84,55 @@ static int mt6720_regmap_read(void *context, const void *reg_buf,
 	};
 	int ret;
 
+	if (bank_idx == 0x0 && bank_addr == 0xFF) {
+		memcpy(val_buf, &info->tm_val, sizeof(u8));
+		return 0;
+	}
+
 	ret = i2c_transfer(i2c->adapter, msg, ARRAY_SIZE(msg));
 	if (ret == ARRAY_SIZE(msg))
 		return 0;
 	return ret < 0 ? ret : -EIO;
 }
 
+static void mt6720_check_enter_tm(struct mt6720_info *info, u8 tm_new)
+{
+	u8 tm_pascode[] = { 0x69, 0x96, 0x67, 0x20 };
+	int ret = 0;
+
+	if (tm_new && !info->tm_val) {
+		ret = i2c_smbus_write_i2c_block_data(info->i2c[0], MT6720_REG_TM_PASS_CODE,
+						     ARRAY_SIZE(tm_pascode), tm_pascode);
+		if (ret) {
+			dev_info(info->dev, "%s, Failed to enter tm\n", __func__);
+			return;
+		}
+	} else if (!tm_new && info->tm_val) {
+		ret = i2c_smbus_write_byte_data(info->i2c[0], MT6720_REG_TM_PASS_CODE, 0);
+		if (ret) {
+			dev_info(info->dev, "%s, Failed to exit tm\n", __func__);
+			return;
+		}
+	}
+	info->tm_val = tm_new;
+}
+
 static int mt6720_regmap_write(void *context, const void *data, size_t count)
 {
 	struct mt6720_info *info = context;
 	const u8 *u8_buf = data;
-	u8 bank_idx, bank_addr;
+	u8 bank_idx, bank_addr, tm_val = 0;
 	int len = count - MT6720_MAX_ADDRLEN;
 	u16 addr = *(u16 *)data;
 
 	bank_idx = u8_buf[0];
 	bank_addr = u8_buf[1];
+
+	if (bank_idx == 0x0 && bank_addr == 0xFF) {
+		memcpy(&tm_val, data + MT6720_MAX_ADDRLEN, sizeof(u8));
+		mt6720_check_enter_tm(info, tm_val);
+		return 0;
+	}
 
 	/*
 	 * If using gpio-eint for IRQ triggering,

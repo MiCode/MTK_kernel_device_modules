@@ -34,6 +34,8 @@
 #define MT6720_REG_CHG_IRQ0		0x50
 #define MT6720_REG_CHG_MASK0		0x90
 
+#define MT6720_REG_DUMMY_TM		0xFF
+
 #define MT6720_MASK_IRQ_UFCS		BIT(0)
 #define MT6720_MASK_RGS_RCS_INIT_DONE	BIT(0)
 #define MT6720_VENID_MASK		GENMASK(7, 4)
@@ -57,6 +59,14 @@ struct mt6720_info {
 	u16 access_reg;
 	size_t access_len;
 	ktime_t access_time;
+	/*
+	 * Record which feature enter TM
+	 * bit[0] : Charger
+	 * bit[1] : Gauge
+	 * bit[2] : Power Throttle
+	 * bit[7:3] : reserved
+	 */
+	u8 tm_val;
 };
 
 static void check_rg_access_limit(struct mt6720_info *info, u16 addr, size_t len, ktime_t now)
@@ -94,9 +104,37 @@ static int mt6720_regmap_read(void *context, const void *reg_buf,
 	WARN_ON_ONCE(reg_size != 2);
 
 	addr = get_unaligned_be16(reg_buf);
+	if (addr == MT6720_REG_DUMMY_TM) {
+		memcpy(val_buf, &info->tm_val, sizeof(info->tm_val));
+		return 0;
+	}
 	check_rg_access_limit(info, addr, val_size, ktime_get());
 
 	return spmi_ext_register_readl(sdev, addr, val_buf, val_size);
+}
+
+static void mt6720_check_enter_tm(struct mt6720_info *info, u8 tm_new)
+{
+	struct spmi_device *sdev = to_spmi_device(info->dev);
+	u8 tm_pascode[] = { 0x69, 0x96, 0x67, 0x20 };
+	u8 exit = 0;
+	int ret = 0;
+
+	if (tm_new && !info->tm_val) {
+		ret = spmi_ext_register_writel(sdev, MT6720_REG_TM_PASS_CODE,
+					       tm_pascode, ARRAY_SIZE(tm_pascode));
+		if (ret) {
+			dev_info(info->dev, "%s, Failed to enter tm\n", __func__);
+			return;
+		}
+	} else if (!tm_new && info->tm_val) {
+		ret = spmi_ext_register_writel(sdev, MT6720_REG_TM_PASS_CODE, &exit, 1);
+		if (ret) {
+			dev_info(info->dev, "%s, Failed to exit tm\n", __func__);
+			return;
+		}
+	}
+	info->tm_val = tm_new;
 }
 
 static int mt6720_regmap_write(void *context, const void *val, size_t val_len)
@@ -105,10 +143,17 @@ static int mt6720_regmap_write(void *context, const void *val, size_t val_len)
 	struct spmi_device *sdev = to_spmi_device(info->dev);
 	u16 addr;
 	int ret;
+	u8 tm_val = 0;
 
 	WARN_ON_ONCE(val_len < 2);
 
 	addr = get_unaligned_be16(val);
+
+	if (addr == MT6720_REG_DUMMY_TM) {
+		memcpy(&tm_val, val + 2, sizeof(info->tm_val));
+		mt6720_check_enter_tm(info, tm_val);
+		return 0;
+	}
 
 	/*
 	 * If using gpio-eint for IRQ triggering,
@@ -134,11 +179,18 @@ static int mt6720_regmap_gather_write(void *context, const void *reg,
 	struct spmi_device *sdev = to_spmi_device(info->dev);
 	u16 addr;
 	int ret;
+	u8 tm_val = 0;
 
 	/* The SPMI I/O limitation of MTK common platform is 2 bytes */
 	WARN_ON_ONCE(reg_len != 2);
 
 	addr = get_unaligned_be16(reg);
+
+	if (addr == MT6720_REG_DUMMY_TM) {
+		memcpy(&tm_val, val + 2, sizeof(info->tm_val));
+		mt6720_check_enter_tm(info, tm_val);
+		return 0;
+	}
 
 	/*
 	 * If using gpio-eint for IRQ triggering,

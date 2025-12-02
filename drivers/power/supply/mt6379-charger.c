@@ -454,28 +454,50 @@ int mt6379_enable_tm(struct mt6379_charger_data *cdata, bool en)
 	u8 tm_pascode[] = { 0x69, 0x96, 0x63, 0x79 };
 	int ret = 0;
 
-	if (cdata->id == CHARGER_ID_MT6720) {
-		tm_pascode[2] = 0x67;
-		tm_pascode[3] = 0x20;
-	}
-
 	mutex_lock(&cdata->tm_lock);
-	if (en) {
-		if (cdata->tm_use_cnt == 0) {
-			ret = regmap_bulk_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1,
-						tm_pascode, ARRAY_SIZE(tm_pascode));
-			if (ret < 0)
-				goto out;
+
+	switch (cdata->id) {
+	case CHARGER_ID_MT6379:
+		if (en) {
+			if (cdata->tm_use_cnt == 0) {
+				ret = regmap_bulk_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1,
+							tm_pascode, ARRAY_SIZE(tm_pascode));
+				if (ret < 0)
+					goto out;
+			}
+			cdata->tm_use_cnt++;
+		} else {
+			if (cdata->tm_use_cnt == 1) {
+				ret = regmap_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1, 0);
+				if (ret < 0)
+					goto out;
+			}
+			if (cdata->tm_use_cnt > 0)
+				cdata->tm_use_cnt--;
 		}
-		cdata->tm_use_cnt++;
-	} else {
-		if (cdata->tm_use_cnt == 1) {
-			ret = regmap_write(cdata->rmap, MT6379_REG_TM_PAS_CODE1, 0);
-			if (ret < 0)
-				goto out;
+		break;
+	case CHARGER_ID_MT6720:
+		if (en) {
+			if (cdata->tm_use_cnt == 0) {
+				ret = regmap_set_bits(cdata->rmap, MT6720_REG_DUMMY_TM,
+						      MT6720_CHG_TM_MASK);
+				if (ret < 0)
+					goto out;
+			}
+			cdata->tm_use_cnt++;
+		} else {
+			if (cdata->tm_use_cnt == 1) {
+				ret = regmap_clear_bits(cdata->rmap, MT6720_REG_DUMMY_TM,
+							MT6720_CHG_TM_MASK);
+				if (ret < 0)
+					goto out;
+			}
+			if (cdata->tm_use_cnt > 0)
+				cdata->tm_use_cnt--;
 		}
-		if (cdata->tm_use_cnt > 0)
-			cdata->tm_use_cnt--;
+		break;
+	default:
+		break;
 	}
 out:
 	mutex_unlock(&cdata->tm_lock);
