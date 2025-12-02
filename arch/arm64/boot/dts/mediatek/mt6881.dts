@@ -10316,7 +10316,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			};
 
 			usb_host: xhci0@11200000 {
-				compatible = "mediatek,mtk-xhci";
+				compatible = "mediatek,mtk-xhci", "mediatek,mt6881-xhci";
 				reg = <0 0x11200000 0 0x1000>;
 				reg-names = "mac";
 				interrupts = <GIC_SPI 513 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -10559,7 +10559,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			compatible = "mediatek,extcon-usb";
 			vbus-supply = <&mt6720_otg_vbus>;
 			vbus-voltage = <5000000>;
-			vbus-current = <1800000>;
+			vbus-current = <2300000>;
 			charger = <&mt6720_chg>;
 			tcpc = "type_c_port0";
 			mediatek,bypss-typec-sink = <1>;
