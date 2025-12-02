@@ -4974,6 +4974,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<125000 2522>;
 	};
 
+	therm_intf: therm-intf@11a400 {
+		compatible = "mediatek,therm_intf";
+		reg = <0 0x0011a400 0 0x400>,
+			  <0 0x0c0dcf50 0 0x37f>;
+		reg-names = "therm_sram",
+				"therm_cputcm";
+		};
+
 	mt6363_temp: mt6363-temp {
 		compatible = "mediatek,mt6363-pmic-temp";
 		io-channels =
