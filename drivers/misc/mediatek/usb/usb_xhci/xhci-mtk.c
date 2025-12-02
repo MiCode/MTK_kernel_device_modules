@@ -204,7 +204,8 @@ static void xhci_mtk_set_frame_interval(struct xhci_hcd_mtk *mtk)
 	struct usb_hcd *hcd = mtk->hcd;
 	u32 value;
 
-	if (!of_device_is_compatible(dev->of_node, "mediatek,mt8195-xhci"))
+	if (!of_device_is_compatible(dev->of_node, "mediatek,mt8195-xhci") &&
+	    !of_device_is_compatible(dev->of_node, "mediatek,mt6881-xhci"))
 		return;
 
 	value = readl(hcd->regs + HFCNTR_CFG);
