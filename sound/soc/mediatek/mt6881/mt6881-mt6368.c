@@ -345,17 +345,14 @@ static const struct snd_kcontrol_new mt6881_mt6368_controls[] = {
 static int mt6881_mt6368_i2s_hw_params(struct snd_pcm_substream *substream,
 					struct snd_pcm_hw_params *params)
 {
-	//struct snd_soc_pcm_runtime *rtd = substream->private_data;
-	//unsigned int rate = params_rate(params);
-	//unsigned int mclk_fs_ratio = 128;
-	//unsigned int mclk_fs = rate * mclk_fs_ratio;
-	//struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
-	//dev_info(afe->dev, "return 0 for test", __func__);
-	(void)substream;
-	(void)params;
-	return 0;
-	//return snd_soc_dai_set_sysclk(cpu_dai,
-	//			      0, mclk_fs, SND_SOC_CLOCK_OUT);
+	struct snd_soc_pcm_runtime *rtd = substream->private_data;
+	unsigned int rate = params_rate(params);
+	unsigned int mclk_fs_ratio = 128;
+	unsigned int mclk_fs = rate * mclk_fs_ratio;
+	struct snd_soc_dai *cpu_dai = snd_soc_rtd_to_cpu(rtd, 0);
+
+	return snd_soc_dai_set_sysclk(cpu_dai,
+				      0, mclk_fs, SND_SOC_CLOCK_OUT);
 }
 
 static const struct snd_soc_ops mt6881_mt6368_i2s_ops = {
@@ -1556,7 +1553,7 @@ static struct snd_soc_dai_link mt6881_mt6368_dai_links[] = {
 		.name = "I2SIN1",
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
 			| SND_SOC_DAIFMT_GATED,
-		//.ops = &mt6881_mt6368_i2s_ops,
+		.ops = &mt6881_mt6368_i2s_ops,
 		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.ignore_suspend = 1,
@@ -1590,7 +1587,7 @@ static struct snd_soc_dai_link mt6881_mt6368_dai_links[] = {
 		.name = "I2SOUT1",
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
 			| SND_SOC_DAIFMT_GATED,
-		//.ops = &mt6881_mt6368_i2s_ops,
+		.ops = &mt6881_mt6368_i2s_ops,
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.ignore_suspend = 1,
