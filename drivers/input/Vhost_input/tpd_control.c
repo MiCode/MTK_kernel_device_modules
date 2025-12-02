@@ -29,11 +29,17 @@ static struct input_dev *touch_input_dev_mipi;
 static struct input_dev *touch_input_dev_DSI_0;
 static struct input_dev *touch_input_dev_DP_1;
 static struct input_dev *touch_input_dev_DSI_1_1;
+static struct input_dev *key_input_dev;
 
 #define touch_input_dev_mipi_port	0
 #define touch_input_dev_DSI_0_port	1
 #define touch_input_dev_DP_1_port	3
 #define touch_input_dev_DSI_1_1_port	4
+
+#define keys_input_dev_port	16
+
+#define KEYS_ACTION	128
+#define KEYS_SYNC	129
 
 static int mipi_release_cnt = 1;
 static int mipi_release_cnt_1 = 1;
@@ -43,6 +49,14 @@ struct work_struct work;
 struct input_dev *dev;
 };
 
+
+void set_input_dev_key(struct input_dev *dev)
+{
+	set_bit(EV_KEY, dev->evbit);
+	set_bit(KEY_F11, dev->keybit);
+	set_bit(KEY_VOLUMEDOWN, dev->keybit);
+	set_bit(KEY_VOLUMEUP, dev->keybit);
+}
 
 void set_input_dev_pro_mipi(struct input_dev *dev, int Max_X, int Max_Y, int touch_MAJOR, int touch_tracking_ID)
 {
@@ -163,6 +177,21 @@ int touch_input_init(void)
 		input_free_device(touch_input_dev_DSI_1_1);
 		return result;
 	}
+	/* vir key */
+	key_input_dev = input_allocate_device();
+	if (!key_input_dev) {
+		pr_info("Failed to allocate key input device.\n");
+		return -ENOMEM;
+	}
+	key_input_dev->name = "key_vir";
+	key_input_dev->phys = "key_vir/input0";
+	set_input_dev_key(key_input_dev);
+	result = input_register_device(key_input_dev);
+	if (result) {
+		pr_info("Failed to register key input device.\n");
+		input_free_device(key_input_dev);
+		return result;
+	}
 	return 0;
 }
 
@@ -212,6 +241,17 @@ void report_touch_release(struct input_dev *dev, int un_relase_flag )
 void report_touch_release_hy(struct input_dev *dev)
 {
 
+}
+
+void report_key_down(struct input_dev *dev, int flag, int key_idx, int value)
+{
+	if (flag == KEYS_SYNC) {
+		pr_info("%s: do sync!", __func__);
+		input_sync(dev);
+	} else if (flag == KEYS_ACTION) {
+		pr_info("%s: do action, idx %d, value %d!", __func__, key_idx, value);
+		input_event(dev, EV_KEY, key_idx, value);
+	}
 }
 
 void report_touch_down_hy_dsi_0(struct input_dev *dev, int flag, int X, int Y, int H, int id, int W)
@@ -264,19 +304,19 @@ int touch_virtul(int flag,int X, int Y, int H, int W, int id, int touch_type)
 {
 	int Touch_type = touch_type;
 
-	if(Touch_type == touch_input_dev_mipi_port){
+	if (Touch_type == touch_input_dev_mipi_port) {
 		report_touch_down_mipi(touch_input_dev_mipi,X, Y,  H, id, W);
 		return 0;
-	}else if(Touch_type == touch_input_dev_DSI_0_port){
+	} else if (Touch_type == touch_input_dev_DSI_0_port) {
 		report_touch_down_hy_dsi_0(touch_input_dev_DSI_0,flag, X, Y, H, id,W);
 		return 0;
-	}else if(Touch_type == touch_input_dev_DP_1_port){
+	} else if (Touch_type == touch_input_dev_DP_1_port) {
 		report_touch_down_hy_dsi_0(touch_input_dev_DP_1,flag, X, Y, H, id,W);
 		return 0;
-	}else if(Touch_type == touch_input_dev_DSI_1_1_port){
+	} else if (Touch_type == touch_input_dev_DSI_1_1_port) {
 		report_touch_down_hy_dsi_0(touch_input_dev_DSI_1_1,flag, X, Y, H, id,W);
 		return 0;
-	}else if(Touch_type == 10){
+	} else if (Touch_type == 10) {
 		//touch_handle_resoltion_changed(touch_input_dev_mipi,X, Y);
 		input_abs_set_res(touch_input_dev_mipi, ABS_MT_POSITION_X, 0);
 		input_abs_set_res(touch_input_dev_mipi, ABS_MT_POSITION_Y, 0);
@@ -284,7 +324,10 @@ int touch_virtul(int flag,int X, int Y, int H, int W, int id, int touch_type)
 		input_set_abs_params(touch_input_dev_mipi, ABS_MT_POSITION_Y, 0, Y, 0, 0);
 		input_sync(touch_input_dev_mipi);
 		return 0;
-	}else{
+	} else if (Touch_type == keys_input_dev_port) {
+		report_key_down(key_input_dev, flag, X, Y);
+		return 0;
+	} else {
 		return 0;
 	}
 }
@@ -294,19 +337,21 @@ int touch_virtul_release( int touch_type,int un_relase_flag)
 
 	int Touch_type = touch_type;
 
-	if(Touch_type == touch_input_dev_mipi_port){
+	if(Touch_type == touch_input_dev_mipi_port) {
 		report_touch_release(touch_input_dev_mipi,un_relase_flag);
 		return 0;
-	}else if(Touch_type == touch_input_dev_DSI_0_port){
+	} else if (Touch_type == touch_input_dev_DSI_0_port) {
 		report_touch_release_hy(touch_input_dev_DSI_0);
 		return 0;
-	}else if(Touch_type == touch_input_dev_DP_1_port){
+	} else if (Touch_type == touch_input_dev_DP_1_port) {
 		report_touch_release_hy(touch_input_dev_DP_1);
 		return 0;
-	}else if(Touch_type == touch_input_dev_DSI_1_1_port){
+	} else if (Touch_type == touch_input_dev_DSI_1_1_port) {
 		report_touch_release_hy(touch_input_dev_DSI_1_1);
 		return 0;
-	}else{
+	} else if (Touch_type == keys_input_dev_port) {
+		return 0;
+	} else {
 		return 0;
 	}
 }
