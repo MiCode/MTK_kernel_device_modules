@@ -559,12 +559,11 @@ void mtk_oddmr_dbi_count_clk_off(struct mtk_ddp_comp *comp,
 void mtk_oddmr_dbi_count_done_trigloop(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 {
 	struct mtk_ddp_comp *dbi_comp = NULL;
-	dma_addr_t SLOT_BIF_EN, SLOT_DBI_COUNT_BIF_SKIP;
+	dma_addr_t SINGLE_TRIGGER_CUR, SINGLE_TRIGGER_NEXT;
 
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
 	const u16 var1 = CMDQ_THR_SPR_IDX2;
-	const u16 var2 = CMDQ_THR_SPR_IDX3;
 
 	dbi_comp = mtk_dbi_count_is_support(mtk_crtc);
 	if (!dbi_comp)
@@ -572,23 +571,17 @@ void mtk_oddmr_dbi_count_done_trigloop(struct mtk_drm_crtc *mtk_crtc, struct cmd
 
 	GCE_COND_ASSIGN(handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
 
-	SLOT_DBI_COUNT_BIF_SKIP = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DBI_COUNT_BIF_SKIP);
-	cmdq_pkt_read(handle, mtk_crtc->gce_obj.base, SLOT_DBI_COUNT_BIF_SKIP, var1);
-	SLOT_BIF_EN = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_BIF_EN);
-	cmdq_pkt_read(handle, mtk_crtc->gce_obj.base, SLOT_BIF_EN, var2);
+	SINGLE_TRIGGER_CUR = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DBI_COUNT_SINGLE_TRIGGER_CUR);
+	cmdq_pkt_read(handle, mtk_crtc->gce_obj.base, SINGLE_TRIGGER_CUR, var1);
 
-	//lop.reg = true;
-	//lop.idx = var1;
-	//rop.reg = true;
-	//rop.value = var2;
-	//cmdq_pkt_logic_command(handle,CMDQ_LOGIC_OR, var1, &lop, &rop);
+	SINGLE_TRIGGER_NEXT = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DBI_COUNT_SINGLE_TRIGGER_NEXT);
 
 	lop.reg = true;
 	lop.idx = var1;
 	rop.reg = false;
-	rop.value = 0;
+	rop.value = 1;
 	GCE_IF(lop, R_CMDQ_EQUAL, rop);
-	/* normal mode, wait clear dbi cnt done */
+	/* if this frame is single trigger, wait and clear dbi cnt done */
 
 
 	GCE_DO(wait_no_clear, EVENT_SYNC_TOKEN_DBI_COUNT_CFG_END);
@@ -598,40 +591,36 @@ void mtk_oddmr_dbi_count_done_trigloop(struct mtk_drm_crtc *mtk_crtc, struct cmd
 	mtk_oddmr_dbi_count_clk_off(dbi_comp, handle);
 
 	GCE_ELSE;
-	/* bif mode, skip clear dbi cnt done */
 
-
-	GCE_DO(wait_no_clear, EVENT_SYNC_TOKEN_DBI_COUNT_CFG_END);
 
 	GCE_DO(clear_event, EVENT_DBI_COUNT_EOF);
 
 	mtk_oddmr_dbi_count_clk_off(dbi_comp, handle);
 
 	GCE_FI;
-	cmdq_pkt_write_reg_addr(handle, SLOT_DBI_COUNT_BIF_SKIP, var2, ~0);
+	/* set next frame single trigger */
+	cmdq_pkt_mem_move(handle, mtk_crtc->gce_obj.base, SINGLE_TRIGGER_NEXT, SINGLE_TRIGGER_CUR, var1);
+	cmdq_pkt_write(handle, mtk_crtc->gce_obj.base, SINGLE_TRIGGER_NEXT, 0, ~0);
 }
 
 static void mtk_oddmr_dbi_count_done_ac(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle)
 {
-	dma_addr_t SLOT_BIF_EN, SLOT_DBI_COUNT_BIF_SKIP;
+	dma_addr_t SINGLE_TRIGGER_CUR;
 
 	GCE_COND_DECLARE;
 	struct cmdq_operand lop, rop;
 	const u16 var1 = CMDQ_THR_SPR_IDX2;
-	const u16 var2 = CMDQ_THR_SPR_IDX3;
 
 	GCE_COND_ASSIGN(handle, CMDQ_THR_SPR_IDX1, CMDQ_GPR_R07);
 
-	SLOT_DBI_COUNT_BIF_SKIP = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DBI_COUNT_BIF_SKIP);
-	cmdq_pkt_read(handle, mtk_crtc->gce_obj.base, SLOT_DBI_COUNT_BIF_SKIP, var1);
-	//SLOT_BIF_EN = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_BIF_EN);
-	//cmdq_pkt_read(handle, mtk_crtc->gce_obj.base, SLOT_BIF_EN, var2);
+	SINGLE_TRIGGER_CUR = mtk_get_gce_backup_slot_pa(mtk_crtc, DISP_SLOT_DBI_COUNT_SINGLE_TRIGGER_CUR);
+	cmdq_pkt_read(handle, mtk_crtc->gce_obj.base, SINGLE_TRIGGER_CUR, var1);
 	lop.reg = true;
 	lop.idx = var1;
 	rop.reg = false;
-	rop.value = 0;
+	rop.value = 1;
 	GCE_IF(lop, R_CMDQ_EQUAL, rop);
-	/* normal mode, wait dbi cnt done */
+	/* if this frame is single trigger, wait dbi cnt done to cfg next frame */
 
 	GCE_DO(wait_no_clear, EVENT_DBI_COUNT_EOF);
 
@@ -1805,6 +1794,9 @@ static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 		SET_VAL_MASK(value, mask, 1, SAMPLING_PQ_SINGLE_TRIGGER);
 		mtk_dbi_count_write_mask(comp, value,
 			REG_DBI_SAMPLING_PQ_SINGLE_TRIGGER_SW_EN, mask, handle);
+		cmdq_pkt_write(handle, comp->mtk_crtc->gce_obj.base,
+			mtk_get_gce_backup_slot_pa(comp->mtk_crtc,
+			DISP_SLOT_DBI_COUNT_SINGLE_TRIGGER_NEXT), 1, ~0);
 	}
 
 	//slice and time diff
@@ -1855,7 +1847,6 @@ static void mtk_dbi_hw_count_trigger(struct mtk_ddp_comp *comp,
 	mask = 0;
 	SET_VAL_MASK(value, mask, 0, REG_DBI_COUNT_BYPASS);
 	mtk_dbi_count_write_mask(comp, value, DISP_DBI_COUNT_TOP_CTR_3, mask, handle);
-
 
 	mtk_dbi_count_write(comp,0x00000001,0x7f0,handle);
 }
@@ -2113,6 +2104,10 @@ static void mtk_dbi_count_unprepare(struct mtk_ddp_comp *comp)
 	mtk_ddp_comp_clk_unprepare(comp);
 	*(unsigned int *)mtk_get_gce_backup_slot_va(comp->mtk_crtc,
 		DISP_SLOT_DBI_COUNT_SW_TRIGGER) = 0;
+	*(unsigned int *)mtk_get_gce_backup_slot_va(comp->mtk_crtc,
+		DISP_SLOT_DBI_COUNT_SINGLE_TRIGGER_NEXT) = 0;
+	*(unsigned int *)mtk_get_gce_backup_slot_va(comp->mtk_crtc,
+		DISP_SLOT_DBI_COUNT_SINGLE_TRIGGER_CUR) = 0;
 
 }
 
