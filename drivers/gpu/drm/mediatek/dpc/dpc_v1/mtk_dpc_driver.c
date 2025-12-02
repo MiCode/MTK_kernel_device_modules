@@ -463,6 +463,7 @@ static unsigned int mt6989_get_sys_status(enum dpc_sys_status_id, unsigned int *
 static unsigned int mt6878_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
 static unsigned int mt6899_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
 static unsigned int mt6858_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
+static unsigned int mt6881_get_sys_status(enum dpc_sys_status_id, unsigned int *status);
 
 static struct mtk_dpc mt6989_dpc_driver_data = {
 	.mmsys_id = MMSYS_MT6989,
@@ -512,6 +513,25 @@ static struct mtk_dpc mt6858_dpc_driver_data = {
 	.disp_vdo_dt_usage = mt6878_disp_vdo_dt_usage,
 	.mml_vdo_dt_usage = mt6878_mml_vdo_dt_usage,
 	.get_sys_status = mt6858_get_sys_status,
+	.mmdvfs_power_sync = false,
+	.mmdvfs_settings_addr = mt6878_mmdvfs_settings_addr,
+#if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
+	.mmdvfs_settings_count = 2,
+#else
+	.mmdvfs_settings_count = 0,
+#endif
+	.mtcmos_mask = 0, //not support subsys mtcmos
+	.skip_rdone = 1,
+	.vcp_is_alive = ATOMIC_INIT(true),
+};
+
+static struct mtk_dpc mt6881_dpc_driver_data = {
+	.mmsys_id = MMSYS_MT6881,
+	//.disp_cmd_dt_usage = mt6878_disp_cmd_dt_usage,
+	//.mml_cmd_dt_usage = mt6878_mml_cmd_dt_usage,
+	.disp_vdo_dt_usage = mt6878_disp_vdo_dt_usage,
+	.mml_vdo_dt_usage = mt6878_mml_vdo_dt_usage,
+	.get_sys_status = mt6881_get_sys_status,
 	.mmdvfs_power_sync = false,
 	.mmdvfs_settings_addr = mt6878_mmdvfs_settings_addr,
 #if IS_ENABLED(CONFIG_MTK_MMDVFS_VCP)
@@ -1057,6 +1077,79 @@ static unsigned int mt6858_get_sys_status(enum dpc_sys_status_id id, unsigned in
 		mask = SPM_REQ_EMI_STATE_MT6858;
 		if (g_priv->sys_va[SPM_BASE])
 			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6858;
+		break;
+	case SYS_STATE_HRT_BW:
+		mask = VCORE_DVFSRC_HRT_BW_MASK;
+		if (g_priv->sys_va[VCORE_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VCORE_DVFSRC_DEBUG];
+		break;
+	case SYS_STATE_SRT_BW:
+		mask = VCORE_DVFSRC_SRT_BW_MASK;
+		if (g_priv->sys_va[VCORE_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VCORE_DVFSRC_DEBUG];
+		break;
+	case SYS_STATE_VLP_VOTE:
+		break;
+#ifdef ENABLE_DEVAPC_PERMISSION_OF_HFRP
+	case SYS_STATE_VDISP_DVFS:
+		mask = 0x3;
+		if (g_priv->sys_va[VDISP_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VDISP_DVFSRC_DEBUG];
+		break;
+#endif
+	case SYS_VALUE_VDISP_DVFS_LEVEL:
+		if (!atomic_read(&g_mmdvfs_available) || g_panel_type == PANEL_TYPE_CMD)
+			return 0;
+		mask = 0x1c;
+		if (g_priv->sys_va[VDISP_DVFSRC_DEBUG])
+			addr = g_priv->sys_va[VDISP_DVFSRC_DEBUG];
+		break;
+	default:
+		return 0;
+	}
+
+	if (addr == NULL)
+		return 0;
+
+	value = readl(addr);
+	if (status)
+		*status = value;
+
+	return (value & mask);
+}
+
+static unsigned int mt6881_get_sys_status(enum dpc_sys_status_id id, unsigned int *status)
+{
+	unsigned int mask = 0, value = 0;
+	void __iomem *addr = NULL;
+
+	switch (id) {
+	case SYS_POWER_ACK_MMINFRA:
+		mask = SPM_PWR_FLD_MMINFRA_MASK_MT6878;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MT6878;
+		break;
+	case SYS_POWER_ACK_DISP1_SUBSYS:
+	case SYS_POWER_ACK_MML1_SUBSYS:
+	case SYS_POWER_ACK_DPC:
+		mask = SPM_PWR_FLD_DISP_VCORE_MASK_MT6878;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_PWR_STATUS_MT6878;
+		break;
+	case SYS_STATE_MMINFRA:
+		mask = SPM_REQ_INFRA_STATE_MT6878;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6878;
+		break;
+	case SYS_STATE_APSRC:
+		mask = SPM_REQ_APSRC_STATE_MT6878;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6878;
+		break;
+	case SYS_STATE_EMI:
+		mask = SPM_REQ_EMI_STATE_MT6878;
+		if (g_priv->sys_va[SPM_BASE])
+			addr = g_priv->sys_va[SPM_BASE] + SPM_REQ_STA_4_MT6878;
 		break;
 	case SYS_STATE_HRT_BW:
 		mask = VCORE_DVFSRC_HRT_BW_MASK;
@@ -4032,7 +4125,7 @@ static int dpc_res_init(struct mtk_dpc *priv)
 		res = platform_get_resource_byname(priv->pdev, IORESOURCE_MEM, reg_names[i]);
 		if (res == NULL) {
 			DPCERR("miss reg in node, i:%d, %s", i, reg_names[i]);
-			ret = -1;
+			//ret = -1;
 			continue;
 		}
 		priv->sys_va[i] = ioremap(res->start, resource_size(res));
@@ -4188,6 +4281,9 @@ static void mtk_disp_enable_gce_vote(bool enable)
 static void mtk_vlp_user_force_clear(void)
 {
 	u32 val = 0, i = 0;
+
+	if (mtk_dpc_support_cap(DPC_VIDLE_MTCMOS_OFF) == 0)
+		return;
 
 	if (g_priv->get_sys_status)
 		g_priv->get_sys_status(SYS_STATE_VLP_VOTE, &val);
@@ -5065,6 +5161,7 @@ static const struct of_device_id mtk_dpc_driver_v1_dt_match[] = {
 	{.compatible = "mediatek,mt6878-disp-dpc-v1", .data = &mt6878_dpc_driver_data},
 	{.compatible = "mediatek,mt6899-disp-dpc-v1", .data = &mt6899_dpc_driver_data},
 	{.compatible = "mediatek,mt6858-disp-dpc-v1", .data = &mt6858_dpc_driver_data},
+	{.compatible = "mediatek,mt6881-disp-dpc-v1", .data = &mt6881_dpc_driver_data},
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_dpc_driver_v1_dt_match);
