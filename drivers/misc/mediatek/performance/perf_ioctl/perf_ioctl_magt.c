@@ -431,10 +431,7 @@ static long magt_ioctl(struct file *filp,
 		query_mask = (1 << GET_FPSGO_PERF_IDX);
 		memset(&g_render_frame_info, 0, MAX_RENDER_TID * sizeof(struct render_frame_info));
 		render = g_render_frame_info;
-		if (!render) {
-			ret = -ENOMEM;
-			goto ret_ioctl;
-		}
+
 		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 		if (ret >= 0) {
 			int i = 0;
@@ -471,12 +468,8 @@ static long magt_ioctl(struct file *filp,
 			| 1 << GET_FRS_TARGET_FPS_DIFF | 1 << GET_GED_GPU_TIME);
 		memset(&g_render_frame_info, 0, MAX_RENDER_TID * sizeof(struct render_frame_info));
 		render = g_render_frame_info;
-		if (!render) {
-			ret = -ENOMEM;
-			goto ret_ioctl;
-		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 		if (ret >= 0) {
 			int i = 0;
 			int render_item = -1;
@@ -520,12 +513,8 @@ static long magt_ioctl(struct file *filp,
 		query_mask = (1 << GET_FPSGO_MINITOP_LIST);
 		memset(&g_render_frame_info, 0, MAX_RENDER_TID * sizeof(struct render_frame_info));
 		render = g_render_frame_info;
-		if (!render) {
-			ret = -ENOMEM;
-			goto ret_ioctl;
-		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 		if (ret >= 0) {
 			int i = 0;
 			int render_item = -1;
@@ -572,12 +561,8 @@ static long magt_ioctl(struct file *filp,
 		query_mask = (1 << GET_FPSGO_RAW_CPU_TIME | 1 << GET_FPSGO_EMA_CPU_TIME);
 		memset(&g_render_frame_info, 0, MAX_RENDER_TID * sizeof(struct render_frame_info));
 		render = g_render_frame_info;
-		if (!render) {
-			ret = -ENOMEM;
-			goto ret_ioctl;
-		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 		if (ret >= 0) {
 			int i = 0;
 			int render_item = -1;
@@ -620,12 +605,8 @@ static long magt_ioctl(struct file *filp,
 		query_mask = (1 << GET_FPSGO_AVG_FRAME_CAP | 1 << GET_FPSGO_DEP_LIST);
 		memset(&g_render_frame_info, 0, MAX_RENDER_TID * sizeof(struct render_frame_info));
 		render = g_render_frame_info;
-		if (!render) {
-			ret = -ENOMEM;
-			goto ret_ioctl;
-		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 		if (ret >= 0) {
 			int i = 0;
 			int render_item = -1;
@@ -673,12 +654,8 @@ static long magt_ioctl(struct file *filp,
 		query_mask = (1 << GET_FPSGO_PERF_IDX);
 		memset(&g_render_frame_info, 0, MAX_RENDER_TID * sizeof(struct render_frame_info));
 		render = g_render_frame_info;
-		if (!render) {
-			ret = -ENOMEM;
-			goto ret_ioctl;
-		}
-		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 
+		ret = magt2fpsgo_get_fpsgo_frame_info(MAX_RENDER_TID, query_mask, 1, -1, render);
 		if (ret >= 0) {
 			int i = 0;
 			int render_item = -1;
