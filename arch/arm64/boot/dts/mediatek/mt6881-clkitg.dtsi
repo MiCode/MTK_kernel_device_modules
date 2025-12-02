@@ -93,7 +93,6 @@
 			<&wpe_eis_dip1_clk CLK_WPE_EIS_DIP1_LARB_U0_SMI>,
 			<&wpe_tnr_dip1_clk CLK_WPE_TNR_DIP1_LARB_U0_SMI>,
 			<&traw_dip1_clk CLK_TRAW_DIP1_LARB28_SMI>,
-			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN_SMI>,
 			<&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_SUB_COMM_0C_0_SMI>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_SUB_COMM_1_SMI>,

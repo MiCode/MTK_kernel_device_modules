@@ -211,7 +211,6 @@
 		compatible = "mediatek,clk-disable-unused";
 		reg = <0x70>;
 		clocks =
-			<&vdec_gcon_base_clk CLK_VDE2_LARB1_CKEN_SMI>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>,
 			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_ENG_VDEC>;
