@@ -70,11 +70,11 @@
 	};
 
 	clkbuf_ctrl: clkbuf-ctrl {
-		//pmic-supply = <&mt6685_mfd>;
-		//compatible = "mediatek,mt6881-clkbuf";
-		//pmic = <&mt6685_clkbuf>;
+		pmic-supply = <&mt6685_mfd>;
+		compatible = "mediatek,mt6881-clkbuf";
+		pmic = <&mt6685_clkbuf>;
 		srclken-rc = <&srclken_rc>;
-		//pmif = <&spmi>;
+		pmif = <&spmi>;
 	};
 
 	/* chosen */
@@ -10142,6 +10142,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				sub-id = <0>;
 			};
 			md1 {
+				xo-buf = "RF2A";
 				sub-id = <1>;
 			};
 			md2 {
@@ -10151,7 +10152,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				sub-id = <3>;
 			};
 			mdrf {
-				xo-buf = "RF2A";
 				sub-id = <4>;
 			};
 			pcie {
