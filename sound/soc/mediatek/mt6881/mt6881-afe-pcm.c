@@ -5550,6 +5550,7 @@ static bool mt6881_is_volatile_reg(struct device *dev, unsigned int reg)
 	default:
 		return false;
 	};
+return 0;
 }
 
 static const struct regmap_config mt6881_afe_regmap_config = {

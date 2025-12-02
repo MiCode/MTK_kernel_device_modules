@@ -16,7 +16,7 @@
 #include "mtk-sp-spk-amp.h"
 #include "mtk-afe-external.h"
 
-#define IS_FPGA_EARLY_PORTING
+/* #define IS_FPGA_EARLY_PORTING */
 
 #ifndef IS_FPGA_EARLY_PORTING
 #include <mt-plat/aee.h>
@@ -31,7 +31,7 @@
 #define SKIP_SB_BTCVSD
 #define SKIP_SB_CLK
 #define SKIP_SB_DSP
-#define SKIP_SB_GPIO
+//#define SKIP_SB_GPIO
 #define SKIP_SB_OFFLOAD
 #define SKIP_SB_PBM
 #define SKIP_SB_SMCC
@@ -39,7 +39,7 @@
 #define SKIP_SB_USB_OFFLOAD
 #define SKIP_SB_VOW
 #define SKIP_VIP
-#define SKIP_SB_SPK
+//#define SKIP_SB_SPK
 #else
 /* The 'else' part is identical to the 'if' part to allow feature owners to
  * comment out their macros when `SKIP_SB` is removed. By referring the previous

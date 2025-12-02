@@ -53,24 +53,24 @@ static const char *aud_clks[CLK_NUM] = {
 	[CLK_AFE_UL0_ADC_HIRES_AUDIO] = "afe_ul0_adc_hires_audio",
 	[CLK_AFE_UL1_ADC_AUDIO] = "afe_ul1_adc_audio",
 	[CLK_AFE_UL1_ADC_HIRES_AUDIO] = "afe_ul1_adc_hires_audio",
-	[CLK_TOP_AUD_1_SEL] = "clk_top_aud_1_sel",
-	[CLK_TOP_AUD_2_SEL] = "clk_top_aud_2_sel",
-	[CLK_TOP_AUD_ENGEN1_SEL] = "clk_top_aud_engen1_sel",
-	[CLK_TOP_AUD_ENGEN2_SEL] = "clk_top_aud_engen2_sel",
-	[CLK_TOP_AUD_INTBUS_SEL] = "clk_top_aud_intbus_sel",
-	[CLK_TOP_AUDIO_H_SEL] = "clk_top_audio_h_sel",
-	[CLK_PERAO_P_AUDIO0_AUDIO] = "perao_p_audio0_audio",
-	[CLK_PERAO_P_AUDIO1_AUDIO] = "perao_p_audio1_audio",
-	[CLK_PERAO_P_AUDIO2_AUDIO] = "perao_p_audio2_audio",
-	[CLK_TOP_APLL1] = "apll1_ck",
-	[CLK_TOP_APLL1_D2] = "top_apll1_d2",
-	[CLK_TOP_APLL1_D4] = "top_apll1_d4",
-	[CLK_TOP_APLL2] = "apll2_ck",
-	[CLK_TOP_APLL2_D2] = "top_apll2_d2",
-	[CLK_TOP_APLL2_D4] = "top_apll2_d4",
-	[CLK_TOP_APLL_I2SIN1_MCK_SEL] = "apll_i2sin1_mck_sel",
-	[CLK_TOP_APLL12_CK_DIV_I2SIN1] = "top_apll12_div_i2sin1",
-	[CLK_TOP_TCK_26M_MX9] = "tck_26m_mx9_ck",
+	[CLK_CKSYS_REG_AUD_1_SEL] = "clk_top_aud_1_sel",
+	[CLK_CKSYS_REG_AUD_2_SEL] = "clk_top_aud_2_sel",
+	[CLK_CKSYS_REG_AUD_ENGEN1_SEL] = "clk_top_aud_engen1_sel",
+	[CLK_CKSYS_REG_AUD_ENGEN2_SEL] = "clk_top_aud_engen2_sel",
+	[CLK_CKSYS_REG_AUD_INTBUS_SEL] = "clk_top_aud_intbus_sel",
+	[CLK_CKSYS_REG_AUDIO_H_SEL] = "clk_top_audio_h_sel",
+	[CLK_PERICFG_AO_REG_PERI_AUDIO0_AUDIO] = "perao_p_audio0_audio",
+	[CLK_PERICFG_AO_REG_PERI_AUDIO1_AUDIO] = "perao_p_audio1_audio",
+	[CLK_PERICFG_AO_REG_PERI_AUDIO2_AUDIO] = "perao_p_audio2_audio",
+	[CLK_CKSYS_REG_APLL1] = "apll1_ck",
+	[CLK_CKSYS_REG_APLL1_D2] = "top_apll1_d2",
+	[CLK_CKSYS_REG_APLL1_D4] = "top_apll1_d4",
+	[CLK_CKSYS_REG_APLL2] = "apll2_ck",
+	[CLK_CKSYS_REG_APLL2_D2] = "top_apll2_d2",
+	[CLK_CKSYS_REG_APLL2_D4] = "top_apll2_d4",
+	[CLK_CKSYS_REG_APLL_IN1_MCK_SEL] = "apll_i2sin1_mck_sel",
+	[CLK_CKSYS_REG_APLL12_CK_DIV_IN1] = "top_apll12_div_i2sin1",
+	[CLK_CKSYS_REG_TCK_26M_MX9] = "tck_26m_mx9_ck",
 };
 
 int mt6881_set_audio_int_bus_parent(struct mtk_base_afe *afe,
@@ -79,16 +79,16 @@ int mt6881_set_audio_int_bus_parent(struct mtk_base_afe *afe,
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	int ret = 0;
 
-	if (clk_id < 0 || clk_id > CLK_TOP_TCK_26M_MX9) {
+	if (clk_id < 0 || clk_id > CLK_CKSYS_REG_TCK_26M_MX9) {
 		dev_info(afe->dev, "%s(), invalid clk_id %d\n", __func__, clk_id);
 		return -EINVAL;
 	}
 
-	ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_INTBUS_SEL],
+	ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_INTBUS_SEL],
 			     afe_priv->clk[clk_id]);
 	if (ret) {
 		dev_info(afe->dev, "%s() clk_set_parent %s-%s fail %d\n",
-			__func__, aud_clks[CLK_TOP_AUD_INTBUS_SEL],
+			__func__, aud_clks[CLK_CKSYS_REG_AUD_INTBUS_SEL],
 			aud_clks[clk_id], ret);
 	}
 
@@ -101,16 +101,16 @@ int mt6881_set_audio_h_parent(struct mtk_base_afe *afe,
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	int ret = 0;
 
-	if (clk_id < 0 || clk_id > CLK_TOP_TCK_26M_MX9) {
+	if (clk_id < 0 || clk_id > CLK_CKSYS_REG_TCK_26M_MX9) {
 		dev_info(afe->dev, "%s(), invalid clk_id %d\n", __func__, clk_id);
 		return -EINVAL;
 	}
 
-	ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUDIO_H_SEL],
+	ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL],
 			     afe_priv->clk[clk_id]);
 	if (ret) {
 		dev_info(afe->dev, "%s() clk_set_parent %s-%s fail %d\n",
-			__func__, aud_clks[CLK_TOP_AUDIO_H_SEL],
+			__func__, aud_clks[CLK_CKSYS_REG_AUDIO_H_SEL],
 			aud_clks[clk_id], ret);
 	}
 	return ret;
@@ -122,67 +122,67 @@ static int apll1_mux_setting(struct mtk_base_afe *afe, bool enable)
 	int ret = 0;
 
 	if (enable) {
-		ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUD_1_SEL]);
+		ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUD_1_SEL]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_1_SEL], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_1_SEL], ret);
 			goto EXIT;
 		}
-		ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_1_SEL],
-				     afe_priv->clk[CLK_TOP_APLL1]);
+		ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_1_SEL],
+				     afe_priv->clk[CLK_CKSYS_REG_APLL1]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_1_SEL],
-				aud_clks[CLK_TOP_APLL1], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_1_SEL],
+				aud_clks[CLK_CKSYS_REG_APLL1], ret);
 			goto EXIT;
 		}
 
 		/* 180.6336 / 4 = 45.1584MHz */
-		ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUD_ENGEN1_SEL]);
+		ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUD_ENGEN1_SEL]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_ENGEN1_SEL], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_ENGEN1_SEL], ret);
 			goto EXIT;
 		}
-		ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_ENGEN1_SEL],
-				     afe_priv->clk[CLK_TOP_APLL1_D4]);
+		ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_ENGEN1_SEL],
+				     afe_priv->clk[CLK_CKSYS_REG_APLL1_D4]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_ENGEN1_SEL],
-				aud_clks[CLK_TOP_APLL1_D4], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_ENGEN1_SEL],
+				aud_clks[CLK_CKSYS_REG_APLL1_D4], ret);
 			goto EXIT;
 		}
 
-		ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUDIO_H_SEL]);
+		ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-				 __func__, aud_clks[CLK_TOP_AUDIO_H_SEL], ret);
+				 __func__, aud_clks[CLK_CKSYS_REG_AUDIO_H_SEL], ret);
 			goto EXIT;
 		}
-		mt6881_set_audio_h_parent(afe, CLK_TOP_APLL1);
+		mt6881_set_audio_h_parent(afe, CLK_CKSYS_REG_APLL1);
 	} else {
-		ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_ENGEN1_SEL],
-				     afe_priv->clk[CLK_TOP_TCK_26M_MX9]);
+		ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_ENGEN1_SEL],
+				     afe_priv->clk[CLK_CKSYS_REG_TCK_26M_MX9]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_ENGEN1_SEL],
-				aud_clks[CLK_TOP_TCK_26M_MX9], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_ENGEN1_SEL],
+				aud_clks[CLK_CKSYS_REG_TCK_26M_MX9], ret);
 			goto EXIT;
 		}
-		clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUD_ENGEN1_SEL]);
+		clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_ENGEN1_SEL]);
 
-		ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_1_SEL],
-				     afe_priv->clk[CLK_TOP_TCK_26M_MX9]);
+		ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_1_SEL],
+				     afe_priv->clk[CLK_CKSYS_REG_TCK_26M_MX9]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_1_SEL],
-				aud_clks[CLK_TOP_TCK_26M_MX9], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_1_SEL],
+				aud_clks[CLK_CKSYS_REG_TCK_26M_MX9], ret);
 			goto EXIT;
 		}
-		clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUD_1_SEL]);
+		clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_1_SEL]);
 
-		mt6881_set_audio_h_parent(afe, CLK_TOP_TCK_26M_MX9);
-		clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUDIO_H_SEL]);
+		mt6881_set_audio_h_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
+		clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 	}
 
 EXIT:
@@ -195,68 +195,68 @@ static int apll2_mux_setting(struct mtk_base_afe *afe, bool enable)
 	int ret = 0;
 
 	if (enable) {
-		ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUD_2_SEL]);
+		ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUD_2_SEL]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_2_SEL], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_2_SEL], ret);
 			goto EXIT;
 		}
-		ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_2_SEL],
-				     afe_priv->clk[CLK_TOP_APLL2]);
+		ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_2_SEL],
+				     afe_priv->clk[CLK_CKSYS_REG_APLL2]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_2_SEL],
-				aud_clks[CLK_TOP_APLL2], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_2_SEL],
+				aud_clks[CLK_CKSYS_REG_APLL2], ret);
 			goto EXIT;
 		}
 
 		/* 196.608 / 4 = 49.152MHz */
-		ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUD_ENGEN2_SEL]);
+		ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUD_ENGEN2_SEL]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_ENGEN2_SEL], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_ENGEN2_SEL], ret);
 			goto EXIT;
 		}
-		ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_ENGEN2_SEL],
-				     afe_priv->clk[CLK_TOP_APLL2_D4]);
+		ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_ENGEN2_SEL],
+				     afe_priv->clk[CLK_CKSYS_REG_APLL2_D4]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_ENGEN2_SEL],
-				aud_clks[CLK_TOP_APLL2_D4], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_ENGEN2_SEL],
+				aud_clks[CLK_CKSYS_REG_APLL2_D4], ret);
 			goto EXIT;
 		}
 
-		ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUDIO_H_SEL]);
+		ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-				 __func__, aud_clks[CLK_TOP_AUDIO_H_SEL], ret);
+				 __func__, aud_clks[CLK_CKSYS_REG_AUDIO_H_SEL], ret);
 			goto EXIT;
 		}
 
-		mt6881_set_audio_h_parent(afe, CLK_TOP_APLL2);
+		mt6881_set_audio_h_parent(afe, CLK_CKSYS_REG_APLL2);
 	} else {
-		ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_ENGEN2_SEL],
-				     afe_priv->clk[CLK_TOP_TCK_26M_MX9]);
+		ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_ENGEN2_SEL],
+				     afe_priv->clk[CLK_CKSYS_REG_TCK_26M_MX9]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_ENGEN2_SEL],
-				aud_clks[CLK_TOP_TCK_26M_MX9], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_ENGEN2_SEL],
+				aud_clks[CLK_CKSYS_REG_TCK_26M_MX9], ret);
 			goto EXIT;
 		}
-		clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUD_ENGEN2_SEL]);
+		clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_ENGEN2_SEL]);
 
-		ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_2_SEL],
-				     afe_priv->clk[CLK_TOP_TCK_26M_MX9]);
+		ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_2_SEL],
+				     afe_priv->clk[CLK_CKSYS_REG_TCK_26M_MX9]);
 		if (ret) {
 			dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-				__func__, aud_clks[CLK_TOP_AUD_2_SEL],
-				aud_clks[CLK_TOP_TCK_26M_MX9], ret);
+				__func__, aud_clks[CLK_CKSYS_REG_AUD_2_SEL],
+				aud_clks[CLK_CKSYS_REG_TCK_26M_MX9], ret);
 			goto EXIT;
 		}
-		clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUD_2_SEL]);
+		clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_2_SEL]);
 
-		mt6881_set_audio_h_parent(afe, CLK_TOP_TCK_26M_MX9);
-		clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUDIO_H_SEL]);
+		mt6881_set_audio_h_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
+		clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 	}
 
 EXIT:
@@ -270,48 +270,48 @@ int mt6881_afe_disable_apll(struct mtk_base_afe *afe)
 
 	dev_dbg(afe->dev, "%s() successfully start\n", __func__);
 
-	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUDIO_H_SEL]);
+	ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-			 __func__, aud_clks[CLK_TOP_AUDIO_H_SEL], ret);
+			 __func__, aud_clks[CLK_CKSYS_REG_AUDIO_H_SEL], ret);
 		goto EXIT;
 	}
 
-	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUD_1_SEL]);
+	ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUD_1_SEL]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-			__func__, aud_clks[CLK_TOP_AUD_1_SEL], ret);
+			__func__, aud_clks[CLK_CKSYS_REG_AUD_1_SEL], ret);
 		goto EXIT;
 	}
 
-	ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_1_SEL],
-			     afe_priv->clk[CLK_TOP_TCK_26M_MX9]);
+	ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_1_SEL],
+			     afe_priv->clk[CLK_CKSYS_REG_TCK_26M_MX9]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-			__func__, aud_clks[CLK_TOP_AUD_1_SEL],
-			aud_clks[CLK_TOP_TCK_26M_MX9], ret);
+			__func__, aud_clks[CLK_CKSYS_REG_AUD_1_SEL],
+			aud_clks[CLK_CKSYS_REG_TCK_26M_MX9], ret);
 		goto EXIT;
 	}
-	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUD_2_SEL]);
+	ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUD_2_SEL]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-			__func__, aud_clks[CLK_TOP_AUD_2_SEL], ret);
+			__func__, aud_clks[CLK_CKSYS_REG_AUD_2_SEL], ret);
 		goto EXIT;
 	}
 
-	ret = clk_set_parent(afe_priv->clk[CLK_TOP_AUD_2_SEL],
-			     afe_priv->clk[CLK_TOP_TCK_26M_MX9]);
+	ret = clk_set_parent(afe_priv->clk[CLK_CKSYS_REG_AUD_2_SEL],
+			     afe_priv->clk[CLK_CKSYS_REG_TCK_26M_MX9]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
-			__func__, aud_clks[CLK_TOP_AUD_2_SEL],
-			aud_clks[CLK_TOP_TCK_26M_MX9], ret);
+			__func__, aud_clks[CLK_CKSYS_REG_AUD_2_SEL],
+			aud_clks[CLK_CKSYS_REG_TCK_26M_MX9], ret);
 		goto EXIT;
 	}
 
-	clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUD_1_SEL]);
-	clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUD_2_SEL]);
-	mt6881_set_audio_h_parent(afe, CLK_TOP_TCK_26M_MX9);
-	clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUDIO_H_SEL]);
+	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_1_SEL]);
+	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_2_SEL]);
+	mt6881_set_audio_h_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
+	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 
 	return 0;
 EXIT:
@@ -326,33 +326,33 @@ int mt6881_afe_enable_ao_clock(struct mtk_base_afe *afe)
 
 	dev_dbg(afe->dev, "%s() successfully start\n", __func__);
 	/* Peri clock AO enable */
-	ret = clk_prepare_enable(afe_priv->clk[CLK_PERAO_P_AUDIO2_AUDIO]);
+	ret = clk_prepare_enable(afe_priv->clk[CLK_PERICFG_AO_REG_PERI_AUDIO2_AUDIO]);
 	if (ret) {
 		dev_info(afe->dev, "%s() clk_prepare_enable %s fail %d\n",
-			__func__, aud_clks[CLK_PERAO_P_AUDIO2_AUDIO], ret);
-		goto CLK_PERAO_P_AUDIO2_AUDIO_ERR;
+			__func__, aud_clks[CLK_PERICFG_AO_REG_PERI_AUDIO2_AUDIO], ret);
+		goto CLK_PERICFG_AO_REG_PERI_AUDIO2_AUDIO_ERR;
 	}
 
-	ret = clk_prepare_enable(afe_priv->clk[CLK_PERAO_P_AUDIO0_AUDIO]);
+	ret = clk_prepare_enable(afe_priv->clk[CLK_PERICFG_AO_REG_PERI_AUDIO0_AUDIO]);
 	if (ret) {
 		dev_info(afe->dev, "%s() clk_prepare_enable %s fail %d\n",
-			__func__, aud_clks[CLK_PERAO_P_AUDIO0_AUDIO], ret);
-		goto CLK_PERAO_P_AUDIO0_AUDIO_ERR;
+			__func__, aud_clks[CLK_PERICFG_AO_REG_PERI_AUDIO0_AUDIO], ret);
+		goto CLK_PERICFG_AO_REG_PERI_AUDIO0_AUDIO_ERR;
 	}
 
-	ret = clk_prepare_enable(afe_priv->clk[CLK_PERAO_P_AUDIO1_AUDIO]);
+	ret = clk_prepare_enable(afe_priv->clk[CLK_PERICFG_AO_REG_PERI_AUDIO1_AUDIO]);
 	if (ret) {
 		dev_info(afe->dev, "%s() clk_prepare_enable %s fail %d\n",
-			__func__, aud_clks[CLK_PERAO_P_AUDIO1_AUDIO], ret);
-		goto CLK_PERAO_P_AUDIO1_AUDIO_ERR;
+			__func__, aud_clks[CLK_PERICFG_AO_REG_PERI_AUDIO1_AUDIO], ret);
+		goto CLK_PERICFG_AO_REG_PERI_AUDIO1_AUDIO_ERR;
 	}
 	return 0;
-CLK_PERAO_P_AUDIO1_AUDIO_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_P_AUDIO1_AUDIO]);
-CLK_PERAO_P_AUDIO0_AUDIO_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_P_AUDIO0_AUDIO]);
-CLK_PERAO_P_AUDIO2_AUDIO_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_PERAO_P_AUDIO2_AUDIO]);
+CLK_PERICFG_AO_REG_PERI_AUDIO1_AUDIO_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERICFG_AO_REG_PERI_AUDIO1_AUDIO]);
+CLK_PERICFG_AO_REG_PERI_AUDIO0_AUDIO_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERICFG_AO_REG_PERI_AUDIO0_AUDIO]);
+CLK_PERICFG_AO_REG_PERI_AUDIO2_AUDIO_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_PERICFG_AO_REG_PERI_AUDIO2_AUDIO]);
 
 	return ret;
 }
@@ -431,22 +431,22 @@ int mt6881_afe_enable_clock(struct mtk_base_afe *afe)
 
 	/* IPM2.0: Remove CLK_MUX_AUDIO */
 
-	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUD_INTBUS_SEL]);
+	ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUD_INTBUS_SEL]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-			 __func__, aud_clks[CLK_TOP_AUD_INTBUS_SEL], ret);
+			 __func__, aud_clks[CLK_CKSYS_REG_AUD_INTBUS_SEL], ret);
 		goto CLK_MUX_AUDIO_INTBUS_ERR;
 	}
-	ret = mt6881_set_audio_int_bus_parent(afe, CLK_TOP_TCK_26M_MX9);
+	ret = mt6881_set_audio_int_bus_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
 
-	ret = clk_prepare_enable(afe_priv->clk[CLK_TOP_AUDIO_H_SEL]);
+	ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
-			 __func__, aud_clks[CLK_TOP_AUDIO_H_SEL], ret);
+			 __func__, aud_clks[CLK_CKSYS_REG_AUDIO_H_SEL], ret);
 		goto CLK_MUX_AUDIO_H_PARENT_ERR;
 	}
 
-	ret = mt6881_set_audio_h_parent(afe, CLK_TOP_TCK_26M_MX9);
+	ret = mt6881_set_audio_h_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
 
 #if !defined(SKIP_SB_SMCC)
 	/* use arm_smccc_smc to notify SPM */
@@ -462,9 +462,9 @@ CLK_AFE_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_AFE_AUDIO_F26M_AUDIO]);
 
 CLK_MUX_AUDIO_H_PARENT_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUDIO_H_SEL]);
+	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 CLK_MUX_AUDIO_INTBUS_ERR:
-	clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUD_INTBUS_SEL]);
+	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_INTBUS_SEL]);
 
 	return ret;
 }
@@ -473,10 +473,10 @@ void mt6881_afe_disable_clock(struct mtk_base_afe *afe)
 {
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 
-	mt6881_set_audio_int_bus_parent(afe, CLK_TOP_TCK_26M_MX9);
-	clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUD_INTBUS_SEL]);
-	mt6881_set_audio_h_parent(afe, CLK_TOP_TCK_26M_MX9);
-	clk_disable_unprepare(afe_priv->clk[CLK_TOP_AUDIO_H_SEL]);
+	mt6881_set_audio_int_bus_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
+	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_INTBUS_SEL]);
+	mt6881_set_audio_h_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
+	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 
 	/* IPM2.0: Use HOPPING & 26M */
 	clk_disable_unprepare(afe_priv->clk[CLK_AFE_AUDIO_HOPPING_AUDIO]);
@@ -729,8 +729,8 @@ struct mt6881_mck_div {
 
 static const struct mt6881_mck_div mck_div[MT6881_MCK_NUM] = {
 	[MT6881_I2SIN1_MCK] = {
-		.m_sel_id = CLK_TOP_APLL_I2SIN1_MCK_SEL,
-		.div_clk_id = CLK_TOP_APLL12_CK_DIV_I2SIN1,
+		.m_sel_id = CLK_CKSYS_REG_APLL_IN1_MCK_SEL,
+		.div_clk_id = CLK_CKSYS_REG_APLL12_CK_DIV_IN1,
 		.div_pdn_reg = CLK_AUDDIV_0,
 		.div_pdn_mask_sft = APLL12_DIV_I2SIN1_PDN_MASK_SFT,
 		.div_reg = CLK_AUDDIV_2,
@@ -744,8 +744,8 @@ static const struct mt6881_mck_div mck_div[MT6881_MCK_NUM] = {
 		.div_inv_mask_sft = APLL12_DIV_I2SIN1_INV_SFT,
 	},
 	/* [MT6881_FMI2S_MCK] = {
-	 *	.m_sel_id = CLK_TOP_FMI2S_M_SEL,
-	 *	.div_clk_id = CLK_TOP_APLL12_DIV_FMI2S,
+	 *	.m_sel_id = CLK_CKSYS_REG_FMI2S_M_SEL,
+	 *	.div_clk_id = CLK_CKSYS_REG_APLL12_DIV_FMI2S,
 	 *	.div_pdn_reg = CLK_AUDDIV_0,
 	 *	.div_pdn_mask_sft = APLL12_DIV_FMI2S_PDN_MASK_SFT,
 	 *	.div_reg = CLK_AUDDIV_5,
@@ -766,7 +766,7 @@ int mt6881_mck_enable(struct mtk_base_afe *afe, int mck_id, int rate)
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	int apll = mt6881_get_apll_by_rate(afe, rate);
 	int apll_clk_id = apll == MT6881_APLL1 ?
-			  CLK_TOP_AUD_1_SEL : CLK_TOP_AUD_2_SEL;
+			  CLK_CKSYS_REG_AUD_1_SEL : CLK_CKSYS_REG_AUD_2_SEL;
 	int m_sel_id = 0;
 	int div_clk_id = 0;
 	int ret = 0;
@@ -846,7 +846,7 @@ int mt6881_mck_disable(struct mtk_base_afe *afe, int mck_id, int rate)
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	int apll = mt6881_get_apll_by_rate(afe, rate);
 	int apll_clk_id = apll == MT6881_APLL1 ?
-			  CLK_TOP_AUD_1_SEL : CLK_TOP_AUD_2_SEL;
+			  CLK_CKSYS_REG_AUD_1_SEL : CLK_CKSYS_REG_AUD_2_SEL;
 	int m_sel_id = 0;
 	int div_clk_id = 0;
 	int ret = 0;
@@ -873,11 +873,11 @@ int mt6881_mck_disable(struct mtk_base_afe *afe, int mck_id, int rate)
 	}
 
 	ret = clk_set_parent(afe_priv->clk[apll_clk_id],
-			     afe_priv->clk[CLK_TOP_TCK_26M_MX9]);
+			     afe_priv->clk[CLK_CKSYS_REG_TCK_26M_MX9]);
 	if (ret) {
 		dev_info(afe->dev, "%s clk_set_parent %s-%s fail %d\n",
 			__func__, aud_clks[apll_clk_id],
-			aud_clks[CLK_TOP_TCK_26M_MX9], ret);
+			aud_clks[CLK_CKSYS_REG_TCK_26M_MX9], ret);
 		return ret;
 	}
 	clk_disable_unprepare(afe_priv->clk[div_clk_id]);
