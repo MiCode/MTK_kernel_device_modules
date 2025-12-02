@@ -146,6 +146,28 @@ share_abort_handle:
 }
 
 #if (ENABLE_MPOOL_IOMMU_PGTBL)
+static bool unshare_memory_from_hyp(uint64_t region_start, uint64_t region_size)
+{
+	int ret = 0;
+	uint64_t unshare_idx, region_pfn = region_start >> PAGE_SHIFT,
+	  pfn_total = region_size >> PAGE_SHIFT;
+
+	/* Unpin memory region from hyp */
+	mod_ops->unpin_shared_mem(
+		(void *)(mod_ops->hyp_va((phys_addr_t)region_start)),
+		(((void *)mod_ops->hyp_va((phys_addr_t)region_start)) +
+		 region_size));
+	/* Unshare memory region from hyp */
+	for (unshare_idx = 0; unshare_idx < pfn_total; unshare_idx++) {
+		ret = mod_ops->host_unshare_hyp(region_pfn + unshare_idx);
+		if (ret) {
+			mod_ops->puts("unshare memory fail");
+			return false;
+		}
+	}
+	return true;
+}
+
 static void iommu_assign_mpool(phys_addr_t pa, size_t size)
 {
 	iommu_mpool_pa = pa;
@@ -215,6 +237,7 @@ static void add_mem_to_mpool(uint64_t pglist_pfn)
 	void *pglist_pa;
 	void *pmm_page = NULL;
 	uint64_t pfn;
+	int ret;
 
 	if (!share_memory_to_hyp(pglist_pfn << PAGE_SHIFT, PAGE_SIZE))
 		return;
@@ -225,15 +248,22 @@ static void add_mem_to_mpool(uint64_t pglist_pfn)
 	pmm_page = (void *)mod_ops->hyp_va((phys_addr_t)pglist_pa);
 	memcpy(&in_mpt, pmm_page, sizeof(in_mpt));
 
-	/* donate mpool memory to hypervisor */
 	for (i = 0; i < in_mpt.mem_block_num; i++) {
 		pfn = (uint64_t)in_mpt.fmpt[i].smpt;
-		share_memory_to_hyp(pfn << PAGE_SHIFT,
-			(1 << in_mpt.fmpt[i].mem_order) * PAGE_SIZE);
 		hyp_mpool.fmpt[i].smpt = (void *)mod_ops->hyp_va(pfn << PAGE_SHIFT);
 		hyp_mpool.fmpt[i].mem_order = in_mpt.fmpt[i].mem_order;
 		MOD_PUTS2("pfn, size", pfn, (1 << in_mpt.fmpt[i].mem_order) * PAGE_SIZE);
+		/* donate mpool memory to hypervisor */
+		ret = mod_ops->host_donate_hyp(pfn, (1 << in_mpt.fmpt[i].mem_order), false);
+		if (ret) {
+			mod_ops->puts("page pgtbl memory host_donate_hyp : fail");
+			WARN_ON(1);
+		}
 	}
+
+	if (!unshare_memory_from_hyp(pglist_pfn << PAGE_SHIFT, PAGE_SIZE))
+		mod_ops->puts("add mem to mpool : unshare fail");
+
 	/* mpool init */
 	iommu_map_mpool(NULL);
 
@@ -247,6 +277,15 @@ static void add_mem_to_mpool(uint64_t pglist_pfn)
 	}
 
 	create_lv2_pgtbl_info();
+
+	/* flush all mpool memory */
+	for (i = 0; i < in_mpt.mem_block_num; i++) {
+		if (hyp_mpool.fmpt[i].smpt)
+			mod_ops->flush_dcache_to_poc(hyp_mpool.fmpt[i].smpt,
+					  (1U << hyp_mpool.fmpt[i].mem_order) * PAGE_SIZE);
+		else
+			mod_ops->puts("add mem to mpool : flush_dcache : smpt is NULL");
+	}
 }
 #endif
 
