@@ -381,32 +381,41 @@ int ccci_drv_ul_add_wcnt(unsigned char q_num, unsigned short drb_wcnt)
 
 	ul_update = (drb_wcnt & 0x0000ffff);
 	ul_update |= DPMAIF_UL_ADD_UPDATE;
+	u64 start_time, current_time;
 
+	start_time = local_clock();
 	while (1) {
 		if ((DPMA_READ_PD_UL(DPMAIF_ULQ_ADD_DESC_CH_n(q_num)) &
 				DPMAIF_UL_ADD_NOT_READY) == 0) {
 			DPMA_WRITE_PD_UL(DPMAIF_ULQ_ADD_DESC_CH_n(q_num), ul_update);
 			break;
 		}
-
-		if (++count >= 1600000) {
-			CCCI_ERROR_LOG(0, TAG,
-				"[%s] error: drb_add rdy poll fail: 0x%x\n",
-				__func__, DPMA_READ_PD_UL(NRL2_DPMAIF_UL_DBG_STA2));
-			//dpmaif_ctrl->ops->dump_status(DPMAIF_HIF_ID,
-			//	DUMP_FLAG_REG, NULL, -1);
-			return HW_REG_CHK_FAIL;
+		// Increment counter; check every 1000 iterations (about 0.5ms).
+		if (++count % 1000 == 0) {
+			current_time = local_clock();
+			// If elapsed time exceeds 5ms, log an error and exit.
+			if ((current_time - start_time) > 5000000) {
+				CCCI_ERROR_LOG(0, TAG,
+					"[%s] error: drb_add rdy poll fail: 0x%x\n",
+					__func__, DPMA_READ_PD_UL(NRL2_DPMAIF_UL_DBG_STA2));
+				return HW_REG_CHK_FAIL;
+			}
 		}
 	}
-
+	start_time = local_clock();
 	count = 0;
 	while ((DPMA_READ_PD_UL(DPMAIF_ULQ_ADD_DESC_CH_n(q_num)) &
 			DPMAIF_UL_ADD_NOT_READY) == DPMAIF_UL_ADD_NOT_READY) {
-		if (++count >= 1600000) {
-			CCCI_ERROR_LOG(0, TAG,
-				"[%s] error: drb_add fail: 0x%x\n",
-				__func__, DPMA_READ_PD_UL(NRL2_DPMAIF_UL_DBG_STA2));
-			break;
+		// Increment counter; check every 1000 iterations (about 0.5ms).
+		if (++count % 1000 == 0) {
+			current_time = local_clock();
+			// If elapsed time exceeds 5ms, log an error and exit.
+			if ((current_time - start_time) > 5000000) {
+				CCCI_ERROR_LOG(0, TAG,
+					"[%s] error: drb_add fail: 0x%x\n",
+					__func__, DPMA_READ_PD_UL(NRL2_DPMAIF_UL_DBG_STA2));
+				return HW_REG_CHK_FAIL;
+			}
 		}
 	}
 
