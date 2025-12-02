@@ -3119,7 +3119,6 @@ u8 dpc_dvfs_bw_to_level(void)
 			max_channel_bw = ch_bw;
 	}
 
-	max_channel_bw = max_channel_bw * 10 / 7;
 	if (max_channel_bw > 6988)
 		bw_level = 4;
 	else if (max_channel_bw > 5129)
