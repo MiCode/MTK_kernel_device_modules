@@ -14,8 +14,6 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_UART_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UART3_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AUD_INTBUS_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_USB_TOP_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_USB_XHCI_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AUD_ENGEN1_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AUD_ENGEN2_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AES_UFSFDE_SEL>,
@@ -37,7 +35,6 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_KDF_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_RNG_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_PQC_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_USB_FRMCNT_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL_IN0_MCK_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL_IN1_MCK_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL_IN2_MCK_SEL>,
@@ -512,11 +509,5 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x25>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
-	};
-
-	bring-up-pd-ssusb@28 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x28>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_SSUSB>;
 	};
 };
