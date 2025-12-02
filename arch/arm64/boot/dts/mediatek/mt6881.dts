@@ -933,6 +933,18 @@
 		emi-max-addr = <0xc0000000>;
 	};
 
+	wifi_tx_cma: wifi-tx-cma {
+		compatible = "mediatek,wifi_tx_cma";
+		emi-size = <0x5400000>;
+		status = "disabled";
+	};
+
+	wifi_misc: wifi-misc {
+		compatible = "mediatek,wifi_misc";
+		emi-size = <0x100000>;
+		status = "disabled";
+	};
+
 	bt: bt@18800000 {
 	compatible = "mediatek,bt";
 	/* flavor_bin = "b"; */
@@ -11255,7 +11267,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<7 0x00140000>, /* GPS_EMI */
 			<8 0x002fa000>, /* MNL/MPE BIN data */
 			<9 0x000d6000>, /* Connsys/SCP shared */
-			<10 0x000a0000>, /* WF MISC */
+			<10 0x00100000>, /* WF MISC */
 			<11 0x01900000>; /* WFDMA1 */
 
 		/* block_name start_idx end_idx mapping */
