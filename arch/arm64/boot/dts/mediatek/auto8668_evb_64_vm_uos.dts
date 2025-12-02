@@ -1,0 +1,126 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/mt6881-pinfunc.h>
+#include <dt-bindings/phy/phy.h>
+
+/* chosen */
+&chosen {
+	bootargs_ext = "";
+};
+
+&extcon_usb{
+	status = "disabled";
+};
+
+&ssusb {
+	/delete-property/ vusb33-supply;
+	/delete-node/ port;
+};
+
+&connfem {
+/* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
+#if 0
+	epa-elna {
+		parts = <&wlan7207h &wlan7207c>;
+		wifi {
+			flags-0 {
+				open-loop;
+			};
+		};
+		bt {
+			flags-0 {
+				/* choose one of: epa-elna/epa/elna/bypass */
+				epa-elna;
+			};
+		};
+	};
+#endif
+};
+
+&pio {
+	uart2_pins_default: uart2-pins-default {
+		pins-rx {
+			pinmux = <PINMUX_GPIO115__FUNC_URXD2>;
+			drive-strength = <7>;
+			input-enable;
+			bias-pull-up;
+		};
+		pins-tx {
+			pinmux = <PINMUX_GPIO114__FUNC_UTXD2>;
+			drive-strength = <7>;
+		};
+		pins-rts {
+			pinmux = <PINMUX_GPIO7__FUNC_URTS2>;
+			drive-strength = <7>;
+			output-enable;
+		};
+		pins-cts {
+			pinmux = <PINMUX_GPIO6__FUNC_UCTS2>;
+			drive-strength = <7>;
+			input-enable;
+		};
+	};
+
+	uart2_pins_sleep: uart2-pins-sleep {
+		pins-rx {
+			pinmux = <PINMUX_GPIO115__FUNC_GPIO115>;
+			bias-pull-down;
+		};
+		pins-tx {
+			pinmux = <PINMUX_GPIO114__FUNC_GPIO114>;
+			bias-pull-down;
+		};
+		pins-rts {
+			pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
+			bias-pull-down;
+		};
+		pins-cts {
+			pinmux = <PINMUX_GPIO6__FUNC_GPIO6>;
+			bias-pull-down;
+		};
+	};
+};
+
+
+&uart2 {
+	pinctrl-names = "default", "sleep";
+	pinctrl-0 = <&uart2_pins_default>;
+	pinctrl-1 = <&uart2_pins_sleep>;
+	status = "okay";
+};
+
+&lk_charger {
+	status = "disabled";
+};
+
+&charger {
+	status = "disabled";
+};
+
+/* CONNSYS TCXO GPIO start */
+&consys {
+	tcxo-support = "true";
+};
+
+/* MD/RF always-on setting */
+&mt6363_vbuck5 {
+	regulator-always-on;
+};
+
+
+
+
+#include <auto8668p1_64_vm_uos/cust.dtsi>
+#include "mediatek/cust_mt6881_camera_v4l2.dtsi"
+#include "mediatek/cust_mt8668_display_interface.dtsi"
+#include "mediatek/cust_mt8668_display_serdes_config.dtsi"
+#include "mediatek/cust_mt8668_display_config_main.dtsi"
+#include "mediatek/cust_k6881_connfem.dtsi"
+/*End of this file, DO NOT ADD ANYTHING HERE*/
