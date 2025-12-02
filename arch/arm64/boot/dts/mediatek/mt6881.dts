@@ -10664,6 +10664,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,noise-still-tr;
 			usb-role-switch;
 			cdp-block;
+			usb-psy-name = "mtk-master-charger";
+			typec-name = "rt-pd-manager";
+			typec-port-name = "port0";
 
 			port {
 				mtu3_drd_switch: endpoint {
