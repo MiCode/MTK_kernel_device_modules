@@ -1302,7 +1302,7 @@ static void cmdq_task_insert_into_thread(dma_addr_t curr_pa,
 	*insert_pos = &prev_task->list_entry;
 	cmdq_task_connect_buffer(prev_task, task);
 	if (next_task && next_task != prev_task) {
-		cmdq_msg("reorder pkt:0x%p(%u) next pkt:0x%p(%u) pc:%pa",
+		cmdq_log("reorder pkt:0x%p(%u) next pkt:0x%p(%u) pc:%pa",
 			task->pkt, task->pkt->priority,
 			next_task->pkt, next_task->pkt->priority, &curr_pa);
 		cmdq_task_connect_buffer(task, next_task);
