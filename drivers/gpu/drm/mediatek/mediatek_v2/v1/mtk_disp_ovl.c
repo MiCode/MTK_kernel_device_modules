@@ -1270,11 +1270,13 @@ static irqreturn_t mtk_disp_ovl_irq_handler(int irq, void *dev_id)
 
 	if (val & (1 << 2)) {
 		unsigned long long aee_now_ts = sched_clock();
+
+#ifdef DISP_UNDERRUN_RECOVERY
 		if (!g_mobile_log) {
 			g_mobile_log = 1;
 			DDPMSG("%s, enable mobile log due to underflow\n", __func__);
 		}
-
+#endif
 		if (drv_priv && (!atomic_read(&drv_priv->need_recover))) {
 			struct mtk_crtc_state *state;
 

@@ -7312,8 +7312,10 @@ static void mtk_crtc_update_hrt_state(struct drm_crtc *crtc,
 			mtk_drm_set_mmclk(crtc, step_size - 1, false, __func__);
 		} else {
 			en = 1;
+#ifdef DISP_UNDERRUN_RECOVERY
 			if (!g_mobile_log_bak && g_mobile_log)
 				g_mobile_log = 0;
+#endif
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
 			if (output_comp) {
 				DDPMSG("set MMCLK back, and enable underrun irq\n");
