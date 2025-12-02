@@ -1067,6 +1067,7 @@ struct mtk_bif_info {
 	struct mtk_ddp_comp *read_comp;
 	struct mtk_rect src_roi;
 	struct slbc_data sram_data;
+	struct mtk_ddp_config cfg;
 	bool bif_init;
 	bool racing_en;
 	int bif_enable;

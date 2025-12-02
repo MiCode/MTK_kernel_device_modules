@@ -469,10 +469,6 @@ void set_bif_enable(struct drm_crtc *crtc, bool en, int line)
 		return;
 	if (!mtk_crtc->bif_info)
 		return;
-
-	if (!mtk_crtc->bif_info->bif_init)
-		return;
-
 	if (en)
 		mtk_crtc->bif_info->bif_enable = priv->bif_support_mode;
 	else {
@@ -5116,6 +5112,17 @@ void mtk_crtc_bif_path_prepare(struct mtk_drm_crtc *mtk_crtc)
 	}
 	DDPBIF("%s -\n", __func__);
 }
+void bif_comp_init_pkt(struct mtk_drm_crtc *mtk_crtc)
+{
+	struct cmdq_pkt *handle = NULL;
+	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+
+	mtk_crtc_pkt_create(&handle, &mtk_crtc->base, client);
+	mtk_crtc_bif_comp_config(mtk_crtc, &mtk_crtc->bif_info->cfg, handle);
+	cmdq_pkt_flush(handle);
+	cmdq_pkt_destroy(handle);
+	DDPFUNC("-\n", __func__);
+}
 bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc, int line)
 {
 	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
@@ -5134,12 +5141,15 @@ bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc
 			CRTC_MMP_MARK(0, bif_slbc, 0xFFFFFFFF, __LINE__);
 			return false;
 		}
-		bif_info->sram_en = true;
-		bif_info->sram_pa = (size_t) bif_info->sram_data.paddr;
-		bif_info->sram_size = (size_t) bif_info->sram_data.size;
 		drm_trace_tag_end("bif_slbc_request");
 
-		DDPBIF("%s,sram addr:0x%llx,sz:0x%llx\n", __func__, bif_info->sram_pa, bif_info->sram_size);
+		if (bif_info->sram_pa == 0) {
+			bif_info->sram_pa = (size_t) bif_info->sram_data.paddr;
+			bif_info->sram_size = (size_t) bif_info->sram_data.size;
+			DDPBIF("%s,sram addr:0x%llx,sz:0x%llx\n", __func__, bif_info->sram_pa, bif_info->sram_size);
+			bif_comp_init_pkt(mtk_crtc);
+		}
+		bif_info->sram_en = true;
 	} else {
 		if (!bif_info->sram_en)
 			return true;
@@ -5286,7 +5296,11 @@ static int mtk_bif_worker_kthread(void *data)
 void mtk_crtc_bif_info_init(struct mtk_drm_crtc *mtk_crtc)
 {
 	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 	struct mtk_bif_info *bif_info = NULL;
+
+	if (!priv->data->support_bif)
+		return;
 
 	if (!mtk_crtc->bif_info) {
 		mtk_crtc->bif_info = kzalloc(sizeof(struct mtk_bif_info), GFP_KERNEL);
@@ -5311,6 +5325,8 @@ void mtk_crtc_bif_info_init(struct mtk_drm_crtc *mtk_crtc)
 	atomic_set(&bif_info->bif_release, 0);
 	wake_up_process(bif_info->bif_task);
 
+	mtk_crtc_update_bif_roi(mtk_crtc);
+
 	DDPINFO("%s,lcm:%dx%d\n", __func__, mtk_crtc->bif_info->lcm_width, mtk_crtc->bif_info->lcm_height);
 }
 void mtk_crtc_update_bif_roi(struct mtk_drm_crtc *mtk_crtc)
@@ -5332,9 +5348,6 @@ void mtk_crtc_update_bif_roi(struct mtk_drm_crtc *mtk_crtc)
 		DDPPR_ERR("%s:error,only suppot crtc 0\n", __func__);
 		return;
 	}
-
-	if (!mtk_crtc->bif_info->bif_init)
-		return;
 
 	bif_info = mtk_crtc->bif_info;
 	w = (crtc->state->adjusted_mode.hdisplay == 0)?bif_info->lcm_width:crtc->state->adjusted_mode.hdisplay;
@@ -13175,9 +13188,6 @@ static void ddp_cmdq_cb(struct cmdq_cb_data data)
 	DDP_COMMIT_LOCK(&priv->commit.lock, __func__, cb_data->pres_fence_idx);
 	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
 
-	if (bif_enabled(crtc))
-		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE, __LINE__);
-
 	if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
 		ovl_status = mtk_drm_crtc_check_ovl_status(crtc, cb_data);
 
@@ -15388,7 +15398,7 @@ int mtk_crtc_attach_ddp_comp(struct drm_crtc *crtc, int ddp_mode,
 			comp->mtk_crtc = NULL;
 	}
 
-	if (bif_enabled(crtc)) {
+	if (priv->data->support_bif) {
 		struct mtk_crtc_ddp_ctx *ddp_ctx = &mtk_crtc->ddp_ctx[mtk_crtc->ddp_mode];
 
 		for (i = 0; i < ddp_ctx->bif_write_comp_nr; i++) {
@@ -17887,16 +17897,8 @@ void mtk_drm_crtc_enable(struct drm_crtc *crtc, bool need_report_bw)
 	/* for ap res switch */
 	mtk_crtc_divide_default_path_by_rsz(mtk_crtc);
 
-	if (mtk_crtc->bif_info) {
-		mtk_crtc->bif_info->bif_init = true;
+	if (mtk_crtc->bif_info)
 		mtk_crtc_update_bif_roi(mtk_crtc);
-
-		if (bif_enabled(crtc)) {
-			if (!mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST, __LINE__))
-				set_bif_enable(crtc, false, __LINE__);
-			DDPMSG("%s,bif_enable:%d,\n", __func__, mtk_crtc->bif_info->bif_enable);
-		}
-	}
 
 	/* attach the crtc to each componet */
 	mtk_crtc_attach_ddp_comp(crtc, mtk_crtc->ddp_mode, true);
@@ -19138,6 +19140,9 @@ void mtk_crtc_first_enable_ddp_config(struct mtk_drm_crtc *mtk_crtc)
 	if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
 		CRTC_MMP_MARK(0, set_dirty, FIRST_ENABLE_DDP_CONFIG, __LINE__);
 		mtk_crtc_set_dirty(mtk_crtc);
+	} else {
+		if (mtk_crtc->bif_info)
+			memcpy(&mtk_crtc->bif_info->cfg, &cfg, sizeof(struct mtk_ddp_config));
 	}
 }
 
@@ -19248,6 +19253,8 @@ void mtk_drm_crtc_first_enable(struct drm_crtc *crtc)
 		mtk_drm_pan_disp_set_hrt_bw(crtc, __func__);
 
 	mtk_crtc_bif_info_init(mtk_crtc);
+	if (bif_enabled(crtc))
+		mtk_crtc_bif_path_prepare(mtk_crtc);
 
 	/* 3. Regsister configuration */
 	mtk_crtc_first_enable_ddp_config(mtk_crtc);
