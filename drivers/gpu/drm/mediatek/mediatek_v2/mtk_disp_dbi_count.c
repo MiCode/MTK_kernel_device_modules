@@ -502,11 +502,13 @@ void mtk_dbi_count_close_clk_if_no_error(struct mtk_ddp_comp *comp,
 	GCE_ELSE;
 	/* dbi count no error */
 
-	value = 0;mask = 0;
-	SET_VAL_MASK(value, mask, 0, REG_CNT_CLK_FORCE_EN);
-	SET_VAL_MASK(value, mask, 0, REG_SCL_CLK_FORCE_EN);
-	SET_VAL_MASK(value, mask, 0, REG_SMP_CLK_FORCE_EN);
-	mtk_dbi_count_write_mask(comp, value, REG_DBI_GATING, mask, handle);
+	if (mtk_crtc_is_frame_trigger_mode(&comp->mtk_crtc->base)) {
+		value = 0;mask = 0;
+		SET_VAL_MASK(value, mask, 0, REG_CNT_CLK_FORCE_EN);
+		SET_VAL_MASK(value, mask, 0, REG_SCL_CLK_FORCE_EN);
+		SET_VAL_MASK(value, mask, 0, REG_SMP_CLK_FORCE_EN);
+		mtk_dbi_count_write_mask(comp, value, REG_DBI_GATING, mask, handle);
+	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 		comp->regs_pa + REG_DBI_COUNT_UDMA_W_EN, 0, ~0);
 
