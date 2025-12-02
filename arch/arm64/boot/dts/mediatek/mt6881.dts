@@ -7408,6 +7408,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x10218000 0 0x1000>;
 		};
 
+		drm: drm@1000d000 {
+			compatible = "mediatek,dbgtop-drm";
+			reg = <0 0x1000d000 0 0x1000>;
+			ver = <2>;
+			sec-write = <1>;
+		};
+
 		dvfsrc: dvfsrc@1c00f000 {
 			compatible = "mediatek,mt6881-dvfsrc";
 			reg = <0 0x1c00f000 0 0x1000>,
