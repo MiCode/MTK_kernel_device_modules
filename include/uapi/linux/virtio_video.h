@@ -400,6 +400,7 @@ struct virtio_video_resource_destroy_all {
 struct virtio_video_queue_clear {
 	struct virtio_video_cmd_hdr hdr;
 	__le32 queue_type; /* One of VIRTIO_VIDEO_QUEUE_TYPE_* types */
+	__le32 stop_count;
 	__u8 padding[4];
 };
 
