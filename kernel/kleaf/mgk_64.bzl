@@ -5034,12 +5034,23 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4-mt79xx:wlan_mt7902")
 
     if "vm_uos.config" in DEFCONFIG_OVERLAYS:
-        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/vmctl:vmctl")
-        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/samples:vcpu_sample")
-        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/samples:virtio_hello")
+        mgk_64_common_eng_modules.append("drivers/rpmsg/rpmsg_ctrl.ko")
+        mgk_64_common_eng_modules.append("drivers/rpmsg/rpmsg_ns.ko")
+        mgk_64_common_eng_modules.append("drivers/rpmsg/virtio_rpmsg_bus.ko")
+        mgk_64_common_user_modules.append("drivers/rpmsg/rpmsg_ctrl.ko")
+        mgk_64_common_user_modules.append("drivers/rpmsg/rpmsg_ns.ko")
+        mgk_64_common_user_modules.append("drivers/rpmsg/virtio_rpmsg_bus.ko")
+        mgk_64_common_userdebug_modules.append("drivers/rpmsg/rpmsg_ctrl.ko")
+        mgk_64_common_userdebug_modules.append("drivers/rpmsg/rpmsg_ns.ko")
+        mgk_64_common_userdebug_modules.append("drivers/rpmsg/virtio_rpmsg_bus.ko")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/nebula_rproc:nebula_rproc")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/nebula_rproc:nebula_rproc_host")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/nebula_trace:nebula-trace")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/nebula_trace:vm_irq_monitor")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/samples:vcpu_sample")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/samples:virtio_hello")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio_nodes:virtio_nodes")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/vmctl:vmctl")
 
 
 get_overlay_modules_list()
