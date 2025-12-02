@@ -12108,6 +12108,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "mediatek,mt6881-audio-dsp-hrt-bw";
 		adsp-qos-scene-phone-call = <0x1 500>;
 	};
+
+	virtio_vmctl: virtio-vmctl {
+		status = "disabled";
+	};
 };
 
 /* Audio GPIO Set */
