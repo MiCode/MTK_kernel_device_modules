@@ -10247,84 +10247,100 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1f017000 0 0x1000>;
 		};
 
-		vdec-gcon@16000000 {
-			compatible = "mediatek,vdec_gcon";
-			reg = <0 0x16000000 0 0xd000>;
+		vdec@16000000 {
+			compatible = "mediatek,vcodec-dec";
+			mediatek,platform = "platform:mt6881";
+			mediatek,ipm = <1>;
+			vp-mode-buf-size-multi = <1>;
+
+			/* for power */
+			mediatek,larbs = <&smi_larb4>;
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_VDE0>;
+			clocks = <&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN>;
+			clock-names = "CORE_MT_CG_VDEC0";
+
+			/* for memory */
+			iommus = <&disp_iommu M4U_L4_P0_VDEC_MC_EXT>,
+				<&disp_iommu M4U_L4_P1_VDEC_UFO_EXT>,
+				<&disp_iommu M4U_L4_P2_VDEC_PP_EXT>,
+				<&disp_iommu M4U_L4_P3_VDEC_UNIWRAP_EXT>,
+				<&disp_iommu M4U_L4_P4_VDEC_TILE_EXT>,
+				<&disp_iommu M4U_L4_P5_VDEC_VLD_EXT>,
+				<&disp_iommu M4U_L4_P6_VDEC_VLD2_EXT>,
+				<&disp_iommu M4U_L4_P7_VDEC_AVC_MV_EXT>;
+
+			/* for translation fault callback */
+			m4u-ports =
+				<M4U_L4_P0_VDEC_MC_EXT>,
+				<M4U_L4_P1_VDEC_UFO_EXT>,
+				<M4U_L4_P2_VDEC_PP_EXT>,
+				<M4U_L4_P3_VDEC_UNIWRAP_EXT>,
+				<M4U_L4_P4_VDEC_TILE_EXT>,
+				<M4U_L4_P5_VDEC_VLD_EXT>,
+				<M4U_L4_P6_VDEC_VLD2_EXT>,
+				<M4U_L4_P7_VDEC_AVC_MV_EXT>,
+				<M4U_PORT_L49_P3_VIDEO_UP0>,
+				<M4U_PORT_L49_P3_VIDEO_UP1>;
+			m4u-port-names =
+				"M4U_PORT_VDEC_MC",
+				"M4U_PORT_VDEC_UFO",
+				"M4U_PORT_VDEC_PP",
+				"M4U_PORT_VDEC_UNIWRAP",
+				"M4U_PORT_VDEC_TILE",
+				"M4U_PORT_VDEC_VLD",
+				"M4U_PORT_VDEC_VLD2",
+				"M4U_PORT_VDEC_AVC_MV",
+				"M4U_PORT_VDEC_VIDEO_UP_NOR",
+				"M4U_PORT_VDEC_VIDEO_UP_SEC";
+
+			/* dvfs params */
 		};
 
-		vdec@1600d000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1600d000 0 0x1000>;
-		};
+		venc@17000000 {
+			compatible = "mediatek,vcodec-enc";
+			mediatek,platform = "platform:mt6881";
+			mediatek,ipm = <2>;
+			venc-core-count = <1>;
+			reg = <0 0x17020000 0 0x2000>;
+			reg-names = "VENC_SYS";
+			iommus = <&disp_iommu M4U_L7_P0_RC>,
+				<&disp_iommu M4U_L7_P1_REC>,
+				<&disp_iommu M4U_L7_P2_VBS>,
+				<&disp_iommu M4U_L7_P3_SMV>,
+				<&disp_iommu M4U_L7_P4_RMV>,
+				<&disp_iommu M4U_L7_P8_FCS_SUB_W>,
+				<&disp_iommu M4U_L7_P10_CLU>,
+				<&disp_iommu M4U_L7_P11_CCH>,
+				<&disp_iommu M4U_L7_P12_RLU>,
+				<&disp_iommu M4U_L7_P13_RCH>,
+				<&disp_iommu M4U_L7_P14_FCS_SUB_R>;
 
-		vdec@1600f000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1600f000 0 0x800>;
-		};
+			/* for power */
+			mediatek,larbs = <&smi_larb7>;
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_VEN0>;
+			clocks = <&venc_gcon_clk CLK_VEN1_CKE1_VENC>;
+			clock-names = "MT_CG_VENC0";
 
-		vdec@1600f800 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1600f800 0 0x400>;
-		};
+			/* for translation fault callback */
+			port-arg-num = <3>;
+			port-def = <0 M4U_L7_P0_RC 0>,
+				<0 M4U_L7_P1_REC 0>,
+				<0 M4U_L7_P2_VBS 0>,
+				<0 M4U_L7_P3_SMV 0>,
+				<0 M4U_L7_P4_RMV 0>,
+				<0 M4U_L7_P8_FCS_SUB_W 0>,
+				<0 M4U_L7_P10_CLU 0>,
+				<0 M4U_L7_P11_CCH 0>,
+				<0 M4U_L7_P12_RLU 0>,
+				<0 M4U_L7_P13_RCH 0>,
+				<0 M4U_L7_P14_FCS_SUB_R 0>;
 
-		vdec-gcon@16010000 {
-			compatible = "mediatek,vdec_gcon";
-			reg = <0 0x16010000 0 0x8000>;
-		};
-
-		vdec@16018000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x16018000 0 0x8000>;
-		};
-
-		vdec@16020000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x16020000 0 0xd000>;
-		};
-
-		vdec@1602d000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602d000 0 0x1000>;
-		};
-
-		vdec@1602e000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602e000 0 0x1000>;
-		};
-
-		vdec@1602f000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602f000 0 0x800>;
-		};
-
-		vdec@1602f800 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602f800 0 0x400>;
-		};
-
-		vdec@1602fc00 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x1602fc00 0 0x400>;
-		};
-
-		vdec@16080000 {
-			compatible = "mediatek,vdec";
-			reg = <0 0x16080000 0 0x10000>;
-		};
-
-		venc-gcon@17000000 {
-			compatible = "mediatek,venc_gcon";
-			reg = <0 0x17000000 0 0x10000>;
+			/* dvfs params */
 		};
 
 		smi-larb7@17010000 {
 			compatible = "mediatek,smi_larb7";
 			reg = <0 0x17010000 0 0x10000>;
-		};
-
-		venc@17020000 {
-			compatible = "mediatek,venc";
-			reg = <0 0x17020000 0 0x10000>;
 		};
 
 		jpgenc@17030000 {
