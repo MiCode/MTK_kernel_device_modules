@@ -8943,6 +8943,38 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			bootmode = <&chosen>;
 		};
 
+		scp_audio_core: scp-audio-core@1cbe0000 {
+			compatible = "mediatek,scp-audio-core";
+			status = "okay";
+			mbox-num = <2>;
+			reg = <0 0x1cce0000 0 0x100>, /* Re-use scp hw mbox4 */
+				<0 0x1cce0100 0 0x4>,
+				<0 0x1cce010c 0 0x4>,
+				<0 0x1ccf0000 0 0x100>, /* Re-use scp hw mbox5 */
+				<0 0x1ccf0100 0 0x4>,
+				<0 0x1ccf010c 0 0x4>,
+				<0 0x00000000 0 0x0>; /* IFRBUS_AO HRT CFG */
+
+			reg-names = "mbox0_base", "mbox0_set", "mbox0_clr",
+				"mbox1_base", "mbox1_set", "mbox1_clr",
+				"cfg_hrt";
+			interrupts = <GIC_SPI 650 IRQ_TYPE_LEVEL_HIGH 0>,
+				<GIC_SPI 663 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupt-names = "mbox0", "mbox1";
+			hrt-ctrl-bits = <0x00000000>;
+			interconnects = <&dvfsrc MT6873_MASTER_HRT_ADSP
+					&dvfsrc MT6873_SLAVE_HRT_DDR_EMI>;
+			interconnect-names = "icc-hrt-bw";
+			mbox-attr = <0x0>, /* mbox0 */
+				<0x0>; /* mbox1 */
+			feature-control-bits = /bits/ 64 <0x00000001ffffffff>;
+			adsp-rsv-logger-a = <0x180000>;
+			adsp-rsv-dbg-dump-a = <0x80000>;
+			adsp-rsv-ipidma-a = <0x200000>;
+			adsp-rsv-audio = <0x5c0000>;
+			adsp-rsv-xhci = <0x80000>;
+		};
+
 		gic500@c000000 {
 			compatible = "mediatek,gic500";
 			reg = <0 0x0c000000 0 0x400000>;
@@ -11776,6 +11808,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		etdm-out-sync = <0 0 0>; /* 0: disable; 1: enable */
 		etdm-in-sync = <1 0 0>; /* 0: disable; 1: enable */
 		etdm-ip-mode = <0 0 0>; /* 0: One IP multi-channel 1: Multi-IP 2-channel */
+	};
+
+	/* scene: $enable $bandwidth */
+	audio_dsp_hrt_bw: audio-dsp-hrt-bw {
+		compatible = "mediatek,mt6881-audio-dsp-hrt-bw";
+		adsp-qos-scene-phone-call = <0x1 500>;
 	};
 };
 
