@@ -95,6 +95,7 @@ struct lbat_regs_t {
 	struct reg_t adc_out;
 	struct reg_t preuv_en;
 	struct reg_t preuv_lvl;
+	struct reg_t tm_en;
 	int volt_full;
 };
 
@@ -232,6 +233,9 @@ static struct lbat_regs_t mt6379_lbat2_regs = {
 	.volt_full = 1840,
 };
 
+#define MT6720_REG_DUMMY_TM		0xFF
+#define MT6720_REG_PREUV_EN		0x19
+#define MT6720_REG_PREUV_LVL		0x144
 #define MT6720_AUXADC_LBAT0		0x9AD
 #define MT6720_AUXADC_LBAT1		0x9AE
 #define MT6720_AUXADC_LBAT2		0x9AF
@@ -251,6 +255,9 @@ static struct lbat_regs_t mt6720_lbat_regs = {
 	.min_en = { MT6720_AUXADC_LBAT5, GENMASK(1, 0), 1 },
 	.volt_min = { MT6720_AUXADC_LBAT6, GENMASK(11, 0), 2 },
 	.adc_out = { MT6720_AUXADC_ADC_OUT_LBAT, GENMASK(11, 0), 2 },
+	.preuv_en = { MT6720_REG_PREUV_EN, BIT(7), 1 },
+	.preuv_lvl = { MT6720_REG_PREUV_LVL, GENMASK(7, 5), 1 },
+	.tm_en = { MT6720_REG_DUMMY_TM, BIT(2), 1 },
 	.r_ratio_node_name = "lbat-service",
 	.volt_full = 1840,
 };
@@ -1026,8 +1033,25 @@ EXPORT_SYMBOL(lbat_read_volt);
 
 int lbat_set_preuv_lvl(u8 lvl)
 {
-	if (lbat_regs && lbat_regs->preuv_lvl.addr)
-		return __regmap_update_bits(regmap, &lbat_regs->preuv_lvl, lvl);
+	int ret = 0;
+
+	if (lbat_regs && lbat_regs->preuv_lvl.addr) {
+		if (lbat_regs->tm_en.addr) {
+			ret = regmap_set_bits(regmap, lbat_regs->tm_en.addr, lbat_regs->tm_en.mask);
+			if (ret)
+				return ret;
+		}
+
+		__regmap_update_bits(regmap, &lbat_regs->preuv_lvl,
+				     lvl << (ffs(lbat_regs->preuv_lvl.mask) - 1));
+
+		if (lbat_regs->tm_en.addr) {
+			ret = regmap_clear_bits(regmap, lbat_regs->tm_en.addr, lbat_regs->tm_en.mask);
+			if (ret)
+				return ret;
+		}
+		return 0;
+	}
 	return -EOPNOTSUPP;
 }
 EXPORT_SYMBOL(lbat_set_preuv_lvl);
