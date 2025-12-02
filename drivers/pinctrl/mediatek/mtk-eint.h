@@ -91,7 +91,7 @@ struct mtk_eint {
 	const struct mtk_eint_xt *gpio_xlate;
 };
 
-#if IS_ENABLED(CONFIG_DEVICE_MODULES_EINT_MTK)
+#if IS_ENABLED(CONFIG_DEVICE_MODULES_EINT_MTK) || IS_ENABLED(CONFIG_VIRTIO_EINT_MTK)
 int mtk_eint_do_init(struct mtk_eint *eint);
 int mtk_eint_do_suspend(struct mtk_eint *eint);
 int mtk_eint_do_resume(struct mtk_eint *eint);
@@ -127,7 +127,8 @@ static inline int mtk_eint_find_irq(struct mtk_eint *eint, unsigned long eint_n)
 	return -EOPNOTSUPP;
 }
 
-static inline void dump_eint_pin_status(unsigned int eint_num)
+static inline int dump_eint_pin_status(
+	unsigned int eint_num, char *buf, unsigned int buf_size)
 {
 	return -EOPNOTSUPP;
 }

@@ -8,7 +8,7 @@ config DEVICE_MODULES_EINT_MTK
 	select GPIOLIB
 	select IRQ_DOMAIN
 	default y if PINCTRL_MTK || PINCTRL_MTK_MOORE
-	default DEVICE_MODULES_PINCTRL_MTK_PARIS
+	default DEVICE_MODULES_PINCTRL_MTK_PARIS if !VIRTIO_EINT_MTK
 
 config DEVICE_MODULES_PINCTRL_MTK_V2
 	tristate
@@ -19,9 +19,21 @@ config DEVICE_MODULES_PINCTRL_MTK_PARIS
 	select PINMUX
 	select GENERIC_PINCONF
 	select GPIOLIB
-	select DEVICE_MODULES_EINT_MTK
+	select DEVICE_MODULES_EINT_MTK if !VIRTIO_EINT_MTK
 	select OF_GPIO
 	select DEVICE_MODULES_PINCTRL_MTK_V2
+
+config VIRTIO_EINT_MTK
+	bool "MTK Virtio eint driver"
+	depends on VIRTIO
+	select GPIOLIB
+	select IRQ_DOMAIN
+	default y if PINCTRL_MTK || PINCTRL_MTK_MOORE
+	help
+	  This is the virtual eint driver for virtio.
+	  It can be used with QEMU
+	  based VMMs (like KVM or Xen).
+	  Say Y or N.
 
 config PINCTRL_MT6363
 	tristate "Mediatek MT6363 pin control"

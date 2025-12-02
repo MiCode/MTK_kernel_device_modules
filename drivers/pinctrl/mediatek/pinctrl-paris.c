@@ -1074,9 +1074,14 @@ int mtk_paris_pinctrl_probe(struct platform_device *pdev)
 		return err;
 
 	err = mtk_build_eint(hw, pdev);
-	if (err)
+	if (err) {
 		dev_warn(&pdev->dev,
 			 "Failed to add EINT, but pinctrl still can work\n");
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+		if (err == -EPROBE_DEFER)
+			return err;
+#endif
+	}
 
 	/* Build gpiochip should be after pinctrl_enable is done */
 	err = mtk_build_gpiochip(hw, pdev->dev.of_node);
