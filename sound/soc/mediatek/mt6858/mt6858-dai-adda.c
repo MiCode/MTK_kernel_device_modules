@@ -769,7 +769,6 @@ static void mt6363_vs1_vote(struct mtk_base_afe *afe)
 	}
 }
 
-#ifdef MT6681_NO_VS1_VOTE
 static int mt_vs1_voter_dl_event(struct snd_soc_dapm_widget *w,
 			  struct snd_kcontrol *kcontrol,
 			  int event)
@@ -821,7 +820,7 @@ static int mt_vs1_voter_ul_event(struct snd_soc_dapm_widget *w,
 
 	return 0;
 }
-#endif
+
 /* stf */
 static int stf_positive_gain_get(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
@@ -966,20 +965,17 @@ static int mt6858_adda6_only_set(struct snd_kcontrol *kcontrol,
 static int mt6858_adda_dl_max_vol_get(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-#ifdef MT6681_NO_VS1_VOTE
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
 
 	ucontrol->value.integer.value[0] = afe_priv->is_adda_dl_max_vol;
-#endif
 	return 0;
 }
 
 static int mt6858_adda_dl_max_vol_set(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
-#ifdef MT6681_NO_VS1_VOTE
 	struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	struct mt6858_afe_private *afe_priv = afe->platform_priv;
@@ -987,7 +983,6 @@ static int mt6858_adda_dl_max_vol_set(struct snd_kcontrol *kcontrol,
 
 	afe_priv->is_adda_dl_max_vol = is_adda_dl_max_vol;
 	mt6363_vs1_vote(afe);
-#endif
 
 	return 0;
 }
@@ -1274,7 +1269,6 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			      AFE_ADDA_UL1_SRC_CON1,
 			      FIFO_SOFT_RST_SFT, 1,
 			      NULL, 0),
-#ifdef MT6681_NO_VS1_VOTE
 	SND_SOC_DAPM_SUPPLY_S("VS1_VOTER_DL", SUPPLY_SEQ_ADDA_AFE_ON,
 			      SND_SOC_NOPM, 0, 0,
 			      mt_vs1_voter_dl_event,
@@ -1284,7 +1278,6 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			      SND_SOC_NOPM, 0, 0,
 			      mt_vs1_voter_ul_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-#endif
 	SND_SOC_DAPM_MUX("ADDA_UL_Mux", SND_SOC_NOPM, 0, 0,
 			 &adda_ul_mux_control),
 	SND_SOC_DAPM_MUX("ADDA_CH34_UL_Mux", SND_SOC_NOPM, 0, 0,
@@ -1421,9 +1414,7 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA Playback", NULL, "ADDA Enable"},
 	{"ADDA Playback", NULL, "ADDA Playback Enable"},
 	{"ADDA Playback", NULL, "AUD_PAD_TOP"},
-#ifdef MT6681_NO_VS1_VOTE
 	{"ADDA Playback", NULL, "VS1_VOTER_DL"},
-#endif
 
 	/* capture */
 	{"ADDA_UL_Mux", "MTKAIF", "ADDA Capture"},
@@ -1436,9 +1427,7 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA Capture", NULL, "ADDA Capture Enable"},
 	{"ADDA Capture", NULL, "AUD_PAD_TOP"},
 	{"ADDA Capture", NULL, "ADDA_MTKAIF_CFG"},
-#ifdef MT6681_NO_VS1_VOTE
 	{"ADDA Capture", NULL, "VS1_VOTER_UL"},
-#endif
 
 	{"AP DMIC Capture", NULL, "ADDA Enable"},
 	{"AP DMIC Capture", NULL, "ADDA Capture Enable"},
@@ -1449,9 +1438,7 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA CH34 Capture", NULL, "ADDA CH34 Capture Enable"},
 	{"ADDA CH34 Capture", NULL, "AUD_PAD_TOP"},
 	{"ADDA CH34 Capture", NULL, "ADDA6_MTKAIF_CFG"},
-#ifdef MT6681_NO_VS1_VOTE
 	{"ADDA CH34 Capture", NULL, "VS1_VOTER_UL"},
-#endif
 
 	{"AP DMIC CH34 Capture", NULL, "ADDA Enable"},
 	{"AP DMIC CH34 Capture", NULL, "ADDA CH34 Capture Enable"},
