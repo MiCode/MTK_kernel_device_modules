@@ -1537,6 +1537,11 @@ static const struct mtk_disp_ccorr_data mt6858_ccorr_driver_data = {
 	.need_bypass_shadow = true,
 };
 
+static const struct mtk_disp_ccorr_data mt6881_ccorr_driver_data = {
+	.support_shadow     = false,
+	.need_bypass_shadow = true,
+};
+
 static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 	{ .compatible = "mediatek,mt6761-disp-ccorr",
 	  .data = &mt6761_ccorr_driver_data},
@@ -1582,6 +1587,8 @@ static const struct of_device_id mtk_disp_ccorr_driver_dt_match[] = {
 	  .data = &mt6993_ccorr_driver_data},
 	{ .compatible = "mediatek,mt6858-disp-ccorr",
 	  .data = &mt6858_ccorr_driver_data},
+	{ .compatible = "mediatek,mt6881-disp-ccorr",
+	  .data = &mt6881_ccorr_driver_data},
 	{},
 };
 

@@ -4205,7 +4205,7 @@ static const enum mtk_ddp_comp_id mt6881_mtk_ddp_main[] = {
 	DDP_COMPONENT_OVL0_2L,
 	DDP_COMPONENT_OVL1_2L,
 	DDP_COMPONENT_PQ0_IN_CB0,
-#ifdef IF_ONE // DRM_BYPASS_PQ
+#ifdef DRM_BYPASS_PQ
 	DDP_COMPONENT_PQ0_OUT_CB4,
 #else
 	DDP_COMPONENT_RSZ0,
@@ -4222,7 +4222,7 @@ static const enum mtk_ddp_comp_id mt6881_mtk_ddp_main[] = {
 	DDP_COMPONENT_OVL1_2L,
 	DDP_COMPONENT_OVL2_2L,
 	DDP_COMPONENT_PQ0_IN_CB0,
-#ifdef IF_ONE // DRM_BYPASS_PQ
+#ifdef DRM_BYPASS_PQ
 	DDP_COMPONENT_PQ0_OUT_CB4,
 #else
 	DDP_COMPONENT_RSZ0,
