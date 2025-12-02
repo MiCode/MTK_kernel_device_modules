@@ -12304,8 +12304,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		interrupts = <GIC_SPI 520 IRQ_TYPE_LEVEL_HIGH 0>;
 		topckgen = <&cksys_reg_clk>;
 		apmixedsys = <&apmixedsys_clk>;
-#if 0 /* Temporarily removed for FPGA EP */
-		power-domains = <&scpsys MT6858_POWER_DOMAIN_AUDIO>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_AUDIO>;
 		clocks = <&afe_clk CLK_AFE_APLL1_AUDIO>,
 			<&afe_clk CLK_AFE_APLL2_AUDIO>,
 			<&afe_clk CLK_AFE_APLL_TUNER1_AUDIO>,
@@ -12328,9 +12327,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<&cksys_reg_clk CLK_CKSYS_REG_AUD_ENGEN2_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AUD_INTBUS_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AUDIO_H_SEL>,
-			<&pericfg_ao_clk CLK_PERICFG_AO_REG_PERI_AUDIO0_AUDIO>,
-			<&pericfg_ao_clk CLK_PERICFG_AO_REG_PERI_AUDIO1_AUDIO>,
-			<&pericfg_ao_clk CLK_PERICFG_AO_REG_PERI_AUDIO2_AUDIO>,
+			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_AUDIO0_AUDIO>,
+			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_AUDIO1_AUDIO>,
+			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_AUDIO2_AUDIO>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL1>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL1_D2>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL1_D4>,
@@ -12378,7 +12377,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"ck_fmi2s_m_sel",
 			"ck_apll12_div_fmi2s",
 			"tck_26m_mx9_ck";
-#endif
 		pinctrl-names = "aud-dat-mosi0-off",
 			"aud-dat-mosi0-on",
 			"aud-dat-mosi1-off",
