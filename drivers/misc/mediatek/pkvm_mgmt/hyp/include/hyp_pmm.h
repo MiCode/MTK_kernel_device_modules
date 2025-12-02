@@ -19,7 +19,9 @@ enum mgmt_command {
 	DISABLE_SMMU_PROTECTION      = 7,
 	ENABLE_SMMU_PROTECTION       = 8,
 	DUMP_PROTECTION_STATUS       = 9,
-	INVALID_COMMAND              = 10,
+	INIT_DEBUG_PAGE              = 10,
+	RESET_PGTBL_TIME             = 11,
+	INVALID_COMMAND              = 12,
 };
 
 int hyp_pmm_init(void);
