@@ -12423,6 +12423,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		adsp-qos-scene-phone-call = <0x1 500>;
 	};
 
+	pci: pci@fdf000000 {
+		status = "disabled";
+	};
+
+	virtio_mmio: virtio-mmio@90000000 {
+		status = "disabled";
+	};
+
 	virtio_vmctl: virtio-vmctl {
 		status = "disabled";
 	};

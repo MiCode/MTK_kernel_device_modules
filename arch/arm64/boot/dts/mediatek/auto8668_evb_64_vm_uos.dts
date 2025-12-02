@@ -114,7 +114,38 @@
 	regulator-always-on;
 };
 
+&gic {
+	ranges;
+	its: its@910000000 {
+		compatible = "arm,gic-v3-its";
+		msi-controller;
+		reg = <0x9 0x10000000 0x0 0x20000>;
+	};
+};
 
+// virtio-pci bus is used to enumerate virtio devices
+&pci {
+	device_type = "pci";
+	compatible = "pci-host-ecam-generic";
+	status = "okay";
+	reg = <0xf 0xdf000000 0x0 0x1000000>;
+	bus-range = <0 0>;
+	ranges = <0x2000000 0x0 0xe0001000 0xf 0xe0001000 0x0 0xffff000>;
+	interrupt-map-mask = <0xf800 0 0 1>;
+	#address-cells = <3>;
+	#size-cells = <2>;
+	#interrupt-cells = <1>;
+	msi-parent = <&its>;
+};
+
+&virtio_vmctl {
+	dma-coherent;
+	status = "okay";
+	/* must be in sync with mmio irq in uos_alps_pv8678.lua */
+	interrupts = <GIC_SPI 149 IRQ_TYPE_EDGE_RISING 0>;
+	reg = <0x9 0x2000 0x00 0x2000>;
+	compatible = "virtio,mmio";
+};
 
 
 #include <auto8668p1_64_vm_uos/cust.dtsi>
