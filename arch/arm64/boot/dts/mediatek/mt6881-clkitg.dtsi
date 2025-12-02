@@ -97,7 +97,6 @@
 			<&apmixedsys_clk CLK_APMIXED_APLL1>,
 			<&apmixedsys_clk CLK_APMIXED_APLL2>,
 			<&apmixedsys_clk CLK_APMIXED_TVDPLL>,
-			<&vlp_cksys_top_clk CLK_VLP_CKSYS_TOP_SCP_SEL>,
 			<&vlp_cksys_top_clk CLK_VLP_CKSYS_TOP_PWM_VLP_SEL>;
 	};
 
