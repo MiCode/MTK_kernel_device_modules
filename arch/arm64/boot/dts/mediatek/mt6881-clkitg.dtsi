@@ -65,13 +65,6 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_CK_DIV_OUT4>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_CK_DIV_OUT6>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL12_CK_DIV_FMI2S>,
-			<&apmixedsys_clk CLK_APMIXED_MAINPLL>,
-			<&apmixedsys_clk CLK_APMIXED_UNIVPLL>,
-			<&apmixedsys_clk CLK_APMIXED_MMPLL>,
-			<&apmixedsys_clk CLK_APMIXED_EMIPLL>,
-			<&apmixedsys_clk CLK_APMIXED_APLL1>,
-			<&apmixedsys_clk CLK_APMIXED_APLL2>,
-			<&apmixedsys_clk CLK_APMIXED_TVDPLL>,
 			<&vlp_cksys_top_clk CLK_VLP_CKSYS_TOP_PWM_VLP_SEL>;
 	};
 
