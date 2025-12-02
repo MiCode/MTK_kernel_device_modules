@@ -5777,7 +5777,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			opp-microvolt = <725000>;
 		};
 		opp-4 {
-			opp-hz = /bits/ 64 <624000000>;
+			opp-hz = /bits/ 64 <624000001>;
 			opp-microvolt = <825000>;
 		};
 	};
@@ -5801,7 +5801,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			opp-microvolt = <725000>;
 		};
 		opp-4 {
-			opp-hz = /bits/ 64 <546000000>;
+			opp-hz = /bits/ 64 <546000001>;
 			opp-microvolt = <825000>;
 		};
 	};
@@ -5809,7 +5809,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	opp_table_cam: opp-table-cam {
 		compatible = "operating-points-v2";
 		opp-0 {
-			opp-hz = /bits/ 64 <275000000>;
+			opp-hz = /bits/ 64 <312000000>;
 			opp-microvolt = <575000>;
 		};
 		opp-1 {
@@ -5925,7 +5925,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 	mmdvfs_clk: mmdvfs-clk {
 		compatible = "mediatek,mtk-mmdvfs-v3";
-		//mmdvfs-free-run;
+		mmdvfs-free-run;
 		mediatek,restore-step;
 		mmdvfs-ap-ccf-support;
 		#mmdvfs,clock-cells = <6>;
@@ -5985,12 +5985,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		compatible = "mediatek,mmdvfs-debug";
 		//dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		//disp-dev = <&dispsys_config>;
-		force-step0 = <0>;	/* 0:opp0,  1:opp1, ... */
+		force-step0 = <1>;	/* 0:opp0,  1:opp1, ... */
 		release-step0 = <1>;	/* 0:disable,  1:enable */
 		use-v3-pwr = <3>; /* OR operation of (1 << PWR_MMDVFS_XXX) */
 		clocks = <&mmdvfs_clk CLK_MMDVFS_VCORE>, <&mmdvfs_clk CLK_MMDVFS_VMM>;
 		clock-names = "vcore", "vmm";
-		//vcore-supply = <&mt6319_vbuck4>;
+		vcore-supply = <&mt6319_6_vbuck4>;
 		vmm-pmic-supply = <&mt6363_vbuck1>;
 		fmeter-id = /bits/ 8 <5 6 40 41 51 52 53>;
 		fmeter-type = /bits/ 8 <3 3 3 3 3 3 3>;
