@@ -3,6 +3,19 @@
  * Copyright (C) 2022 MediaTek Inc.
  */
 
+&mtk_leds {
+	compatible = "mediatek,i2c-leds";
+	status = "disabled";
+
+	backlight {
+		led-mode = <5>;
+		force-dts = <1>;
+		pwm-config = <0 1 0 0 0>;
+		max-brightness = <255>;
+		max-hw-brightness = <1023>;
+	};
+};
+
 &pio {
 	mtkfb_pins_lcm_rst_out1_gpio: lcm-rst-out1-gpio {
 		pins-cmd-dat {

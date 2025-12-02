@@ -316,7 +316,7 @@
 
 #include <auto8668p1_64/cust.dtsi>
 #include "mediatek/cust_mt6881_camera_v4l2.dtsi"
-#include "mediatek/cust_mt8668_display_interface.dtsi"
+#include "mediatek/cust_mt8668_display_interface_EVB.dtsi"
 #include "mediatek/cust_mt8668_display_serdes_config.dtsi"
 #include "mediatek/cust_mt8668_display_config_main.dtsi"
 #include "mediatek/cust_k6881_connfem.dtsi"
