@@ -273,6 +273,7 @@ EXIT:
 
 static const struct of_device_id scp_qos_scene_of_ids[] = {
 	{ .compatible = "mediatek,mt6858-audio-dsp-hrt-bw"},
+	{ .compatible = "mediatek,mt6881-audio-dsp-hrt-bw"},
 	{},
 };
 
