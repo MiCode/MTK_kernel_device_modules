@@ -175,8 +175,8 @@ static void get_avg_max_min_time(u32 start_idx, u64 *avg_time, u64 *max_time, u6
 	int i, use_idx = 1;
 	u64 total_time = 0;
 
-	*max_time = ((u64 *)pgtbl_virt)[0];
-	*min_time = ((u64 *)pgtbl_virt)[0];
+	*max_time = ((u64 *)pgtbl_virt)[start_idx];
+	*min_time = ((u64 *)pgtbl_virt)[start_idx];
 	for (i = start_idx; i < (start_idx + MAX_RECORD_TIMES); i++) {
 		if(((u64 *)pgtbl_virt)[i] > *max_time)
 			*max_time = ((u64 *)pgtbl_virt)[i];
