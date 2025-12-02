@@ -42,7 +42,10 @@ define_mgk_ddk_ko(
     hdrs = glob([
         "**/*.h",
     ]),
-    includes = ["."],
+    header_deps = [
+        "//kernel_device_modules-6.12/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm:export_headers",
+    ],
+    includes = [".", "pkvm"],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
         "-I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion/",
@@ -59,6 +62,8 @@ define_mgk_ddk_ko(
     ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cam_timesync:archcounter_timesync".format(kernel_version),
                "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s:cam_qos".format(kernel_version),
                "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+               "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm:pkvm_p1_6858".format(kernel_version),
+               "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm:pkvm_p1_dummy".format(kernel_version),
     ] +
     (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),

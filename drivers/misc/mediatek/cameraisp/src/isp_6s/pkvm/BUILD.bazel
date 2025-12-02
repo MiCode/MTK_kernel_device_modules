@@ -38,3 +38,13 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm/hyp:hyp_p1_6858".format(kernel_version),
     ],
 )
+define_mgk_ddk_ko(
+    name = "pkvm_p1_dummy",
+    srcs = [
+        "pkvm_p1_dummy.c",
+    ],
+    out = "pkvm_p1_dummy.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+)
