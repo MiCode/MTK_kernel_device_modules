@@ -29,10 +29,6 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_USB_XHCI_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_I2C_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_I2C_5_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SENINF_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SENINF1_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SENINF2_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_SENINF3_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AUD_ENGEN1_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AUD_ENGEN2_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AES_UFSFDE_SEL>,
@@ -56,12 +52,6 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_RNG_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_PQC_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_USB_FRMCNT_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG0_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG1_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG2_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG3_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG4_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_CAMTG5_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL_IN0_MCK_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL_IN1_MCK_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_APLL_IN2_MCK_SEL>,
@@ -207,7 +197,6 @@
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SENINF_TG_SUBA_CAM_RAW>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SENINF_TG_SUBB_CAM_RAW>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAM_RAW>,
-			<&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_RAW>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_SUB_COMM_0C_0_CAM_RAW>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_SUB_COMM_1_CAM_RAW>,
 			<&cam_main_r1a_clk CLK_CAM_MAIN_IPS_CAM_RAW>,
@@ -504,16 +493,6 @@
 			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_PWM_B_PWM>;
 	};
 
-	bring-up-camera-seninf@14 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x14>;
-		clocks =
-			<&mipi_csi_top_ctrl_0_clk CLK_MIPI_CSI_RG_CSIRX_CSI_CK0_EN_CAMERA_SENINF>,
-			<&mipi_csi_top_ctrl_0_clk CLK_MIPI_CSI_RG_CSIRX_CSI_CK1_EN_CAMERA_SENINF>,
-			<&mipi_csi_top_ctrl_0_clk CLK_MIPI_CSI_RG_CSIRX_CSI_CK2_EN_CAMERA_SENINF>,
-			<&mipi_csi_top_ctrl_0_clk CLK_MIPI_CSI_RG_CSIRX_CSI_CK3_EN_CAMERA_SENINF>;
-	};
-
 	bring-up-mml@15 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x15>;
@@ -653,12 +632,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x25>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
-	};
-
-	bring-up-pd-csi-rx@27 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x27>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_CSI_RX>;
 	};
 
 	bring-up-pd-ssusb@28 {

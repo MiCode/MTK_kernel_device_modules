@@ -10651,7 +10651,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			cam-main-csi-afifo-addr = <0x1a0107dc>;
 
-			hwccf-apply;
 			reg = <0 0x1a400000 0 0x1000>,
 				<0 0x1a401000 0 0x1000>,
 				<0 0x1a402000 0 0x1000>,
@@ -10688,7 +10687,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			 */
 			cdphy-dvfs-step0 = <4500 4500>, <4500 4500>, <312>, <550000 550000>;
 
-#if 0
 			clocks = <&cam_main_r1a_clk CLK_CAM_MAIN_SENINF_CAM_RAW>,
 				<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MAIN_CAM_RAW>,
 				<&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAM_RAW>,
@@ -10697,7 +10695,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<&cksys_reg_clk CLK_CKSYS_REG_SENINF2_SEL>,
 				<&cksys_reg_clk CLK_CKSYS_REG_SENINF3_SEL>,
 				<&cksys_reg_clk CLK_CKSYS_REG_CAMTM_SEL>,
-
 				<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D4_D2>;
 
 				/* for power domain hw ccf */
@@ -10714,10 +10711,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				 "clk_top_seninf2",
 				 "clk_top_seninf3",
 				 "clk_top_camtm",
-				 "clk_top_ap_step0",
-				 "clk_hw_ccf_csi_bs",
-				 "mmdvfs_mux";
-#endif
+				 "clk_top_ap_step0";
+
 			csi-top {
 				#address-cells = <2>;
 				#size-cells = <2>;
