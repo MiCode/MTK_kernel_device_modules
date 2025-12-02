@@ -2397,7 +2397,8 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 					mtk_mipi_tx_cphy_lane_config_mt6991(
 						(dsi->regs + dsi->driver_data->reg_phy_base),
 						dsi->phy, dsi->ext, !dsi->is_slave, mtk_crtc);
-				} else if (priv->data->mmsys_id == MMSYS_MT6878) {
+				} else if (priv->data->mmsys_id == MMSYS_MT6878 ||
+					priv->data->mmsys_id == MMSYS_MT6881) {
 					mtk_mipi_tx_cphy_lane_config_mt6878(dsi->phy, dsi->ext,
 								     !dsi->is_slave, mtk_crtc);
 				} else {
@@ -2422,7 +2423,8 @@ static int mtk_dsi_poweron(struct mtk_dsi *dsi)
 					mtk_mipi_tx_dphy_lane_config_mt6991(
 						(dsi->regs + dsi->driver_data->reg_phy_base),
 						dsi->phy, dsi->ext, !dsi->is_slave, mtk_crtc);
-				} else if (priv->data->mmsys_id == MMSYS_MT6878) {
+				} else if (priv->data->mmsys_id == MMSYS_MT6878 ||
+					priv->data->mmsys_id == MMSYS_MT6881) {
 					mtk_mipi_tx_dphy_lane_config_mt6878(dsi->phy, dsi->ext,
 								     !dsi->is_slave, mtk_crtc);
 				} else {
@@ -17071,13 +17073,13 @@ static const struct mtk_dsi_driver_data mt6881_dsi_driver_data = {
 	.n_verion = VER_N4,
 	.support_frame_tb_v5 = true,
 	.bubble_rate = 115,
-	// .dsi_cmdq_size = 128,
-	// .dsi_cmdq_page = 4,
-	// .dsi_cmdq_rd_max_sz_cpu = 512,
-	// .dsi_cmdq_rd_max_sz_gce = 256,
-	// .dsi_rx_data_rd_max_sz = 10,
-	// .dsi_cmd_v2_en = true,
-	// .support_rd_cmdq = 1,
+	.dsi_cmdq_size = 128,
+	.dsi_cmdq_page = 4,
+	.dsi_cmdq_rd_max_sz_cpu = 512,
+	.dsi_cmdq_rd_max_sz_gce = 256,
+	.dsi_rx_data_rd_max_sz = 10,
+	.dsi_cmd_v2_en = true,
+	.support_rd_cmdq = 1,
 	// .reg_up_intsta = 0xc4,
 	// .esd_poll_microp = true,
 };
