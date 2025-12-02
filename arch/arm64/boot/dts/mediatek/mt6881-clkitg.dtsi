@@ -370,13 +370,6 @@
 			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_AUDIO2_AUDIO>;
 	};
 
-	bring-up-jpgenc@11 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x11>;
-		clocks =
-			<&venc_gcon_clk CLK_VEN1_CKE2_JPGENC_JPGENC>;
-	};
-
 	bring-up-pda@12 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x12>;
