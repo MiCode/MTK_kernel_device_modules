@@ -814,7 +814,7 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 	upper_limit = freq_over_range_check(upper_limit);
 	lower_limit = freq_over_range_check(lower_limit);
 
-	for (int i = OPP_TABLE_SIZE-1; i >= 0; i--) {
+	for (int i = OPP_TABLE_SIZE-1; i >= mt6993_user_max_opp; i--) {
 		int freq = mt6993_mdla_pll_freq[i];
 
 		if (freq >= lower_limit) {
@@ -823,7 +823,7 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 		}
 	}
 
-	for (int i = 0; i < OPP_TABLE_SIZE; i++) {
+	for (int i = mt6993_user_max_opp; i < OPP_TABLE_SIZE; i++) {
 		int freq = mt6993_mdla_pll_freq[i];
 
 		// Skip 0 frequency entries
@@ -836,8 +836,8 @@ static void mt6993_prepare_freq_input(int upper_limit, int lower_limit, int *opp
 		}
 	}
 	if (mt6993_user_max_opp == 3) {
-		tmp_opp_max = tmp_opp_max - mt6993_user_max_opp;
-		tmp_opp_min = tmp_opp_min - mt6993_user_max_opp;
+		tmp_opp_max = tmp_opp_max - (int)mt6993_user_max_opp;
+		tmp_opp_min = tmp_opp_min - (int)mt6993_user_max_opp;
 	}
 
 	if (upper_limit == lower_limit)
