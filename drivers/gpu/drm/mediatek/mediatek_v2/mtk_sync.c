@@ -372,10 +372,11 @@ void mtk_sync_timeline_to_fence(struct sync_timeline *obj,
 			break;
 		}
 	}
-	spin_unlock_irq(&obj->lock);
 
 	if (found)
 		*fence = &pt->base;
+	spin_unlock_irq(&obj->lock);
+
 
 }
 EXPORT_SYMBOL_GPL(mtk_sync_timeline_to_fence);

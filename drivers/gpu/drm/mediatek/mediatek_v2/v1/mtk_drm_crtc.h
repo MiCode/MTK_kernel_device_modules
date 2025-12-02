@@ -41,6 +41,7 @@ enum logo_layer_state {
 	LOGO_STATE_INVALID
 };
 typedef void (*mtk_virt_hotplug_cb)(unsigned int evt);
+typedef int (*vhost_disp_event_handler_t)(unsigned int comp_id, unsigned int event);
 #endif
 
 #if IS_ENABLED(CONFIG_ARM64)

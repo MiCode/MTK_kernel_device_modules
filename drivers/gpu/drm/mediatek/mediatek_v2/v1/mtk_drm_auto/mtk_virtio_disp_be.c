@@ -26,7 +26,6 @@
 #include "mtk_drm_mmp.h"
 #include "mtk_virtio_disp.h"
 
-#if IS_ENABLED(CONFIG_VHOST_CMDQ_DMA_MAP)
 struct drm_vbuf {
 	int id;
 	struct sg_table *sgt;
@@ -36,7 +35,9 @@ struct drm_vbuf {
 static LIST_HEAD(vbuf_list);
 static DEFINE_IDR(vbuf_idr);
 static DEFINE_MUTEX(vbuf_lock);
-#endif
+
+typedef int (*vhost_disp_notifier_t)(unsigned int comp_id, unsigned int event);
+static vhost_disp_notifier_t g_vhost_disp_notifier;
 
 static struct cmdq_client *g_cmdq_client[CLIENT_TYPE_MAX * 10];
 static unsigned int cmdq_client_num;
@@ -462,6 +463,29 @@ int mtk_drm_get_panel_timing(unsigned int comp_id,
 }
 EXPORT_SYMBOL(mtk_drm_get_panel_timing);
 
+void mtk_drm_notify_to_vm(unsigned int comp_id, unsigned int event)
+{
+	if (IS_ERR_OR_NULL(g_vhost_disp_notifier)) {
+		DDPMSG("%s-%d fail\n", __func__, __LINE__);
+		return -ENOENT;
+	}
+
+	g_vhost_disp_notifier(comp_id, event);
+}
+
+int mtk_drm_init_vhost_disp_notifier(
+	vhost_disp_event_handler_t cb)
+{
+	if (IS_ERR_OR_NULL(g_vhost_disp_notifier)) {
+		DDPMSG("%s-%d fail\n", __func__, __LINE__);
+		return -EINVAL;
+	}
+	g_vhost_disp_notifier = cb;
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_drm_init_vhost_disp_notifier);
+
 void mtk_drm_crtc_record_client(struct cmdq_client *client)
 {
 	g_cmdq_client[cmdq_client_num] = client;
@@ -535,7 +559,6 @@ int mtk_drm_path_get_an_crtc_path_data(struct virtio_disp_rsp_crtc_path_info *pa
 }
 EXPORT_SYMBOL(mtk_drm_path_get_an_crtc_path_data);
 
-#if IS_ENABLED(CONFIG_VHOST_CMDQ_DMA_MAP)
 static int add_vbuf(struct sg_table *sgt, int *id)
 {
 	struct drm_vbuf *new_vbuf;
@@ -654,5 +677,4 @@ int mtk_drm_setup_vbuf_map(struct virtio_disp_req_vbuf *vbuf, struct virtio_disp
 
 }
 EXPORT_SYMBOL(mtk_drm_setup_vbuf_map);
-#endif
 #endif
