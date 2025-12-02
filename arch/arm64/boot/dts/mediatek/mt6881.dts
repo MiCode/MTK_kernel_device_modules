@@ -7018,9 +7018,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 
 		fhctl@1000ce00 {
-			//mcupm-supply = <&mcupm>;
+			mcupm-supply = <&mcupm>;
 
-			//compatible = "mediatek,mt6881-fhctl";
+			compatible = "mediatek,mt6881-fhctl";
 			reg = <0 0x1000ce00 0 0x200>, //AP FHCTL base
 				<0 0x1000c000 0 0xe00>, //APMIX base
 
@@ -7056,15 +7056,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			map1 {
 				domain = "mcu0";
-				method = "fhctl-ap";
-				ccipll {
+				method = "fhctl-mcupm";
+				buspll {
 					fh-id = <0>;
 				};
 			};
 
 			map2 {
 				domain = "mcu1";
-				method = "fhctl-ap";
+				method = "fhctl-mcupm";
 				armpll-ll {
 					fh-id = <0>;
 				};
@@ -7072,7 +7072,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			map3 {
 				domain = "mcu2";
-				method = "fhctl-ap";
+				method = "fhctl-mcupm";
 				armpll-b {
 					fh-id = <0>;
 				};
@@ -7080,7 +7080,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 			map4 {
 				domain = "mcu3";
-				method = "fhctl-ap";
+				method = "fhctl-mcupm";
 				ptppll {
 					fh-id = <0>;
 				};
