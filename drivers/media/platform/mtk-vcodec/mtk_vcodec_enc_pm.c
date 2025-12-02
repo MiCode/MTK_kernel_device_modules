@@ -892,11 +892,11 @@ static int mtk_venc_violation_fault_callback(void *data)
 {
 	struct mtk_vcodec_dev *dev = (struct mtk_vcodec_dev *)data;
 
-	mtk_v4l2_err("venc emi violation");
 	if (dev->vio_info != NULL) {
 		dev->vio_info->has_emi_vio = 1;
-		mtk_v4l2_err("VIO set has_emi_vio %d", dev->vio_info->has_emi_vio);
-	}
+		mtk_v4l2_err("venc emi violation, VIO set has_emi_vio %d", dev->vio_info->has_emi_vio);
+	} else
+		mtk_v4l2_err("venc emi violation without vio_info");
 
 	return 0;
 }
