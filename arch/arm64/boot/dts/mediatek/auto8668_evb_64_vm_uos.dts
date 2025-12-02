@@ -131,7 +131,6 @@
 	reg = <0xf 0xdf000000 0x0 0x1000000>;
 	bus-range = <0 0>;
 	ranges = <0x2000000 0x0 0xe0001000 0xf 0xe0001000 0x0 0xffff000>;
-	interrupt-map-mask = <0xf800 0 0 1>;
 	#address-cells = <3>;
 	#size-cells = <2>;
 	#interrupt-cells = <1>;
