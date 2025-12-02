@@ -443,6 +443,44 @@
 			<&cpu4>, <&cpu5>, <&cpu6>, <&cpu7>;
 	};
 
+	hw_power_throttling: hw-power-throttling {
+		compatible = "mediatek,hw-power-throttling";
+		pt-version = "mt6881_hpt_1.0";
+		reg = <0 0x0011a000 0 0x100>,
+			<0 0x10011008 0 0x4>,
+			<0 0x0c068800 0 0x20>,
+			<0 0x0c0dd324 0 0x8>;
+		reg-names = "hpt_sram",
+			"hpt_ctrl", "cpu_dbg", "cpu_sf_tcm_base";
+
+		hpt-enable-num = <48>;
+		cpu-sf-cluster-num = <2>;
+		hpt-max-level = <1>;
+
+		cpu-cluster0-sf = <7 7 7 6>, //temperature stage 0
+				<7 6 6 6>, //temperature stage 1
+				<7 6 6 5>, //temperature stage 2
+				<7 6 6 4>; //temperature stage 3
+
+		cpu-cluster1-sf = <7 7 7 6>, //temperature stage 0
+				<7 6 6 6>, //temperature stage 1
+				<7 6 6 5>, //temperature stage 2
+				<7 6 6 4>; //temperature stage 3
+
+		lv1-apu-limit-freq-tb0 = <700000 600000 600000 400000>, //temperature stage 0
+				<700000 600000 600000 400000>, //temperature stage 1
+				<700000 600000 400000 300000>, //temperature stage 2
+				<700000 400000 400000 300000>; //temperature stage 3
+
+		lv1-soc-preuv-tb0 = <1 1 1 1>,
+				<1 1 1 1>,
+				<1 1 1 1>,
+				<1 1 1 1>;
+
+		soc-threshold = <15 7 5>;
+		temperature-stage-threshold = <25 10 0>;
+	};
+
 	memory@40000000 {
 		device_type = "memory";
 		reg = <0 0x40000000 0 0x40000000>;
