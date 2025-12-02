@@ -5038,6 +5038,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/samples:virtio_hello")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/nebula_trace:nebula-trace")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/nebula_trace:vm_irq_monitor")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio_nodes:virtio_nodes")
 
 
 get_overlay_modules_list()
