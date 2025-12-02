@@ -75,6 +75,7 @@
 		dsi0 = &dsi0;
 		mutex0 = &disp_mutex0;
 		mtksmmu0 = &disp_iommu;
+		mtksmmu1 = &apu_iommu0;
 		rsz0 = &disp_rsz0;
 		rsz1 = &disp_rsz1;
 		postmask0 = &disp_postmask0;
