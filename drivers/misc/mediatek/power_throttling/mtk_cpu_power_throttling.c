@@ -447,7 +447,7 @@ static bool parse_bootup_pt_table(struct device_node *np, struct tag_bootmode *t
 	int bootup_temp_count, bootup_volts_count, num;
 	int temp_stage, volt_stage, val, index;
 	char buf[NAME_LENGTH];
-	u32 *temp_threshold = NULL, *volt_threshold = NULL;
+	int *temp_threshold = NULL, *volt_threshold = NULL;
 
 	bootup_pt_info_p = &cpu_bootup_pt_info;
 	bootup_pt_info_p->max_lv = 1;
@@ -541,7 +541,8 @@ static bool parse_bootup_pt_table(struct device_node *np, struct tag_bootmode *t
 		pr_info("[%s] read bootup-delay-release-time fail, ret = %d\n",
 			__func__, ret);
 	}
-	pr_notice("%s: bootmode:0x%x\n", __func__, tag->bootmode);
+	pr_notice("%s: bootmode:0x%x, bootup_temp:%d, bootup_voltage:%d\n",
+		__func__, tag->bootmode, bootup_temp, bootup_voltage);
 	kfree(temp_threshold);
 	kfree(volt_threshold);
 	return true;
