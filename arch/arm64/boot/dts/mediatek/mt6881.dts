@@ -586,6 +586,17 @@
 		compatible = "mediatek,page-based-v2-enabled";
 	};
 
+	mtee_svp: mtee-svp {
+		compatible = "medaitek,svp";
+	};
+
+	teeperf {
+		compatible = "mediatek,teeperf";
+		cpu-type = <2>; /* 1: CPU_V9_TYPE, 2: CPU_V8_TYPE */
+		cpu-map = <2>; /* 1: CPU_4_3_1_MAP, 2: CPU_6_2_MAP */
+		svp-cpu-index = <14>;
+	};
+
 	clk_ao: clk-ao {
 		compatible = "simple-bus";
 		#address-cells = <1>;
