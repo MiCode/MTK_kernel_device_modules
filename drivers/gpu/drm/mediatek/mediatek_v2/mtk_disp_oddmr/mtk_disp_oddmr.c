@@ -4031,12 +4031,13 @@ static void mtk_oddmr_dbi_config(struct mtk_ddp_comp *comp, struct cmdq_pkt *han
 			mtk_oddmr_dbi_dbv_table_cfg(comp,
 				handle, dbi_dbv_node, dbi_cfg_data);
 		}
-		mtk_oddmr_set_dbi_enable(comp, oddmr_data->dbi_enable, handle);
+		//mtk_oddmr_set_dbi_enable(comp, oddmr_data->dbi_enable, handle);
 		ODDMRLOW_LOG("slc cnt %d\n", oddmr_data->primary_data->slc_frame_cnt[DBI_SLC]);
 		if (!oddmr_data->primary_data->slc_frame_cnt[DBI_SLC])
 			mtk_oddmr_dbi_set_slc(comp, handle, 6);
 		else
 			mtk_oddmr_dbi_set_slc(comp, handle, 2);
+		oddmr_data->dbi_data.hw_init = true;
 	}
 }
 
@@ -4285,6 +4286,7 @@ static void mtk_oddmr_config(struct mtk_ddp_comp *comp,
 		mtk_oddmr_set_spr2rgb(comp, handle);
 
 	mtk_oddmr_dbi_config(comp, handle);
+	mtk_oddmr_set_dbi_enable(comp, oddmr_data->dbi_enable, handle);
 	mtk_oddmr_remap_config(comp, handle);
 }
 
@@ -7539,7 +7541,9 @@ int mtk_oddmr_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		if(dbi_enable != oddmr_data->dbi_enable || g_dbi_update) {
 			oddmr_data->primary_data->slc_frame_cnt[DBI_SLC] = 0;
 			g_dbi_update = 0;
-			mtk_oddmr_dbi_config(comp,handle);
+			if (!oddmr_data->dbi_data.hw_init)
+				mtk_oddmr_dbi_config(comp,handle);
+			mtk_oddmr_set_dbi_enable(comp, oddmr_data->dbi_enable, handle);
 			dbi_enable = oddmr_data->dbi_enable;
 		} else if (oddmr_data->dbi_enable) {
 			cnt = oddmr_data->primary_data->slc_frame_cnt[DBI_SLC];
@@ -14713,6 +14717,21 @@ static int mtk_oddmr_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 			kernel_dbi_table_update(comp, stream_buffer);
 		if (ptr)
 			vfree(ptr);
+		if (!oddmr_data->dbi_data.hw_init) {
+			struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+
+			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+			if (!(mtk_crtc->enabled)) {
+				DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+				DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+				return 1;
+			}
+			mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+			mtk_oddmr_dbi_config(comp, NULL);
+			mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		}
 		DDPMSG("%s, PQ_DBI_LOAD_TB\n", __func__);
 	}
 		break;

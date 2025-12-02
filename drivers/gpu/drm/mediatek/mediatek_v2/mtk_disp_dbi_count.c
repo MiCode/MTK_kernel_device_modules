@@ -723,7 +723,10 @@ void mtk_crtc_dbi_count_cfg(struct mtk_drm_crtc *mtk_crtc, struct mtk_crtc_state
 					atomic_set(&count_data->current_count_mode,
 						atomic_read(&count_data->new_count_mode));
 					count_data->count_cnt = 0;
-					mtk_dbi_count_change_mode(dbi_count, handle);
+					if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base))
+						mtk_dbi_count_change_mode(dbi_count, handle);
+					else
+						mtk_dbi_count_change_mode(dbi_count, NULL);
 				}
 				count_data->count_cnt++;
 			}
@@ -1957,7 +1960,6 @@ static void _mtk_dbi_count_config(struct mtk_ddp_comp *comp,
 	int mode_idx;
 
 	DBI_COUNT_INFO("%s +++ %d\n", mtk_dump_comp_str(comp), dbi_count->data->need_bypass_shadow);
-
 	if (dbi_count->data->need_bypass_shadow == true) {
 		SET_VAL_MASK(value, mask, 1, BYPASS_SHADOW);
 		mtk_dbi_count_write_mask(comp, value,
@@ -2985,6 +2987,21 @@ static int mtk_dbi_count_pq_ioctl_transact(struct mtk_ddp_comp *comp,
 
 	case PQ_DBI_COUNT_LOAD_PARAM:
 		ret = mtk_dbi_count_init(comp, (struct mtk_drm_dbi_cfg_info *)params);
+		{
+			struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+
+			DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+			if (!(mtk_crtc->enabled)) {
+				DDPINFO("%s:%d, slepted\n", __func__, __LINE__);
+				DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+				return 1;
+			}
+			mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
+			mtk_vidle_user_power_keep(DISP_VIDLE_USER_CRTC);
+			_mtk_dbi_count_config(comp, NULL, NULL);
+			mtk_vidle_user_power_release(DISP_VIDLE_USER_CRTC);
+			DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
+		}
 		break;
 
 	case PQ_DBI_COUNT_LOAD_BUFFER_CFG:
