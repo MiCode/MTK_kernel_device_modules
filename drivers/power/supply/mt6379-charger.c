@@ -2903,7 +2903,7 @@ static int mt6379_charger_get_pdata(struct device *dev)
 	struct device_node *np = dev->of_node, *boot_np, *pmic_uvlo_np;
 	struct mt6379_charger_data *cdata = dev_get_drvdata(dev);
 	u32 val = 0;
-	int i = 0;
+	int i = 0, ret = 0;
 	const struct {
 		u32 size;
 		u32 tag;
@@ -2981,6 +2981,11 @@ static int mt6379_charger_get_pdata(struct device *dev)
 
 	cdata->enable_fon_osc = device_property_read_bool(dev, "fon-osc-enable");
 	dev_info(dev, "%s, enable_fon_osc = %d\n", __func__, cdata->enable_fon_osc);
+	if (cdata->enable_fon_osc) {
+		ret = mt6379_charger_field_set(cdata, F_FON_OSC, 1);
+		if (ret)
+			dev_info(dev, "%s, Failed to enable fon-osc\n", __func__);
+	}
 
 	dev->platform_data = pdata;
 
