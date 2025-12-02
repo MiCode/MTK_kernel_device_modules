@@ -1056,13 +1056,9 @@ static int vdmabuf_fill_recvq(struct virtio_vdmabuf *vdmabuf)
 
 static int virtio_vdmabuf_probe(struct virtio_device *vdev)
 {
-	vq_callback_t *cbs[] = {
-		virtio_vdmabuf_recv_cb,
-		virtio_vdmabuf_send_cb,
-	};
-	static const char *const names[] = {
-		"recv",
-		"send",
+	struct virtqueue_info vqs[] = {
+		{"recv", virtio_vdmabuf_recv_cb, false},
+		{"send", virtio_vdmabuf_send_cb, false},
 	};
 	struct virtio_vdmabuf *vdmabuf;
 	int ret = 0;
@@ -1081,8 +1077,8 @@ static int virtio_vdmabuf_probe(struct virtio_device *vdev)
 	/* initialize spinlock for synchronizing virtqueue accesses */
 	spin_lock_init(&vdmabuf->vq_lock);
 
-	ret = virtio_find_vqs(vdmabuf->vdev, VDMABUF_VQ_MAX, vdmabuf->vqs,
-			      cbs, names, NULL);
+	ret = virtio_find_vqs(vdmabuf->vdev, VDMABUF_VQ_MAX, vdmabuf->vqs, vqs, NULL);
+
 	if (ret) {
 		dev_notice(drv_info->dev, "Cannot find any vqs\n");
 		return ret;
@@ -1123,7 +1119,7 @@ static void virtio_vdmabuf_remove(struct virtio_device *vdev)
 }
 
 static struct virtio_device_id vdmabuf_id_table[] = {
-	{ VIRTIO_ID_VDMABUF, VIRTIO_DEV_ANY_ID },
+	{ VIRTIO_SUBSYSTEM_ID_MTK_VDMABUF, VIRTIO_DEV_ANY_ID },
 	{ 0 },
 };
 

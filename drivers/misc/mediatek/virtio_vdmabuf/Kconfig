@@ -1,6 +1,6 @@
 config DEVICE_MODULES_VIRTIO_VDMABUF
 	tristate "DMA-BUF vdmabuf"
-	depends on GRT_VM
+	depends on HYPER_VM_UOS
 	help
 	  Choose this option to enable  vdmabuf feature.
 	  vdmabuf is a means of cross-domain shared memory. Its function is
