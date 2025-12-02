@@ -8055,8 +8055,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			core-nums = <2>;	/* core number */
 			twohart = <1>;		/* two hart arch */
 			mbox-count = <4>;
+			timesync-mbox = <0>;
+
 			/* id, mbox, send_size*/
 			send-table =
+			<56 0  6>,/* IPI_OUT_TIME_SYNC */
 			< 0 0  11>	,/* IPI_OUT_AUDIO_VOW_1 */
 			<14 0  1>,	/* IPI_OUT_DVFS_SET_FREQ_1 */
 			<15 0  2>,	/* IPI_OUT_C_SLEEP_1 */
@@ -8141,7 +8144,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			scp-low-pwr-dbg = "enable";
 			scp-cfgreg-ap-en = "enable";
 			scp-read-infra-irq-status = "disable";
-			scp-scpsys-regmap = "disable"; /* real chip en !!*/
+			scp-scpsys-regmap = "enable";
 			scp-bus-tracker-ver = <0x2>;
 			scp-mbrain = "enable";
 			scp-recovery-wfi-detect = <0x2>; /* force reset */
