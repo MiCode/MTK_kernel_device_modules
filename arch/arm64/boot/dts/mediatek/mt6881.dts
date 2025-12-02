@@ -9483,7 +9483,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"MTK_DRM_OPT_RES_SWITCH_ON_AP",
 				"MTK_DRM_OPT_TILE_OVERHEAD";
 
-			helper-value = <1>, /*MTK_DRM_OPT_STAGE*/
+			helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
 				<1>, /*MTK_DRM_OPT_USE_M4U*/
 				<0>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/

@@ -10,7 +10,6 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&cksys_reg_clk CLK_CKSYS_REG_DISP0_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_MMINFRA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UART_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_UART3_SEL>,
@@ -31,7 +30,6 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_VDEC_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_PWM_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_AUDIO_H_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_DSI_OCC_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_IMG1_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_IPE_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_CAM_SEL>,
@@ -80,46 +78,6 @@
 			<&vlp_cksys_top_clk CLK_VLP_CKSYS_TOP_PWM_VLP_SEL>;
 	};
 
-	bring-up-disp@1 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x1>;
-		clocks =
-			<&dispsys_config_clk CLK_MM_DISP_OVL0_2L_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_OVL1_2L_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_OVL2_2L_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_OVL3_2L_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_RSZ1_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_RSZ0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_TDSHP0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_C3D0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_COLOR0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_CCORR0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_CCORR1_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_AAL0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_GAMMA0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_POSTMASK0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_DITHER0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_TDSHP1_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_C3D1_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_CCORR2_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_CCORR3_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_GAMMA1_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_DITHER1_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_SPLITTER0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_DSC_WRAP0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_DSI0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_DSI1_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_WDMA1_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_APB_BUS_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_FAKE_ENG0_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_FAKE_ENG1_DISP>,
-			<&dispsys_config_clk CLK_MM_DISP_MUTEX0_DISP>,
-			<&dispsys_config_clk CLK_MM_SMI_COMMON_DISP>,
-			<&dispsys_config_clk CLK_MM_DSI0_DISP>,
-			<&dispsys_config_clk CLK_MM_DSI1_DISP>,
-			<&dispsys_config_clk CLK_MM_26M_DISP>;
-	};
-
 	bring-up-venc@2 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x2>;
@@ -164,7 +122,6 @@
 			<&camsys_yuva_clk CLK_CAM_YA_LARBX_SMI>,
 			<&camsys_rawb_clk CLK_CAM_RB_LARBX_SMI>,
 			<&camsys_yuvb_clk CLK_CAM_YB_LARBX_SMI>,
-			<&dispsys_config_clk CLK_MM_SMI_COMMON_SMI>,
 			<&mdpsys_config_clk CLK_MDP_SMI0_SMI>;
 	};
 
@@ -576,12 +533,6 @@
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x23>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_VCORE>;
-	};
-
-	bring-up-pd-dis0-shutdown@24 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x24>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_DIS0_SHUTDOWN>;
 	};
 
 	bring-up-pd-mm-infra-shutdown@25 {
