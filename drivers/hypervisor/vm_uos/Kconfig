@@ -10,3 +10,20 @@ config HYPER_VM_UOS
 	  Used for hypervisor guest android1 os.
 	  If your code is for hypervisor android os,
 	  you can use it to wrap your code.
+
+config VIRTIO_VIDEO_MTK_EXTENSION
+	tristate "MTK extensions"
+	help
+	  This option enables support for MediaTek-specific extensions
+	  to the virtio video driver.
+	  This is the virtual video driver for virtio.
+	  Say Y or M.
+
+config VIRTIO_VIDEO_TRACE_DEBUG
+	bool "VIRTIO Video TRACE Debug support"
+	depends on VIRTIO_VIDEO_MTK_EXTENSION
+	help
+	  This is a debug interface for VIRTIO Video
+	  Set Y to enable this feature.
+	  Set N to disable this feature.
+	  If unsure, Set N to disable it.
