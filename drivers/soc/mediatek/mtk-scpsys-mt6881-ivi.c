@@ -71,12 +71,12 @@ static const struct scp_domain_data scp_domain_mt6881_ivi_spm_data[] = {
 			BUS_PROT_ACK(VLP_TYPE, 0x0214, 0x0218, 0x0210, 0x0220,
 				MT6881_VLP_AXI_PROT_EN_PCIE_4RD, MT6881_VLP_AXI_PROT_EN_PCIE_ACK_4RD),
 		},
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 	[MT6881_POWER_DOMAIN_PCIE_PHY] = {
 		.name = "pcie_phy",
 		.ctl_offs = 0xE6C,
-		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
+		.caps = MTK_SCPD_IS_PWR_CON_ON | default_cap,
 	},
 };
 
