@@ -489,6 +489,10 @@ static int serdes_get_status_cmd_from_dts(struct serdes_bridge *ser_des,
 		return -1;
 
 	tmp_p = p;
+	if (offset < 0 || offset > len) {
+		pr_info("%s: offset error!\n", __func__);
+		return -1;
+	}
 	while (offset < len) {
 		tmp_p++;
 		reg_width = be32_to_cpu(*tmp_p++);
@@ -505,8 +509,8 @@ static int serdes_get_status_cmd_from_dts(struct serdes_bridge *ser_des,
 		pr_info("%s: only support 2 or 3 status cmds now[act=%d]!\n", __func__, count);
 		return -1;
 	}
-	tmp_sta_cmd->sta_cmd = devm_kzalloc(ser_des->dev,
-		sizeof(struct status_cmd *) * count, GFP_KERNEL);
+	tmp_sta_cmd->sta_cmd = devm_kcalloc(ser_des->dev, count,
+		sizeof(struct status_cmd *), GFP_KERNEL);
 	if (!tmp_sta_cmd->sta_cmd)
 		return -1;
 
@@ -537,8 +541,7 @@ static int serdes_get_serdes_status(struct serdes_bridge *ser_des,
 	struct serdes_status_cmd *sta_cmd = NULL;
 
 	if (!ser_des || !ser_des->client) {
-		pr_info("%s[i2c%d]: ser_des or i2c client is null!\n",
-			__func__, ser_des->client->adapter->nr);
+		pr_info("%s: ser_des or i2c client is null!\n", __func__);
 		return SERDES_STATUS_UNDEFINED;
 	}
 
@@ -596,6 +599,10 @@ static int serdes_get_cmd_from_dts(struct serdes_bridge *ser_des,
 		return -1;
 
 	tmp_p = p;
+	if (offset < 0 || offset >= len || len < 0) {
+		pr_info("%s: offset error!\n", __func__);
+		return -1;
+	}
 	while (offset < len) {
 		tmp_p++;
 		reg_width = be32_to_cpu(*tmp_p++);
@@ -609,8 +616,8 @@ static int serdes_get_cmd_from_dts(struct serdes_bridge *ser_des,
 		count++;
 	}
 
-	tmp_cfg_cmd->dev_cmd = devm_kzalloc(ser_des->dev,
-		sizeof(struct device_cmd *) * count, GFP_KERNEL);
+	tmp_cfg_cmd->dev_cmd = devm_kcalloc(ser_des->dev, count,
+		sizeof(struct device_cmd *), GFP_KERNEL);
 	if (!tmp_cfg_cmd->dev_cmd)
 		return -1;
 
@@ -650,8 +657,6 @@ static void serdes_send_cmd(struct serdes_bridge *ser_des, enum CMD_TYPE type)
 		return;
 	}
 	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
-	if (!ser_des)
-		return;
 
 	cfg_cmd = ser_des->cfg_cmd[type];
 	if (!cfg_cmd) {
@@ -698,8 +703,8 @@ static int serdes_get_comp_config_type_cmd_from_dts(struct serdes_bridge *ser_de
 	if (!tmp_cfg_cmd)
 		return -1;
 
-	tmp_cfg_cmd->cfg_type_cmd = devm_kzalloc(ser_des->dev,
-		sizeof(struct comp_config_type_cmd *) * elem_num, GFP_KERNEL);
+	tmp_cfg_cmd->cfg_type_cmd = devm_kcalloc(ser_des->dev,
+		elem_num, sizeof(struct comp_config_type_cmd *), GFP_KERNEL);
 	if (!tmp_cfg_cmd->cfg_type_cmd)
 		return -1;
 
@@ -731,7 +736,7 @@ static int serdes_get_comp_config(struct serdes_bridge *ser_des)
 	struct comp_config_cmd *comp_cfg_cmd = NULL;
 
 	if (!ser_des || !ser_des->client) {
-		pr_info("%s[i2c%d]: ser_des or i2c client is null!\n", __func__, ser_des->client->adapter->nr);
+		pr_info("%s: ser_des or i2c client is null!\n", __func__);
 		return -1;
 	}
 
@@ -766,11 +771,11 @@ static int serdes_get_comp_config(struct serdes_bridge *ser_des)
 
 void serdes_reset_ser(struct serdes_bridge *ser_des)
 {
-	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
 	if (!ser_des || !ser_des->reset_gpio) {
 		pr_info("%s: invalid serdes_bridge or reset_gpio\n", __func__);
 		return;
 	}
+	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
 
 	gpiod_set_value(ser_des->reset_gpio, 1);
 	msleep(50);
@@ -1055,7 +1060,10 @@ void serdes_bridge_enable(struct drm_bridge *bridge)
 		|| ser_des->driver_data->type == SERDES_FOR_DP) {
 		reinit_completion(&ser_des->serdes_init_complete);
 		schedule_work(&ser_des->serdes_init_work);
-		wait_for_completion_timeout(&ser_des->serdes_init_complete, msecs_to_jiffies(1000));
+		int tmp = wait_for_completion_timeout(&ser_des->serdes_init_complete, msecs_to_jiffies(1000));
+
+		if (!tmp)
+			pr_info("%s: wait timeout!\n", __func__);
 	} else
 #endif
 		serdes_send_cmd(ser_des, (port == 0) ? LINKA_INIT_CMD : LINKB_INIT_CMD);
@@ -1129,7 +1137,10 @@ void serdes_bridge_pre_enable(struct drm_bridge *bridge)
 		|| ser_des->driver_data->type == SERDES_FOR_DP) {
 		reinit_completion(&ser_des->serdes_pre_init_complete);
 		schedule_work(&ser_des->serdes_pre_init_work);
-		wait_for_completion_timeout(&ser_des->serdes_pre_init_complete, msecs_to_jiffies(1000));
+		int tmp = wait_for_completion_timeout(&ser_des->serdes_pre_init_complete, msecs_to_jiffies(1000));
+
+		if (!tmp)
+			pr_info("%s, serdes_pre_init_complete timeout\n", __func__);
 	} else {
 #endif
 		serdes_send_cmd(ser_des, PRE_INIT_CMD);
@@ -1232,6 +1243,10 @@ int serdes_bridge_get_modes(struct drm_bridge *bridge, struct drm_connector *con
 	}
 
 	port = serdes->driver_data->port;
+	if (port != 0 && port != 1) {
+		pr_info("%s: error port %d\n", __func__, port);
+		return -1;
+	}
 	if (ser_des->link_type == LINK_TYPE_MST) {
 		if (connector->name)
 			pr_info("%s get mst mode from %s\n", __func__, connector->name);
@@ -1250,7 +1265,6 @@ int serdes_bridge_get_modes(struct drm_bridge *bridge, struct drm_connector *con
 
 	pr_info("%s[i2c%d] port[%d]+\n", __func__, ser_des->client->adapter->nr, port);
 	if (connector) {
-
 		mode.hdisplay = ser_des->panel_timing[port].width;
 		mode.hsync_start = mode.hdisplay + ser_des->panel_timing[port].hfp;
 		mode.hsync_end = mode.hsync_start + ser_des->panel_timing[port].hsa;
@@ -1316,12 +1330,11 @@ static int serdes_bridge_attach(struct drm_bridge *bridge,
 	};
 	int ret;
 
-	pr_info("%s [i2c%d] +\n", __func__, ser_des->client->adapter->nr);
-
-	if (!ser_des || !ser_des->driver_data) {
-		pr_info("%s serdes is NULL\n", __func__);
-		return -1;
+	if (!ser_des || !ser_des->client || !ser_des->client->adapter || !ser_des->driver_data) {
+		pr_info("%s: ser_des or its members are NULL\n", __func__);
+		return -EINVAL;
 	}
+	pr_info("%s [i2c%d] +\n", __func__, ser_des->client->adapter->nr);
 
 	if (ser_des->driver_data->type == SERDES_FOR_DSI) {
 		dsi_host = serdes_get_dsi_host(ser_des->dev->of_node);
@@ -1375,6 +1388,10 @@ static int serdes_get_real_timing(struct serdes_bridge *serdes,
 	struct serdes_bridge *ser_des = serdes->driver_data->port ? serdes->master_serdes : serdes;
 	int port = serdes->driver_data->port;
 
+	if (port != 0 && port != 1) {
+		pr_info("%s: port = %d error!\n", __func__, port);
+		return -1;
+	}
 	if (serdes->link_type == LINK_TYPE_SUPERFRAME) {
 		mode->hdisplay = ser_des->panel_timing[0].width
 			+ ser_des->panel_timing[1].width;
@@ -1432,6 +1449,10 @@ static int serdes_panel_get_link_status(struct drm_panel *panel)
 	struct serdes_bridge *ser_des = panel_to_serdes(panel);
 
 	pr_info("%s +\n", __func__);
+	if (!ser_des || !ser_des->driver_data) {
+		pr_info("%s: ser_des or driver_data is NULL\n", __func__);
+		return -1;
+	}
 	return serdes_get_link_status(ser_des->driver_data->port
 		? ser_des->master_serdes : ser_des);
 	pr_info("%s -\n", __func__);
@@ -1454,6 +1475,11 @@ static int serdes_panel_unprepare(struct drm_panel *panel)
 {
 	struct serdes_bridge *ser_des = panel_to_serdes(panel);
 
+	if (!ser_des || !ser_des->client || !ser_des->client->adapter) {
+		pr_info("%s: ser_des or its members are NULL\n", __func__);
+		return -EINVAL;
+	}
+
 	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
 
 	pr_info("%s[i2c%d] -\n", __func__, ser_des->client->adapter->nr);
@@ -1463,6 +1489,11 @@ static int serdes_panel_unprepare(struct drm_panel *panel)
 static int serdes_panel_prepare(struct drm_panel *panel)
 {
 	struct serdes_bridge *ser_des = panel_to_serdes(panel);
+
+	if (!ser_des || !ser_des->client || !ser_des->client->adapter) {
+		pr_info("%s: ser_des or its members are NULL\n", __func__);
+		return -EINVAL;
+	}
 
 	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
 	serdes_bridge_pre_enable(&ser_des->bridge);
@@ -1474,6 +1505,10 @@ static int serdes_panel_disable(struct drm_panel *panel)
 {
 	struct serdes_bridge *ser_des = panel_to_serdes(panel);
 
+	if (!ser_des || !ser_des->client || !ser_des->client->adapter) {
+		pr_info("%s: serdes_bridge or client or adapter is NULL\n", __func__);
+		return -EINVAL;
+	}
 	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
 	serdes_bridge_disable(&ser_des->bridge);
 	pr_info("%s[i2c%d] -\n", __func__, ser_des->client->adapter->nr);
@@ -1483,6 +1518,11 @@ static int serdes_panel_disable(struct drm_panel *panel)
 static int serdes_panel_enable(struct drm_panel *panel)
 {
 	struct serdes_bridge *ser_des = panel_to_serdes(panel);
+
+	if (!ser_des || !ser_des->client || !ser_des->client->adapter) {
+		pr_info("%s: ser_des or its members are NULL\n", __func__);
+		return -EINVAL;
+	}
 
 	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
 	serdes_bridge_enable(&ser_des->bridge);
@@ -1494,6 +1534,11 @@ static int serdes_panel_get_modes(struct drm_panel *panel,
 	struct drm_connector *connector)
 {
 	struct serdes_bridge *ser_des = panel_to_serdes(panel);
+
+	if (!ser_des || !ser_des->client || !ser_des->client->adapter) {
+		pr_info("%s: ser_des or its members are NULL\n", __func__);
+		return -EINVAL;
+	}
 
 	pr_info("%s[i2c%d] +\n", __func__, ser_des->client->adapter->nr);
 	serdes_bridge_get_modes(&ser_des->bridge, connector);
@@ -1617,7 +1662,7 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 
 	if (ser_des->driver_data->port == 0) {
 		ser_des->config_node = of_parse_phandle(dev->of_node, CONFIG_NODE_NAME, 0);
-		if (ser_des->config_node < 0) {
+		if (!ser_des->config_node) {
 			pr_info("%s: ERROR: no config node in [%s] !!\n", __func__, dev->of_node->name);
 			return -1;
 		}
@@ -1793,8 +1838,10 @@ static void serdes_iic_driver_remove(struct i2c_client *client)
 		struct mtk_panel_ctx *ext_ctx = find_panel_ctx(&ser_des->panel_data.panel);
 
 		drm_panel_remove(&ser_des->panel_data.panel);
-		mtk_panel_detach(ext_ctx);
-		mtk_panel_remove(ext_ctx);
+		if (ext_ctx) {
+			mtk_panel_detach(ext_ctx);
+			mtk_panel_remove(ext_ctx);
+		}
 	}
 }
 
