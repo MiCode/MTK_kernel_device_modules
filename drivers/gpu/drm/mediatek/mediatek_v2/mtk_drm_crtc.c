@@ -5126,6 +5126,7 @@ bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc
 		if (bif_info->sram_en)
 			return true;
 
+		drm_trace_tag_start("bif_slbc_request");
 		ret = slbc_request(&bif_info->sram_data);
 		if (ret < 0) {
 			DDPPR_ERR("%s, slbc_request fail\n", __func__);
@@ -5136,6 +5137,7 @@ bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc
 		bif_info->sram_en = true;
 		bif_info->sram_pa = (size_t) bif_info->sram_data.paddr;
 		bif_info->sram_size = (size_t) bif_info->sram_data.size;
+		drm_trace_tag_end("bif_slbc_request");
 
 		DDPBIF("%s,sram addr:0x%llx,sz:0x%llx\n", __func__, bif_info->sram_pa, bif_info->sram_size);
 	} else {
@@ -5145,13 +5147,14 @@ bool mtk_crtc_bif_slbc_request(struct mtk_drm_crtc *mtk_crtc, enum BIF_SLBC slbc
 			return true;
 
 		bif_info->sram_en = false;
-
+		drm_trace_tag_start("bif_slbc_release");
 		ret = slbc_release(&bif_info->sram_data);
 		if (ret < 0) {
 			DDPPR_ERR("%s, slbc_release fail\n", __func__);
 			CRTC_MMP_MARK(0, bif_slbc, 0xFFFFFFFF, __LINE__);
 			return false;
 		}
+		drm_trace_tag_end("bif_slbc_release");
 	}
 
 	DDPBIF("%s[%d][ln:%d]\n", __func__, slbc, __LINE__);

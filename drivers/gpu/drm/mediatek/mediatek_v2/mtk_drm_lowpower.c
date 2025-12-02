@@ -1020,6 +1020,11 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 	struct mtk_drm_idlemgr_perf *perf = mtk_crtc->idlemgr->perf;
 	u64 start_time = 0, end_time = 0, cost = 0;
 
+	if (bif_enabled(crtc)== BIF_HS_IDLE) {
+		mtk_crtc_bif_backup_path_mutex(mtk_crtc);
+		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST, __LINE__);
+	}
+
 	if (perf)
 		start_time = local_clock();
 
@@ -1056,9 +1061,6 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 
 	if (bif_enabled(crtc)== BIF_HS_IDLE) {
 		unsigned int *addr = NULL;
-
-		mtk_crtc_bif_backup_path_mutex(mtk_crtc);
-		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST, __LINE__);
 
 		if (mtk_crtc->bif_info->sram_en) {
 			mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
