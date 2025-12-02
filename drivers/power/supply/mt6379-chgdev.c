@@ -500,6 +500,13 @@ static int mt6379_enable_buck(struct charger_device *chgdev, bool en)
 				 MT6720_REG_CHG_LGON);
 		}
 
+		ret = regmap_update_bits(cdata->rmap, MT6720_REG_CHG_HD_DIG1,
+					 BIT(4), en ? BIT(4) : 0);
+		if (ret) {
+			dev_info(cdata->dev, "%s, Failed to set %x\n", __func__,
+				 MT6720_REG_CHG_HD_DIG1);
+		}
+
 		/* hidden ibus ucp */
 		ret = regmap_update_bits(cdata->rmap, MT6720_REG_DIV2_SYSCTRL5,
 					 MT6720_HIDDEN_IBUS_UCP_MASK, en ?

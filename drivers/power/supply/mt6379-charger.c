@@ -2592,7 +2592,18 @@ out:
 int mt6379_charger_set_non_switching_setting(struct mt6379_charger_data *cdata)
 {
 	struct device *dev = cdata->dev;
-	int ret = 0;
+	int ret = 0, vbus = 0;
+
+	ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_CHGVIN], &vbus);
+	if (ret) {
+		dev_info(cdata->dev, "%s, Failed to read VBUS\n", __func__);
+		return ret;
+	}
+	if (vbus >= 6000000) { /* VBUS over 6V */
+		dev_info(cdata->dev, "%s, VBUS = %d, don't set non switching setting\n",
+			 __func__, vbus);
+		return 0;
+	}
 
 	mutex_lock(&cdata->ramp_lock);
 	ret = mt6379_enable_tm(cdata, true);
