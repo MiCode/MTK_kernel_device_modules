@@ -1,6 +1,6 @@
 config DEVICE_MODULES_VHOST_VDMABUF
 	tristate "DMA-BUF vdmabuf"
-	depends on GRT_HYPERVISOR
+	depends on HYPER_SOS
 	help
 	  vdmabuf is a means of cross-domain shared memory. Its function is
 	  to transfer the dmabuf requested by the guest to the host so that

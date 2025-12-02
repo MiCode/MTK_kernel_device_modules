@@ -19,6 +19,7 @@
 #include <linux/vhost.h>
 #include <linux/vfio.h>
 #include <linux/delay.h>
+#include <linux/vmalloc.h>
 #include "virtio_vdmabuf.h"
 #include "vhost.h"
 

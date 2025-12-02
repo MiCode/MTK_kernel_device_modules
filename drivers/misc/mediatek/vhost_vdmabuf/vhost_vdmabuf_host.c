@@ -257,9 +257,9 @@ static int send_msg_to_guest(enum virtio_vdmabuf_cmd cmd,
 		return -EINVAL;
 	}
 
-	vhost_work_queue(&vdmabuf->dev, &vdmabuf->send_work);
+	/* vhost_work_queue(&vdmabuf->dev, &vdmabuf->send_work); */
 	/* RECV: host to guest */
-	/* vhost_vq_work_queue(&vdmabuf->vqs[VDMABUF_VQ_RECV], &vdmabuf->send_work); */
+	vhost_vq_work_queue(&vdmabuf->vqs[VDMABUF_VQ_RECV], &vdmabuf->send_work);
 
 	return 0;
 }
@@ -435,8 +435,8 @@ static int parse_msg(struct vhost_vdmabuf *vdmabuf,
 		spin_lock(&drv_info->msg_spinlock);
 		list_add_tail(&vmid_msg->list, &drv_info->msg_list);
 		spin_unlock(&drv_info->msg_spinlock);
-		vhost_work_queue(&vdmabuf->dev, &vdmabuf->send_work);
-		/* vhost_vq_work_queue(&vdmabuf->vqs[VDMABUF_VQ_RECV], &vdmabuf->send_work); */
+		/* vhost_work_queue(&vdmabuf->dev, &vdmabuf->send_work); */
+		vhost_vq_work_queue(&vdmabuf->vqs[VDMABUF_VQ_RECV], &vdmabuf->send_work);
 
 		break;
 	default:
