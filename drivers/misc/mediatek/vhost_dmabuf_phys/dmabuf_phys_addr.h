@@ -24,10 +24,14 @@ struct virtio_dmabuf_mem_entry {
 	uint32_t padding;
 };
 
-struct export_dmabuf {
+struct export_dmabuf_phys {
 	__u32 nr_entries;
 	struct virtio_dmabuf_mem_entry *entries;
 	int fd;
+	bool is_secure;
 };
+
+#define VHOST_DMABUF_PHYS_IOCTL_CMD_EXPORT	_IOR('D', 0, struct export_dmabuf)
+#define VHOST_DMABUF_PHYS_IOCTL_CMD_HW_CLK	_IOR('D', 1, uint64_t)
 
 #endif

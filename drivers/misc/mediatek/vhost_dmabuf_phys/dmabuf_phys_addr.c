@@ -9,6 +9,7 @@
 #include <linux/uaccess.h>
 #include <linux/types.h>
 #include <linux/miscdevice.h>
+#include <linux/vmalloc.h>
 #include <asm/page.h>
 
 #include <linux/stddef.h>
@@ -24,6 +25,7 @@ struct vhost_dmabuf {
 	struct sg_table *sgt;
 	struct page **pages;
 	size_t total_pages;
+	bool is_secure_buf;
 };
 
 struct vhost_attachment {
@@ -36,8 +38,10 @@ static int vhost_map_attach(struct dma_buf *dma_buf,
 {
 	struct vhost_attachment *attachment;
 
+	if (!attach)
+		return -EINVAL;
 	attachment = kzalloc(sizeof(*attachment), GFP_KERNEL);
-	if (!attach) {
+	if (!attachment) {
 		pr_err("[VHOST-DMABUF]failed to create vhost dmabuf attachment.\n");
 		return -ENOMEM;
 	}
@@ -53,15 +57,19 @@ static void vhost_map_detach(struct dma_buf *dma_buf,
 {
 	struct vhost_attachment *attachment = attach->priv;
 	struct sg_table *sgt;
+	int attr = 0;
 
 	if (!attachment)
 		return;
 
 	sgt = attachment->sgt;
 	if (sgt) {
-		if (attachment->dir != DMA_NONE)
-			dma_unmap_sg(attach->dev, sgt->sgl, sgt->nents,
-				     attachment->dir);
+		if (attachment->dir != DMA_NONE) {
+			if (((struct vhost_dmabuf *)(attach->dmabuf->priv))->is_secure_buf)
+				attr |= DMA_ATTR_SKIP_CPU_SYNC;
+
+			dma_unmap_sgtable(attach->dev, sgt, attachment->dir, attr);
+		}
 		sg_free_table(sgt);
 		kfree(sgt);
 	}
@@ -107,6 +115,7 @@ static struct sg_table *vhost_map_dma_buf(struct dma_buf_attachment *attach,
 	struct dma_buf *dmabuf;
 	struct vhost_dmabuf *vhost_dmabuf;
 	struct sg_table *sgt;
+	int attr = 0;
 
 	if (WARN_ON(dir == DMA_NONE || !vhost_attach))
 		return ERR_PTR(-EINVAL);
@@ -133,11 +142,14 @@ static struct sg_table *vhost_map_dma_buf(struct dma_buf_attachment *attach,
 		return ERR_PTR(-ENOMEM);
 	}
 
-	if (!dma_map_sg(attach->dev, sgt->sgl, sgt->nents, dir)) {
+	if (vhost_dmabuf->is_secure_buf)
+		attr |= DMA_ATTR_SKIP_CPU_SYNC;
+
+	if (dma_map_sgtable(attach->dev, sgt, dir, attr)) {
 		sg_free_table(sgt);
 		kfree(sgt);
 		sgt = ERR_PTR(-ENOMEM);
-		dev_err(attach->dev, "failed to map sg table\n");
+		dev_err(attach->dev, "[VHOST-DMABUF]failed to map sg table\n");
 	} else {
 		vhost_attach->sgt = sgt;
 		vhost_attach->dir = dir;
@@ -151,6 +163,46 @@ static void vhost_unmap_dma_buf(struct dma_buf_attachment *attach,
 				enum dma_data_direction dir)
 {
 	/* nothing to be done here */
+}
+
+static int vhost_dmabuf_begin_cpu_access(struct dma_buf *dmabuf,
+					 enum dma_data_direction direction)
+{
+	struct vhost_dmabuf *vhost_dmabuf = dmabuf->priv;
+	struct vhost_attachment *vhost_attach;
+	struct dma_buf_attachment *a;
+
+	mutex_lock(&vhost_dmabuf->mutex);
+
+	list_for_each_entry(a, &dmabuf->attachments, node) {
+		vhost_attach = a->priv;
+		if (vhost_attach->sgt) /* vhost_attachment->sgt */
+			dma_sync_sgtable_for_cpu(a->dev, vhost_attach->sgt, direction);
+	}
+
+	mutex_unlock(&vhost_dmabuf->mutex);
+
+	return 0;
+}
+
+static int vhost_dmabuf_end_cpu_access(struct dma_buf *dmabuf,
+					 enum dma_data_direction direction)
+{
+	struct vhost_dmabuf *vhost_dmabuf = dmabuf->priv;
+	struct vhost_attachment *vhost_attach;
+	struct dma_buf_attachment *a;
+
+	mutex_lock(&vhost_dmabuf->mutex);
+
+	list_for_each_entry(a, &dmabuf->attachments, node) {
+		vhost_attach = a->priv;
+		if (vhost_attach->sgt) /* vhost_attachment->sgt */
+			dma_sync_sgtable_for_device(a->dev, vhost_attach->sgt, direction);
+	}
+
+	mutex_unlock(&vhost_dmabuf->mutex);
+
+	return 0;
 }
 
 static unsigned int vhost_dmabuf_mmap_fault(struct vm_fault *vmf)
@@ -253,6 +305,8 @@ static const struct dma_buf_ops vhost_dmabuf_ops = {
 	.vmap = vhost_dmabuf_vmap,
 	.vunmap = vhost_dmabuf_vunmap,
 	.release = vhost_dmabuf_release,
+	.end_cpu_access = vhost_dmabuf_end_cpu_access,
+	.begin_cpu_access = vhost_dmabuf_begin_cpu_access,
 };
 #ifdef USE_VM_ADDR
 /* to-do: need modification to support 4G DRAM */
@@ -429,10 +483,9 @@ static int vhost_dmabuf_fd(struct vhost_dmabuf *dmabuf)
 	return dma_buf_fd(dmabuf->buf, O_CLOEXEC);
 }
 
-static long exporter_ioctl(struct file *filp, unsigned int cmd,
-			   unsigned long arg)
+static long exporter_handle(unsigned long arg)
 {
-	struct export_dmabuf export;
+	struct export_dmabuf_phys export;
 	struct vhost_dmabuf *dmabuf;
 	struct virtio_dmabuf_mem_entry *entries;
 	int ret = -EFAULT;
@@ -476,6 +529,8 @@ static long exporter_ioctl(struct file *filp, unsigned int cmd,
 		goto out_free_entries;
 	}
 
+	dmabuf->is_secure_buf = export.is_secure;
+
 	fd = vhost_dmabuf_fd(dmabuf);
 	if (fd < 0) {
 		pr_err("[VHOST-DMABUF]failed to do vhost_dmabuf_fd:%d\n", fd);
@@ -498,6 +553,30 @@ out_release_dmabuf:
 out_free_entries:
 	kfree(entries);
 out:
+	return ret;
+}
+
+static long exporter_ioctl(struct file *filp, unsigned int cmd,
+			   unsigned long arg)
+{
+	int ret;
+
+	switch (cmd) {
+	case VHOST_DMABUF_PHYS_IOCTL_CMD_HW_CLK: {
+		uint64_t hw_clk = __arch_counter_get_cntpct();
+
+		ret = copy_to_user((uint64_t *)arg, &hw_clk, sizeof(uint64_t));
+		if (ret != 0) {
+			pr_info("copy_to_user for hw-clk. failed %d.\n", ret);
+			ret = -EFAULT;
+		}
+		break;
+	}
+
+	default: /* default to export dmabuf. */
+		ret = exporter_handle(arg);
+		break;
+	}
 	return ret;
 }
 
