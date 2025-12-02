@@ -123,3 +123,12 @@ config MTK_APU_POWER_THROTTLING
 	  Select "y" if you want to enable MTK APU power throttling
 	  feature
 	  Select "n" if unsure.
+
+config MTK_HW_POWER_THROTTLING
+	tristate "MTK HW power throttling"
+	help
+	  For MediaTek HW power throttling.
+	  Hardware throttle XPU while pre-UVLO is trigger
+	  Select "y" if you want to enable MTK HW power throttling
+	  feature
+	  Select "n" if unsure.

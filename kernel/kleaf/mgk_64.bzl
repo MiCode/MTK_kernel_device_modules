@@ -994,6 +994,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_cpu_power_throttling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_dynamic_loading_throttling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_gpu_power_throttling".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_hw_power_throttling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_dual_lbat_service".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
