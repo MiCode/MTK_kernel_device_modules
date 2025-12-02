@@ -234,24 +234,24 @@ int mt6881_adda_dl_gain_control(bool mute)
 }
 EXPORT_SYMBOL(mt6881_adda_dl_gain_control);
 
-// int mt6881_get_output_device(struct mtk_base_afe *afe)
-// {
-//	unsigned int value = 0;
+int mt6881_get_output_device(struct mtk_base_afe *afe)
+{
+	unsigned int value = 0;
 
-//	regmap_read(afe->regmap, ETDM_OUT4_CON0, &value);
-//	value = (value & OUT_REG_ETDM_OUT_EN_MASK_SFT) >>
-//		OUT_REG_ETDM_OUT_EN_SFT;
-//	if (value) {
-//		regmap_read(afe->regmap, ETDM_IN4_CON0, &value);
-//		value = (value & REG_ETDM_IN_EN_MASK_SFT) >> REG_ETDM_IN_EN_SFT;
-//		if (value)
-//			return AUDIO_OUTPUT_SPEAKER;
-//		else
-//			return AUDIO_OUTPUT_RECEIVER;
-//	}
+	regmap_read(afe->regmap, ETDM_OUT6_CON0, &value);
+	value = (value & OUT_REG_ETDM_OUT_EN_MASK_SFT) >>
+		OUT_REG_ETDM_OUT_EN_SFT;
+	if (value) {
+		regmap_read(afe->regmap, ETDM_IN6_CON0, &value);
+		value = (value & REG_ETDM_IN_EN_MASK_SFT) >> REG_ETDM_IN_EN_SFT;
+		if (value)
+			return AUDIO_OUTPUT_SPEAKER;
+		else
+			return AUDIO_OUTPUT_RECEIVER;
+	}
 
-//	return AUDIO_OUTPUT_INVALID;
-// }
+	return AUDIO_OUTPUT_INVALID;
+}
 
 int mt6881_get_input_device(struct mtk_base_afe *afe)
 {
@@ -264,94 +264,94 @@ void mt6881_aud_swpm_power_off(void)
 	local_audio_data.freq_clock = 26;
 }
 
-// void mt6881_aud_update_power_scenario(void)
-// {
-//	struct mt6881_afe_private *afe_priv;
-//	struct mtk_afe_adda_priv *adda_priv;
-//	struct audio_swpm_data audio_data = {0};
-//	unsigned int value = 0, reg_val = 0;
-//	int dl_ch = 0, ul_ch = 0;
-//	int ul_hifi = 0, dl_hifi = 0;
+void mt6881_aud_update_power_scenario(void)
+{
+	struct mt6881_afe_private *afe_priv;
+	struct mtk_afe_adda_priv *adda_priv;
+	struct audio_swpm_data audio_data = {0};
+	unsigned int value = 0, reg_val = 0;
+	int dl_ch = 0, ul_ch = 0;
+	int ul_hifi = 0, dl_hifi = 0;
 
-//	if (!local_afe) {
-//		pr_info("%s(), local_afe is NULL ptr\n", __func__);
-//		local_audio_data = audio_data;
-//		return;
-//	}
-//	afe_priv = local_afe->platform_priv;
-//	if (!afe_priv) {
-//		pr_info("%s(), afe_priv is NULL ptr\n", __func__);
-//		goto exit;
-//	}
+	if (!local_afe) {
+		pr_info("%s(), local_afe is NULL ptr\n", __func__);
+		local_audio_data = audio_data;
+		return;
+	}
+	afe_priv = local_afe->platform_priv;
+	if (!afe_priv) {
+		pr_info("%s(), afe_priv is NULL ptr\n", __func__);
+		goto exit;
+	}
 
-//	adda_priv = afe_priv->dai_priv[MT6881_DAI_ADDA];
+	adda_priv = afe_priv->dai_priv[MT6881_DAI_ADDA];
 
-//	audio_data.freq_clock = 26;
-//	regmap_read(local_afe->regmap, AUDIO_TOP_CON4, &reg_val);
-//	value = (reg_val & CG_AUDIO_F26M_CK_MASK_SFT) >> CG_AUDIO_F26M_CK_SFT;
-//	if (value || (reg_val == 0x78fd5265)) {
-//		dev_info(local_afe->dev, "%s(), afe agent is not enable\n", __func__);
-//		audio_data.afe_on = AUDIO_AFE_OFF;
-//		audio_data.D0_ratio = 0;
-//		goto exit;
-//	}
-//	audio_data.afe_on = AUDIO_AFE_ON;
-//	audio_data.D0_ratio = 100;
+	audio_data.freq_clock = 26;
+	regmap_read(local_afe->regmap, AUDIO_TOP_CON4, &reg_val);
+	value = (reg_val & CG_AUDIO_F26M_CK_MASK_SFT) >> CG_AUDIO_F26M_CK_SFT;
+	if (value || (reg_val == 0x78fd5265)) {
+		dev_info(local_afe->dev, "%s(), afe agent is not enable\n", __func__);
+		audio_data.afe_on = AUDIO_AFE_OFF;
+		audio_data.D0_ratio = 0;
+		goto exit;
+	}
+	audio_data.afe_on = AUDIO_AFE_ON;
+	audio_data.D0_ratio = 100;
 
-//	// get input/output device
-//	audio_data.output_device = mt6881_get_output_device(local_afe);
-//	audio_data.input_device = mt6881_get_input_device(local_afe);
-//	if (audio_data.input_device != AUDIO_INPUT_INVALID &&
-//	    audio_data.output_device != AUDIO_OUTPUT_INVALID) {
-//		audio_data.user_case = AUDIO_USER_TALKING;
-//		// TODO hardcode for VOIP
-//		ul_ch = 3;
-//		dl_ch = 2;
-//		ul_hifi = AUDIO_ADDA_UL_LP;
-//		if (audio_data.output_device == AUDIO_OUTPUT_HEADPHONE)
-//			dl_hifi = AUDIO_ADDA_DL_LP;
-//		else
-//			audio_data.output_device = AUDIO_OUTPUT_RECEIVER;
-//		audio_data.sample_rate = AUDIO_RATE_48K;
+	// get input/output device
+	audio_data.output_device = mt6881_get_output_device(local_afe);
+	audio_data.input_device = mt6881_get_input_device(local_afe);
+	if (audio_data.input_device != AUDIO_INPUT_INVALID &&
+	    audio_data.output_device != AUDIO_OUTPUT_INVALID) {
+		audio_data.user_case = AUDIO_USER_TALKING;
+		// TODO hardcode for VOIP
+		ul_ch = 3;
+		dl_ch = 2;
+		ul_hifi = AUDIO_ADDA_UL_LP;
+		if (audio_data.output_device == AUDIO_OUTPUT_HEADPHONE)
+			dl_hifi = AUDIO_ADDA_DL_LP;
+		else
+			audio_data.output_device = AUDIO_OUTPUT_RECEIVER;
+		audio_data.sample_rate = AUDIO_RATE_48K;
 
-//	} else if (audio_data.input_device != AUDIO_INPUT_INVALID) {
-//		audio_data.user_case = AUDIO_USER_RECORD;
-//		ul_ch = mtk_get_channel_value();
-//		ul_hifi = AUDIO_ADDA_UL_LP;
-//		value = adda_priv->ul_rate;
-//		audio_data.sample_rate = mt6881_swpm_rate_transform(local_afe->dev, value);
-//	} else if (audio_data.output_device != AUDIO_OUTPUT_INVALID) {
-//		audio_data.user_case = AUDIO_USER_PLAYBACK;
-//		dl_ch = mtk_get_channel_value();
-//		if (audio_data.output_device == AUDIO_OUTPUT_HEADPHONE) {
-//			dl_hifi = AUDIO_ADDA_DL_LP;
-//			value = adda_priv->dl_rate;
-//			audio_data.sample_rate = mt6881_swpm_rate_transform(local_afe->dev, value);
-//		} else {
-//			audio_data.sample_rate = AUDIO_RATE_48K;
-//		}
+	} else if (audio_data.input_device != AUDIO_INPUT_INVALID) {
+		audio_data.user_case = AUDIO_USER_RECORD;
+		ul_ch = mtk_get_channel_value();
+		ul_hifi = AUDIO_ADDA_UL_LP;
+		value = adda_priv->ul_rate;
+		audio_data.sample_rate = mt6881_swpm_rate_transform(local_afe->dev, value);
+	} else if (audio_data.output_device != AUDIO_OUTPUT_INVALID) {
+		audio_data.user_case = AUDIO_USER_PLAYBACK;
+		dl_ch = mtk_get_channel_value();
+		if (audio_data.output_device == AUDIO_OUTPUT_HEADPHONE) {
+			dl_hifi = AUDIO_ADDA_DL_LP;
+			value = adda_priv->dl_rate;
+			audio_data.sample_rate = mt6881_swpm_rate_transform(local_afe->dev, value);
+		} else {
+			audio_data.sample_rate = AUDIO_RATE_48K;
+		}
 
-//	} else {
-//		audio_data.user_case = AUDIO_USER_INVALID;
-//		audio_data.adda_mode = AUDIO_ADDA_INVALID;
-//		audio_data.sample_rate = AUDIO_RATE_INVALID;
-//		audio_data.channel_num = AUDIO_CHANNEL_INVALID;
-//		goto exit;
-//	}
-//	ul_hifi = ul_hifi << AUDIO_ADDA_SHIFT;
-//	ul_ch = ul_ch << AUDIO_CHANNEL_SHIFT;
-//	audio_data.adda_mode = ul_hifi + dl_hifi;
-//	audio_data.channel_num = ul_ch + dl_ch;
+	} else {
+		audio_data.user_case = AUDIO_USER_INVALID;
+		audio_data.adda_mode = AUDIO_ADDA_INVALID;
+		audio_data.sample_rate = AUDIO_RATE_INVALID;
+		audio_data.channel_num = AUDIO_CHANNEL_INVALID;
+		goto exit;
+	}
+	ul_hifi = ul_hifi << AUDIO_ADDA_SHIFT;
+	ul_ch = ul_ch << AUDIO_CHANNEL_SHIFT;
+	audio_data.adda_mode = ul_hifi + dl_hifi;
+	audio_data.channel_num = ul_ch + dl_ch;
 
-// exit:
-//	local_audio_data = audio_data;
-//	pr_debug("%s(), updates data ON %u, user %u, out %u, in %u, adda %u, rate %u, ch %u, freq %u, D0 %u\n",
-//		__func__, local_audio_data.afe_on,
-//		local_audio_data.user_case, local_audio_data.output_device,
-//		local_audio_data.input_device, local_audio_data.adda_mode,
-//		local_audio_data.sample_rate, local_audio_data.channel_num,
-//		local_audio_data.freq_clock, local_audio_data.D0_ratio);
-// }
+exit:
+	local_audio_data = audio_data;
+	pr_debug("%s(), updates data ON %u, user %u, out %u, in %u, adda %u, rate %u, ch %u, freq %u, D0 %u\n",
+		__func__, local_audio_data.afe_on,
+		local_audio_data.user_case, local_audio_data.output_device,
+		local_audio_data.input_device, local_audio_data.adda_mode,
+		local_audio_data.sample_rate, local_audio_data.channel_num,
+		local_audio_data.freq_clock, local_audio_data.D0_ratio);
+}
 
 bool check_swpm_data_valid(struct audio_swpm_data data)
 {

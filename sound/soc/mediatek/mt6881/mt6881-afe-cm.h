@@ -1,7 +1,7 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Copyright (c) 2025 MediaTek Inc.
- * Author: Shawn Sung <shawn.sung@mediatek.com>
+ * Author: Lindsay Tsai <lindsay.tsai@mediatek.com>
  */
 
 #ifndef MTK_AFE_CM_H_
@@ -9,6 +9,7 @@
 enum {
 	CM0,
 	CM1,
+	CM2,
 	CM_NUM,
 };
 

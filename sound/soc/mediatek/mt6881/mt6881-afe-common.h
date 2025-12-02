@@ -3,7 +3,7 @@
  * mt6881-afe-common.h  --  Mediatek 6881 audio driver definitions
  *
  * Copyright (c) 2025 MediaTek Inc.
- *  Author: Shawn Sung <shawn.sung@mediatek.com>
+ *  Author: Lindsay Tsai <lindsay.tsai@mediatek.com>
  */
 
 #ifndef _MT_6881_AFE_COMMON_H_
@@ -88,6 +88,7 @@ enum {
 	MT6881_MEMIF_DL24,
 	MT6881_MEMIF_DL25,
 	MT6881_MEMIF_DL_24CH,
+	MT6881_MEMIF_DL_48CH,
 	MT6881_MEMIF_VUL0,
 	MT6881_MEMIF_VUL1,
 	MT6881_MEMIF_VUL2,
@@ -103,9 +104,11 @@ enum {
 	MT6881_MEMIF_VUL25,
 	MT6881_MEMIF_VUL_CM0,
 	MT6881_MEMIF_VUL_CM1,
+	MT6881_MEMIF_VUL_CM2,
+	MT6881_MEMIF_ETDM_IN0,
 	MT6881_MEMIF_ETDM_IN1,
 	MT6881_MEMIF_ETDM_IN2,
-	MT6881_MEMIF_ETDM_IN4,
+	MT6881_MEMIF_ETDM_IN6,
 	MT6881_MEMIF_NUM,
 	MT6881_DAI_ADDA = MT6881_MEMIF_NUM,
 	MT6881_DAI_ADDA_CH34,
@@ -116,12 +119,15 @@ enum {
 	MT6881_DAI_VOW,
 	MT6881_DAI_VOW_SCP_DMIC,
 	MT6881_DAI_CONNSYS_I2S,
+	MT6881_DAI_I2S_IN0,
 	MT6881_DAI_I2S_IN1,
 	MT6881_DAI_I2S_IN2,
-	// MT6881_DAI_I2S_IN4,
+	MT6881_DAI_I2S_IN6,
+	MT6881_DAI_IQI2S_IN0,
+	MT6881_DAI_I2S_OUT0,
 	MT6881_DAI_I2S_OUT1,
 	MT6881_DAI_I2S_OUT2,
-	// MT6881_DAI_I2S_OUT4,
+	MT6881_DAI_I2S_OUT6,
 	MT6881_DAI_FM_I2S_MASTER,
 	MT6881_DAI_HW_GAIN_0,
 	MT6881_DAI_HW_GAIN_1,
@@ -131,7 +137,12 @@ enum {
 	MT6881_DAI_SRC_1,
 	MT6881_DAI_SRC_2,
 	MT6881_DAI_SRC_3,
-	MT6881_DAI_PCM_0,
+	MT6881_DAI_SRC_4,
+	MT6881_DAI_SRC_5,
+	MT6881_DAI_SRC_6,
+	MT6881_DAI_SRC_7,
+	MT6881_DAI_SRC_NUM,
+	MT6881_DAI_PCM_0 = MT6881_DAI_SRC_NUM,
 	MT6881_DAI_PCM_1,
 	MT6881_DAI_HOSTLESS_LPBK,
 	MT6881_DAI_HOSTLESS_FM,
@@ -218,9 +229,10 @@ enum {
 
 /* MCLK */
 enum {
+	MT6881_I2SIN0_MCK,
 	MT6881_I2SIN1_MCK,
 	MT6881_I2SIN2_MCK,
-	/* MT6881_FMI2S_MCK, */
+	MT6881_FMI2S_MCK,
 	MT6881_MCK_NUM,
 };
 
@@ -721,6 +733,32 @@ struct mtk_afe_adda_priv {
 	int ul_rate;
 };
 
+struct mtk_afe_i2s_priv {
+	int id;
+	int rate; /* for determine which apll to use */
+	int low_jitter_en;
+
+	const char *share_property_name;
+	int share_i2s_id;
+
+	int mclk_id;
+	int mclk_rate;
+	int mclk_apll;
+
+	int ch_num;
+	int sync;
+	int ip_mode;
+	int slave_mode;
+	int lpbk_mode;
+	int mclk_en;
+	int vlp_domain;
+
+	int format;
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	int fixup_rate;
+#endif
+};
+
 enum audio_swpm_user_case {
 	AUDIO_USER_INVALID,
 	AUDIO_USER_PLAYBACK,
@@ -838,7 +876,7 @@ int mt6881_afe_set_clk_always_on(struct mtk_base_afe *afe, bool enable);
 
 // swpm function
 void *mt6881_aud_get_power_scenario(void);
-// void mt6881_aud_update_power_scenario(void);
+void mt6881_aud_update_power_scenario(void);
 void mt6881_aud_swpm_power_off(void);
 
 #endif

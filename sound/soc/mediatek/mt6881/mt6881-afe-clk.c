@@ -70,6 +70,8 @@ static const char *aud_clks[CLK_NUM] = {
 	[CLK_CKSYS_REG_APLL2_D4] = "top_apll2_d4",
 	[CLK_CKSYS_REG_APLL_IN1_MCK_SEL] = "apll_i2sin1_mck_sel",
 	[CLK_CKSYS_REG_APLL12_CK_DIV_IN1] = "top_apll12_div_i2sin1",
+	[CLK_CKSYS_REG_APLL_FMI2S_MCK_SEL] = "ck_fmi2s_m_sel",
+	[CLK_CKSYS_REG_APLL12_CK_DIV_FMI2S] = "ck_apll12_div_fmi2s",
 	[CLK_CKSYS_REG_TCK_26M_MX9] = "tck_26m_mx9_ck",
 };
 
@@ -743,22 +745,21 @@ static const struct mt6881_mck_div mck_div[MT6881_MCK_NUM] = {
 		.div_inv_reg = CLK_AUDDIV_1,
 		.div_inv_mask_sft = APLL12_DIV_I2SIN1_INV_SFT,
 	},
-	/* [MT6881_FMI2S_MCK] = {
-	 *	.m_sel_id = CLK_CKSYS_REG_FMI2S_M_SEL,
-	 *	.div_clk_id = CLK_CKSYS_REG_APLL12_DIV_FMI2S,
-	 *	.div_pdn_reg = CLK_AUDDIV_0,
-	 *	.div_pdn_mask_sft = APLL12_DIV_FMI2S_PDN_MASK_SFT,
-	 *	.div_reg = CLK_AUDDIV_5,
-	 *	.div_mask_sft = APLL12_CK_DIV_FMI2S_MASK_SFT,
-	 *	.div_mask = APLL12_CK_DIV_FMI2S_MASK,
-	 *	.div_sft = APLL12_CK_DIV_FMI2S_SFT,
-	 *	.div_apll_sel_reg = CLK_AUDDIV_0,
-	 *	.div_apll_sel_mask_sft = APLL_FMI2S_MCK_SEL_MASK_SFT,
-	 *	.div_apll_sel_sft = APLL_FMI2S_MCK_SEL_SFT,
-	 *	.div_inv_reg = CLK_AUDDIV_1,
-	 *	.div_inv_mask_sft = APLL12_DIV_FMI2S_INV_SFT,
-	 * },
-	 */
+	[MT6881_FMI2S_MCK] = {
+		.m_sel_id = CLK_CKSYS_REG_APLL_FMI2S_MCK_SEL,
+		.div_clk_id = CLK_CKSYS_REG_APLL12_CK_DIV_FMI2S,
+		.div_pdn_reg = CLK_AUDDIV_0,
+		.div_pdn_mask_sft = APLL12_DIV_FMI2S_PDN_MASK_SFT,
+		.div_reg = CLK_AUDDIV_5,
+		.div_mask_sft = APLL12_CK_DIV_FMI2S_MASK_SFT,
+		.div_mask = APLL12_CK_DIV_FMI2S_MASK,
+		.div_sft = APLL12_CK_DIV_FMI2S_SFT,
+		.div_apll_sel_reg = CLK_AUDDIV_0,
+		.div_apll_sel_mask_sft = APLL_FMI2S_MCK_SEL_MASK_SFT,
+		.div_apll_sel_sft = APLL_FMI2S_MCK_SEL_SFT,
+		.div_inv_reg = CLK_AUDDIV_1,
+		.div_inv_mask_sft = APLL12_DIV_FMI2S_INV_SFT,
+	},
 };
 
 int mt6881_mck_enable(struct mtk_base_afe *afe, int mck_id, int rate)

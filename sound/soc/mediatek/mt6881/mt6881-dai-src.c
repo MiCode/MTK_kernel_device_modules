@@ -3,7 +3,7 @@
  *  MediaTek ALSA SoC Audio DAI SRC Control
  *
  *  Copyright (c) 2025 MediaTek Inc.
- *  Author: Shawn Sung <shawn.sung@mediatek.com>
+ *  Author: Lindsay Tsai <lindsay.tsai@mediatek.com>
  */
 
 #include <linux/regmap.h>
@@ -702,14 +702,16 @@ static const struct snd_kcontrol_new mtk_hw_src_0_in_ch1_mix[] = {
 				    I_DL6_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN180_1,
 				    I_DL_24CH_CH1, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN180_2,
-				    I_DL24_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH1", AFE_CONN180_2,
+				    I_DL_48CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN180_3,
+				    I_DL45_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN180_0,
 				    I_ADDA_UL_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH1", AFE_CONN180_4,
 				    I_I2SIN1_CH1, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN180_4,
-	//			    I_I2SIN4_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH1", AFE_CONN180_5,
+				    I_I2SIN6_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_src_0_in_ch2_mix[] = {
@@ -729,14 +731,16 @@ static const struct snd_kcontrol_new mtk_hw_src_0_in_ch2_mix[] = {
 				    I_DL6_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN181_1,
 				    I_DL_24CH_CH2, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN181_2,
-				    I_DL24_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH2", AFE_CONN181_2,
+				    I_DL_48CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN181_3,
+				    I_DL45_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN181_0,
 				    I_ADDA_UL_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH2", AFE_CONN181_4,
 				    I_I2SIN1_CH2, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN181_4,
-	//			    I_I2SIN4_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH2", AFE_CONN181_5,
+				    I_I2SIN6_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_src_1_in_ch1_mix[] = {
@@ -756,18 +760,20 @@ static const struct snd_kcontrol_new mtk_hw_src_1_in_ch1_mix[] = {
 				    I_DL6_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN182_1,
 				    I_DL_24CH_CH1, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN182_2,
-				    I_DL24_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH1", AFE_CONN182_2,
+				    I_DL_48CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN182_3,
+				    I_DL45_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN1_OUT_CH1", AFE_CONN182_0,
 				    I_GAIN1_OUT_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH1", AFE_CONN182_4,
 				    I_I2SIN1_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH1", AFE_CONN182_4,
 				    I_I2SIN2_CH1, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN182_4,
-	//			    I_I2SIN4_CH1, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH3", AFE_CONN182_4,
-	//			    I_I2SIN4_CH3, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH1", AFE_CONN182_5,
+				    I_I2SIN6_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH3", AFE_CONN182_5,
+				    I_I2SIN6_CH3, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN180_4,
 				    I_PCM_1_CAP_CH1, 1, 0),
 };
@@ -789,18 +795,20 @@ static const struct snd_kcontrol_new mtk_hw_src_1_in_ch2_mix[] = {
 				    I_DL6_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN183_1,
 				    I_DL_24CH_CH2, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN183_2,
-				    I_DL24_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH2", AFE_CONN183_2,
+				    I_DL_48CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN183_3,
+				    I_DL45_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN1_OUT_CH2", AFE_CONN183_0,
 				    I_GAIN1_OUT_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH2", AFE_CONN183_4,
 				    I_I2SIN1_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH2", AFE_CONN183_4,
 				    I_I2SIN2_CH2, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN183_4,
-	//			    I_I2SIN4_CH2, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH4", AFE_CONN183_4,
-	//			    I_I2SIN4_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH2", AFE_CONN183_5,
+				    I_I2SIN6_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH4", AFE_CONN183_5,
+				    I_I2SIN6_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH2", AFE_CONN180_4,
 				    I_PCM_1_CAP_CH2, 1, 0),
 };
@@ -822,12 +830,14 @@ static const struct snd_kcontrol_new mtk_hw_src_2_in_ch1_mix[] = {
 				    I_DL6_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN184_1,
 				    I_DL_24CH_CH1, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN184_2,
-				    I_DL24_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH1", AFE_CONN184_2,
+				    I_DL_48CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN184_3,
+				    I_DL45_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN184_4,
 				    I_PCM_1_CAP_CH1, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH5", AFE_CONN184_4,
-	//			    I_I2SIN4_CH5, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH5", AFE_CONN184_5,
+				    I_I2SIN6_CH5, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_src_2_in_ch2_mix[] = {
@@ -847,12 +857,14 @@ static const struct snd_kcontrol_new mtk_hw_src_2_in_ch2_mix[] = {
 				    I_DL6_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN185_1,
 				    I_DL_24CH_CH2, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN185_2,
-				    I_DL24_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH2", AFE_CONN185_2,
+				    I_DL_48CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN185_3,
+				    I_DL45_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN185_4,
 				    I_PCM_1_CAP_CH1, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH6", AFE_CONN185_4,
-	//			    I_I2SIN4_CH6, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH6", AFE_CONN185_5,
+				    I_I2SIN6_CH6, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_src_3_in_ch1_mix[] = {
@@ -872,10 +884,12 @@ static const struct snd_kcontrol_new mtk_hw_src_3_in_ch1_mix[] = {
 				    I_DL6_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN186_1,
 				    I_DL_24CH_CH1, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN186_2,
-				    I_DL24_CH1, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH7", AFE_CONN186_4,
-	//			    I_I2SIN4_CH7, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH1", AFE_CONN186_2,
+				    I_DL_48CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN186_3,
+				    I_DL45_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH7", AFE_CONN186_5,
+				    I_I2SIN6_CH7, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_src_3_in_ch2_mix[] = {
@@ -895,10 +909,12 @@ static const struct snd_kcontrol_new mtk_hw_src_3_in_ch2_mix[] = {
 				    I_DL6_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN187_1,
 				    I_DL_24CH_CH2, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN187_2,
-				    I_DL24_CH2, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH8", AFE_CONN187_4,
-	//			    I_I2SIN4_CH8, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH2", AFE_CONN187_2,
+				    I_DL_48CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN187_3,
+				    I_DL45_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH8", AFE_CONN187_5,
+				    I_I2SIN6_CH8, 1, 0),
 };
 
 static const struct snd_soc_dapm_widget mtk_dai_src_widgets[] = {
@@ -1108,20 +1124,28 @@ static const struct snd_soc_dapm_route mtk_dai_src_routes[] = {
 	{"HW_SRC_2_IN_CH2", "DL_24CH_CH2", "DL_24CH"},
 	{"HW_SRC_3_IN_CH1", "DL_24CH_CH1", "DL_24CH"},
 	{"HW_SRC_3_IN_CH2", "DL_24CH_CH2", "DL_24CH"},
+	{"HW_SRC_0_IN_CH1", "DL_48CH_CH1", "DL_48CH"},
+	{"HW_SRC_0_IN_CH2", "DL_48CH_CH2", "DL_48CH"},
+	{"HW_SRC_1_IN_CH1", "DL_48CH_CH1", "DL_48CH"},
+	{"HW_SRC_1_IN_CH2", "DL_48CH_CH2", "DL_48CH"},
+	{"HW_SRC_2_IN_CH1", "DL_48CH_CH1", "DL_48CH"},
+	{"HW_SRC_2_IN_CH2", "DL_48CH_CH2", "DL_48CH"},
+	{"HW_SRC_3_IN_CH1", "DL_48CH_CH1", "DL_48CH"},
+	{"HW_SRC_3_IN_CH2", "DL_48CH_CH2", "DL_48CH"},
 
 	{"HW_SRC_2_IN_CH1", "PCM_1_CAP_CH1", "PCM 1 Capture"},
 	{"HW_SRC_2_IN_CH2", "PCM_1_CAP_CH1", "PCM 1 Capture"},
 
 	{"HW_SRC_1_IN_CH1", "I2SIN1_CH1", "I2SIN1"},
 	{"HW_SRC_1_IN_CH2", "I2SIN1_CH2", "I2SIN1"},
-	// {"HW_SRC_1_IN_CH1", "I2SIN4_CH1", "I2SIN4"},
-	// {"HW_SRC_1_IN_CH2", "I2SIN4_CH2", "I2SIN4"},
-	// {"HW_SRC_1_IN_CH1", "I2SIN4_CH3", "I2SIN4"},
-	// {"HW_SRC_1_IN_CH2", "I2SIN4_CH4", "I2SIN4"},
-	// {"HW_SRC_2_IN_CH1", "I2SIN4_CH5", "I2SIN4"},
-	// {"HW_SRC_2_IN_CH2", "I2SIN4_CH6", "I2SIN4"},
-	// {"HW_SRC_3_IN_CH1", "I2SIN4_CH7", "I2SIN4"},
-	// {"HW_SRC_3_IN_CH2", "I2SIN4_CH8", "I2SIN4"},
+	{"HW_SRC_1_IN_CH1", "I2SIN6_CH1", "I2SIN6"},
+	{"HW_SRC_1_IN_CH2", "I2SIN6_CH2", "I2SIN6"},
+	{"HW_SRC_1_IN_CH1", "I2SIN6_CH3", "I2SIN6"},
+	{"HW_SRC_1_IN_CH2", "I2SIN6_CH4", "I2SIN6"},
+	{"HW_SRC_2_IN_CH1", "I2SIN6_CH5", "I2SIN6"},
+	{"HW_SRC_2_IN_CH2", "I2SIN6_CH6", "I2SIN6"},
+	{"HW_SRC_3_IN_CH1", "I2SIN6_CH7", "I2SIN6"},
+	{"HW_SRC_3_IN_CH2", "I2SIN6_CH8", "I2SIN6"},
 
 	{"HW_SRC_0_In", NULL, "HW_SRC_0_IN_CH1"},
 	{"HW_SRC_0_In", NULL, "HW_SRC_0_IN_CH2"},
@@ -1173,8 +1197,8 @@ static int mtk_dai_src_hw_params(struct snd_pcm_substream *substream,
 	struct mtk_afe_src_priv *src_priv = afe_priv->dai_priv[id];
 	unsigned int reg, sft = 0, mask = 0;
 	unsigned int rate = params_rate(params);
-	// unsigned int value = 0;
-	//snd_pcm_format_t format = params_format(params);
+	unsigned int value = 0;
+	// snd_pcm_format_t format = params_format(params);
 #ifdef GSRC_REG
 	unsigned int rate_reg = mt6881_rate_transform(afe->dev, rate, id);
 #endif
@@ -1199,21 +1223,20 @@ static int mtk_dai_src_hw_params(struct snd_pcm_substream *substream,
 		src_priv->dl_rate = rate;
 		sft = IN_EN_SEL_FS_SFT;
 		mask = IN_EN_SEL_FS_MASK;
+	} else {
+		src_priv->ul_rate = rate;
+		sft = OUT_EN_SEL_FS_SFT;
+		mask = OUT_EN_SEL_FS_MASK;
+		regmap_read(afe->regmap, ETDM_IN6_CON0, &value);
+		if ((value & REG_SLAVE_MODE_MASK_SFT) && src_priv->dl_rate == 0) {
+			dev_info(afe->dev, "%s(), i2sin6 slave mode\n",  __func__);
+			src_priv->dl_rate = rate;
+			regmap_update_bits(afe->regmap,
+				reg,
+				IN_EN_SEL_FS_MASK << IN_EN_SEL_FS_SFT,
+				rate_reg << IN_EN_SEL_FS_SFT);
+		}
 	}
-	// else {
-	//	src_priv->ul_rate = rate;
-	//	sft = OUT_EN_SEL_FS_SFT;
-	//	mask = OUT_EN_SEL_FS_MASK;
-	//	regmap_read(afe->regmap, ETDM_IN4_CON0, &value);
-	//	if ((value & REG_SLAVE_MODE_MASK_SFT) && src_priv->dl_rate == 0) {
-	//		dev_info(afe->dev, "%s(), i2sin4 slave mode\n",  __func__);
-	//		src_priv->dl_rate = rate;
-	//		regmap_update_bits(afe->regmap,
-	//			reg,
-	//			IN_EN_SEL_FS_MASK << IN_EN_SEL_FS_SFT,
-	//			rate_reg << IN_EN_SEL_FS_SFT);
-	//	}
-	// }
 #ifdef GSRC_REG
 	regmap_update_bits(afe->regmap,
 			   reg,

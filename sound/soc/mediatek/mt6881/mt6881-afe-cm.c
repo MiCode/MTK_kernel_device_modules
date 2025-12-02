@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Copyright (c) 2025 MediaTek Inc.
- * Author: Shawn Sung <shawn.sung@mediatek.com>
+ * Author: Lindsay Tsai <lindsay.tsai@mediatek.com>
  */
 
 #include <linux/io.h>
@@ -17,8 +17,10 @@
 
 static unsigned int cm0_rate;
 static unsigned int cm1_rate;
+static unsigned int cm2_rate;
 static unsigned int cm0_mux_switch;
 static unsigned int cm1_mux_switch;
+static unsigned int cm2_mux_switch;
 
 struct mtk_base_cm_data {
 	int reg;
@@ -76,6 +78,24 @@ const struct mtk_base_cm_data cm_data[CM_NUM] = {
 		.mux_mask = AFE_CM1_OUTPUT_MUX_MASK,
 		.mux_shift = AFE_CM1_OUTPUT_MUX_SFT,
 	},
+	[CM2] = {
+		.reg = AFE_CM2_CON0,
+		.on_mask = AFE_CM2_ON_MASK,
+		.on_shift = AFE_CM2_ON_SFT,
+		.on_bypass_mask = AFE_CM2_BYPASS_MODE_MASK,
+		.on_bypass_shift = AFE_CM2_BYPASS_MODE_SFT,
+		.on_bypass_mask_shift = AFE_CM2_BYPASS_MODE_MASK_SFT,
+		.rate_mask = AFE_CM2_1X_EN_SEL_FS_MASK,
+		.rate_shift = AFE_CM2_1X_EN_SEL_FS_SFT,
+		.update_mask = AFE_CM2_UPDATE_CNT_MASK,
+		.update_shift = AFE_CM2_UPDATE_CNT_SFT,
+		.swap_mask = AFE_CM2_BYTE_SWAP_MASK,
+		.swap_shift = AFE_CM2_BYTE_SWAP_SFT,
+		.ch_mask = AFE_CM2_CH_NUM_MASK,
+		.ch_shift = AFE_CM2_CH_NUM_SFT,
+		.mux_mask = AFE_CM2_OUTPUT_MUX_MASK,
+		.mux_shift = AFE_CM2_OUTPUT_MUX_SFT,
+	},
 };
 
 void mt6881_set_cm_rate(int id, unsigned int rate)
@@ -84,6 +104,8 @@ void mt6881_set_cm_rate(int id, unsigned int rate)
 		cm0_rate = rate;
 	else if (id == CM1)
 		cm1_rate = rate;
+	else if (id == CM2)
+		cm2_rate = rate;
 }
 EXPORT_SYMBOL_GPL(mt6881_set_cm_rate);
 
@@ -93,6 +115,8 @@ void mt6881_set_cm_mux(int id, unsigned int mux)
 		cm0_mux_switch = mux;
 	else if (id == CM1)
 		cm1_mux_switch = mux;
+	else if (id == CM2)
+		cm2_mux_switch = mux;
 	else
 		return;
 
@@ -110,6 +134,9 @@ int mt6881_get_cm_mux(int id)
 		break;
 	case CM1:
 		value = cm1_mux_switch;
+		break;
+	case CM2:
+		value = cm2_mux_switch;
 		break;
 	default:
 		pr_info("%s(), CM id %d not exist!!\n", __func__, id);
@@ -161,6 +188,11 @@ int mt6881_set_cm(struct mtk_base_afe *afe, int id,
 		rate = cm1_rate;
 		mux = cm1_mux_switch;
 		break;
+	case CM2:
+		cm = cm_data[id];
+		rate = cm2_rate;
+		mux = cm2_mux_switch;
+		break;
 	default:
 		pr_info("%s(), CM%d not found\n", __func__, id);
 		return 0;
@@ -201,6 +233,7 @@ int mt6881_enable_cm_bypass(struct mtk_base_afe *afe, int id, bool en)
 	switch (id) {
 	case CM0:
 	case CM1:
+	case CM2:
 		cm = cm_data[id];
 		break;
 	default:
@@ -224,6 +257,7 @@ int mt6881_enable_cm(struct mtk_base_afe *afe, int id, bool en)
 	switch (id) {
 	case CM0:
 	case CM1:
+	case CM2:
 		cm = cm_data[id];
 		break;
 	default:
@@ -246,6 +280,7 @@ int mt6881_is_need_enable_cm(struct mtk_base_afe *afe, int id)
 	switch (id) {
 	case CM0:
 	case CM1:
+	case CM2:
 		cm = cm_data[id];
 		break;
 	default:

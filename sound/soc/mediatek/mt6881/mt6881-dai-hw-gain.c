@@ -3,7 +3,7 @@
  *  MediaTek ALSA SoC Audio DAI HW Gain Control
  *
  *  Copyright (c) 2025 MediaTek Inc.
- *  Author: Shawn Sung <shawn.sung@mediatek.com>
+ *  Author: Lindsay Tsai <lindsay.tsai@mediatek.com>
  */
 
 #include <linux/regmap.h>
@@ -23,29 +23,29 @@ static	unsigned int hw_gain_default = 0x200000;
 static const struct snd_kcontrol_new mtk_hw_gain0_in_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH1", AFE_CONN004_0,
 				    I_CONNSYS_I2S_CH1, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH1", AFE_CONN004_4,
-	//			    I_I2SIN4_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH1", AFE_CONN004_5,
+				    I_I2SIN6_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain0_in_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH2", AFE_CONN005_0,
 				    I_CONNSYS_I2S_CH2, 1, 0),
-	// SOC_DAPM_SINGLE_AUTODISABLE("I2SIN4_CH2", AFE_CONN005_4,
-	//			    I_I2SIN4_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH2", AFE_CONN005_5,
+				    I_I2SIN6_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain1_in_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN006_0,
 				    I_ADDA_UL_CH1, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN006_2,
-				    I_DL24_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN006_3,
+				    I_DL45_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain1_in_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN007_0,
 				    I_ADDA_UL_CH2, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN007_2,
-				    I_DL24_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN007_3,
+				    I_DL45_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_hw_gain2_in_ch1_mix[] = {
@@ -509,8 +509,8 @@ static const struct snd_soc_dapm_route mtk_dai_hw_gain_routes[] = {
 	{"HW Gain 2 Out", NULL, "HW Gain 2 Out Endpoint"},
 	{"HW Gain 3 Out", NULL, "HW Gain 3 Out Endpoint"},
 
-	// {"HW_GAIN0_IN_CH1", "I2SIN4_CH1", "I2SIN4"},
-	// {"HW_GAIN0_IN_CH2", "I2SIN4_CH2", "I2SIN4"},
+	{"HW_GAIN0_IN_CH1", "I2SIN6_CH1", "I2SIN6"},
+	{"HW_GAIN0_IN_CH2", "I2SIN6_CH2", "I2SIN6"},
 
 	{"HW_GAIN1_IN_CH1", "DL24_CH1", "DL24"},
 	{"HW_GAIN1_IN_CH2", "DL24_CH2", "DL24"},

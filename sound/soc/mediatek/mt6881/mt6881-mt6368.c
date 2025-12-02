@@ -3,7 +3,7 @@
  *  mt6881-mt6368.c  --  mt6881 mt6368 ALSA SoC machine driver
  *
  *  Copyright (c) 2025 MediaTek Inc.
- *  Author: Shawn Sung <shawn.sung@mediatek.com>
+ *  Author: Lindsay Tsai <lindsay.tsai@mediatek.com>
  */
 
 #include <linux/module.h>
@@ -71,8 +71,6 @@ static const char *const mt6881_spk_i2s_type_str[] = {
 	MTK_SPK_I2S_OUT0_STR,
 	MTK_SPK_I2S_IN1_STR,
 	MTK_SPK_I2S_OUT1_STR,
-	// MTK_SPK_I2S_IN4_STR,
-	// MTK_SPK_I2S_OUT4_STR,
 	MTK_SPK_I2S_IN5_STR,
 	MTK_SPK_I2S_OUT5_STR
 };
@@ -688,6 +686,10 @@ SND_SOC_DAILINK_DEFS(playback_24ch,
 	DAILINK_COMP_ARRAY(COMP_CPU("DL_24CH")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(playback_48ch,
+	DAILINK_COMP_ARRAY(COMP_CPU("DL_48CH")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(capture0,
 	DAILINK_COMP_ARRAY(COMP_CPU("UL0")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -756,10 +758,10 @@ SND_SOC_DAILINK_DEFS(capture_etdm_in2,
 	DAILINK_COMP_ARRAY(COMP_CPU("UL_ETDM_IN2")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
-// SND_SOC_DAILINK_DEFS(capture_etdm_in4,
-//	DAILINK_COMP_ARRAY(COMP_CPU("UL_ETDM_IN4")),
-//	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-//	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(capture_etdm_in6,
+	DAILINK_COMP_ARRAY(COMP_CPU("UL_ETDM_IN6")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 
 /* hostless */
 SND_SOC_DAILINK_DEFS(hostless_lpbk,
@@ -854,10 +856,14 @@ SND_SOC_DAILINK_DEFS(i2sin2,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SIN2")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
-// SND_SOC_DAILINK_DEFS(i2sin4,
-//	DAILINK_COMP_ARRAY(COMP_CPU("I2SIN4")),
-//	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-//	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(i2sin6,
+	DAILINK_COMP_ARRAY(COMP_CPU("I2SIN6")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(iqi2sin0,
+	DAILINK_COMP_ARRAY(COMP_CPU("IQI2SIN0")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2sout1,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT1")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -866,10 +872,10 @@ SND_SOC_DAILINK_DEFS(i2sout2,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT2")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
-// SND_SOC_DAILINK_DEFS(i2sout4,
-//	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT4")),
-//	DAILINK_COMP_ARRAY(COMP_DUMMY()),
-//	DAILINK_COMP_ARRAY(COMP_EMPTY()));
+SND_SOC_DAILINK_DEFS(i2sout6,
+	DAILINK_COMP_ARRAY(COMP_CPU("I2SOUT6")),
+	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(hw_gain0,
 	DAILINK_COMP_ARRAY(COMP_CPU("HW Gain 0")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
@@ -1181,6 +1187,15 @@ static struct snd_soc_dai_link mt6881_mt6368_dai_links[] = {
 		SND_SOC_DAILINK_REG(playback_24ch),
 	},
 	{
+		.name = "Playback_48",
+		.stream_name = "Playback_48",
+		.trigger = {SND_SOC_DPCM_TRIGGER_PRE,
+			    SND_SOC_DPCM_TRIGGER_PRE},
+		.dynamic = 1,
+		.dpcm_playback = 1,
+		SND_SOC_DAILINK_REG(playback_48ch),
+	},
+	{
 		.name = "Capture_1",
 		.stream_name = "Capture_1",
 		.trigger = {SND_SOC_DPCM_TRIGGER_PRE,
@@ -1333,15 +1348,15 @@ static struct snd_soc_dai_link mt6881_mt6368_dai_links[] = {
 		.dpcm_capture = 1,
 		SND_SOC_DAILINK_REG(capture_etdm_in2),
 	},
-	// {
-	//	.name = "Capture_ETDM_In4",
-	//	.stream_name = "Capture_ETDM_In4",
-	//	.trigger = {SND_SOC_DPCM_TRIGGER_PRE,
-	//		    SND_SOC_DPCM_TRIGGER_PRE},
-	//	.dynamic = 1,
-	//	.dpcm_capture = 1,
-	//	SND_SOC_DAILINK_REG(capture_etdm_in4),
-	// },
+	{
+		.name = "Capture_ETDM_In6",
+		.stream_name = "Capture_ETDM_In6",
+		.trigger = {SND_SOC_DPCM_TRIGGER_PRE,
+			    SND_SOC_DPCM_TRIGGER_PRE},
+		.dynamic = 1,
+		.dpcm_capture = 1,
+		SND_SOC_DAILINK_REG(capture_etdm_in6),
+	},
 	{
 		.name = "Hostless_LPBK",
 		.stream_name = "Hostless_LPBK",
@@ -1571,18 +1586,30 @@ static struct snd_soc_dai_link mt6881_mt6368_dai_links[] = {
 		.be_hw_params_fixup = mt6881_i2s_hw_params_fixup,
 		SND_SOC_DAILINK_REG(i2sin2),
 	},
-	// {
-	//	.name = "I2SIN4",
-	//	.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
-	//		| SND_SOC_DAIFMT_GATED,
-	//	.ops = &mt6881_mt6368_i2s_ops,
-	//	.no_pcm = 1,
-	//	.dpcm_capture = 1,
-	//	.ignore_suspend = 1,
-	//	.ignore_pmdown_time = 1,
-	//	.be_hw_params_fixup = mt6881_i2s_hw_params_fixup,
-	//	SND_SOC_DAILINK_REG(i2sin4),
-	// },
+	{
+		.name = "I2SIN6",
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
+			| SND_SOC_DAIFMT_GATED,
+		.ops = &mt6881_mt6368_i2s_ops,
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.be_hw_params_fixup = mt6881_i2s_hw_params_fixup,
+		SND_SOC_DAILINK_REG(i2sin6),
+	},
+	{
+		.name = "IQI2SIN0",
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
+			| SND_SOC_DAIFMT_GATED,
+		.ops = &mt6881_mt6368_i2s_ops,
+		.no_pcm = 1,
+		.dpcm_capture = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.be_hw_params_fixup = mt6881_i2s_hw_params_fixup,
+		SND_SOC_DAILINK_REG(iqi2sin0),
+	},
 	{
 		.name = "I2SOUT1",
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
@@ -1605,18 +1632,18 @@ static struct snd_soc_dai_link mt6881_mt6368_dai_links[] = {
 		.be_hw_params_fixup = mt6881_i2s_hw_params_fixup,
 		SND_SOC_DAILINK_REG(i2sout2),
 	},
-	// {
-	//	.name = "I2SOUT4",
-	//	.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
-	//		| SND_SOC_DAIFMT_GATED,
-	//	.ops = &mt6881_mt6368_i2s_ops,
-	//	.no_pcm = 1,
-	//	.dpcm_playback = 1,
-	//	.ignore_suspend = 1,
-	//	.ignore_pmdown_time = 1,
-	//	.be_hw_params_fixup = mt6881_i2s_hw_params_fixup,
-	//	SND_SOC_DAILINK_REG(i2sout4),
-	// },
+	{
+		.name = "I2SOUT6",
+		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
+			| SND_SOC_DAIFMT_GATED,
+		.ops = &mt6881_mt6368_i2s_ops,
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.ignore_suspend = 1,
+		.ignore_pmdown_time = 1,
+		.be_hw_params_fixup = mt6881_i2s_hw_params_fixup,
+		SND_SOC_DAILINK_REG(i2sout6),
+	},
 	{
 		.name = "HW Gain 0",
 		.no_pcm = 1,
@@ -1983,7 +2010,7 @@ static int mt6881_mt6368_dev_probe(struct platform_device *pdev)
 	if (!spk_node) {
 		dev_info(&pdev->dev,
 			"spk_node of_get_child_by_name fail\n");
-		//return -EINVAL;
+		//return -EINVAL; /* this line should be commented out */
 	}
 
 	for_each_card_prelinks(card, i, dai_link) {

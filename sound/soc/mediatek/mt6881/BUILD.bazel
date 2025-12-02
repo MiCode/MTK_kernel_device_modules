@@ -19,7 +19,6 @@ define_mgk_ddk_ko(
         "mt6881-afe-control.c",
         "mt6881-dai-i2s.c",
         "mt6881-dai-hw-gain.c",
-        "mt6881-dai-src.c",
         "mt6881-dai-pcm.c",
         "mt6881-dai-hostless.c",
         "mt6881-misc-control.c",
@@ -29,6 +28,12 @@ define_mgk_ddk_ko(
         "mt6881-reg.h",
         "mt6881-interconnection.h",
     ],
+    conditional_srcs = {
+        "CONFIG_SND_SOC_MTK_AUTO_AUDIO": {
+            True: ["mt6881-dai-src-auto.c"],
+            False:["mt6881-dai-src.c"],
+        },
+    },
     includes = [
         ".",
     ],
