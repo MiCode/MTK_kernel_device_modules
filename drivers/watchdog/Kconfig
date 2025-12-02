@@ -41,4 +41,37 @@ config DEVICE_MODULES_MEDIATEK_WATCHDOG
 	  To compile this driver as a module, choose M here: the
 	  module will be called mtk_wdt.
 
+config MEDIATEK_HYPER_WATCHDOG
+	tristate "Mediatek Virtual Watchdog For Multi-OS"
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	select WATCHDOG_CORE
+	select RESET_CONTROLLER
+	help
+	  Say M here to include support for the virtual watchdog.
+	  When enabled, each guest operating system will periodically
+	  send kick events to hypervisor to reset the watchdog timer
+	  preventing the system from being reset due to a watchdog timeout.
+
+config MEDIATEK_HYPER_WATCHDOG_SOS_KICK
+	tristate "Mediatek Virtual Watchdog For SOS Kick"
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	select WATCHDOG_CORE
+	select RESET_CONTROLLER
+	help
+	  Say M here to include support for the virtual watchdog.
+	  When enabled, it indicates that this OS is sos.
+	  The method to kick the virtual watchdog is to
+	  send a kick event to hypervisor.
+
+config MEDIATEK_HYPER_WATCHDOG_UOS_KICK
+	tristate "Mediatek Virtual Watchdog For UOS Kick"
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	select WATCHDOG_CORE
+	select RESET_CONTROLLER
+	help
+	  Say M here to include support for the virtual watchdog.
+	  When enabled, it indicates that this OS is uos.
+	  The method to kick the virtual watchdog is to
+	  send a kick event to nebula.
+
 endif # WATCHDOG

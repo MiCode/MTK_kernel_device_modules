@@ -34,6 +34,60 @@ define_mgk_ddk_ko(
     ],
 )
 
+define_mgk_ddk_ko(
+    name = "sos_kick",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MEDIATEK_HYPER_WATCHDOG_SOS_KICK": {
+            True:["sos_kick.c"],
+        },
+    },
+    includes = [
+        "include",
+    ],
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "uos_kick",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MEDIATEK_HYPER_WATCHDOG_UOS_KICK": {
+            True:["uos_kick.c"],
+        },
+    },
+    includes = [
+        "include",
+    ],
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_wdt_hyper",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MEDIATEK_HYPER_WATCHDOG": {
+            True:["mtk_wdt_hyper.c"],
+        },
+    },
+    includes = [
+        "include",
+    ],
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+)
+
 filegroup(
     name = "ddk_kconfigs",
     srcs = glob([
