@@ -68,6 +68,10 @@
 #include "scp_low_pwr_dbg.h"
 #include "scp_tmon_dbg.h"
 
+/* scp timesync header */
+#include <linux/soc/mediatek/mtk-mbox.h>
+#include "scp_timesync.h"
+
 /* scp semaphore timeout count definition */
 #define SEMAPHORE_TIMEOUT 5000
 #define SEMAPHORE_3WAY_TIMEOUT 5000
@@ -273,6 +277,10 @@ static int scp_resume_cb(struct device *dev)
 		if (ret)
 			pr_notice("[SCP] %s IPI_OUT_SCP_PM_NOTIFY_1 failed\n", __func__);
 	}
+
+	if (scp_timesync_flag)
+		scp_timesync_resume();
+
 	return 0;
 }
 
@@ -283,6 +291,10 @@ static int scp_suspend_cb(struct device *dev)
 	unsigned int msg;
 
 	pr_notice("[SCP] %s\n", __func__);
+
+	if (scp_timesync_flag)
+		scp_timesync_suspend();
+
 	if (scp_ipi_resume_dbg) {
 		for (mbox = 0; mbox < 5; mbox++)
 			mtk_mbox_clr_index_record(&scp_mboxdev, mbox);
@@ -2886,6 +2898,8 @@ static int scp_device_probe(struct platform_device *pdev)
 	const char *scp_ipi_timeout_bugon = NULL;
 	const char *scp_task_monitor_dbg = NULL;
 	const char *scp_dts_str = NULL;
+	struct mtk_mbox_device *mbdev;
+	struct mtk_mbox_info *minfo;
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
 	scpreg.sram = devm_ioremap_resource(dev, res);
@@ -3243,6 +3257,22 @@ static int scp_device_probe(struct platform_device *pdev)
 	if (ret)
 		pr_notice("[SCP] ipi_dev_register fail, ret %d\n", ret);
 
+	ret = of_property_read_u32(pdev->dev.of_node, "timesync-mbox", &i);
+
+	scp_timesync_flag = false;
+	if (!ret) {
+		pr_notice("[SCP] timesync-mbox defined: %d\n", i);
+		/* need port select by project*/
+		mbdev = scp_mbox_info[i].mbdev;
+		minfo = &(mbdev->info_table[i]);
+		scpreg.timesync_mbox = minfo->base;
+
+		if (IS_ERR((void const *) scpreg.timesync_mbox))
+			pr_notice("[SCP] scpreg.timesync_mbox error\n");
+		else
+			scp_timesync_flag = true;
+	}
+
 	if (!scp_resource_dump_init(pdev))
 		return -ENODEV;
 
@@ -3578,6 +3608,11 @@ static int __init scp_init(void)
 	/* Enable mbrain profile for task monitor */
 	if(scpreg.task_monitor_dbg)
 		scp_sys_tmon_mbrain_plat_init();
+
+	if (scp_timesync_flag && scp_timesync_init()) {
+		pr_err("[SCP] Timesync Init Failed\n");
+		goto err;
+	}
 
 	return ret;
 err:

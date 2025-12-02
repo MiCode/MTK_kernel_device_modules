@@ -43,6 +43,7 @@ define_mgk_ddk_ko(
         "scp_low_pwr_dbg.c",
         "scp_mbrain_dbg.c",
         "scp_tmon_dbg.c",
+        "scp_timesync.c",
         "sap.c",
     ],
 

@@ -138,6 +138,7 @@ struct scp_regs {
 	void __iomem *cfg_sec;
 	void __iomem *bus_tracker;
 	void __iomem *cfgreg_ap;
+	void __iomem *timesync_mbox;
 	struct regmap *scpsys_regmap; /* infracfg_ao base */
 	int irq0;
 	int irq1;

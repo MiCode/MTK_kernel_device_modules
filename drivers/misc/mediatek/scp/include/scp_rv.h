@@ -129,6 +129,7 @@ enum {
 	IPI_IN_TOUCH_CTRL        = 53,
 	IPI_OUT_TOUCH_NOTIFY     = 54,
 	IPI_IN_TOUCH_NOTIFY      = 55,
+	IPI_OUT_TIME_SYNC        = 56,
 	SCP_IPI_COUNT
 };
 
