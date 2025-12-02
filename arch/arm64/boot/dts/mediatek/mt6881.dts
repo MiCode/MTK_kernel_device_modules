@@ -74,6 +74,7 @@
 		dither1 = &disp_dither1;
 		dsi0 = &dsi0;
 		mutex0 = &disp_mutex0;
+		mtksmmu0 = &disp_iommu;
 		rsz0 = &disp_rsz0;
 		rsz1 = &disp_rsz1;
 		postmask0 = &disp_postmask0;
@@ -11601,6 +11602,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 	pkvm: pkvm {
 		status = "okay";
+
+		hypmmu {
+			use-mtkiommu = <1>;
+			use-gpumpu = <1>;
+			use-inframpu = <1>;
+		};
 	};
 
 	battery_manager: battery-manager {
