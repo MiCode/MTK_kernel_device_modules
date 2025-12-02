@@ -792,7 +792,7 @@ static struct fh_pll_domain mt6881_top0 = {
 
 ///////////////////////////////////mcu0
 static struct fh_pll_data mt6881_mcu0_data[] = {
-	DATA_6881_CONVERT("ccipll"),
+	DATA_6881_CONVERT("buspll"),
 	{}
 };
 static struct fh_pll_offset mt6881_mcu_share_offset[SIZE_6881_MCU] = {
@@ -810,7 +810,7 @@ static struct fh_pll_domain mt6881_mcu0 = {
 
 ///////////////////////////////////mcu1
 static struct fh_pll_data mt6881_mcu1_data[] = {
-	DATA_6881_CONVERT("armpll_ll"),
+	DATA_6881_CONVERT("armpll-ll"),
 	{}
 };
 static struct fh_pll_regs mt6881_mcu1_regs[SIZE_6881_MCU];
