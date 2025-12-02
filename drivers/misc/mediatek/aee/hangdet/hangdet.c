@@ -164,6 +164,11 @@ static unsigned int cpus_skip_bit;
 static uint32_t apwdt_en;
 static bool is_s2idle_status;
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS) || IS_ENABLED(CONFIG_HYPER_YOCTO_UOS)
+static RAW_NOTIFIER_HEAD(vm_hangdet_hwt_chain);
+static unsigned int hwt_flag;
+#endif
+
 #if IS_ENABLED(CONFIG_ARM64)
 struct clock_event_device *bc_mtk_clkevt;
 
@@ -965,6 +970,25 @@ static void show_irq_count(void)
 	aee_sram_fiq_log("\n");
 }
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS) || IS_ENABLED(CONFIG_HYPER_YOCTO_UOS)
+static int vm_hangdet_hwt_event(void)
+{
+	return raw_notifier_call_chain(&vm_hangdet_hwt_chain, 0, NULL);
+}
+
+int vm_hangdet_hwt_notifier_register(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&vm_hangdet_hwt_chain, nb);
+}
+EXPORT_SYMBOL(vm_hangdet_hwt_notifier_register);
+
+int vm_hangdet_hwt_notifier_unregister(struct notifier_block *nb)
+{
+	return raw_notifier_chain_unregister(&vm_hangdet_hwt_chain, nb);
+}
+EXPORT_SYMBOL(vm_hangdet_hwt_notifier_unregister);
+#endif
+
 #if IS_ENABLED(CONFIG_SMP)
 static call_single_data_t wdt_csd[MAX_CPUNR];
 #endif
@@ -972,6 +996,9 @@ static void kwdt_dump_func(void)
 {
 	struct task_struct *g, *t;
 	int i = 0;
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS) || IS_ENABLED(CONFIG_HYPER_YOCTO_UOS)
+	hwt_flag = 1;
+#endif
 
 #if IS_ENABLED(CONFIG_SMP)
 #if !IS_ENABLED(CONFIG_ARM64)
@@ -1062,6 +1089,10 @@ static void kwdt_dump_func(void)
 	crash_setup_regs(&saved_regs, NULL);
 	if (apwdt_en)
 		mrdump_common_die(AEE_REBOOT_MODE_WDT, "HWT", &saved_regs);
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS) || IS_ENABLED(CONFIG_HYPER_YOCTO_UOS)
+	vm_hangdet_hwt_event();
+	pr_info("vm_hangdet_hwt_event\n");
+#endif
 }
 
 static void aee_dump_timer_func(struct timer_list *t)
@@ -1435,7 +1466,11 @@ static int kwdt_thread(void *arg)
 
 	percpu_debug_timer_init();
 	for (;;) {
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS) || IS_ENABLED(CONFIG_HYPER_YOCTO_UOS)
+		if (kthread_should_stop() || (hwt_flag != 0)) {
+#else
 		if (kthread_should_stop()) {
+#endif
 			pr_info("[wdk] kthread_should_stop do !!\n");
 			break;
 		}
