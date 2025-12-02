@@ -5078,6 +5078,7 @@ def get_overlay_modules_list():
         mgk_64_common_userdebug_modules.append("net/core/failover.ko")
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/dmabuf_info:dmabuf_info".format(kernel_version))
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/mediatek/virtio_vdmabuf:virtio_vdmabuf".format(kernel_version))
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/bootticks:boot_ticks")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/media/virtio:virtio-video")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/nebula_rproc:nebula_rproc")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/nebula_rproc:nebula_rproc_host")
