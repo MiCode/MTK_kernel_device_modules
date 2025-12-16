@@ -123,8 +123,6 @@ static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
 static int xhci_mtk_alloc_erst(struct usb_offload_dev *udev,
 	struct xhci_ring *evt_ring, struct xhci_erst *erst);
 static struct xhci_ring *xhci_mtk_alloc_event_ring(struct usb_offload_dev *udev);
-static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
-	struct xhci_ring *ring, dma_addr_t phys, void *vir);
 
 /* usb offload device helper */
 static void usb_offload_self_recycle(void);
@@ -1563,13 +1561,13 @@ static int usb_offload_prepare_msg_ext(
 	struct snd_usb_substream *subs, struct intf_info *info)
 {
 	struct urb_information urb_info;
-	struct usb_host_endpoint *ep;
-	struct xhci_ring *ring;
+	//struct usb_host_endpoint *ep;
+	//struct xhci_ring *ring;
 	unsigned int total_size;
 	unsigned long long align = 64 - 1;
-	unsigned int slot_id, ep_id;
+	//unsigned int slot_id, ep_id;
 	dma_addr_t phy_addr;
-	void *vir_addr;
+	//void *vir_addr;
 	int ret, i;
 	bool expend_tr, has_sync_ep = false;
 	enum uo_provider_type type;
@@ -1612,19 +1610,6 @@ static int usb_offload_prepare_msg_ext(
 
 	/* assign memory for 2nd segment */
 	phy_addr = info->dsp_urb->phys;
-	if (expend_tr) {
-		slot_id = subs->dev->slot_id;
-		ep = usb_pipe_endpoint(subs->dev, subs->data_endpoint->pipe);
-		if (ep) {
-			ep_id = xhci_get_endpoint_index_(&ep->desc);
-			ring = uodev->xhci->devs[slot_id]->eps[ep_id].ring;
-			phy_addr = (phy_addr + align) & (~align);
-			vir_addr = (void *)((u64)info->dsp_urb->virt + (u64)(phy_addr - info->dsp_urb->phys));
-			xhci_mtk_ring_expansion(uodev->xhci, ring, phy_addr, vir_addr);
-
-			phy_addr = info->dsp_urb->phys + USB_OFFLOAD_TRB_SEGMENT_SIZE;
-		}
-	}
 
 	/* assign memory for sync ep's urbs */
 	/* always 4 urbs for sync and length=4 for each */
@@ -1866,8 +1851,8 @@ static void xhci_mtk_usb_offload_segment_free(struct xhci_hcd *xhci,
 }
 
 static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *xhci,
-						   unsigned int cycle_state,
 						   unsigned int max_packet,
+						   unsigned int num,
 						   gfp_t flags,
 						   enum uo_provider_type p_type,
 						   bool is_rsv,
@@ -1875,7 +1860,6 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 {
 	struct xhci_segment *seg;
 	dma_addr_t	dma;
-	int	i;
 	struct uo_buffer *buf;
 	enum uo_struct struct_type;
 
@@ -1898,7 +1882,6 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 	}
 
 	seg->trbs = buf->virt;
-	seg->dma = 0;
 	dma = buf->phys;
 
 	if (!seg->trbs) {
@@ -1911,14 +1894,11 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 		seg->bounce_buf = kzalloc(max_packet, flags);
 		if (!seg->bounce_buf) {
 			xhci_mtk_usb_offload_segment_free(xhci, seg, type);
+			kfree(seg);
 			return NULL;
 		}
 	}
-	/* If the cycle state is 0, set the cycle bit to 1 for all the TRBs */
-	if (cycle_state == 0) {
-		for (i = 0; i < USB_OFFLOAD_TRBS_PER_SEGMENT; i++)
-			seg->trbs[i].link.control |= cpu_to_le32(TRB_CYCLE);
-	}
+	seg->num = num;
 	seg->dma = dma;
 	seg->next = NULL;
 
@@ -1927,134 +1907,39 @@ static struct xhci_segment *xhci_mtk_usb_offload_segment_alloc(struct xhci_hcd *
 
 /* Allocate segments and link them for a ring */
 static int xhci_mtk_usb_offload_alloc_segments_for_ring(struct xhci_hcd *xhci,
-		struct xhci_segment **first, struct xhci_segment **last,
-		unsigned int num_segs, unsigned int num, unsigned int cycle_state,
-		enum xhci_ring_type type, unsigned int max_packet, gfp_t flags,
-		enum uo_provider_type p_type, bool is_rsv)
+	struct xhci_ring *ring, gfp_t flags, enum uo_provider_type p_type, bool is_rsv)
 {
 	struct xhci_segment *prev;
-	bool chain_links;
+	unsigned int num = 0;
 
-	/* Set chain bit for 0.95 hosts, and for isoc rings on AMD 0.96 host */
-	chain_links = !!(xhci_link_trb_quirk(xhci) ||
-			 (type == TYPE_ISOC &&
-			  (xhci->quirks & XHCI_AMD_0x96_HOST)));
-
-	prev = xhci_mtk_usb_offload_segment_alloc(xhci, cycle_state, max_packet, flags,
-			p_type, is_rsv, type);
+	prev = xhci_mtk_usb_offload_segment_alloc(xhci, ring->bounce_buf_len, num, flags,
+			p_type, is_rsv, ring->type);
 	if (!prev)
 		return -ENOMEM;
 	num++;
 
-	*first = prev;
-	while (num < num_segs) {
+	ring->first_seg = prev;
+	while (num < ring->num_segs) {
 		struct xhci_segment	*next;
 
-		next = xhci_mtk_usb_offload_segment_alloc(
-					xhci, cycle_state, max_packet, flags, p_type, is_rsv, type);
-		if (!next) {
-			prev = *first;
-			while (prev) {
-				next = prev->next;
-				xhci_mtk_usb_offload_segment_free(xhci, prev, type);
-				prev = next;
-			}
-			return -ENOMEM;
-		}
-		xhci_link_segments_(prev, next, type, chain_links);
+		next = xhci_mtk_usb_offload_segment_alloc(xhci, ring->bounce_buf_len,
+				num, flags, p_type, is_rsv, ring->type);
+		if (!next)
+			goto free_segments;
+
+		prev->next = next;
 		prev = next;
 		num++;
 	}
-	xhci_link_segments_(prev, *first, type, chain_links);
-	*last = prev;
+	ring->last_seg = prev;
+
+	ring->last_seg->next = ring->first_seg;
 	return 0;
-}
 
-static void xhci_mtk_link_rings(struct xhci_hcd *xhci, struct xhci_ring *ring,
-	struct xhci_segment *first, struct xhci_segment *last, unsigned int num_segs)
-{
-	struct xhci_segment *next;
-	bool chain_links;
-
-	chain_links = !!(xhci_link_trb_quirk(xhci) ||
-			 (ring->type == TYPE_ISOC &&
-			  (xhci->quirks & XHCI_AMD_0x96_HOST)));
-
-	next = ring->enq_seg->next;
-	xhci_link_segments_(ring->enq_seg, first, ring->type, chain_links);
-	xhci_link_segments_(last, next, ring->type, chain_links);
-	ring->num_segs += num_segs;
-	ring->num_trbs_free += (TRBS_PER_SEGMENT - 1) * num_segs;
-
-	if (ring->type != TYPE_EVENT && ring->enq_seg == ring->last_seg) {
-		ring->last_seg->trbs[TRBS_PER_SEGMENT-1].link.control
-			&= ~cpu_to_le32(LINK_TOGGLE);
-		last->trbs[TRBS_PER_SEGMENT-1].link.control
-			|= cpu_to_le32(LINK_TOGGLE);
-		ring->last_seg = last;
-	}
-}
-
-static int xhci_mtk_ring_expansion(struct xhci_hcd *xhci,
-	struct xhci_ring *ring, dma_addr_t phys, void *vir)
-{
-	struct xhci_segment *new_seg, *seg;
-	unsigned int num_segs = 1, max_packet, i;
-	bool chain_links;
-
-	if (!ring)
-		return -EINVAL;
-
-	chain_links = !!(xhci_link_trb_quirk(xhci) ||
-			 (ring->type == TYPE_ISOC &&
-			  (xhci->quirks & XHCI_AMD_0x96_HOST)));
-
-	USB_OFFLOAD_INFO("phys:0x%llx vir:%p\n", (u64)phys, vir);
-
-	new_seg = kzalloc(sizeof(*new_seg), GFP_ATOMIC);
-	if (!new_seg)
-		return -ENOMEM;
-
-	new_seg->trbs = vir;
-	new_seg->dma = phys;
-
-	USB_OFFLOAD_INFO("vir:%p phy:0x%llx\n",
-		new_seg->trbs, (u64)new_seg->dma);
-
-	if (!new_seg->trbs) {
-		USB_OFFLOAD_ERR("No seg->trbs\n");
-		kfree(new_seg);
-		return -EINVAL;
-	}
-
-	max_packet = ring->bounce_buf_len;
-	if (max_packet) {
-		new_seg->bounce_buf = kzalloc(max_packet, GFP_ATOMIC);
-		if (!new_seg->bounce_buf) {
-			kfree(new_seg);
-			return -ENOMEM;
-		}
-	}
-
-	if (ring->cycle_state == 0) {
-		for (i = 0; i < USB_OFFLOAD_TRBS_PER_SEGMENT; i++)
-			new_seg->trbs[i].link.control |= cpu_to_le32(TRB_CYCLE);
-	}
-	new_seg->next = NULL;
-
-	xhci_link_segments_(new_seg, new_seg, ring->type, chain_links);
-
-	xhci_mtk_link_rings(xhci, ring, new_seg, new_seg, num_segs);
-
-	seg = ring->first_seg;
-	for (i = 0; i < ring->num_segs; i++) {
-		USB_OFFLOAD_INFO("[seg%d] vir:%p phy:0x%llx point_to:0x%llx\n",
-			i, seg->trbs, (u64)seg->dma,
-			seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].link.segment_ptr);
-		seg = seg->next;
-	}
-
-	return 0;
+free_segments:
+	ring->last_seg = prev;
+	xhci_mtk_usb_offload_segment_free(xhci, prev, ring->type);
+	return -ENOMEM;
 }
 
 static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
@@ -2074,19 +1959,13 @@ static struct xhci_ring *xhci_mtk_alloc_ring(struct xhci_hcd *xhci,
 	INIT_LIST_HEAD(&ring->td_list);
 	ring->type = ring_type;
 
-	ret = xhci_mtk_usb_offload_alloc_segments_for_ring(xhci, &ring->first_seg,
-			&ring->last_seg, num_segs, 0, cycle_state, ring_type,
-			max_packet, mem_flags, p_type, is_rsv);
+	ret = xhci_mtk_usb_offload_alloc_segments_for_ring(xhci, ring, mem_flags, p_type, is_rsv);
 	if (ret) {
 		USB_OFFLOAD_ERR("Fail to alloc segment for rings (mem_id:%d)\n", p_type);
 		goto fail;
 	}
 
-	if (ring_type != TYPE_EVENT) {
-		/* See section 4.9.2.1 and 6.4.4.1 */
-		ring->last_seg->trbs[USB_OFFLOAD_TRBS_PER_SEGMENT - 1].link.control |=
-			cpu_to_le32(LINK_TOGGLE);
-	}
+	xhci_initialize_ring_segments_(xhci, ring);
 	xhci_initialize_ring_info_(ring);
 	return ring;
 
