@@ -2987,6 +2987,14 @@ static int mt6379_charger_get_pdata(struct device *dev)
 			dev_info(dev, "%s, Failed to enable fon-osc\n", __func__);
 	}
 
+	if (of_property_read_u32(np, "enable-preuv", &val) < 0) {
+		dev_info(dev, "%s Failed to get enable-preuv, default enable\n", __func__);
+		cdata->enable_preuv = true;
+	} else {
+		cdata->enable_preuv = !!val;
+		dev_info(dev, "%s, enable_preuv = %d\n", __func__, cdata->enable_preuv);
+	}
+
 	dev->platform_data = pdata;
 
 	return 0;
@@ -3049,28 +3057,33 @@ static int mt6379_charger_init_setting(struct mt6379_charger_data *cdata)
 
 	dev_info(dev, "%s, using setting rev: %d, waferid = %d\n", __func__, rev, cdata->waferid);
 
-	if (cdata->id == CHARGER_ID_MT6379) {
-		/* Turn on Force base function */
-		if (rev >= MT6379_CHIP_REV_E2 && rev <= MT6379_CHIP_REV_E4) {
-			ret = regmap_update_bits(cdata->rmap, MT6379_REG_VDDA_SUPPLY, BIT(7), BIT(7));
-			if (ret)
-				dev_info(dev, "%s, Failed to turn on force base function\n", __func__);
-		}
+	if (cdata->enable_preuv) {
+		switch (cdata->id) {
+		case CHARGER_ID_MT6379:
+			/* Turn on Force base function */
+			if (rev >= MT6379_CHIP_REV_E2 && rev <= MT6379_CHIP_REV_E4) {
+				ret = regmap_update_bits(cdata->rmap, MT6379_REG_VDDA_SUPPLY, BIT(7), BIT(7));
+				if (ret)
+					dev_info(dev, "%s, Failed to turn on force base function\n", __func__);
+			}
 
-	/* Enable pre-UV function */
-		if (rev == MT6379_CHIP_REV_E2) {
-			ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_DIG2, BIT(1), BIT(1));
-			if (ret)
-				dev_info(dev, "%s, Failed to enable pre-UV vsys_intb\n", __func__);
-		} else {
+			/* Enable pre-UV function */
+			if (rev == MT6379_CHIP_REV_E2) {
+				ret = regmap_update_bits(cdata->rmap, MT6379_REG_CHG_HD_DIG2, BIT(1), BIT(1));
+				if (ret)
+					dev_info(dev, "%s, Failed to enable pre-UV vsys_intb\n", __func__);
+			} else {
+				ret = mt6379_charger_field_set(cdata, F_PREUV_EN, 1);
+				if (ret)
+					dev_info(dev, "%s, Failed to enable pre-UV vsys_intb\n", __func__);
+			}
+			break;
+		default:
 			ret = mt6379_charger_field_set(cdata, F_PREUV_EN, 1);
 			if (ret)
 				dev_info(dev, "%s, Failed to enable pre-UV vsys_intb\n", __func__);
+			break;
 		}
-	} else {
-		ret = mt6379_charger_field_set(cdata, F_PREUV_EN, 1);
-		if (ret)
-			dev_info(dev, "%s, Failed to enable pre-UV vsys_intb\n", __func__);
 	}
 
 	ret = mt6379_enable_tm(cdata, false);

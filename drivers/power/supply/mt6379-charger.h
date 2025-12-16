@@ -452,6 +452,7 @@ struct mt6379_charger_data {
 
 	bool enable_fsw;
 	bool enable_fon_osc;
+	bool enable_preuv;
 	//icc_trim_lock: protecting icc trim control
 	struct mutex icc_trim_lock;
 	bool icc_needs_trim;
