@@ -633,7 +633,7 @@ struct dbi_count_info {
 	__u32 slice_size, slice_num;
 };
 
-#ifdef CONFIG_MTK_AUTO_SUPPORT
+#if IS_ENABLED(CONFIG_MTK_AUTO_SUPPORT)
 #define LYE_CRTC 6
 #else
 #define LYE_CRTC 4
