@@ -13574,6 +13574,18 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 /delete-node/ &mt6368_vmch;
 /delete-node/ &mt6368_vmch_eint_low;
 
+&mt6373_regulator {
+	mt6373_vmddr: vmddr {
+		regulator-compatible = "VMDDR";
+		regulator-name = "mt6373_vmddr";
+		regulator-min-microvolt = <550000>;
+		regulator-max-microvolt = <1850000>;
+		regulator-enable-ramp-delay = <200>;
+		regulator-allowed-modes = <0 2>;
+		regulator-always-on;
+	};
+};
+
 &main_pmic {
 	pmic-lvsys-notify {
 		compatible = "mediatek,mt6363-lvsys-notify";
