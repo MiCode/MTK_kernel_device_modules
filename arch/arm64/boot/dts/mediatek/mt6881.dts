@@ -7243,9 +7243,23 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x10019000 0 0x1000>;
 		};
 
-		security-ao@1001a000 {
+		hwrng: hwrng {
+			compatible = "arm,sec-rng";
+			methods = "smc";
+			method-fid = /bits/ 16 <0x26a>;
+			quality = /bits/ 16 <900>;
+		};
+
+		security_ao: security-ao@1e20d000 {
 			compatible = "mediatek,security_ao";
-			reg = <0 0x1001a000 0 0x1000>;
+			reg = <0 0x1e20d000 0 0x1000>;
+		};
+
+		masp: masp@1e20e000 {
+			compatible = "mediatek,masp";
+			reg = <0 0x1e20e000 0 0x1000>;
+			interrupts = <GIC_SPI 686 IRQ_TYPE_LEVEL_HIGH 0>;
+			/* GIC_IRQ ID(sej_axgpt_irq) - 32 = 718 - 32 = 686 */
 		};
 
 		topckgen-ao@1001b000 {
