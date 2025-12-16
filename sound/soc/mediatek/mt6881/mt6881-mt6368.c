@@ -34,6 +34,14 @@
 #include "../../codecs/mt6368-accdet.h"
 #endif
 
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+#include <linux/async.h>
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+#include <linux/suspend.h>
+static bool mt6881_mt6368_suspended;
+#endif
 
 static struct snd_soc_card mt6881_mt6368_soc_card;
 
@@ -1975,6 +1983,172 @@ static int mt6881_mt6368_bypass_primary_codec(struct platform_device *pdev)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+static void do_runtime_suspend(void *data, async_cookie_t cookie)
+{
+	struct mtk_base_afe *afe = data;
+
+	dev_info(afe->dev, "%s, cookie:%llu, usage_count:%d +\n",
+			__func__, cookie,
+			atomic_read(&afe->dev->power.usage_count));
+	if (afe->dev && cookie)
+		pm_runtime_put_sync(afe->dev);
+	if (afe->dev) {
+		dev_info(afe->dev, "%s, cookie:%llu, usage_count:%d -\n",
+				__func__, cookie,
+				atomic_read(&afe->dev->power.usage_count));
+	}
+}
+
+static void do_runtime_resume(void *data, async_cookie_t cookie)
+{
+	struct mtk_base_afe *afe = data;
+
+	dev_info(afe->dev, "%s, cookie:%llu, usage_count:%d +\n",
+			__func__, cookie,
+			atomic_read(&afe->dev->power.usage_count));
+	if (afe->dev && cookie)
+		pm_runtime_get_sync(afe->dev);
+
+	if (afe->dev) {
+		dev_info(afe->dev, "%s, cookie:%llu, usage_count:%d -\n",
+				__func__, cookie,
+				atomic_read(&afe->dev->power.usage_count));
+	}
+}
+
+static void mt6881_afe_i2s_ao_suspend(struct device *dev)
+{
+	struct snd_soc_card *card = dev_get_drvdata(dev);
+	struct snd_soc_pcm_runtime *rtd = snd_soc_get_pcm_runtime(card, &card->dai_link[0]);
+	struct snd_soc_component *component = NULL;
+	struct mtk_base_afe *afe = NULL;
+
+	if (rtd != NULL) {
+		component = snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
+		if (component != NULL) {
+			afe = snd_soc_component_get_drvdata(component);
+			if (afe) {
+				int ret = 0;
+				struct mt6881_afe_private *afe_priv = afe->platform_priv;
+				int lk_enable_i2s = afe_priv->lk_enable_i2s;
+
+				if (lk_enable_i2s) {
+					async_cookie_t cookie;
+
+					ASYNC_DOMAIN_EXCLUSIVE(domain);
+					cookie = async_schedule_domain(do_runtime_suspend, afe,
+							&domain);
+					async_synchronize_cookie_domain(cookie + 1, &domain);
+				}
+
+				if (lk_enable_i2s)
+					lk_clk_ao_i2s_enable(afe, 0);
+
+				ret = mt6881_afe_disable_i2s_ao_clk_lk(afe);
+				if (ret)
+					dev_info(dev, "%s disable i2s ao clock fail, ret:%d\n",
+							__func__, ret);
+			}
+		}
+	}
+}
+
+static void mt6881_afe_i2s_ao_resume(struct device *dev)
+{
+	struct snd_soc_card *card = dev_get_drvdata(dev);
+	struct snd_soc_pcm_runtime *rtd = snd_soc_get_pcm_runtime(card, &card->dai_link[0]);
+	struct snd_soc_component *component = NULL;
+	struct mtk_base_afe *afe = NULL;
+
+	if (rtd != NULL) {
+		component = snd_soc_rtdcom_lookup(rtd, AFE_PCM_NAME);
+		if (component != NULL) {
+			afe = snd_soc_component_get_drvdata(component);
+			if (afe) {
+				int ret = 0;
+				struct mt6881_afe_private *afe_priv = afe->platform_priv;
+				int lk_enable_i2s = afe_priv->lk_enable_i2s;
+
+				dev_info(dev, "%s , usage_count %d\n",
+					__func__, atomic_read(&afe->dev->power.usage_count));
+
+				if (lk_enable_i2s) {
+					async_cookie_t cookie;
+
+					ASYNC_DOMAIN_EXCLUSIVE(domain);
+					cookie = async_schedule_domain(do_runtime_resume, afe,
+							&domain);
+					async_synchronize_cookie_domain(cookie + 1, &domain);
+				}
+				ret = mt6881_afe_enable_i2s_ao_clk_lk(afe);
+				if (ret)
+					dev_info(dev, "%s enable i2s ao clock fail, ret:%d\n",
+							__func__, ret);
+
+				if (lk_enable_i2s)
+					lk_clk_ao_i2s_enable(afe, 1);
+			}
+		}
+	}
+}
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+static int mt68811_mt6368_suspend(struct device *dev)
+{
+	dev_info(dev, "%s ++\n", __func__);
+
+	if (mt6881_mt6368_suspended) {
+		dev_info(dev, "%s aleady suspend\n", __func__);
+		return 0;
+	}
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	mt6881_afe_i2s_ao_suspend(dev);
+#endif
+
+	mt6881_mt6368_suspended = true;
+	return 0;
+}
+
+static int mt68811_mt6368_resume(struct device *dev)
+{
+	dev_info(dev, "%s ++\n", __func__);
+
+	if (!mt6881_mt6368_suspended) {
+		dev_info(dev, "%s aleady resume\n", __func__);
+		return 0;
+	}
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	mt6881_afe_i2s_ao_resume(dev);
+#endif
+
+	mt6881_mt6368_suspended = false;
+	return 0;
+}
+
+static int mt6881_mt6368_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
+	struct snd_soc_card *card = &mt6881_mt6368_soc_card;
+	struct device *dev = card->dev;
+
+	dev_info(dev, "%s pm_event %ld, usage_count %d\n",
+	       __func__, pm_event, atomic_read(&dev->power.usage_count));
+
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		mt68811_mt6368_suspend(dev);
+		break;
+	case PM_POST_SUSPEND:
+		mt68811_mt6368_resume(dev);
+		break;
+	}
+	return NOTIFY_OK;
+}
+#endif
+
 static int mt6881_mt6368_dev_probe(struct platform_device *pdev)
 {
 	struct snd_soc_card *card = &mt6881_mt6368_soc_card;
@@ -1984,7 +2158,9 @@ static int mt6881_mt6368_dev_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING) && !defined(SKIP_SB)
 	int is_register_bt_pt;
 #endif
-
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	struct notifier_block pm_notifier;
+#endif
 	dev_info(&pdev->dev, "%s() successfully start\n", __func__);
 
 #if !defined(SKIP_SB_SPK)
@@ -2063,6 +2239,12 @@ static int mt6881_mt6368_dev_probe(struct platform_device *pdev)
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
 	dev_info(&pdev->dev, "devm_snd_soc_register_card: %d\n", ret);
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	pm_notifier.notifier_call = mt6881_mt6368_pm_notifier;
+	if (register_pm_notifier(&pm_notifier))
+		dev_info(&pdev->dev, "%s register_pm_notifier fail\n",
+			__func__);
+#endif
 	return ret;
 }
 

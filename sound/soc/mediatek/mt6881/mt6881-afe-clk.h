@@ -232,7 +232,13 @@ int mt6881_afe_enable_clock(struct mtk_base_afe *afe);
 void mt6881_afe_disable_clock(struct mtk_base_afe *afe);
 int mt6881_afe_disable_apll(struct mtk_base_afe *afe);
 int mt6881_afe_enable_ao_clock(struct mtk_base_afe *afe);
-
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+int mt6881_afe_enable_i2s_ao_clk_lk(struct mtk_base_afe *afe);
+int mt6881_afe_disable_i2s_ao_clk_lk(struct mtk_base_afe *afe);
+int is_lk_enabled_mck(struct mtk_base_afe *afe, int apll_id);
+int is_lk_enabled_i2s_ck(struct mtk_base_afe *afe);
+int is_lk_enabled_i2s_ck_apll(struct mtk_base_afe *afe, int apll_id);
+#endif
 
 int mt6881_afe_sram_request(struct mtk_base_afe *afe);
 void mt6881_afe_sram_release(struct mtk_base_afe *afe);

@@ -177,6 +177,23 @@ enum {
 	MT6881_GPIO_EXT_HP_AMP,
 };
 
+/* this enum is merely for mtk_afe_i2s_priv & mtk_base_etdm_data declare */
+enum {
+	DAI_I2SIN0,
+	DAI_I2SIN1,
+	DAI_I2SIN2,
+	DAI_I2SIN6,
+	DAI_IQI2SIN0,
+	DAI_I2SIN_NUM,
+	DAI_I2SOUT0 = DAI_I2SIN_NUM,
+	DAI_I2SOUT1,
+	DAI_I2SOUT2,
+	DAI_I2SOUT6,
+	DAI_I2SOUT_NUM,
+	DAI_FMI2S_MASTER = DAI_I2SOUT_NUM,
+	DAI_I2S_NUM,//= DAI_I2SOUT_NUM,
+};
+
 #define MT6881_DAI_I2S_MAX_NUM 13 //depends each platform's max i2s num
 #define MT6881_RECORD_MEMIF MT6881_MEMIF_VUL9
 #define MT6881_ECHO_REF_MEMIF MT6881_MEMIF_VUL8
@@ -605,6 +622,25 @@ struct snd_pcm_substream;
 struct mtk_base_irq_data;
 struct clk;
 
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+struct mck_info {
+	unsigned int enable;
+	unsigned int rate;
+	unsigned int apll;
+};
+
+struct i2s_ck_info {
+	unsigned int enable;
+	unsigned int lrck;
+	unsigned int bck;
+};
+
+struct dt_table {
+	char *name;
+	unsigned int val;
+};
+#endif
+
 struct mtk_clk_ao_attr {
 	bool apll_ao;
 	bool mclk_ao;
@@ -726,6 +762,17 @@ struct mt6881_afe_private {
 	struct snd_soc_component *codec_component;
 	/* clk always on */
 	struct mtk_clk_ao_attr clk_ao_data[MT6881_DAI_NUM];
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	struct i2s_ck_info of_lk_i2s_ck_info[DAI_I2S_NUM];
+	struct mck_info of_lk_mck_info[MT6881_MCK_NUM];
+	int apll1_mux_enabled;
+	int apll2_mux_enabled;
+	int lk_enable_i2s;
+	int lk_enable_i2s_apll1;
+	int lk_enable_i2s_apll2;
+	int mck_enabled[MT6881_MCK_NUM];
+#endif
 };
 
 struct mtk_afe_adda_priv {
@@ -878,5 +925,11 @@ int mt6881_afe_set_clk_always_on(struct mtk_base_afe *afe, bool enable);
 void *mt6881_aud_get_power_scenario(void);
 void mt6881_aud_update_power_scenario(void);
 void mt6881_aud_swpm_power_off(void);
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+int etdm_parse_dt_lk(struct mtk_base_afe *afe);
+void lk_clk_ao_i2s_enable(struct mtk_base_afe *afe, int enable);
+void lk_i2s_ao_gpio_enable(struct mtk_base_afe *afe, int enable);
+#endif
 
 #endif

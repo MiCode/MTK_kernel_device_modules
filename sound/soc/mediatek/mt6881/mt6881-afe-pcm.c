@@ -14468,10 +14468,29 @@ static int mt6881_afe_pcm_dev_probe(struct platform_device *pdev)
 	regmap_read(afe->regmap, AFE_IRQ_MCU_EN, &tmp_reg);
 	/* IPM2.0 clock flow, need debug */
 
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	ret =  etdm_parse_dt_lk(afe);
+	if (ret)
+		dev_info(dev, "%s() fail to parse dts_lk\n", __func__);
+
+	/* i2s clk is not enable */
+	if (is_lk_enabled_i2s_ck(afe) == 0) {
+		pm_runtime_put_sync(&pdev->dev);
+		regcache_cache_only(afe->regmap, true);
+		regcache_mark_dirty(afe->regmap);
+	}
+
+	if (is_lk_enabled_i2s_ck_apll(afe, MT6881_APLL1))
+		dev_info(dev, "%s() apll1 enabled by lk\n", __func__);
+
+	if (is_lk_enabled_i2s_ck_apll(afe, MT6881_APLL2))
+		dev_info(dev, "%s() apll2 enabled by lk\n", __func__);
+#else
 	pm_runtime_put_sync(&pdev->dev);
 
 	regcache_cache_only(afe->regmap, true);
 	regcache_mark_dirty(afe->regmap);
+#endif
 
 	/* init gpio */
 	ret = mt6881_afe_gpio_init(afe);
@@ -14552,6 +14571,10 @@ static int mt6881_afe_pcm_dev_probe(struct platform_device *pdev)
 	/* init arm_smccc_smc call */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL, MTK_AUDIO_SMC_OP_INIT,
 		      0, 0, 0, 0, 0, 0, &smccc_res);
+#endif
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	mt6881_afe_enable_i2s_ao_clk_lk(afe);
 #endif
 
 	/* init sub_dais */

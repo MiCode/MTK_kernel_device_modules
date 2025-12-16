@@ -75,6 +75,63 @@ static const char *aud_clks[CLK_NUM] = {
 	[CLK_CKSYS_REG_TCK_26M_MX9] = "tck_26m_mx9_ck",
 };
 
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+int is_lk_enabled_mck(struct mtk_base_afe *afe, int apll_id)
+{
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+	int i = 0;
+
+	for (i = 0; i < MT6881_MCK_NUM; i++) {
+		if (afe_priv->of_lk_mck_info[i].enable &&
+			afe_priv->of_lk_mck_info[i].apll == apll_id)
+			return 1;
+	}
+
+	return 0;
+}
+
+int is_lk_enabled_i2s_ck(struct mtk_base_afe *afe)
+{
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+	int i = 0;
+
+	for (i = 0; i < DAI_I2S_NUM; i++) {
+		if (afe_priv->of_lk_i2s_ck_info[i].enable) {
+			afe_priv->lk_enable_i2s = 1;
+			return 1;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(is_lk_enabled_i2s_ck);
+
+int is_lk_enabled_i2s_ck_apll(struct mtk_base_afe *afe, int apll_id)
+{
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+	unsigned int rate;
+	int id = 0;
+	int need_apll;
+
+	for (id = 0; id < DAI_I2S_NUM; id++) {
+		rate = afe_priv->of_lk_i2s_ck_info[id].lrck;
+		need_apll = mt6881_get_apll_by_rate(afe, rate);
+		if (afe_priv->of_lk_i2s_ck_info[id].enable) {
+			if (need_apll == MT6881_APLL1 && apll_id == MT6881_APLL1) {
+				afe_priv->lk_enable_i2s_apll1 = 1;
+				return 1;
+			} else if (need_apll == MT6881_APLL2 && apll_id == MT6881_APLL2) {
+				afe_priv->lk_enable_i2s_apll2 = 1;
+				return 1;
+			}
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(is_lk_enabled_i2s_ck_apll);
+#endif
+
 int mt6881_set_audio_int_bus_parent(struct mtk_base_afe *afe,
 				    int clk_id)
 {
@@ -122,6 +179,14 @@ static int apll1_mux_setting(struct mtk_base_afe *afe, bool enable)
 {
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	int ret = 0;
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	if (is_lk_enabled_mck(afe, MT6881_APLL1) &&
+			afe_priv->apll1_mux_enabled == enable) {
+		dev_info(afe->dev, "%s mck ao by lk, ignore apll1 setting\n", __func__);
+		return 0;
+	}
+#endif
 
 	if (enable) {
 		ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUD_1_SEL]);
@@ -187,6 +252,10 @@ static int apll1_mux_setting(struct mtk_base_afe *afe, bool enable)
 		clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 	}
 
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	afe_priv->apll1_mux_enabled = enable;
+#endif
+
 EXIT:
 	return 0;
 }
@@ -195,6 +264,14 @@ static int apll2_mux_setting(struct mtk_base_afe *afe, bool enable)
 {
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	int ret = 0;
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	if (is_lk_enabled_mck(afe, MT6881_APLL2) &&
+			afe_priv->apll2_mux_enabled == enable) {
+		dev_info(afe->dev, "%s mck ao by lk, ignore apll1 setting\n", __func__);
+		return 0;
+	}
+#endif
 
 	if (enable) {
 		ret = clk_prepare_enable(afe_priv->clk[CLK_CKSYS_REG_AUD_2_SEL]);
@@ -260,6 +337,10 @@ static int apll2_mux_setting(struct mtk_base_afe *afe, bool enable)
 		mt6881_set_audio_h_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
 		clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 	}
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	afe_priv->apll2_mux_enabled = enable;
+#endif
 
 EXIT:
 	return 0;
@@ -894,6 +975,106 @@ int mt6881_mck_disable(struct mtk_base_afe *afe, int mck_id, int rate)
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+int mt6881_afe_enable_i2s_ao_clk_lk(struct mtk_base_afe *afe)
+{
+	int i = 0;
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+	int ret = 0;
+
+	dev_info(afe->dev, "%s++\n", __func__);
+
+	if (afe_priv->lk_enable_i2s)
+		mt6881_afe_enable_clock(afe);
+
+	if (afe_priv->lk_enable_i2s_apll1)
+		mt6881_apll1_enable(afe);
+
+	if (afe_priv->lk_enable_i2s_apll2)
+		mt6881_apll2_enable(afe);
+
+	for (i = 0; i < MT6881_MCK_NUM; i++) {
+		if (afe_priv->of_lk_mck_info[i].enable) {
+			// enable apll & mck to avoid disable-unused-clock, it will increase clock counter in ccf.
+			// increase the clock counter, then the clocks can be disabled when driver suspend.
+			if (afe_priv->of_lk_mck_info[i].apll == MT6881_APLL1) {
+				ret = apll1_mux_setting(afe, true);
+				if (ret)
+					goto EXIT;
+			} else {
+				ret = apll2_mux_setting(afe, true);
+				if (ret)
+					goto EXIT;
+			}
+			ret = mt6881_mck_enable(afe, i, afe_priv->of_lk_mck_info[i].rate);
+			if (ret)
+				goto EXIT;
+		}
+	}
+EXIT:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mt6881_afe_enable_i2s_ao_clk_lk);
+
+// call disable ao clock when driver suspend
+int mt6881_afe_disable_i2s_ao_clk_lk(struct mtk_base_afe *afe)
+{
+	int i = 0;
+	int ret = 0;
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+	int apll1_mux_disabled = 0, apll2_mux_disabled = 0;
+
+	for (i = 0; i < MT6881_MCK_NUM; i++) {
+		if (afe_priv->of_lk_mck_info[i].enable) {
+			if (afe_priv->mck_enabled[i]) {
+				ret = mt6881_mck_disable(afe, i, 0);
+				if (ret)
+					goto EXIT;
+			}
+			if (afe_priv->of_lk_mck_info[i].apll == MT6881_APLL1
+					&& afe_priv->apll1_mux_enabled) {
+				ret = apll1_mux_setting(afe, false);
+				afe_priv->apll1_mux_enabled = 0;
+				apll1_mux_disabled = 1;
+				if (ret)
+					goto EXIT;
+			}
+			if (afe_priv->of_lk_mck_info[i].apll == MT6881_APLL2
+					&& afe_priv->apll2_mux_enabled) {
+				ret = apll2_mux_setting(afe, false);
+				afe_priv->apll2_mux_enabled = 0;
+				apll2_mux_disabled = 1;
+				if (ret)
+					goto EXIT;
+			}
+		}
+	}
+
+	if (afe_priv->lk_enable_i2s_apll1) {
+		clk_disable_unprepare(afe_priv->clk[CLK_AFE_APLL1_AUDIO]);
+		clk_disable_unprepare(afe_priv->clk[CLK_AFE_APLL_TUNER1_AUDIO]);
+
+		if (apll1_mux_disabled == 0 && afe_priv->apll1_mux_enabled == 1)
+			apll1_mux_setting(afe, false);
+	}
+
+	if (afe_priv->lk_enable_i2s_apll2) {
+		clk_disable_unprepare(afe_priv->clk[CLK_AFE_APLL2_AUDIO]);
+		clk_disable_unprepare(afe_priv->clk[CLK_AFE_APLL_TUNER2_AUDIO]);
+
+		if (apll2_mux_disabled == 0 && afe_priv->apll2_mux_enabled == 1)
+			apll2_mux_setting(afe, false);
+	}
+
+	if (afe_priv->lk_enable_i2s)
+		mt6881_afe_disable_clock(afe);
+
+EXIT:
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mt6881_afe_disable_i2s_ao_clk_lk);
+#endif
+
 int mt6881_init_clock(struct mtk_base_afe *afe)
 {
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
@@ -939,7 +1120,9 @@ int mt6881_init_clock(struct mtk_base_afe *afe)
 	}
 
 	mt6881_afe_apll_init(afe);
+#if !IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
 	mt6881_afe_disable_apll(afe);
+#endif
 	mt6881_afe_enable_ao_clock(afe);
 	return 0;
 }

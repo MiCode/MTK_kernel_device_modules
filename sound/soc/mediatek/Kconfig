@@ -525,3 +525,12 @@ config AW862xx_HAPTIC
 	  If unsure, say N.
 	  To compile this driver as a module, choose M here: the
 	  module will be called mpr121_touchkey.
+
+config LK_I2S_AO_CLK_SUPPORT
+	tristate "ASoC support for LK enable I2S always on clock"
+	help
+	  This adds LK enable I2S always on clock for Mediatek boards
+	  that can handle clock control conflict between LK and kernel.
+	  Please make sure LK already enabled I2S always on clock then select Y.
+	  Select Y if you have such device.
+	  If unsure select "N".

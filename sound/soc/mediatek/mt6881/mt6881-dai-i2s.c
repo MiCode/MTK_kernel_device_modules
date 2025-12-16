@@ -257,23 +257,6 @@ static unsigned int get_etdm_inconn_rate(unsigned int rate)
 
 }
 
-/* this enum is merely for mtk_afe_i2s_priv & mtk_base_etdm_data declare */
-enum {
-	DAI_I2SIN0,
-	DAI_I2SIN1,
-	DAI_I2SIN2,
-	DAI_I2SIN6,
-	DAI_IQI2SIN0,
-	DAI_I2SIN_NUM,
-	DAI_I2SOUT0 = DAI_I2SIN_NUM,
-	DAI_I2SOUT1,
-	DAI_I2SOUT2,
-	DAI_I2SOUT6,
-	DAI_I2SOUT_NUM,
-	DAI_FMI2S_MASTER = DAI_I2SOUT_NUM,
-	DAI_I2S_NUM,//= DAI_I2SOUT_NUM,
-};
-
 static bool is_etdm_in_pad_top(unsigned int dai_num)
 {
 	if (dai_num >= DAI_I2S_NUM)
@@ -2183,6 +2166,22 @@ static int mtk_apll_event(struct snd_soc_dapm_widget *w,
 	dev_info(cmpnt->dev, "%s(), name %s, event 0x%x\n",
 		 __func__, w->name, event);
 
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+
+	if (strcmp(w->name, APLL1_W_NAME) == 0) {
+		if (afe_priv->lk_enable_i2s_apll1) {
+			dev_info(afe->dev, "%s() lk ao i2s apll1 enabled, return\n", __func__);
+			return 0;
+		}
+	} else {
+		if (afe_priv->lk_enable_i2s_apll2) {
+			dev_info(afe->dev, "%s() lk ao i2s apll2 enabled, return\n", __func__);
+			return 0;
+		}
+	}
+#endif
+
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
 		if (strcmp(w->name, APLL1_W_NAME) == 0)
@@ -2210,6 +2209,9 @@ static int mtk_mclk_en_event(struct snd_soc_dapm_widget *w,
 	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	struct mtk_afe_i2s_priv *i2s_priv;
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+#endif
 
 	dev_dbg(cmpnt->dev, "%s(), name %s, event 0x%x\n",
 		 __func__, w->name, event);
@@ -2220,6 +2222,14 @@ static int mtk_mclk_en_event(struct snd_soc_dapm_widget *w,
 		AUDIO_AEE("i2s_priv == NULL");
 		return -EINVAL;
 	}
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	if (afe_priv->of_lk_mck_info[i2s_priv->mclk_id].enable) {
+		dev_info(afe->dev, "%s(), mck_id %d is ao by lk, return\n",
+			__func__, i2s_priv->mclk_id);
+		return 0;
+	}
+#endif
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
@@ -3318,6 +3328,13 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 		dev_warn(afe->dev, "%s(), i2s_id is invalid", __func__);
 		return -EINVAL;
 	}
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	if (afe_priv->of_lk_i2s_ck_info[id].enable) {
+		dev_info(afe->dev, "%s(), id %d, lk enabled, ignore config\n",
+				__func__, i2s_id);
+		return 0;
+	}
+#endif
 
 	i2s_priv = afe_priv->dai_priv[i2s_id];
 	if (!i2s_priv) {
@@ -4024,6 +4041,141 @@ static int etdm_parse_dt(struct mtk_base_afe *afe)
 
 	return 0;
 }
+
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+static int mtk_i2s_enable(struct mtk_base_afe *afe, int i2s_id, int enable)
+{
+	struct mtk_base_etdm_data etdm_data;
+	int id;
+
+	id = i2s_id - MT6881_DAI_I2S_IN0;
+	if (id < 0 || id >= DAI_I2S_NUM) {
+		dev_info(afe->dev, "%s(), i2s id is invalid", __func__);
+		return -EINVAL;
+	}
+
+	etdm_data = mtk_etdm_data[id];
+
+	mtk_regmap_update_bits(afe->regmap, etdm_data.enable_reg,
+			       etdm_data.enable_mask,
+			       enable > 0 ? 1 : 0,
+			       etdm_data.enable_shift);
+
+	return 0;
+}
+
+static int mt6881_dai_i2s_enable(struct mtk_base_afe *afe, int id, int enable)
+{
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+	struct mtk_afe_i2s_priv *i2s_priv;
+
+	if (id < MT6881_DAI_I2S_IN0 || id > MT6881_DAI_I2S_OUT6)
+		return -EINVAL;
+
+	i2s_priv = afe_priv->dai_priv[id];
+	mtk_i2s_enable(afe, id, enable);
+
+	if (i2s_priv && i2s_priv->share_i2s_id >= 0)
+		mtk_i2s_enable(afe, i2s_priv->share_i2s_id, enable);
+
+	return 0;
+}
+
+void lk_clk_ao_i2s_enable(struct mtk_base_afe *afe, int enable)
+{
+	int id;
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+
+	for (id = MT6881_DAI_I2S_IN0; id <= MT6881_DAI_I2S_OUT6; id++) {
+		if (afe_priv->of_lk_i2s_ck_info[id - MT6881_DAI_I2S_IN0].enable)
+			mt6881_dai_i2s_enable(afe, id, enable);
+	}
+}
+EXPORT_SYMBOL_GPL(lk_clk_ao_i2s_enable);
+
+void lk_i2s_ao_gpio_enable(struct mtk_base_afe *afe, int enable)
+{
+	int id;
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+
+	for (id = MT6881_DAI_I2S_IN0; id <= MT6881_DAI_I2S_OUT6; id++) {
+		if (afe_priv->of_lk_i2s_ck_info[id - MT6881_DAI_I2S_IN0].enable)
+			mt6881_afe_gpio_request(afe, enable, id, 0);
+	}
+	dev_info(afe->dev, "%s(), enable:%d\n", __func__, enable);
+}
+EXPORT_SYMBOL_GPL(lk_i2s_ao_gpio_enable);
+
+int etdm_parse_dt_lk(struct mtk_base_afe *afe)
+{
+	int ret;
+	int i;
+	char prop[128];
+	unsigned int val[5];
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+
+	struct dt_table of_mck_table[MT6881_MCK_NUM] = {
+		{ "etdmin0", MT6881_I2SIN0_MCK },
+		{ "etdmin1", MT6881_I2SIN1_MCK },
+	};
+
+	struct dt_table of_be_table[DAI_I2S_NUM] = {
+		{ "etdmin0",  DAI_I2SIN0 },
+		{ "etdmin1",  DAI_I2SIN1 },
+		{ "etdmin2",  DAI_I2SIN2 },
+		{ "etdmin6",  DAI_I2SIN6 },
+	};
+
+	for (i = 0; i < ARRAY_SIZE(of_mck_table); i++) {
+		struct mck_info *mck_info;
+
+		memset(val, 0, sizeof(val));
+		memset(prop, 0, sizeof(prop));
+		ret = snprintf(prop, sizeof(prop), "%s-mclk-ao-lk", of_mck_table[i].name);
+		if (ret < 0 || ret >= sizeof(prop))
+			return ret;
+
+		ret = of_property_read_u32_array(afe->dev->of_node, prop, &val[0], 3);
+		if (ret)
+			continue;
+
+		dev_info(afe->dev, "%s %s-mclk-ao-lk enable:%u rate:%u apll%u\n",
+			__func__, of_mck_table[i].name, val[0], val[1], val[2] + 1);
+
+		mck_info = &afe_priv->of_lk_mck_info[of_mck_table[i].val];
+		mck_info->enable = val[0];
+		mck_info->rate = val[1];
+		mck_info->apll = val[2];
+	}
+
+	for (i = 0; i < ARRAY_SIZE(of_be_table); i++) {
+		struct i2s_ck_info *ck_info;
+
+		memset(val, 0, sizeof(val));
+		memset(prop, 0, sizeof(prop));
+		ret = snprintf(prop, sizeof(prop), "%s-clk-ao-lk", of_be_table[i].name);
+		if (ret < 0 || ret >= sizeof(prop))
+			return ret;
+
+		ret = of_property_read_u32_array(afe->dev->of_node, prop, &val[0], 3);
+		if (ret)
+			continue;
+
+		dev_info(afe->dev, "%s %s-clk-ao-lk enable:%u lrck:%u bck:%u\n",
+			__func__, of_be_table[i].name, val[0], val[1], val[2]);
+
+		ck_info = &afe_priv->of_lk_i2s_ck_info[of_be_table[i].val];
+		ck_info->enable = val[0];
+		ck_info->lrck = val[1];
+		ck_info->bck = val[2];
+	}
+
+	afe_priv->apll1_mux_enabled = 0;
+	afe_priv->apll2_mux_enabled = 0;
+
+	return 0;
+}
+#endif
 
 int mt6881_dai_i2s_get_share(struct mtk_base_afe *afe)
 {

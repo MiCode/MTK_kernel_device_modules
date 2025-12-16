@@ -189,6 +189,14 @@ static int mt6881_afe_gpio_adda_ch56_ul(struct mtk_base_afe *afe, bool enable)
 int mt6881_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 			    int dai, int uplink)
 {
+#if IS_ENABLED(CONFIG_LK_I2S_AO_CLK_SUPPORT)
+	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+
+	if ((afe_priv->of_lk_i2s_ck_info[dai - MT6881_DAI_I2S_IN0].enable) && !enable) {
+		dev_info(afe->dev, "%s(), clk ao on, dai %d gpio on\n", __func__, dai);
+		return 0;
+	}
+#endif
 	mutex_lock(&gpio_request_mutex);
 	switch (dai) {
 	case MT6881_DAI_ADDA:
