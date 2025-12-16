@@ -17,6 +17,10 @@
 
 #define ETDM_22M_CLOCK_THRES 11289600
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+#define BITCOUNT_CHECK_NUM 5
+#endif
+
 #define FM_SRC_CAIL
 enum {
 	ETDM_CLK_SOURCE_H26M = 0,
@@ -1356,6 +1360,53 @@ static SOC_ENUM_SINGLE_EXT_DECL(etdm_sync_map_enum,
 				etdm_sync_map);
 /* sync */
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+static int etdm_slave_clk_status_get(struct snd_kcontrol *kcontrol,
+			 struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_component *component = snd_kcontrol_chip(kcontrol);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
+	unsigned int reg = 0;
+	unsigned int reg_value = 0;
+	unsigned int mask = 0;
+	unsigned int shift = 0;
+	unsigned int pre_value = 0;
+	unsigned int cur_value = 0;
+	int i = 0;
+	int status = 0;
+
+	if (!strcmp(kcontrol->id.name, "I2SIN6_BCK_WORKING")) {
+		reg = ETDM_IN6_MON;
+		mask = BIT_COUNT_MASK_SFT;
+		shift = BIT_COUNT_SFT;
+	}
+
+	if (reg) {
+		regmap_read(afe->regmap, reg, &reg_value);
+		pre_value = (reg_value & mask) >> shift;
+		udelay(2);
+
+		for (i = 0; i < BITCOUNT_CHECK_NUM; ++i) {
+			regmap_read(afe->regmap, reg, &reg_value);
+			cur_value = (reg_value & mask) >> shift;
+			if (cur_value != pre_value) {
+				status = 1;
+				break;
+			}
+			pre_value = cur_value;
+			udelay(2);
+		}
+	} else {
+		status = -1;
+		dev_info(afe->dev, "%s(), invalid kctl\n", __func__);
+	}
+
+	ucontrol->value.integer.value[0] = status;
+	dev_info(afe->dev, "%s(), slave i2s status, 0x%x\n", __func__, status);
+	return 0;
+}
+#endif
+
 enum {
 	I2S_FMT_EIAJ = 0,
 	I2S_FMT_I2S = 1,
@@ -1605,6 +1656,10 @@ static const struct snd_kcontrol_new mtk_dai_i2s_controls[] = {
 		     etdm_sync_get, etdm_sync_put),
 	SOC_ENUM_EXT("I2SOUT6_SYNC", etdm_sync_map_enum,
 		     etdm_sync_get, etdm_sync_put),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_SINGLE_EXT("I2SIN6_BCK_WORKING", SND_SOC_NOPM, 0, 0x1f, 0,
+		     etdm_slave_clk_status_get, NULL),
+#endif
 };
 
 /* dai component */
