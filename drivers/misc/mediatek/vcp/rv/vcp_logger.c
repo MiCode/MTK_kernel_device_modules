@@ -451,7 +451,7 @@ static unsigned int vcp_A_log_if_poll(struct file *file, poll_table *wait)
 /*
  * ipi send to enable vcp logger flag
  */
-static unsigned int vcp_A_log_enable_set(unsigned int enable)
+static unsigned int vcp_A_log_enable_set(unsigned int enable, unsigned int locked)
 {
 	int ret, i = 0;
 	unsigned int retrytimes;
@@ -480,23 +480,27 @@ static unsigned int vcp_A_log_enable_set(unsigned int enable)
 			msg.cmd = VCP_LOGGER_IPI_ENABLE;
 			msg.u.flag.enable = enable;
 			i = 0;
-			while (!mutex_trylock(&vcp_pw_clk_mutex)) {
-				i += 5;
-				mdelay(5);
-				if (i > VCP_SYNC_TIMEOUT_MS) {
-					pr_notice("[VCP] %s lock fail\n", __func__);
-					goto error;
+			if (locked) {
+				while (!mutex_trylock(&vcp_pw_clk_mutex)) {
+					i += 5;
+					mdelay(5);
+					if (i > VCP_SYNC_TIMEOUT_MS) {
+						pr_notice("[VCP] %s lock fail\n", __func__);
+						goto error;
+					}
 				}
 			}
 			if (is_vcp_ready_by_coreid(VCP_A_ID)) {
 				ret = mtk_ipi_send(&vcp_ipidev, IPI_OUT_LOGGER_CTRL_0,
 					0, &msg, sizeof(msg)/MBOX_SLOT_SIZE, 0);
-				mutex_unlock(&vcp_pw_clk_mutex);
+				if (locked)
+					mutex_unlock(&vcp_pw_clk_mutex);
 
 				if (ret == IPI_ACTION_DONE)
 					break;
 			} else {
-				mutex_unlock(&vcp_pw_clk_mutex);
+				if (locked)
+					mutex_unlock(&vcp_pw_clk_mutex);
 				pr_notice("[VCP] %s not ready\n", __func__);
 			}
 			retrytimes--;
@@ -601,7 +605,7 @@ static ssize_t vcp_mobile_log_store(struct device *kobj,
 		return -EINVAL;
 
 	mutex_lock(&vcp_A_log_mutex);
-	vcp_A_log_enable_set(enable);
+	vcp_A_log_enable_set(enable, 1);
 	mutex_unlock(&vcp_A_log_mutex);
 
 	return n;
@@ -721,7 +725,7 @@ static ssize_t vcp_A_mobile_log_UT_store(struct device *kobj,
 		return -EINVAL;
 
 	mutex_lock(&vcp_A_log_mutex);
-	vcp_A_log_enable_set(enable);
+	vcp_A_log_enable_set(enable, 1);
 	mutex_unlock(&vcp_A_log_mutex);
 
 	return n;
@@ -900,7 +904,13 @@ static void vcp_logger_notify_ws(struct work_struct *ws)
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT)
 	udelay(1000);
-	vcp_A_log_enable_set(VCP_A_log_ctl->enable);
+	/*
+	 * Use locked=0 here because this work is already synchronized
+	 * by flush_workqueue(vcp_logger_workqueue) in suspend/power-down paths.
+	 * The flush ensures this work completes before vcp_ready is cleared,
+	 * so there is no race condition with VCP reset or power transitions.
+	 */
+	vcp_A_log_enable_set(VCP_A_log_ctl->enable, 0);
 #endif  // CONFIG_MTK_TINYSYS_VCP_DEBUG_SUPPORT
 }
 

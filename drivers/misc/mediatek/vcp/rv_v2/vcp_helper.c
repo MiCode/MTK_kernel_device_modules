@@ -230,8 +230,8 @@ struct vcp_ipi_irq vcp_ipi_irqs[] = {
 struct device *vcp_io_devs[VCP_IOMMU_DEV_NUM];
 struct device *vcp_power_devs;
 
-int pwclkcnt;
-bool is_suspending;
+static int pwclkcnt;
+static bool is_suspending;
 bool vcp_ao;
 
 struct vcp_status_fp vcp_helper_fp = {
@@ -974,6 +974,9 @@ static int vcp_pm_suspend_event(struct notifier_block *notifier
 			waitCnt = vcp_wait_ready_sync();
 			flush_workqueue(vcp_workqueue);
 
+#if VCP_LOGGER_ENABLE
+			flush_workqueue(vcp_logger_workqueue);
+#endif
 			mutex_lock(&vcp_ready_mutex);
 			for (i = 0; i < VCP_CORE_TOTAL ; i++)
 				vcp_ready[i] = 0;
@@ -981,9 +984,6 @@ static int vcp_pm_suspend_event(struct notifier_block *notifier
 
 			vcp_wait_suspend_resume(1);
 
-#if VCP_LOGGER_ENABLE
-			flush_workqueue(vcp_logger_workqueue);
-#endif
 #if VCP_BOOT_TIME_OUT_MONITOR
 			for (i = 0; i < VCP_CORE_TOTAL ; i++)
 				del_timer(&vcp_ready_timer[i].tl);
@@ -2499,9 +2499,6 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	/*workqueue for vcp ee, vcp reset by cmd will not trigger vcp ee*/
 	if (vcp_reset_by_cmd == 0 && vcp_excep_mode != VCP_NO_EXCEP) {
 		vcp_aed(vcp_reset_type, core_id);
-		/* vcp_aee_print("[VCP] %s(): vcp_reset_type %d remain %x times, encnt %d\n",
-		 *	__func__, vcp_reset_type, vcp_reset_counts, mmup_enable_count());
-		 */
 	}
 
 	c0_rstn = readl(R_CORE0_SW_RSTN_SET);

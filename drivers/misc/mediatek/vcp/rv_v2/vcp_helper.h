@@ -147,7 +147,6 @@ struct vcp_reserve_mblock {
 
 /* vcp helper varriable */
 extern bool driver_init_done;
-extern bool is_suspending;
 
 extern struct vcp_regs vcpreg;
 extern const struct file_operations vcp_A_log_file_ops;

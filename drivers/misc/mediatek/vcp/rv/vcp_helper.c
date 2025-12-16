@@ -256,8 +256,8 @@ struct vcp_mminfra_on_off_st vcp_mminfra_on_off = {
 };
 mminfra_dump_ptr mminfra_debug_dump;
 
-int pwclkcnt;
-bool is_suspending;
+static int pwclkcnt;
+static bool is_suspending;
 bool vcp_ao;
 
 struct vcp_status_fp vcp_helper_fp = {
@@ -362,27 +362,6 @@ static void vcp_disable_irqs(void)
 	tasklet_disable(&vcp_A_irq1_tasklet);
 
 	pr_debug("[VCP] VCP IRQ disabled\n");
-}
-
-static int vcp_ipi_dbg_resume_noirq(struct device *dev)
-{
-	int i = 0;
-	int ret = 0;
-	bool state = false;
-
-	if (mmup_enable_count() == 0)
-		return 0;
-
-	for (i = 0; i < IRQ_NUMBER; i++) {
-		ret = irq_get_irqchip_state(vcp_ipi_irqs[i].irq_no,
-			IRQCHIP_STATE_PENDING, &state);
-		if (!ret && state) {
-			pr_info("[VCP] ipc%d wakeup\n", i);
-			break;
-		}
-	}
-
-	return 0;
 }
 
 static void vcp_wait_awake_count(void)
@@ -1215,8 +1194,8 @@ int vcp_disable_pm_clk(enum feature_id id)
 		vcp_disable_irqs();
 		flush_workqueue(vcp_workqueue);
 #if VCP_LOGGER_ENABLE
-		vcp_logger_uninit();
 		flush_workqueue(vcp_logger_workqueue);
+		vcp_logger_uninit();
 #endif
 		vcp_ready[VCP_A_ID] = 0;
 
@@ -1287,16 +1266,16 @@ static int vcp_pm_event(struct notifier_block *notifier
 				waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
 				vcp_disable_irqs();
 				flush_workqueue(vcp_workqueue);
+#if VCP_LOGGER_ENABLE
+				flush_workqueue(vcp_logger_workqueue);
+				vcp_logger_uninit();
+#endif
 				vcp_ready[VCP_A_ID] = 0;
 
 				/* trigger halt isr, force vcp enter wfi */
 				writel(B_GIPC3_SETCLR_1, R_GIPC_IN_SET);
 				wait_vcp_ready_to_reboot();
 
-#if VCP_LOGGER_ENABLE
-				vcp_logger_uninit();
-				flush_workqueue(vcp_logger_workqueue);
-#endif
 #if VCP_BOOT_TIME_OUT_MONITOR
 				del_timer(&vcp_ready_timer[VCP_A_ID].tl);
 #endif
@@ -1327,11 +1306,11 @@ static int vcp_pm_event(struct notifier_block *notifier
 
 				waitCnt = vcp_wait_ready_sync(RTOS_FEATURE_ID);
 				flush_workqueue(vcp_workqueue);
-				vcp_ready[VCP_A_ID] = 0;
-
 #if VCP_LOGGER_ENABLE
 				flush_workqueue(vcp_logger_workqueue);
 #endif
+				vcp_ready[VCP_A_ID] = 0;
+
 #if VCP_BOOT_TIME_OUT_MONITOR
 				del_timer(&vcp_ready_timer[VCP_A_ID].tl);
 #endif
@@ -2637,9 +2616,6 @@ void vcp_sys_reset_ws(struct work_struct *ws)
 	/*workqueue for vcp ee, vcp reset by cmd will not trigger vcp ee*/
 	if (vcp_reset_by_cmd == 0 && vcp_excep_mode != VCP_NO_EXCEP) {
 		vcp_aed(vcp_reset_type, VCP_A_ID);
-		/* vcp_aee_print("[VCP] %s(): vcp_reset_type %d remain %x times, encnt %d\n",
-		 *	__func__, vcp_reset_type, vcp_reset_counts, mmup_enable_count());
-		 */
 	}
 	pr_debug("[VCP] %s(): disable logger\n", __func__);
 	/* logger disable must after vcp_aed() */
@@ -3688,10 +3664,6 @@ static const struct dev_pm_ops mtk_vcp_pm_ops = {
 	.resume = mtk_vcp_resume,
 };
 
-static const struct dev_pm_ops vcp_ipi_dbg_pm_ops = {
-	.resume_noirq = vcp_ipi_dbg_resume_noirq,
-};
-
 static const struct of_device_id vcp_of_ids[] = {
 	{ .compatible = "mediatek,vcp", },
 	{}
@@ -3706,7 +3678,6 @@ static struct platform_driver mtk_vcp_device = {
 		.owner = THIS_MODULE,
 		.pm = &mtk_vcp_pm_ops,
 		.of_match_table = vcp_of_ids,
-		.pm = &vcp_ipi_dbg_pm_ops,
 	},
 };
 

@@ -199,7 +199,6 @@ struct vcp_mminfra_on_off_st {
 
 /* vcp helper varriable */
 extern bool driver_init_done;
-extern bool is_suspending;
 extern unsigned int infra_vcp_support;
 
 extern struct vcp_regs vcpreg;
