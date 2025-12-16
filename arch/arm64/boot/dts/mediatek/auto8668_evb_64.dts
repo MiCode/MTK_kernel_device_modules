@@ -64,11 +64,15 @@
 };
 
 &lk_charger {
-	status = "disabled";
+	disable-charger;
 };
 
 &charger {
-	status = "disabled";
+	disable-charger;
+};
+
+&mtk_gauge {
+	disable-mtkbattery = <1>;
 };
 
 /* CONNSYS TCXO GPIO start */
