@@ -10943,6 +10943,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			gpueb-diagnosis-mode = <0>;
 		};
 
+		gpu_qos: gpu-qos {
+			compatible = "mediatek,gpu_qos";
+			qos-sysram-support = <1>;
+			reg = <0 0x121600 0 0x20>;
+			qos-mode = <0>;
+			qos-value = <0>;
+			qos-opp-high = <0>;
+		};
+
 		gpufreq: gpufreq@3a500000 {
 			compatible = "mediatek,gpufreq";
 			reg =
