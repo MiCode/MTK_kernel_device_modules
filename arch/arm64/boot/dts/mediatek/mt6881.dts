@@ -4057,7 +4057,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"dmatop_base", "inner_dmatop_base";
 		mediatek,cam-id = <0>;
 		interrupts = <GIC_SPI 263 IRQ_TYPE_LEVEL_HIGH 0>;
-		iommus = <&disp_iommu M4U_L16_P0_CAM_RAW_A_DMA_R_0_U0>;
 		clocks =
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SENINF_TG_SUBA_CAM_RAW>,
 			<&camsys_rawa_clk CLK_CAM_RA_LARBX_CAM_RAW>,
@@ -4072,64 +4071,62 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"camsys_rawa_cam_26m_cam_raw";
 		mediatek,larbs = <&smi_larb16>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBA>;
-#if 0
-		mediatek,smmu-dma-axid =
-			<SMMU_L16_P0_CAM2_RAW_R_0_P0_16_U0>,
-			<SMMU_L16_P1_CAM2_RAW_R_0_P1_16_U0>,
-			<SMMU_L16_P2_CAM2_RAW_R_0_P2_16_U0>,
-			<SMMU_L16_P3_CAM2_RAW_R_0_P3_16_U0>,
-			<SMMU_L16_P4_CAM2_RAW_R_0_P4_16_U0>,
-			<SMMU_L16_P5_CAM2_RAW_R_0_P5_16_U0>,
-			<SMMU_L16_P6_CAM2_RAW_R_0_P6_16_U0>,
-			<SMMU_L16_P7_CAM2_RAW_R_0_P7_16_U0>,
-			<SMMU_L16_P10_CAM2_RAW_W_0_P0_16_U0>,
-			<SMMU_L16_P11_CAM2_RAW_W_0_P1_16_U0>,
-			<SMMU_L16_P12_CAM2_RAW_W_0_P2_16_U0>,
-			<SMMU_L16_P13_CAM2_RAW_W_0_P3_16_U0>,
-			<SMMU_L16_P15_CAM2_RAW_W_0_P4_16_U0>,
-			<SMMU_L16_P16_CAM2_RAW_W_0_P5_16_U0>,
-			<SMMU_L16_P17_CAM2_RAW_W_0_P6_16_U0>,
-			<SMMU_L16_P18_CAM2_RAW_W_0_P7_16_U0>;
 		mmqos-supply = <&mmqos>;
+		iommus =
+			<&disp_iommu M4U_L16_P0_CAM_RAW_A_DMA_R_0_U0>,
+			<&disp_iommu M4U_L16_P1_CAM_RAW_A_DMA_R_0_U0>,
+			<&disp_iommu M4U_L16_P2_CAM_RAW_A_DMA_R_0_U0>,
+			<&disp_iommu M4U_L16_P3_CAM_RAW_A_DMA_R_0_U0>,
+			<&disp_iommu M4U_L16_P4_CAM_RAW_A_DMA_R_0_U0>,
+			<&disp_iommu M4U_L16_P5_CAM_RAW_A_DMA_R_0_U0>,
+			<&disp_iommu M4U_L16_P6_CAM_RAW_A_DMA_R_0_U0>,
+			<&disp_iommu M4U_L16_P7_CAM_RAW_A_DMA_R_0_U0>,
+			<&disp_iommu M4U_L16_P10_CAM_RAW_A_DMA_W_0_U0>,
+			<&disp_iommu M4U_L16_P11_CAM_RAW_A_DMA_W_0_U0>,
+			<&disp_iommu M4U_L16_P12_CAM_RAW_A_DMA_W_0_U0>,
+			<&disp_iommu M4U_L16_P13_CAM_RAW_A_DMA_W_0_U0>,
+			<&disp_iommu M4U_L16_P15_CAM_RAW_A_DMA_W_0_U0>,
+			<&disp_iommu M4U_L16_P16_CAM_RAW_A_DMA_W_0_U0>,
+			<&disp_iommu M4U_L16_P17_CAM_RAW_A_DMA_W_0_U0>,
+			<&disp_iommu M4U_L16_P18_CAM_RAW_A_DMA_W_0_U0>;
 		interconnects =
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P0_CAM2_RAW_R_0_P0_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P1_CAM2_RAW_R_0_P1_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P2_CAM2_RAW_R_0_P2_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P3_CAM2_RAW_R_0_P3_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P4_CAM2_RAW_R_0_P4_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P5_CAM2_RAW_R_0_P5_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P6_CAM2_RAW_R_0_P6_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P7_CAM2_RAW_R_0_P7_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P10_CAM2_RAW_W_0_P0_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P11_CAM2_RAW_W_0_P1_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P12_CAM2_RAW_W_0_P2_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P13_CAM2_RAW_W_0_P3_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P15_CAM2_RAW_W_0_P4_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P16_CAM2_RAW_W_0_P5_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P17_CAM2_RAW_W_0_P6_16_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L16_P18_CAM2_RAW_W_0_P7_16_U0)
-				&mmqos SLAVE_COMMON(1)>;
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P0_CAM_RAW_A_DMA_R_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P1_CAM_RAW_A_DMA_R_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P2_CAM_RAW_A_DMA_R_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P3_CAM_RAW_A_DMA_R_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P4_CAM_RAW_A_DMA_R_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P5_CAM_RAW_A_DMA_R_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P6_CAM_RAW_A_DMA_R_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P7_CAM_RAW_A_DMA_R_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P10_CAM_RAW_A_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P11_CAM_RAW_A_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P12_CAM_RAW_A_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P13_CAM_RAW_A_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P15_CAM_RAW_A_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P16_CAM_RAW_A_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P17_CAM_RAW_A_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L16_P18_CAM_RAW_A_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"RAW_R_0", "RAW_R_1", "RAW_R_2", "RAW_R_3",
 			"RAW_R_4", "RAW_R_5", "RAW_R_6", "RAW_R_7",
-			"RAW_W_0", "RAW_W_1", "RAW_W_2", "RAW_W_3",
-			"RAW_W_4", "RAW_W_5", "RAW_W_6", "RAW_W_7";
-#endif
+			"RAW_W_10", "RAW_W_11", "RAW_W_12", "RAW_W_13",
+			"RAW_W_15", "RAW_W_16", "RAW_W_17", "RAW_W_18";
 	};
 
 	cam_rms_a: cam-rms-a@1a740000 {
@@ -4158,7 +4155,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<0 0x1a798000 0 0x8000>;
 		reg-names = "base", "inner_base", "dmatop_base", "inner_dmatop_base";
 		mediatek,cam-id = <0>;
-		iommus = <&disp_iommu M4U_L17_P0_CAM_YUV_DMA_W_0_U0>;
 		clocks =
 			<&camsys_yuva_clk CLK_CAM_YA_LARBX_CAM_RAW>,
 			<&camsys_yuva_clk CLK_CAM_YA_CAM_CAM_RAW>,
@@ -4169,38 +4165,36 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"camsys_yuva_camtg_cam_raw";
 		mediatek,larbs = <&smi_larb17>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBA>;
-#if 0
 		mmqos-supply = <&mmqos>;
-		mediatek,smmu-dma-axid =
-			<SMMU_L17_P0_CAM3_YUV_W_0_17_U0>,
-			<SMMU_L17_P1_CAM3_YUV_W_0_17_U0>,
-			<SMMU_L17_P2_CAM3_YUV_W_0_17_U0>,
-			<SMMU_L17_P3_CAM3_YUV_W_0_17_U0>,
-			<SMMU_L17_P4_CAM3_YUV_W_0_17_U0>,
-			<SMMU_L17_P5_CAM3_YUV_W_0_17_U0>,
-			<SMMU_L17_P6_CAM3_YUV_W_0_17_U0>,
-			<SMMU_L17_P7_CAM3_YUV_W_0_17_U0>;
+		iommus =
+			<&disp_iommu M4U_L17_P0_CAM_YUV_DMA_W_0_U0>,
+			<&disp_iommu M4U_L17_P1_CAM_YUV_DMA_W_0_U0>,
+			<&disp_iommu M4U_L17_P2_CAM_YUV_DMA_W_0_U0>,
+			<&disp_iommu M4U_L17_P3_CAM_YUV_DMA_W_0_U0>,
+			<&disp_iommu M4U_L17_P4_CAM_YUV_DMA_W_0_U0>,
+			<&disp_iommu M4U_L17_P5_CAM_YUV_DMA_W_0_U0>,
+			<&disp_iommu M4U_L17_P6_CAM_YUV_DMA_W_0_U0>,
+			<&disp_iommu M4U_L17_P7_CAM_YUV_DMA_W_0_U0>;
 		interconnects =
-			<&mmqos MASTER_LARB_PORT(SMMU_L17_P0_CAM3_YUV_W_0_17_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L17_P1_CAM3_YUV_W_0_17_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L17_P2_CAM3_YUV_W_0_17_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L17_P3_CAM3_YUV_W_0_17_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L17_P4_CAM3_YUV_W_0_17_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L17_P5_CAM3_YUV_W_0_17_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L17_P6_CAM3_YUV_W_0_17_U0)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L17_P7_CAM3_YUV_W_0_17_U0)
-				&mmqos SLAVE_COMMON(1)>;
+			<&mmqos MASTER_LARB_PORT(M4U_L17_P0_CAM_YUV_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L17_P1_CAM_YUV_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L17_P2_CAM_YUV_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L17_P3_CAM_YUV_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L17_P4_CAM_YUV_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L17_P5_CAM_YUV_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L17_P6_CAM_YUV_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L17_P7_CAM_YUV_DMA_W_0_U0)
+			 &mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"YUV_W_0", "YUV_W_1", "YUV_W_2", "YUV_W_3",
 			"YUV_W_4", "YUV_W_5", "YUV_W_6", "YUV_W_7";
-#endif
 	};
 
 	cam_raw_b: cam-raw-b@1a900000 {
@@ -4213,7 +4207,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			 "dmatop_base", "inner_dmatop_base";
 		mediatek,cam-id = <1>;
 		interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_HIGH 0>;
-		iommus = <&disp_iommu M4U_L33_P0_CAM_RAW_A_DMA_R_0_U1>;
 		clocks =
 			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SENINF_TG_SUBB_CAM_RAW>,
 			<&camsys_rawb_clk CLK_CAM_RB_LARBX_CAM_RAW>,
@@ -4228,64 +4221,62 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"camsys_rawb_cam_26m_cam_raw";
 		mediatek,larbs = <&smi_larb33>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBB>;
-#if 0
 		mmqos-supply = <&mmqos>;
-		mediatek,smmu-dma-axid =
-			<SMMU_L43_P0_CAM2_RAW_R_0_P0_16_U1>,
-			<SMMU_L43_P1_CAM2_RAW_R_0_P1_16_U1>,
-			<SMMU_L43_P2_CAM2_RAW_R_0_P2_16_U1>,
-			<SMMU_L43_P3_CAM2_RAW_R_0_P3_16_U1>,
-			<SMMU_L43_P4_CAM2_RAW_R_0_P4_16_U1>,
-			<SMMU_L43_P5_CAM2_RAW_R_0_P5_16_U1>,
-			<SMMU_L43_P6_CAM2_RAW_R_0_P6_16_U1>,
-			<SMMU_L43_P7_CAM2_RAW_R_0_P7_16_U1>,
-			<SMMU_L43_P10_CAM2_RAW_W_0_P0_16_U1>,
-			<SMMU_L43_P11_CAM2_RAW_W_0_P1_16_U1>,
-			<SMMU_L43_P12_CAM2_RAW_W_0_P2_16_U1>,
-			<SMMU_L43_P13_CAM2_RAW_W_0_P3_16_U1>,
-			<SMMU_L43_P15_CAM2_RAW_W_0_P4_16_U1>,
-			<SMMU_L43_P16_CAM2_RAW_W_0_P5_16_U1>,
-			<SMMU_L43_P17_CAM2_RAW_W_0_P6_16_U1>,
-			<SMMU_L43_P18_CAM2_RAW_W_0_P7_16_U1>;
+		iommus =
+			<&disp_iommu M4U_L33_P0_CAM_RAW_A_DMA_R_0_U1>,
+			<&disp_iommu M4U_L33_P1_CAM_RAW_A_DMA_R_0_U1>,
+			<&disp_iommu M4U_L33_P2_CAM_RAW_A_DMA_R_0_U1>,
+			<&disp_iommu M4U_L33_P3_CAM_RAW_A_DMA_R_0_U1>,
+			<&disp_iommu M4U_L33_P4_CAM_RAW_A_DMA_R_0_U1>,
+			<&disp_iommu M4U_L33_P5_CAM_RAW_A_DMA_R_0_U1>,
+			<&disp_iommu M4U_L33_P6_CAM_RAW_A_DMA_R_0_U1>,
+			<&disp_iommu M4U_L33_P7_CAM_RAW_A_DMA_R_0_U1>,
+			<&disp_iommu M4U_L33_P10_CAM_RAW_A_DMA_W_0_U1>,
+			<&disp_iommu M4U_L33_P11_CAM_RAW_A_DMA_W_0_U1>,
+			<&disp_iommu M4U_L33_P12_CAM_RAW_A_DMA_W_0_U1>,
+			<&disp_iommu M4U_L33_P13_CAM_RAW_A_DMA_W_0_U1>,
+			<&disp_iommu M4U_L33_P15_CAM_RAW_A_DMA_W_0_U1>,
+			<&disp_iommu M4U_L33_P16_CAM_RAW_A_DMA_W_0_U1>,
+			<&disp_iommu M4U_L33_P17_CAM_RAW_A_DMA_W_0_U1>,
+			<&disp_iommu M4U_L33_P18_CAM_RAW_A_DMA_W_0_U1>;
 		interconnects =
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P0_CAM2_RAW_R_0_P0_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P1_CAM2_RAW_R_0_P1_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P2_CAM2_RAW_R_0_P2_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P3_CAM2_RAW_R_0_P3_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P4_CAM2_RAW_R_0_P4_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P5_CAM2_RAW_R_0_P5_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P6_CAM2_RAW_R_0_P6_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P7_CAM2_RAW_R_0_P7_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P10_CAM2_RAW_W_0_P0_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P11_CAM2_RAW_W_0_P1_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P12_CAM2_RAW_W_0_P2_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P13_CAM2_RAW_W_0_P3_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P15_CAM2_RAW_W_0_P4_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P16_CAM2_RAW_W_0_P5_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P17_CAM2_RAW_W_0_P6_16_U1)
-				&mmqos SLAVE_COMMON(0)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L43_P18_CAM2_RAW_W_0_P7_16_U1)
-				&mmqos SLAVE_COMMON(0)>;
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P0_CAM_RAW_A_DMA_R_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P1_CAM_RAW_A_DMA_R_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P2_CAM_RAW_A_DMA_R_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P3_CAM_RAW_A_DMA_R_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P4_CAM_RAW_A_DMA_R_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P5_CAM_RAW_A_DMA_R_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P6_CAM_RAW_A_DMA_R_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P7_CAM_RAW_A_DMA_R_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P10_CAM_RAW_A_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P11_CAM_RAW_A_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P12_CAM_RAW_A_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P13_CAM_RAW_A_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P15_CAM_RAW_A_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P16_CAM_RAW_A_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P17_CAM_RAW_A_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L33_P18_CAM_RAW_A_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"RAW_R_0", "RAW_R_1", "RAW_R_2", "RAW_R_3",
 			"RAW_R_4", "RAW_R_5", "RAW_R_6", "RAW_R_7",
-			"RAW_W_0", "RAW_W_1", "RAW_W_2", "RAW_W_3",
-			"RAW_W_4", "RAW_W_5", "RAW_W_6", "RAW_W_7";
-#endif
+			"RAW_W_10", "RAW_W_11", "RAW_W_12", "RAW_W_13",
+			"RAW_W_15", "RAW_W_16", "RAW_W_17", "RAW_W_18";
 	};
 
 	cam_rms_b: cam-rms-b@1a940000 {
@@ -4318,7 +4309,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"dmatop_base",
 			"inner_dmatop_base";
 		mediatek,cam-id = <1>;
-		iommus = <&disp_iommu M4U_L34_P0_CAM_YUV_DMA_W_0_U1>;
 		clocks =
 			<&camsys_yuvb_clk CLK_CAM_YB_LARBX_CAM_RAW>,
 			<&camsys_yuvb_clk CLK_CAM_YB_CAM_CAM_RAW>,
@@ -4329,38 +4319,36 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"camsys_yuvb_camtg_cam_raw";
 		mediatek,larbs = <&smi_larb34>;
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBB>;
-#if 0
 		mmqos-supply = <&mmqos>;
-		mediatek,smmu-dma-axid =
-			<SMMU_L45_P0_CAM3_YUV_W_0_17_U1>,
-			<SMMU_L45_P1_CAM3_YUV_W_0_17_U1>,
-			<SMMU_L45_P2_CAM3_YUV_W_0_17_U1>,
-			<SMMU_L45_P3_CAM3_YUV_W_0_17_U1>,
-			<SMMU_L45_P4_CAM3_YUV_W_0_17_U1>,
-			<SMMU_L45_P5_CAM3_YUV_W_0_17_U1>,
-			<SMMU_L45_P6_CAM3_YUV_W_0_17_U1>,
-			<SMMU_L45_P7_CAM3_YUV_W_0_17_U1>;
+		iommus =
+			<&disp_iommu M4U_L34_P0_CAM_YUV_DMA_W_0_U1>,
+			<&disp_iommu M4U_L34_P1_CAM_YUV_DMA_W_0_U1>,
+			<&disp_iommu M4U_L34_P2_CAM_YUV_DMA_W_0_U1>,
+			<&disp_iommu M4U_L34_P3_CAM_YUV_DMA_W_0_U1>,
+			<&disp_iommu M4U_L34_P4_CAM_YUV_DMA_W_0_U1>,
+			<&disp_iommu M4U_L34_P5_CAM_YUV_DMA_W_0_U1>,
+			<&disp_iommu M4U_L34_P6_CAM_YUV_DMA_W_0_U1>,
+			<&disp_iommu M4U_L34_P7_CAM_YUV_DMA_W_0_U1>;
 		interconnects =
-			<&mmqos MASTER_LARB_PORT(SMMU_L45_P0_CAM3_YUV_W_0_17_U1)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L45_P1_CAM3_YUV_W_0_17_U1)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L45_P2_CAM3_YUV_W_0_17_U1)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L45_P3_CAM3_YUV_W_0_17_U1)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L45_P4_CAM3_YUV_W_0_17_U1)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L45_P5_CAM3_YUV_W_0_17_U1)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L45_P6_CAM3_YUV_W_0_17_U1)
-				&mmqos SLAVE_COMMON(1)>,
-			<&mmqos MASTER_LARB_PORT(SMMU_L45_P7_CAM3_YUV_W_0_17_U1)
-				&mmqos SLAVE_COMMON(1)>;
+			<&mmqos MASTER_LARB_PORT(M4U_L34_P0_CAM_YUV_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L34_P1_CAM_YUV_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L34_P2_CAM_YUV_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L34_P3_CAM_YUV_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L34_P4_CAM_YUV_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L34_P5_CAM_YUV_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L34_P6_CAM_YUV_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>,
+			<&mmqos MASTER_LARB_PORT(M4U_L34_P7_CAM_YUV_DMA_W_0_U1)
+			 &mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"YUV_W_0", "YUV_W_1", "YUV_W_2", "YUV_W_3",
 			"YUV_W_4", "YUV_W_5", "YUV_W_6", "YUV_W_7";
-#endif
 	};
 	camsv1@1a600000 {
 		compatible = "mediatek,camsv";
