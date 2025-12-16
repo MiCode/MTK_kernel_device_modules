@@ -154,11 +154,6 @@
 	tcxo-support = "true";
 };
 
-/* MD/RF always-on setting */
-&mt6363_vbuck5 {
-	regulator-always-on;
-};
-
 &gic {
 	ranges;
 	its: its@910000000 {
