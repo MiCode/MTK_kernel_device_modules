@@ -110,7 +110,7 @@ static struct mtk_afe_adda_priv *get_adda_priv_by_name(struct mtk_base_afe *afe,
 	if (strncmp(name, "afe_dl0_dac_hires_audio", 21) == 0 ||
 	    strncmp(name, "afe_ul0_adc_hires_audio", 21) == 0)
 		dai_id = MT6881_DAI_ADDA;
-	else if (strncmp(name, "aud_dl1_dac_hires_clk", 21) == 0 ||
+	else if (strncmp(name, "afe_dl1_dac_hires_audio", 21) == 0 ||
 		 strncmp(name, "afe_ul1_adc_hires_audio", 21) == 0)
 		dai_id = MT6881_DAI_ADDA_CH34;
 	else
