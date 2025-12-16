@@ -7052,6 +7052,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,pad-select = <0>;
 			mediatek,reset-bit = <14>;
 			mediatek,tickdly = <17>, <0>;
+			mediatek,valid-cnt-thr = <30>;
 			reg = <0 0x11010800 0 0x100>,
 				<0 0x11036000 0 0x10>;
 			interrupts = <GIC_SPI 587 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -7067,6 +7068,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,pad-select = <0>;
 			mediatek,reset-bit = <13>;
 			mediatek,tickdly = <18>, <0>;
+			mediatek,valid-cnt-thr = <30>;
 			reg = <0 0x11011800 0 0x100>,
 				<0 0x11036000 0 0x10>;
 			interrupts = <GIC_SPI 588 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -7082,6 +7084,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,pad-select = <0>;
 			mediatek,reset-bit = <12>;
 			mediatek,tickdly = <18>, <0>;
+			mediatek,valid-cnt-thr = <30>;
 			reg = <0 0x11012800 0 0x100>,
 				<0 0x11036000 0 0x10>;
 			interrupts = <GIC_SPI 589 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -7097,6 +7100,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,pad-select = <0>;
 			mediatek,reset-bit = <11>;
 			mediatek,tickdly = <10>, <0>;
+			mediatek,valid-cnt-thr = <30>;
 			reg = <0 0x11013800 0 0x100>,
 				<0 0x11036000 0 0x10>;
 			interrupts = <GIC_SPI 590 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -7112,6 +7116,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,pad-select = <0>;
 			mediatek,reset-bit = <10>;
 			mediatek,tickdly = <13>, <0>;
+			mediatek,valid-cnt-thr = <30>;
 			reg = <0 0x11014800 0 0x100>,
 				<0 0x11036000 0 0x10>;
 			interrupts = <GIC_SPI 591 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -7127,6 +7132,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,pad-select = <0>;
 			mediatek,reset-bit = <9>;
 			mediatek,tickdly = <12>, <0>;
+			mediatek,valid-cnt-thr = <30>;
 			reg = <0 0x11015800 0 0x100>,
 				<0 0x11036000 0 0x10>;
 			interrupts = <GIC_SPI 592 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -7142,6 +7148,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,pad-select = <0>;
 			mediatek,reset-bit = <8>;
 			mediatek,tickdly = <11>, <0>;
+			mediatek,valid-cnt-thr = <30>;
 			reg = <0 0x11016800 0 0x100>,
 				<0 0x11036000 0 0x10>;
 			interrupts = <GIC_SPI 593 IRQ_TYPE_LEVEL_HIGH 0>;
@@ -7157,6 +7164,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,pad-select = <0>;
 			mediatek,reset-bit = <7>;
 			mediatek,tickdly = <11>, <0>;
+			mediatek,valid-cnt-thr = <30>;
 			reg = <0 0x11017800 0 0x100>,
 				<0 0x11036000 0 0x10>;
 			interrupts = <GIC_SPI 594 IRQ_TYPE_LEVEL_HIGH 0>;
