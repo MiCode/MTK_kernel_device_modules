@@ -12,37 +12,11 @@
 		clocks =
 			<&cksys_reg_clk CLK_CKSYS_REG_MMINFRA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_DPMAIF_MAIN_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_VENC_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_VDEC_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_PKA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_DMA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_KDF_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_RNG_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_PQC_SEL>;
-	};
-
-	bring-up-venc@2 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x2>;
-		clocks =
-			<&venc_gcon_clk CLK_VEN1_CKE1_VENC_VENC>,
-			<&venc_gcon_clk CLK_VEN1_CKE5_GALS_VENC>;
-	};
-
-	bring-up-smi@4 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x4>;
-		clocks =
-			<&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>;
-	};
-
-	bring-up-vdec@a {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xa>;
-		clocks =
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_ACTIVE_VDEC>,
-			<&vdec_gcon_base_clk CLK_VDE2_VDEC_CKEN_ENG_VDEC>;
 	};
 
 	bring-up-dpmaif@c {
@@ -91,18 +65,6 @@
 			<&mdpsys_config_clk CLK_MDP_FMM_IMG_DL_ASYNC1_MML>,
 			<&mdpsys_config_clk CLK_MDP_FIMG_IMG_DL_ASYNC0_MML>,
 			<&mdpsys_config_clk CLK_MDP_FIMG_IMG_DL_ASYNC1_MML>;
-	};
-
-	bring-up-pd-vde0@1e {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1e>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_VDE0>;
-	};
-
-	bring-up-pd-ven0@1f {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x1f>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_VEN0>;
 	};
 
 	bring-up-pd-mm-infra-shutdown@25 {
