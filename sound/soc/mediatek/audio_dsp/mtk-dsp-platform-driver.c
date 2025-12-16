@@ -61,14 +61,10 @@ static int ktv_status;
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
 static struct mtk_base_dsp *dsp_priv;
 #endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 static int hfp_client_rx_status;
 static int hfp_client_tx_status;
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 static int anc_status;
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
 static int extstream1_status;
 static int extstream2_status;
 #endif
@@ -300,7 +296,7 @@ static int ktv_status_get(struct snd_kcontrol *kcontrol,
 }
 
 
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 static int hfp_client_rx_status_set(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol)
 {
@@ -320,7 +316,7 @@ static int hfp_client_rx_status_get(struct snd_kcontrol *kcontrol,
 static int hfp_client_tx_status_set(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol)
 {
-	hfp_client_rx_status = ucontrol->value.integer.value[0];
+	hfp_client_tx_status = ucontrol->value.integer.value[0];
 	pr_debug("%s() hfp_client_tx_status = %d\n", __func__, hfp_client_tx_status);
 	return 0;
 }
@@ -332,9 +328,6 @@ static int hfp_client_tx_status_get(struct snd_kcontrol *kcontrol,
 	pr_debug("%s() hfp_client_tx_status = %d\n", __func__, hfp_client_tx_status);
 	return 0;
 }
-#endif
-
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 static int anc_status_set(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol)
 {
@@ -350,9 +343,7 @@ static int anc_status_get(struct snd_kcontrol *kcontrol,
 	pr_debug("%s() anc_status = %d\n", __func__, anc_status);
 	return 0;
 }
-#endif
 
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
 static int extstream1_status_set(struct snd_kcontrol *kcontrol,
 			  struct snd_ctl_elem_value *ucontrol)
 {
@@ -548,27 +539,19 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_callul_default_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	SOC_SINGLE_EXT("dsp_hfp_client_rx_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_hfp_client_tx_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	SOC_SINGLE_EXT("dsp_anc_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
 	SOC_SINGLE_EXT("dsp_extstream1_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_extstream2_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
 	SOC_SINGLE_EXT("dsp_subpb_default_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#endif
 	SOC_SINGLE_EXT("dsp_pb0_default_en", SND_SOC_NOPM, 0, 0xff, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_pb1_default_en", SND_SOC_NOPM, 0, 0xff, 0,
@@ -678,27 +661,19 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_callul_ref_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	SOC_SINGLE_EXT("dsp_hfp_client_rx_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_hfp_client_tx_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	SOC_SINGLE_EXT("dsp_anc_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
 	SOC_SINGLE_EXT("dsp_extstream1_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_extstream2_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
 	SOC_SINGLE_EXT("dsp_subpb_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
-#endif
 	SOC_SINGLE_EXT("dsp_pb0_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
 		       dsp_task_attr_get, dsp_task_attr_set),
 	SOC_SINGLE_EXT("dsp_pb1_runtime_en", SND_SOC_NOPM, 0, 0x1, 0,
@@ -750,17 +725,13 @@ static const struct snd_kcontrol_new dsp_platform_kcontrols[] = {
 		       audio_dsp_type_get, audio_dsp_type_set),
 	SOC_SINGLE_EXT("audio_dsp_wakelock", SND_SOC_NOPM, 0, 0xffff, 0,
 		       dsp_wakelock_get, dsp_wakelock_set),
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	SOC_SINGLE_EXT("hfp_client_rx_status", SND_SOC_NOPM, 0, 0x1, 0,
 		       hfp_client_rx_status_get, hfp_client_rx_status_set),
 	SOC_SINGLE_EXT("hfp_client_tx_status", SND_SOC_NOPM, 0, 0x1, 0,
 		       hfp_client_tx_status_get, hfp_client_tx_status_set),
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	SOC_SINGLE_EXT("anc_status", SND_SOC_NOPM, 0, 0x1, 0,
 		       anc_status_get, anc_status_set),
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
 	SOC_SINGLE_EXT("extstream1_status", SND_SOC_NOPM, 0, 0x1, 0,
 		       extstream1_status_get, extstream1_status_set),
 	SOC_SINGLE_EXT("extstream2_status", SND_SOC_NOPM, 0, 0x1, 0,

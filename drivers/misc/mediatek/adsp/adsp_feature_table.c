@@ -56,20 +56,11 @@ static struct adsp_feature_tb feature_table[ADSP_NUM_FEATURE_ID] = {
 	[BLE_CALL_DL_FEATURE_ID]      = {.name = "blecalldl"},
 	[BLE_CALL_UL_FEATURE_ID]      = {.name = "blecallul"},
 	[PCIE_FEATURE_ID]             = {.name = "pcie"},
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
-	[HFP_CLIENT_RX_FEATURE_ID]    = {.name = "hfp_client_rx"},
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	[ANC_FEATURE_ID]              = {.name = "anc"},
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
 	[EXTSTREAM1_FEATURE_ID]       = {.name = "extstream1"},
 	[EXTSTREAM2_FEATURE_ID]       = {.name = "extstream2"},
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
 	[SUB_PLAYBACK_FEATURE_ID]      = {.name = "sub_playback"},
-#endif
 	[PLAYBACK0_FEATURE_ID]        = {.name = "playback0"},
 	[PLAYBACK1_FEATURE_ID]        = {.name = "playback1"},
 	[PLAYBACK2_FEATURE_ID]        = {.name = "playback2"},
@@ -87,9 +78,8 @@ static struct adsp_feature_tb feature_table[ADSP_NUM_FEATURE_ID] = {
 	[PLAYBACK14_FEATURE_ID]        = {.name = "playback14"},
 	[PLAYBACK15_FEATURE_ID]        = {.name = "playback15"},
 	[CAPTURE_MCH_FEATURE_ID]       = {.name = "capture_mch"},
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
 	[HFP_CLIENT_TX_FEATURE_ID]    = {.name = "hfp_client_tx"},
-#endif
+	[HFP_CLIENT_RX_FEATURE_ID]    = {.name = "hfp_client_rx"},
 #endif
 };
 

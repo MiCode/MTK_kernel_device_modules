@@ -381,7 +381,7 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 				.formats = MTK_I2S_FORMATS,
 			},
 	},
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	{
 		.name = "audio_task_hfp_client_rx_dai",
 		.id = AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID,
@@ -404,8 +404,6 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 				.formats = MTK_I2S_FORMATS,
 			},
 	},
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	{
 		.name = "audio_task_anc_dai",
 		.id = AUDIO_TASK_ANC_ADSP_ID,
@@ -417,8 +415,6 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 				.formats = MTK_I2S_FORMATS,
 			},
 	},
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
 	{
 		.name = "audio_task_extstream1_dai",
 		.id = AUDIO_TASK_EXTSTREAM1_ADSP_ID,
@@ -441,9 +437,6 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 				.formats = MTK_I2S_FORMATS,
 			},
 	},
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
 	{
 		.name = "audio_task_Sub_Playback_dai",
 		.id = AUDIO_TASK_SUB_PLAYBACK_ID,
@@ -455,7 +448,6 @@ static struct snd_soc_dai_driver mtk_dai_dsp_driver[] = {
 				.formats = MTK_I2S_FORMATS,
 			},
 	},
-#endif
 	{
 		.name = "audio_task_playback0_dai",
 		.id = AUDIO_TASK_PLAYBACK0_ID,

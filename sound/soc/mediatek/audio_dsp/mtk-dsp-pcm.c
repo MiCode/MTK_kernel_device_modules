@@ -78,21 +78,13 @@ static char *dsp_task_dsp_name[AUDIO_TASK_DAI_NUM] = {
 	[AUDIO_TASK_CALLDL_ID]      = "mtk-dsp-calldl",
 	[AUDIO_TASK_CALLUL_ID]      = "mtk-dsp-callul",
 	[AUDIO_TASK_UL_PROCESS2_ID] = "mtk-dsp-ulproc2",
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_HFP_CLIENT_SUPPORT)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
 	[AUDIO_TASK_HFP_CLIENT_RX_ADSP_ID]      = "mtk-dsp-hfp-client-rx",
 	[AUDIO_TASK_HFP_CLIENT_TX_ADSP_ID]      = "mtk-dsp-hfp-client-tx",
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_ANC_SUPPORT)
 	[AUDIO_TASK_ANC_ADSP_ID]    = "mtk-dsp-anc",
-#endif
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_EXTSTREAM_SUPPORT)
 	[AUDIO_TASK_EXTSTREAM1_ADSP_ID]   = "mtk-dsp-extstream1",
 	[AUDIO_TASK_EXTSTREAM2_ADSP_ID]   = "mtk-dsp-extstream2",
-#endif
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
-#if IS_ENABLED(CONFIG_MTK_ADSP_AUTO_MULTI_PLAYBACK_SUPPORT)
 	[AUDIO_TASK_SUB_PLAYBACK_ID]   = "mtk-dsp-sub-playback",
-#endif
 	[AUDIO_TASK_PLAYBACK0_ID]   = "mtk-dsp-playback0",
 	[AUDIO_TASK_PLAYBACK1_ID]   = "mtk-dsp-playback1",
 	[AUDIO_TASK_PLAYBACK2_ID]   = "mtk-dsp-playback2",
