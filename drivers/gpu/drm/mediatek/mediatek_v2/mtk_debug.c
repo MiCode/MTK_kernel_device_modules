@@ -3225,7 +3225,8 @@ int mtk_drm_add_cb_data(struct cb_data_store *cb_data, unsigned int crtc_id)
 		return -1;
 	}
 
-	DDPINFO("%s id %d data0x%08lx\n", __func__, crtc_id, (unsigned long)cb_data->data.data);
+	DDPINFO("%s id %d data0x%08x\n", __func__, crtc_id,
+			(uint32_t)(uintptr_t)cb_data->data.data);
 	list_add_tail(&cb_data->link, &cb_data_list[crtc_id]);
 	spin_unlock_irqrestore(&cb_data_clock_lock, flags);
 
@@ -3273,8 +3274,8 @@ void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id)
 	list_for_each_entry(tmp_cb_data, &cb_data_list[crtc_id], link) {
 		if (!memcmp(&tmp_cb_data->data, &data,
 				sizeof(struct cmdq_cb_data))) {
-			DDPINFO("%s id %d data0x%08lx\n", __func__, crtc_id,
-					(unsigned long)data.data);
+			DDPINFO("%s id %d data0x%08x\n", __func__, crtc_id,
+					(uint32_t)(uintptr_t)data.data);
 			list_del_init(&tmp_cb_data->link);
 			break;
 		}

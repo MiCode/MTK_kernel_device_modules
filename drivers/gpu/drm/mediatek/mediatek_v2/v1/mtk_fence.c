@@ -880,17 +880,17 @@ struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_device *dev,
 
 	fence = sync_file_get_fence(buf_info->fence);
 	if (buf_info->buf_hnd)
-		DDPFENCE("P+/%s%d/L%d/id%d/fd%d/hnd0x%8p/pt0x%lx\n",
+		DDPFENCE("P+/%s%d/L%d/id%d/fd%d/hnd0x%08x/pt0x%08x\n",
 			 mtk_fence_session_mode_spy(session_id),
 			 MTK_SESSION_DEV(session_id), timeline_id, buf_info->idx,
-			 buf_info->fence, buf_info->buf_hnd,
-			 IS_ERR_OR_NULL(fence) ? 0x0 : (unsigned long)fence);
+			 buf_info->fence, (uint32_t)(uintptr_t)buf_info->buf_hnd,
+			 IS_ERR_OR_NULL(fence) ? 0x0 : (uint32_t)(uintptr_t)fence);
 	else
-		DDPFENCE("P+/%s%d/L%d/id%d/fd%d/pt0x%lx\n",
+		DDPFENCE("P+/%s%d/L%d/id%d/fd%d/pt0x%08x\n",
 			 mtk_fence_session_mode_spy(session_id),
 			 MTK_SESSION_DEV(session_id), timeline_id, buf_info->idx,
 			 buf_info->fence,
-			 IS_ERR_OR_NULL(fence) ? 0x0 : (unsigned long)fence);
+			 IS_ERR_OR_NULL(fence) ? 0x0 : (uint32_t)(uintptr_t)fence);
 	if (!IS_ERR_OR_NULL(fence))
 		dma_fence_put(fence);
 
