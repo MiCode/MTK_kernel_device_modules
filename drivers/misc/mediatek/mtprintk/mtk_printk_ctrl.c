@@ -75,7 +75,7 @@ void update_uartlog_status(bool new_value, int value)
 		for_each_console(bcon) {
 			pr_info("console name: %s, status 0x%x.\n", bcon->name, bcon->flags);
 #if IS_ENABLED(CONFIG_HYPER_VM_UOS) || IS_ENABLED(CONFIG_HYPER_YOCTO_UOS)
-			if (!strncmp(bcon->name, "vmlog", 5)) {
+			if (!strncmp(bcon->name, "hvc", 3)) {
 #else
 			if (!strncmp(bcon->name, "ttyS", 4)) {
 #endif
@@ -90,7 +90,7 @@ void update_uartlog_status(bool new_value, int value)
 		for_each_console(bcon) {
 			pr_info("console name: %s. status 0x%x.\n", bcon->name, bcon->flags);
 #if IS_ENABLED(CONFIG_HYPER_VM_UOS) || IS_ENABLED(CONFIG_HYPER_YOCTO_UOS)
-			if (!strncmp(bcon->name, "vmlog", 5)) {
+			if (!strncmp(bcon->name, "hvc", 3)) {
 #else
 			if (!strncmp(bcon->name, "ttyS", 4)) {
 #endif
