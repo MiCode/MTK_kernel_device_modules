@@ -10812,6 +10812,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				interrupts = <GIC_SPI 513 IRQ_TYPE_LEVEL_HIGH 0>;
 				clocks = <&clk26m>;
 				clock-names = "sys_ck";
+				mediatek,usb-offload = <&usb_offload>;
 				status = "okay";
 			};
 		};
@@ -11214,6 +11215,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					remote-endpoint = <&mtu3_drd_switch>;
 				};
 			};
+		};
+
+		usb_offload: usb-offload {
+			compatible = "mediatek,usb-offload";
+			xhci-host = <&usb_host>;
+			/* mediatek,main-sram = "afe-sram"; */
+			mediatek,reserved-sram-size = <0x4000>;
+			mediatek,ready-for-xhci;
+			mediatek,hub-offload;
+			mediatek,idle-lowpwr;
 		};
 
 		usb_meta: usb-meta {
