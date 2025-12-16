@@ -143,3 +143,11 @@ config VHOST_MMDVFS
 	  for hypervisor project. The vhost driver is located at virt/grt,
 	  Also used to isolate the conflicting part of the mmdvfs driver
 	  on main project, default is n.
+
+config VHOST_TIMESYNC
+	tristate "hypervisor vhost timesync driver"
+	help
+	  This extension enable vhost timesync driver, vhost timesync driver
+	  for hypervisor project. The vhost driver is located at virt/grt,
+	  Also used to isolate the conflicting part of the timesync driver
+	  on main project, default is n.
