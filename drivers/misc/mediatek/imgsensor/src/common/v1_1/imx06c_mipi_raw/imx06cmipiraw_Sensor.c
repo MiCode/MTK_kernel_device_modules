@@ -5202,6 +5202,89 @@ static kal_uint32 get_sensor_temperature(void)
 	return temperature_convert;
 }
 
+static kal_uint32 dump_status(void)
+{
+/* Dump current sensor mode and all RG values */
+	static const char * const mode_name[] = {
+		"PREVIEW", "CAPTURE", "VIDEO", "HIGH_SPEED_VIDEO", "SLIM_VIDEO",
+		"CUSTOM1", "CUSTOM2", "CUSTOM3", "CUSTOM4"
+	};
+	kal_uint8 mode = 0, reg_data = 0, is_streaming = 0;
+	const kal_uint16 *setting;
+	kal_uint16 fps = 0;
+	kal_uint32 frame_cnt = 0;
+	int setting_len = 0;
+	int i;
+
+	spin_lock(&imgsensor_drv_lock);
+	mode = imgsensor.sensor_mode;
+	fps = imgsensor.current_fps;
+	spin_unlock(&imgsensor_drv_lock);
+	pr_info("[dump_Status] mode id: %d (%s)\n", mode,
+		(mode < ARRAY_SIZE(mode_name)) ? mode_name[mode] : "UNKNOWN");
+
+	switch (mode) {
+	case IMGSENSOR_MODE_PREVIEW:
+		setting = imx06c_preview_setting;
+		setting_len = sizeof(imx06c_preview_setting)/sizeof(kal_uint16);
+		break;
+	case IMGSENSOR_MODE_CAPTURE:
+		setting = imx06c_capture_setting;
+		setting_len = sizeof(imx06c_capture_setting)/sizeof(kal_uint16);
+		break;
+	case IMGSENSOR_MODE_VIDEO:
+		setting = imx06c_normal_video_setting;
+		setting_len = sizeof(imx06c_normal_video_setting)/sizeof(kal_uint16);
+		break;
+	case IMGSENSOR_MODE_HIGH_SPEED_VIDEO:
+		setting = imx06c_hs_video_setting;
+		setting_len = sizeof(imx06c_hs_video_setting)/sizeof(kal_uint16);
+		break;
+	case IMGSENSOR_MODE_SLIM_VIDEO:
+		setting = imx06c_slim_video_setting;
+		setting_len = sizeof(imx06c_slim_video_setting)/sizeof(kal_uint16);
+		break;
+	case IMGSENSOR_MODE_CUSTOM1:
+		setting = imx06c_custom1_setting;
+		setting_len = sizeof(imx06c_custom1_setting)/sizeof(kal_uint16);
+		break;
+	case IMGSENSOR_MODE_CUSTOM2:
+		setting = imx06c_custom2_setting;
+		setting_len = sizeof(imx06c_custom2_setting)/sizeof(kal_uint16);
+		break;
+	case IMGSENSOR_MODE_CUSTOM3:
+		setting = imx06c_custom3_setting;
+		setting_len = sizeof(imx06c_custom3_setting)/sizeof(kal_uint16);
+		break;
+	case IMGSENSOR_MODE_CUSTOM4:
+		setting = imx06c_custom4_setting;
+		setting_len = sizeof(imx06c_custom4_setting)/sizeof(kal_uint16);
+		break;
+	default:
+		pr_info("[dump_Status] Unknown mode, cannot dump RG values\n");
+		return ERROR_INVALID_PARA;
+	}
+
+	pr_info("[dump_Status] RG values:\n");
+	for (i = 0; i + 1 < setting_len; i += 2) {
+		reg_data = read_cmos_sensor_8(setting[i]);
+		pr_info("Reg[0x%04X] = exp: 0x%04X, act: 0x%04X %s\n",
+				setting[i], setting[i+1], reg_data,
+				(setting[i+1] == reg_data ? "" : "is not equal!"));
+	}
+	is_streaming  = read_cmos_sensor_8(0x100);
+	pr_info("is_streaming = 0x%04X\n", is_streaming);
+
+	// check frame cnt
+	for(i = 0; i < 3; i++) {
+		frame_cnt = read_cmos_sensor_8(0x0005);
+		pr_info("frame_cnt(%d) = 0x%02X\n", i, frame_cnt);
+		mdelay((int)(10000 / fps));
+	}
+	return ERROR_NONE;
+}
+
+
 static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 				 UINT8 *feature_para, UINT32 *feature_para_len)
 {
@@ -5960,6 +6043,12 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		LOG_INF("[%s][SENSOR_FEATURE_GET_HDR_TYPE_BY_SCENARIO] mode(%llu) hdr_type(%d)\n",
 			__func__, *feature_data, *(MUINT32 *)(uintptr_t)(*(feature_data + 1)));
+		break;
+	}
+	case  SENSOR_FEATURE_DEBUG_IMGSENSOR:
+	{
+		pr_info("[%s][SENSOR_FEATURE_DEBUG_IMGSENSOR]\n", __func__);
+		dump_status();
 		break;
 	}
 	default:
