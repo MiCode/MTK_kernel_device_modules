@@ -727,7 +727,7 @@ static struct snd_soc_dai_driver mtk_dai_hostless_driver[] = {
 		},
 		.ops = &mtk_dai_hostless_ops,
 	},
-#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
 	{
 		.name = "Hostless_UL5 DAI",
 		.id = MT6881_DAI_HOSTLESS_UL5,
