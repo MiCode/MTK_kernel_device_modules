@@ -2226,13 +2226,21 @@ static void fdvt_tzmp2(struct fdvt_config *basic_config, struct FDVT_MEM_RECORD 
 
 static void FDVTCmdqErrCB(struct cmdq_cb_data data)
 {
+	fdvt_dump_reg();
 	cmdq_sec_mbox_stop(fdvt_secure_clt);
 	log_inf("FDVT Cmdq Err CB, pkt: 0x%p, err:0X%d\n", data.data, data.err);
+}
+
+static void FDVTCmdqSecErrCB(struct cmdq_cb_data data)
+{
+	fdvt_dump_reg();
+	log_inf("FDVT Sec Cmdq Err CB, pkt: 0x%p, err:0X%d\n", data.data, data.err);
 }
 
 static void FDVTCmdqNorCB(struct cmdq_cb_data data)
 {
 	log_inf("FDVT NORMAL CMDQ CB\n");
+	fdvt_dump_reg();
 }
 
 static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
@@ -2453,6 +2461,7 @@ static signed int config_secure_fdvt_hw(struct fdvt_config *basic_config,
 			log_err("Not support mode(%x)\n", basic_config->FD_MODE);
 
 		log_dbg("FDVT CMDQ Task flush\n");
+		sec_pkt->err_cb.cb = FDVTCmdqSecErrCB;
 		cmdq_pkt_flush(sec_pkt);
 		cmdq_pkt_destroy(sec_pkt);
 	} else {
@@ -3837,67 +3846,56 @@ static long FDVT_ioctl(struct file *pFile,
 			fdvt_FdvtReq.m_ReqNum = dequeNum;
 
 			for (idx = 0; idx < dequeNum; idx++) {
-				if (request->fdvt_frame_status
-					[request->frame_rd_idx]
-						== FDVT_FRAME_STATUS_FINISHED) {
-					if (request->frame_config
-					    [request->frame_rd_idx].FDVT_IS_SECURE &&
+				if (request->fdvt_frame_status[request->frame_rd_idx] == FDVT_FRAME_STATUS_FINISHED) {
+					if (request->frame_config[request->frame_rd_idx].FDVT_IS_SECURE &&
 	       request->frame_config[request->frame_rd_idx]. FDVT_METADATA_TO_GCE.SecMemType == 1) {
 						aie_result_dmabuf2fd();
-						request->frame_config
-				//  ResultMVA_FD
-				[request->frame_rd_idx].FDVT_IMG_Y_FD = g_fd_buffer;
+						request->frame_config[request->frame_rd_idx]
+							.FDVT_IMG_Y_FD = g_fd_buffer;
 					}
 
-					memcpy(&fdvt_deq_req
-						.frame_config[idx],
-						&request->frame_config
-						[request->frame_rd_idx],
+					memcpy(&fdvt_deq_req.frame_config[idx],
+						&request->frame_config[request->frame_rd_idx],
 						sizeof(struct fdvt_config));
-					if (
-					request->frame_config[request->frame_rd_idx].FDVT_IS_SECURE
-		&& request->frame_config[request->frame_rd_idx].FDVT_METADATA_TO_GCE.SecMemType == 3
-					) {
-						fdvt_free_iova(
-							&request->frame_dmabuf[
-							request->frame_rd_idx].ImgSrcY);
-						dma_buf_put(
-					request->frame_dmabuf[request->frame_rd_idx].ImgSrcY.dmabuf
-						);
-					}
-					if (
-		request->frame_config[request->frame_rd_idx].FDVT_METADATA_TO_GCE.ImgSrcUV_Handler
-				&& request->frame_config[request->frame_rd_idx].FDVT_IS_SECURE &&
-		request->frame_config[request->frame_rd_idx].FDVT_METADATA_TO_GCE.SecMemType == 3
-					) {
-						fdvt_free_iova(
-					&request->frame_dmabuf[request->frame_rd_idx].ImgSrcUV);
-						dma_buf_put(
-				request->frame_dmabuf[request->frame_rd_idx].ImgSrcUV.dmabuf);
-					}
-					request->fdvt_frame_status
-						[request->frame_rd_idx++] =
-						FDVT_FRAME_STATUS_EMPTY;
+
+					request->fdvt_frame_status[request->frame_rd_idx++] = FDVT_FRAME_STATUS_EMPTY;
 				} else {
 					log_err("deq err idx(%d) dequNum(%d) Rd(%d) RrameRD(%d) FrmStat(%d)\n",
 						idx, dequeNum,
 						fdvt_req_ring.read_idx,
 						request->frame_rd_idx,
-						request->fdvt_frame_status
-						[request->frame_rd_idx]);
+						request->fdvt_frame_status[request->frame_rd_idx]);
 				}
 			}
 			request->state = FDVT_REQUEST_STATE_EMPTY;
 			request->frame_wr_idx = 0;
 			request->frame_rd_idx = 0;
 			request->enque_req_num = 0;
-			fdvt_req_ring.read_idx =
-				(fdvt_req_ring.read_idx + 1) %
-					MAX_FDVT_REQUEST_RING_SIZE;
-			log_dbg("FDVT Request read_idx(%d)\n",
-				fdvt_req_ring.read_idx);
+			fdvt_req_ring.read_idx = (fdvt_req_ring.read_idx + 1) %	MAX_FDVT_REQUEST_RING_SIZE;
+			log_dbg("FDVT Request read_idx(%d)\n", fdvt_req_ring.read_idx);
 
 			spin_unlock_irqrestore(spinlock_lrq_ptr, flags);
+
+			for (idx = 0; idx < dequeNum; idx++) {
+				if (request->fdvt_frame_status[idx] == FDVT_FRAME_STATUS_EMPTY) {
+					if (request->frame_config[idx].FDVT_IS_SECURE	&&
+						request->frame_config[idx].FDVT_METADATA_TO_GCE.SecMemType == 3) {
+						fdvt_free_iova(&request->frame_dmabuf[idx].ImgSrcY);
+						dma_buf_put(request->frame_dmabuf[idx].ImgSrcY.dmabuf);
+					}
+					if (request->frame_config[idx].FDVT_METADATA_TO_GCE.ImgSrcUV_Handler &&
+						request->frame_config[idx].FDVT_IS_SECURE &&
+						request->frame_config[idx].FDVT_METADATA_TO_GCE.SecMemType == 3) {
+						fdvt_free_iova(&request->frame_dmabuf[idx].ImgSrcUV);
+						dma_buf_put(request->frame_dmabuf[idx].ImgSrcUV.dmabuf);
+					}
+				} else {
+					log_err("FDVT Free Src Img Buf err idx(%d) dequNum(%d) FrmStat(%d), Race Condition May Happen\n",
+						idx, dequeNum,
+						request->fdvt_frame_status[idx]);
+				}
+			}
+
 
 			mutex_unlock(&fdvt_deque_mutex);
 
