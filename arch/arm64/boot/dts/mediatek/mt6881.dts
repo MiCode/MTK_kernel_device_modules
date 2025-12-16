@@ -5363,22 +5363,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				};
 			};
 		};
-		uarthub: uarthub@11000000 {
-			compatible = "mediatek,mt6881-uarthub";
-			reg = <0 0x11000000 0 0x1000>;
-			interrupts = <GIC_SPI 521 IRQ_TYPE_LEVEL_HIGH 0>; /*uarthub irq*/
-#if 0
-			clocks = <&topckgen_clk CLK_TOP_UARTHUB_BCLK_SEL>,
-				<&topckgen_clk CLK_TOP_UART_SEL>,
-				<&topckgen_clk CLK_TOP_UNIVPLL_D6_D4>,
-				<&topckgen_clk CLK_TOP_TCK_26M_MX9>;
-#endif
-			clock-names = "clk_top_uarthub_bclk_sel",
-				"clk_top_uart_sel",
-				"clk_top_univpll_d6_d4_208m",
-				"clk_top_tck_26m_mx9";
-			status = "disabled";
-		};
 		apu {
 			polling-delay = <0>; /* milliseconds */
 			polling-delay-passive = <0>; /* milliseconds */
@@ -12514,6 +12498,21 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		/* emi region to atf: start_idx end_idx */
 		emi-region-to-atf = <1 7>;
 		gps-emi-to-atf = <7 7>;
+	};
+
+	uarthub: uarthub@11000000 {
+		compatible = "mediatek,mt6881-uarthub";
+		reg = <0 0x11000000 0 0x1000>;
+		interrupts = <GIC_SPI 521 IRQ_TYPE_LEVEL_HIGH 0>; /*uarthub irq*/
+		clocks = <&cksys_reg_clk CLK_CKSYS_REG_UARTHUB_BCLK_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_UART_SEL>,
+			<&cksys_reg_clk CLK_CKSYS_REG_UNIVPLL_D6_D4>,
+			<&cksys_reg_clk CLK_CKSYS_REG_TCK_26M_MX9>;
+		clock-names = "clk_top_uarthub_bclk_sel",
+			"clk_top_uart_sel",
+			"clk_top_univpll_d6_d4_208m",
+			"clk_top_tck_26m_mx9";
+		status = "disabled";
 	};
 
 	connv3: connv3 {
