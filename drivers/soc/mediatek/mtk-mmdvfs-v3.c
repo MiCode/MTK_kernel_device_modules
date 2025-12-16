@@ -210,12 +210,34 @@ int mtk_mmdvfs_get_ipi_status(void)
 }
 EXPORT_SYMBOL_GPL(mtk_mmdvfs_get_ipi_status);
 
+#if IS_ENABLED(CONFIG_VIRTIO_MTK_MMDVFS) && IS_ENABLED(CONFIG_HYPER_VM_UOS)
+struct virtio_mmdvfs_ops {
+	int (*enable_vcp)(const bool enable, const u8 idx);
+};
+
+static struct virtio_mmdvfs_ops *virtio_ops_mmdvfs;
+
+void virtio_mmdvfs_register_ops(struct virtio_mmdvfs_ops *ops)
+{
+	virtio_ops_mmdvfs = ops;
+}
+EXPORT_SYMBOL_GPL(virtio_mmdvfs_register_ops);
+#endif
+
 int mtk_mmdvfs_enable_vcp(const bool enable, const u8 idx)
 {
 	int ret = 0;
 
 	if (!mmdvfs_free_run)
 		return 0;
+
+#if IS_ENABLED(CONFIG_VIRTIO_MTK_MMDVFS) && IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	if (virtio_ops_mmdvfs && (virtio_ops_mmdvfs->enable_vcp))
+		return virtio_ops_mmdvfs->enable_vcp(enable, idx);
+
+	MMDVFS_ERR("virtio_mtk_mmdvfs_enable_vcp is null");
+	return -ENODEV;
+#endif
 
 	if (is_vcp_suspending_ex())
 		return -EBUSY;
@@ -2227,6 +2249,11 @@ static int mtk_mmdvfs_clk_enable(const u8 clk_idx)
 	if (err || is_vcp_suspending_ex())
 		return 0;
 
+#if IS_ENABLED(CONFIG_VHOST_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	if (!is_vcp_ready_ex(VCP_A_ID))
+		return 0;
+#endif
+
 	mmdvfs_vcp_ipi_send(FUNC_CLKMUX_ENABLE, clk_idx, true, NULL);
 	return 0;
 }
@@ -2242,6 +2269,11 @@ static int mtk_mmdvfs_clk_disable(const u8 clk_idx)
 
 	if (err || is_vcp_suspending_ex())
 		return 0;
+
+#if IS_ENABLED(CONFIG_VHOST_MMDVFS) && IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	if (!is_vcp_ready_ex(VCP_A_ID))
+		return 0;
+#endif
 
 	mmdvfs_vcp_ipi_send(FUNC_CLKMUX_ENABLE, clk_idx, false, NULL);
 	return 0;
