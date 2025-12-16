@@ -158,6 +158,7 @@ struct mtk_mmsys_driver_data {
 	const enum pwr_clk_id *pwr_on_order;
 	const enum pwr_clk_id *pwr_off_order;
 	int pwr_length;
+	unsigned int max_opp_before_vcore_en;
 };
 
 struct mtk_drm_lyeblob_ids {

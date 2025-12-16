@@ -7804,6 +7804,7 @@ static const struct mtk_mmsys_driver_data mt6881_mmsys_driver_data = {
 	.mmsys_id = MMSYS_MT6881,
 	.mode_tb = mt6881_mode_tb,
 	.sodi_config = mt6881_mtk_sodi_config,
+	.max_opp_before_vcore_en = 3,
 	.has_smi_limitation = false,
 	.doze_ctrl_pmic = true,
 	.can_compress_rgb565 = false,

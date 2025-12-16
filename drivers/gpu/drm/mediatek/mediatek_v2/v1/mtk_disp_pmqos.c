@@ -2139,8 +2139,12 @@ void mtk_drm_set_mmclk(struct drm_crtc *crtc, int level, bool lp_mode,
 		} else {
 			unsigned long max_freq = g_freq_steps[0];
 
-			if (final_level >= 0) //screen on
-				max_freq = g_freq_steps[step_size - 1];
+			if (final_level >= 0) { //screen on
+				if (priv->data->max_opp_before_vcore_en)
+					max_freq = g_freq_steps[priv->data->max_opp_before_vcore_en];
+				else
+					max_freq = g_freq_steps[step_size - 1];
+			}
 
 			opp = dev_pm_opp_find_freq_ceil(crtc->dev->dev, &max_freq);
 			volt = dev_pm_opp_get_voltage(opp);
