@@ -116,6 +116,7 @@
 			    8250.nr_uarts=3 \
 			    nosoftlockup \
 			    androidboot.hardware=mt6881 \
+			    android_arch_task_struct_size=512 \
 			    vmalloc=400M swiotlb=noforce \
 			    firmware_class.path=/vendor/firmware \
 			    kvm-arm.protected_prefault=9 \
