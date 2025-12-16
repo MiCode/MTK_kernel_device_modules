@@ -465,12 +465,10 @@ EXPORT_SYMBOL(mtk_drm_get_panel_timing);
 
 void mtk_drm_notify_to_vm(unsigned int comp_id, unsigned int event)
 {
-	if (IS_ERR_OR_NULL(g_vhost_disp_notifier)) {
+	if (IS_ERR_OR_NULL(g_vhost_disp_notifier))
 		DDPMSG("%s-%d fail\n", __func__, __LINE__);
-		return -ENOENT;
-	}
-
-	g_vhost_disp_notifier(comp_id, event);
+	else
+		g_vhost_disp_notifier(comp_id, event);
 }
 
 int mtk_drm_init_vhost_disp_notifier(
@@ -559,6 +557,7 @@ int mtk_drm_path_get_an_crtc_path_data(struct virtio_disp_rsp_crtc_path_info *pa
 }
 EXPORT_SYMBOL(mtk_drm_path_get_an_crtc_path_data);
 
+#if IS_ENABLED(CONFIG_VHOST_CMDQ_DMA_MAP)
 static int add_vbuf(struct sg_table *sgt, int *id)
 {
 	struct drm_vbuf *new_vbuf;
@@ -586,6 +585,7 @@ static int add_vbuf(struct sg_table *sgt, int *id)
 	list_add_tail(&new_vbuf->list, &vbuf_list);
 	return 0;
 }
+#endif
 
 int remove_vbuf_by_id(uint32_t id)
 {
@@ -593,6 +593,7 @@ int remove_vbuf_by_id(uint32_t id)
 	int ret;
 	struct drm_device *drm_dev = mtk_drm_get_dev();
 
+	#if IS_ENABLED(CONFIG_VHOST_CMDQ_DMA_MAP)
 	mutex_lock(&vbuf_lock);
 	vbuf = idr_find(&vbuf_idr, id);
 	if (vbuf) {
@@ -607,6 +608,7 @@ int remove_vbuf_by_id(uint32_t id)
 		return 0;
 	}
 	mutex_unlock(&vbuf_lock);
+	#endif
 	DDPMSG("[ERR] vbuf with id %d not found\n", id);
 	return -EINVAL;
 }
@@ -625,6 +627,7 @@ int mtk_drm_setup_vbuf_map(struct virtio_disp_req_vbuf *vbuf, struct virtio_disp
 	uint32_t nents;
 	struct drm_device *drm_dev = mtk_drm_get_dev();
 
+	#if IS_ENABLED(CONFIG_VHOST_CMDQ_DMA_MAP)
 	if (IS_ERR_OR_NULL(drm_dev)) {
 		DDPMSG("%s invalid drm dev\n", __func__);
 		return -EFAULT;
@@ -672,9 +675,20 @@ int mtk_drm_setup_vbuf_map(struct virtio_disp_req_vbuf *vbuf, struct virtio_disp
 
 	/*get dma_addr*/
 	rsp_vbuf->dma_addr = sg_dma_address(sgt->sgl);
-
+	#endif
 	return ret;
 
 }
 EXPORT_SYMBOL(mtk_drm_setup_vbuf_map);
+
+void mtk_drm_dp_guest_hotplug_done(unsigned int event)
+{
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_DPTX_AUTO)
+	mtk_dp_guest_hotplug_done(event);
+#else
+	DDPMSG("[ERR] %d dptx auto not enable.\n", event);
+#endif
+}
+EXPORT_SYMBOL(mtk_drm_dp_guest_hotplug_done);
+
 #endif
