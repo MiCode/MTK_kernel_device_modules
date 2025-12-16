@@ -68,6 +68,26 @@
 #define HIGH_VCO_FREQ			0x0
 
 /* PHY ANA GLB registers */
+#define PEXTP_DIG_LN_TRX_18		0x3018
+#define RG_XTP_GEN1_LTD0_PPATH_DVN	GENMASK(7, 0)
+#define CDR_GEN1_LTD0_PPATH_DVN_TO_6	0x6
+#define RG_XTP_GEN2_LTD0_PPATH_DVN	GENMASK(15, 8)
+#define CDR_GEN2_LTD0_PPATH_DVN_TO_20	0x14
+#define RG_XTP_GEN3_LTD0_PPATH_DVN	GENMASK(23, 16)
+#define CDR_GEN3_LTD0_PPATH_DVN_TO_38	0x2a
+#define RG_XTP_GEN4_LTD0_PPATH_DVN	GENMASK(31, 24)
+#define CDR_GEN4_LTD0_PPATH_DVN_TO_28	0x1c
+
+#define PEXTP_DIG_LN_TRX_1C		0x301c
+#define RG_XTP_GEN1_LTD1_PPATH_DVN	GENMASK(7, 0)
+#define CDR_GEN1_LTD1_PPATH_DVN_TO_24	0x18
+#define RG_XTP_GEN2_LTD1_PPATH_DVN	GENMASK(15, 8)
+#define CDR_GEN2_LTD1_PPATH_DVN_TO_80	0x50
+#define RG_XTP_GEN3_LTD1_PPATH_DVN	GENMASK(23, 16)
+#define CDR_GEN3_LTD1_PPATH_DVN_TO_112	0x70
+#define RG_XTP_GEN4_LTD1_PPATH_DVN	GENMASK(31, 24)
+#define CDR_GEN4_LTD1_PPATH_DVN_TO_112	0x70
+
 #define PEXTP_DIG_LN_TRX_70		0x3070
 #define RG_XTP_LN_FRC_RX_AEQ_DFETP5	BIT(21)
 #define RG_XTP_LN_FRC_RX_AEQ_DFETP4	BIT(29)
@@ -693,6 +713,45 @@ err_probe:
 	return ret;
 }
 
+static int mtk_pcie_phy_init_6881(struct phy *phy)
+{
+	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
+
+	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_18,
+			    RG_XTP_GEN1_LTD0_PPATH_DVN,
+			    CDR_GEN1_LTD0_PPATH_DVN_TO_6);
+
+	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_18,
+			    RG_XTP_GEN2_LTD0_PPATH_DVN,
+			    CDR_GEN2_LTD0_PPATH_DVN_TO_20);
+
+	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_18,
+			    RG_XTP_GEN3_LTD0_PPATH_DVN,
+			    CDR_GEN3_LTD0_PPATH_DVN_TO_38);
+
+	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_18,
+			    RG_XTP_GEN4_LTD0_PPATH_DVN,
+			    CDR_GEN4_LTD0_PPATH_DVN_TO_28);
+
+	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_1C,
+			    RG_XTP_GEN1_LTD1_PPATH_DVN,
+			    CDR_GEN1_LTD1_PPATH_DVN_TO_24);
+
+	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_1C,
+			    RG_XTP_GEN2_LTD1_PPATH_DVN,
+			    CDR_GEN2_LTD1_PPATH_DVN_TO_80);
+
+	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_1C,
+			    RG_XTP_GEN3_LTD1_PPATH_DVN,
+			    CDR_GEN3_LTD1_PPATH_DVN_TO_112);
+
+	mtk_phy_update_field(pcie_phy->sif_base + PEXTP_DIG_LN_TRX_1C,
+			    RG_XTP_GEN4_LTD1_PPATH_DVN,
+			    CDR_GEN4_LTD1_PPATH_DVN_TO_112);
+
+	return 0;
+}
+
 static int mtk_pcie_phy_init_6985(struct phy *phy)
 {
 	struct mtk_pcie_phy *pcie_phy = phy_get_drvdata(phy);
@@ -1311,6 +1370,7 @@ static const struct mtk_pcie_phy_data mt8195_data = {
 
 static const struct mtk_pcie_phy_data mt6881_data = {
 	.sw_efuse_supported = false,
+	.phy_init = mtk_pcie_phy_init_6881,
 };
 
 static const struct mtk_pcie_phy_data mt6985_data = {
