@@ -11284,6 +11284,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			maximum-speed = "high-speed";
 			mediatek,force-vbus;
 			mediatek,clk-mgr;
+			mediatek,hwrscs-vers = <3>;
 			mediatek,noise-still-tr;
 			usb-role-switch;
 			cdp-block;
