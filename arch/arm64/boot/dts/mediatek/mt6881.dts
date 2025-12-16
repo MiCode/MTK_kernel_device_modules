@@ -1018,12 +1018,11 @@
 		cslog-range =  <0x03d0>, <0x0fa0>;
 		tbl-off = <4>, <76>, <148>;
 
-		/* pll mcucfg */
-		mcucfg-ver = <0>;
-		apmixedsys = <&cpu_pll>;
-		clk-div-base = <&cpu_mcucfg>;
-		pll-con = <0x20c>, <0x21c>, <0x23c>;
-		clk-div = <0xa2a0>, <0xa2a4>, <0xa2e0>;
+		/* csram sysram base */
+		csram-sys-base = <&csram_sys>;
+
+		/* curve adjustment */
+		curve-adj-base = <&curve_adj>;
 
 		/* regulator */
 		proc1-supply = <&mt6319_6_vbuck1>;  //L
@@ -7236,14 +7235,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg-names = "performance-domain0",
 					"performance-domain1";
 			#performance-domain-cells = <1>;
-		};
-
-		cpu_mcucfg: mcusys-ao-cfg@c530000 {
-			reg = <0 0x0c530000 0 0x10000>; /* 64KB */
-		};
-
-		cpu_pll: mcusys-pll1u-top@1000c000 {
-			reg = <0 0x1000c000 0 0x1000>; /* 4KB */
 		};
 
 		pwrap@1000d000 {
