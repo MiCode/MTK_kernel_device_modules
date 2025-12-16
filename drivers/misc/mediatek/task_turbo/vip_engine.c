@@ -19,6 +19,7 @@
 #include <trace/hooks/sched.h>
 #include <trace/hooks/binder.h>
 #include <include/trace/events/task.h>
+#include "mtk_irq_mon.h"
 
 #include "vip_engine.h"
 #include "eas/eas_plus.h"
@@ -1911,13 +1912,16 @@ static void tt_tick(void *data, struct rq *rq)
 {
 	u64 wallclock;
 
+	irq_log_store();
 	if (tt_vip_enable == VIPE_MODE_ON) {
 		wallclock = ktime_get_ns();
+		irq_log_store();
 		if (!tt_vip_do_check(wallclock))
 			return;
-
+		irq_log_store();
 		queue_work(system_highpri_wq, &tt_vip_periodic_worker);
 	}
+	irq_log_store();
 }
 
 int set_task_priority(struct task_struct *task, int prio)

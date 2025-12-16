@@ -66,6 +66,7 @@ define_mgk_ddk_ko(
     includes = ["."],
     copts = [
         "-I$(srctree)",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
@@ -74,6 +75,7 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:mtk_fpsgo_v8".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/performance/sbe:mtk_sbe".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/sched:mtk_core_ctl".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
     ],
     out = "vip_engine.ko",
 )
