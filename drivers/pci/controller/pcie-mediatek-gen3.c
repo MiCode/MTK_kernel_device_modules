@@ -1768,7 +1768,7 @@ static int mtk_pcie_power_up(struct mtk_pcie_port *port)
 		goto err_phy_on;
 	}
 
-	if (port->data->mtcmos_ctrl_mode == SPM_CTRL_MTCMOS_MODE)
+	if (port->data && port->data->mtcmos_ctrl_mode == SPM_CTRL_MTCMOS_MODE)
 		mtk_pcie_mtcmos_disable_hwccf_ctrl(port, true);
 
 	return 0;
@@ -1810,7 +1810,7 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 	if (err)
 		dev_info(port->dev, "Polling resource ack fail\n");
 
-	if (port->data->mtcmos_ctrl_mode == SPM_CTRL_MTCMOS_MODE)
+	if (port->data && port->data->mtcmos_ctrl_mode == SPM_CTRL_MTCMOS_MODE)
 		mtk_pcie_mtcmos_disable_hwccf_ctrl(port, false);
 
 	phy_power_off(port->phy);
