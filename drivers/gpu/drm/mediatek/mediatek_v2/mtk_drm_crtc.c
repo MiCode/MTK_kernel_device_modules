@@ -826,6 +826,7 @@ unsigned int mtk_drm_crtc_check_ovl_status(struct drm_crtc *crtc, struct mtk_cmd
 				priv->data->mmsys_id == MMSYS_MT6885 ||
 				priv->data->mmsys_id == MMSYS_MT6991 ||
 				priv->data->mmsys_id == MMSYS_MT6993) {
+				set_bif_enable(crtc, false, __LINE__);
 				DDPINFO("ovl status error. TS: 0x%08x\n", ovl_status);
 				mtk_drm_crtc_mini_analysis(crtc);
 				mtk_drm_crtc_mini_dump(crtc);
