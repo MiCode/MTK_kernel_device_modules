@@ -10,17 +10,10 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x0>;
 		clocks =
-			<&cksys_reg_clk CLK_CKSYS_REG_MMINFRA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_PKA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_DMA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_KDF_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_RNG_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_PQC_SEL>;
-	};
-
-	bring-up-pd-mm-infra-shutdown@25 {
-		compatible = "mediatek,scpsys-bring-up";
-		reg = <0x25>;
-		power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
 	};
 };
