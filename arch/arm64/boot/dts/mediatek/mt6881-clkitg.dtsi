@@ -54,20 +54,6 @@
 			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_RG_MMW_DPMAIF26M_CK_DPMAIF>;
 	};
 
-	bring-up-ccci@f {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xf>;
-		clocks =
-			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CCIF1_AP_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CCIF1_MD_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CCIF_AP_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CCIF_MD_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CCIF5_MD_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CCIF2_AP_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CCIF2_MD_CCCI>,
-			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CCIF4_MD_CCCI>;
-	};
-
 	bring-up-mml@15 {
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x15>;
