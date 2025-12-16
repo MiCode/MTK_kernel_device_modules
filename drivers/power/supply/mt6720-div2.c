@@ -37,6 +37,8 @@
 #define MT6720_REG_IBUSUCP_TO	0x25D
 #define MT6720_REG_OTHER1	0x25E
 
+#define MT6720_REG_DIV2_EVT1	0x60
+
 #define MT6720_REG_DIV2_STAT1	0x80
 #define MT6720_REG_DIV2_STAT2	0x81
 #define MT6720_REG_DIV2_STAT3	0x82
@@ -997,6 +999,7 @@ static int mt6720_div2_enable_chg(struct charger_device *chgdev, bool en)
 	struct mt6720_data *data = charger_get_data(chgdev);
 	int ret = 0;
 	unsigned int check_health_retry = 5;
+	u8 evt[3] = {0xff, 0xff, 0xff};
 
 	dev_info(data->dev, "%s en = %d\n", __func__, en);
 
@@ -1016,15 +1019,15 @@ static int mt6720_div2_enable_chg(struct charger_device *chgdev, bool en)
 		}
 	}
 
-	ret = mt6720_div2_field_set(data, F_CHG_EN, en);
-	if (ret) {
-		dev_info(data->dev, "%s, Failed to set F_CHG_EN\n", __func__);
-		return ret;
-	}
-
 	ret = mt6720_div2_field_set(data, F_PROTECTION_CTRL, en);
 	if (ret) {
 		dev_info(data->dev, "%s, Failed to set F_PROTECTION_CTRL\n", __func__);
+		return ret;
+	}
+
+	ret = mt6720_div2_field_set(data, F_CHG_EN, en);
+	if (ret) {
+		dev_info(data->dev, "%s, Failed to set F_CHG_EN\n", __func__);
 		return ret;
 	}
 
@@ -1035,6 +1038,11 @@ static int mt6720_div2_enable_chg(struct charger_device *chgdev, bool en)
 				dev_info(data->dev, "%s, div2 health is not good\n", __func__);
 			} else {
 				dev_info(data->dev, "%s, div2 health is good\n", __func__);
+				ret = regmap_bulk_write(data->regmap, MT6720_REG_DIV2_EVT1, evt, 3);
+				if (ret) {
+					dev_info(data->dev, "%s, Filed to clear div2 evt\n", __func__);
+					return ret;
+				}
 				mt6720_enable_irq(data);
 				return 0;
 			}
