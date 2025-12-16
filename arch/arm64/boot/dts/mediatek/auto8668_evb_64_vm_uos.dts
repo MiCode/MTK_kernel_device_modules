@@ -629,6 +629,10 @@
 	status = "disabled";
 };
 
+&mem_mapped_timer {
+	status = "disabled";
+};
+
 &spmi {
 	second_pmic@5 {
 		compatible = "no use";
