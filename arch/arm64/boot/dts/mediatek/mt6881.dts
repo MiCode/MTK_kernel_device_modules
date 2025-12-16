@@ -118,7 +118,7 @@
 			    vmalloc=400M swiotlb=noforce \
 			    firmware_class.path=/vendor/firmware \
 			    kvm-arm.protected_prefault=9 \
-			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem,pkvm_cmdq_mt6881 \
+			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem,pkvm_cmdq_mt6881,pkvm_isp_6881 \
 			    maxcpus=5";
 	};
 
@@ -3993,6 +3993,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		reg-names = "base";
 		mediatek,ccd = <&remoteproc_ccd>;
 		mediatek,camisp-vcore = <&camisp_vcore>;
+		camsys-pkvm-enable = <1>;
 		//ccf-apply;
 		iommus = <&disp_iommu M4U_L16_P0_CAM_RAW_A_DMA_R_0_U0>;
 		clocks =
