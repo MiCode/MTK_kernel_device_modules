@@ -49,6 +49,7 @@
 #include <hang_detect.h>
 #endif
 #include <mt-plat/mrdump.h>
+#include <mt-plat/aee.h>
 
 #ifndef __pa_nodebug
 #define __pa_nodebug __pa
@@ -79,6 +80,10 @@ int pss_by_fd_enable;
 #define VMA_ALLOC_MEM_FAIL        (1 << 3)
 #define VMA_MMAP_LOCK_FAIL        (1 << 4)
 
+#define DUMP_ADD_FILE_COUNT	(5)
+
+#define dmabuf_free_log_format \
+	"CRDISPATCH_KEY:DMABUF Name %s\nsize:%zu,file count:%ld\n"
 
 /* copy from struct system_heap_buffer */
 struct dmaheap_buf_copy {
@@ -1247,6 +1252,8 @@ dmabuf_rbtree_dbg_add_return(struct dump_fd_data *fd_data, const struct dma_buf 
 			    dmabuf->name?:"NULL");
 		spin_unlock((spinlock_t *)&dmabuf->name_lock);
 	}
+	if (DUMP_ADD_FILE_COUNT)
+		atomic_long_add(DUMP_ADD_FILE_COUNT, &dmabuf->file->f_count);
 
 	return dbg_node;
 }
@@ -1274,6 +1281,7 @@ unsigned long dmabuf_dbg_rbtree_clear(struct dump_fd_data *fd_data)
 	unsigned long free_size = 0;
 	struct dma_buf tmp_dmabuf;
 	struct file tmp_file;
+	long fd_count;
 
 	spin_lock(&fd_data->splock);
 	while (rb_first(root)) {
@@ -1284,9 +1292,30 @@ unsigned long dmabuf_dbg_rbtree_clear(struct dump_fd_data *fd_data)
 
 		if (!get_kernel_nofault(tmp_dmabuf, dmabuf) &&
 		    !get_kernel_nofault(tmp_file, dmabuf->file) &&
-		    mtk_is_dma_buf_file(dmabuf->file))
+		    mtk_is_dma_buf_file(dmabuf->file)) {
+			if (DUMP_ADD_FILE_COUNT) {
+				fd_count = file_count(dmabuf->file);
+				if (fd_count <= DUMP_ADD_FILE_COUNT) {
+					char dmabuf_name[DMA_BUF_NAME_LEN] = {0};
+
+					spin_lock((spinlock_t *)&dmabuf->name_lock);
+					if (snprintf(dmabuf_name, DMA_BUF_NAME_LEN, "%s",
+						     dmabuf->name?:"NULL") >= DMA_BUF_NAME_LEN)
+						dmabuf_name[DMA_BUF_NAME_LEN - 1] = '\0';
+					spin_unlock((spinlock_t *)&dmabuf->name_lock);
+					dmabuf_aee_print(dmabuf_free_log_format, dmabuf_name,
+							 dmabuf->size, fd_count);
+					if (fd_count > 1)
+						atomic_long_sub(fd_count - 1,
+								&dmabuf->file->f_count);
+				} else {
+					atomic_long_sub(DUMP_ADD_FILE_COUNT,
+							&dmabuf->file->f_count);
+				}
+			}
 			/* add 1 ref when add to rb tree, put it after dump */
 			dma_buf_put((struct dma_buf *)dmabuf);
+		}
 
 		if (dmabuf_rb_check)
 			dmabuf_dump(s, "[R] [INODE] clear inode:%lu\n", entry->inode);
@@ -1612,7 +1641,7 @@ static int dma_heap_buf_dump_cb(const struct dma_buf *dmabuf, void *priv)
 		return 0;
 
 	if (flag & HEAP_DUMP_DEC_1_REF)
-		delta = 1;
+		delta = 1 + DUMP_ADD_FILE_COUNT;
 
 	if (get_kernel_nofault(tmp_dmabuf, dmabuf) ||
 	    get_kernel_nofault(tmp_file, dmabuf->file) ||
@@ -2100,7 +2129,7 @@ static void dmabuf_count_size(struct dump_fd_data *fddata, const struct dma_buf 
 	list_for_each_entry_safe(plist, n, &fddata->count_list_head, list_node) {
 		if ((plist->name && dmabuf->name && strcmp(dmabuf->name, plist->name) == 0) ||
 		      (!plist->name && !dmabuf->name)) {
-			plist->count += file_count(dmabuf->file) - 1;
+			plist->count += file_count(dmabuf->file) - 1 - DUMP_ADD_FILE_COUNT;
 			plist->size += (unsigned long) (dmabuf->size / 1024);
 			return;
 		}
@@ -2122,7 +2151,7 @@ static void dmabuf_count_size(struct dump_fd_data *fddata, const struct dma_buf 
 
 	new_info->name = name;
 	new_info->size = (unsigned long) (dmabuf->size / 1024);
-	new_info->count = file_count(dmabuf->file) - 1;
+	new_info->count = file_count(dmabuf->file) - 1 - DUMP_ADD_FILE_COUNT;
 	list_add_tail(&new_info->list_node, &fddata->count_list_head);
 }
 
@@ -2230,7 +2259,7 @@ void dmabuf_rbtree_dump_domain(u64 tab_id, u32 dom_id)
 		spin_unlock((spinlock_t *)&dmabuf->name_lock);
 
 		total_size += size;
-		total_cnt += file_count(dmabuf->file) - 1;
+		total_cnt += file_count(dmabuf->file) - 1 - DUMP_ADD_FILE_COUNT;
 	}
 	dmabuf_count_list_top_dump(fddata, total_size, total_cnt);
 	dmabuf_dbg_rbtree_clear(fddata);
@@ -2260,7 +2289,7 @@ static void dmabuf_rbtree_dump_top(struct dump_fd_data *fddata)
 		spin_unlock((spinlock_t *)&dmabuf->name_lock);
 
 		total_size += size;
-		total_cnt += file_count(dmabuf->file) - 1;
+		total_cnt += file_count(dmabuf->file) - 1 - DUMP_ADD_FILE_COUNT;
 	}
 	dmabuf_count_list_top_dump(fddata, total_size, total_cnt);
 }

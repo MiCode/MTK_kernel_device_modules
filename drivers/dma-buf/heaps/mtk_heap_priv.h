@@ -56,6 +56,22 @@ extern const struct file_operations *dma_buf_file_fops;
 			pr_info(fmt, ##args);                   \
 	} while (0)
 
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#define dmabuf_aee_print(string, args...) do {\
+		char err_info[150];\
+		if (snprintf(err_info, 150, "[dma_heap]"string, ##args) < 0) \
+			break; \
+		aee_kernel_warning_api(__FILE__, __LINE__, \
+			DB_OPT_MMPROFILE_BUFFER | DB_OPT_DUMP_DISPLAY, \
+			err_info, "[dma_heap]error:"string, ##args); \
+		pr_err("[dma_heap]error:"string, ##args);  \
+	} while (0)
+
+#else
+#define dmabuf_aee_print(string, args...) \
+		pr_err("[dma_heap]error:"string, ##args)
+#endif
+
 enum mtk_dmaheap_type {
 	DMA_HEAP_INVALID,
 	DMA_HEAP_SYSTEM,
