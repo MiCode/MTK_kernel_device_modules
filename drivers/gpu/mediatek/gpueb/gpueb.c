@@ -27,6 +27,8 @@
 #include <linux/seq_file.h>
 #include <linux/slab.h>
 #include <linux/uaccess.h>
+#include <linux/arm-smccc.h>
+#include <linux/soc/mediatek/mtk_sip_svc.h>
 #include <mboot_params.h>
 
 #include "gpueb_common.h"
@@ -158,6 +160,24 @@ int mfg0_pwr_sta(void)
 		MFG0_PWR_ON : MFG0_PWR_OFF;
 }
 EXPORT_SYMBOL(mfg0_pwr_sta);
+
+void mfg0_pwr_reset(void)
+{
+	struct arm_smccc_res res;
+
+	gpueb_log_d(GPUEB_TAG, "trigger smc");
+	arm_smccc_smc(
+		MTK_SIP_KERNEL_GPUEB_CONTROL,  /* a0 */
+		GPUEB_PWR_RESET_MFG0,          /* a1 */
+		GPUEB_MFG0_POWER_RESET_MAGIC_NUMBER,
+		0, 0, 0, 0, 0, &res);
+
+	if (res.a0)
+		gpueb_log_e(GPUEB_TAG, "failed, ret = %ld", res.a0);
+	else
+		gpueb_log_d(GPUEB_TAG, "done, ret = %ld", res.a0);
+}
+EXPORT_SYMBOL(mfg0_pwr_reset);
 
 int is_gpueb_wfi(void)
 {

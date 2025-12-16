@@ -14,6 +14,7 @@
 #define MFG0_PWR_ACK_2ND_BIT                (BIT(31))
 #define MFG0_PWR_ACK_1ST_BIT                (BIT(30))
 #define MFG0_PWR_ACK_BITS                   (MFG0_PWR_ACK_1ST_BIT | MFG0_PWR_ACK_2ND_BIT)
+#define GPUEB_MFG0_POWER_RESET_MAGIC_NUMBER (0x77887788)
 
 /**************************************************
  * Enumeration
@@ -27,7 +28,8 @@ enum gpueb_smc_op {
 	GPUHRE_SMP_OP_WRITE_RANDOM  = 4,
 	GPUHRE_SMP_OP_CHECK_RESTORE = 5,
 	GHPM_SWWA_SMP_OP_MFG0_ON    = 6,
-	GHPM_SWWA_SMP_OP_MFG0_OFF   = 7
+	GHPM_SWWA_SMP_OP_MFG0_OFF   = 7,
+	GPUEB_PWR_RESET_MFG0        = 8
 };
 
 enum gpueb_sram_gpr_id {
@@ -111,5 +113,6 @@ void __iomem *gpueb_get_cfgreg_base(void);
 int get_mfg0_pwr_con(void);
 int mfg0_pwr_sta(void);
 int is_gpueb_wfi(void);
+void mfg0_pwr_reset(void);
 
 #endif /* __GPUEB_COMMON_H__ */
