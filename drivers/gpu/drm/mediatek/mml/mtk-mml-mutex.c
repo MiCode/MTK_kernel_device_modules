@@ -543,14 +543,10 @@ static s32 mutex_trigger_mt6993d(struct mml_comp *comp, struct mml_task *task,
 			mutex_frm->src_reset = true;
 
 		if (cfg->disp_vdo) {
-			u16 event_disp_done = mml_ir_get_disp_done_event(cfg->mml);
 			u16 event_config = mml_ir_get_config_event(cfg->mml);
 
 			if (event_config)
 				cmdq_pkt_clear_event(pkt, event_config);
-
-			if (event_disp_done)
-				cmdq_pkt_wfe(pkt, event_disp_done);
 
 			mutex_reset(mutex, pkt, path, mutex_frm, cfg->info.cfg_thread);
 		} else {
