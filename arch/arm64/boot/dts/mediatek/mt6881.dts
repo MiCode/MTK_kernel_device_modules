@@ -607,6 +607,11 @@
 		compatible = "medaitek,svp";
 	};
 
+	drm_wv: drm-wv {
+		compatible = "mediatek,drm_wv";
+		status = "okay";
+	};
+
 	teeperf {
 		compatible = "mediatek,teeperf";
 		cpu-type = <2>; /* 1: CPU_V9_TYPE, 2: CPU_V8_TYPE */
