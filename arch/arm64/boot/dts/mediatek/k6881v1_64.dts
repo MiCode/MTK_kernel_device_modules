@@ -163,6 +163,7 @@
 		vddi-gpios = <&pio 135 0>;
 		vci-gpios = <&pio 61 0>;
 		vddr-gpios = <&pio 141 0>;
+		res-switch = <2>;
 		reset-gpios = <&pio 60 0>;
 		pinctrl-names = "default";
 		port {
@@ -175,6 +176,7 @@
 	    compatible = "jdi,nt36672e,vdo,120hz,frameratev5";
 		reg = <1>;
 		pm-enable-gpios = <&pio 135 0>;
+		res-switch = <2>;
 		reset-gpios = <&pio 60 0>;
 		gate-ic = <4831>;
 		pinctrl-names = "default";
