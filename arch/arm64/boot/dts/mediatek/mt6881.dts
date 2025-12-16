@@ -1056,6 +1056,11 @@
 		lvts_e_data2: data2@140 {
 			reg = <0x140 0x18>;
 		};
+
+		u2_phy_data: u2-phy-data@20c {
+			reg = <0x20c 0x4>;
+		};
+
 	};
 
 	wifi: wifi@18000000 {
@@ -10771,6 +10776,11 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				clocks = <&clk26m>;
 				clock-names = "ref";
 				#phy-cells = <1>;
+				mediatek,efuse-intr = <0x23>;
+				mediatek,efuse-term = <0x8>;
+				nvmem-cells = <&u2_phy_data>, <&u2_phy_data>;
+				nvmem-cell-names = "intr_cal", "term_cal";
+				nvmem-cell-masks = <0x3f 0xf00>;
 			};
 		};
 
