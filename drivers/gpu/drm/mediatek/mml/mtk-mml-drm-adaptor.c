@@ -579,8 +579,7 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 			/* use mml-frame remain time to compare dl/dc opp */
 			info_cache[mml_layer_cnt].remain = remain[mml_sys_frame];
 			mode = mml_drm_query_frame(dctx, &infos[i], &info_cache[mml_layer_cnt]);
-			if (mode == MML_MODE_NOT_SUPPORT ||
-			    remain[mml_sys_frame] < info_cache[mml_layer_cnt].duration) {
+			if (mode == MML_MODE_NOT_SUPPORT) {
 				infos[i].mode = MML_MODE_NOT_SUPPORT;
 				info_cache[mml_layer_cnt].mode_caps = 0;
 				mml_msg("[drm][query][r1]layer %u not support remain %u need %u",
