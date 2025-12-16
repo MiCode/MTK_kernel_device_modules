@@ -205,7 +205,7 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	if (!is_pkvm_enabled() &&
 		((mchunk_id == MTEE_MCHUNKS_PROT) ||
 		(mchunk_id == MTEE_MCHUNKS_SAPU_DATA_SHM))) {
-		/* set bit[31]=1 then ffa_lend will do retrieve_req */
+		/* only for GZ, set bit[31]=1 then ffa_lend will do retrieve_req */
 		ffa_args.flags = PAGED_BASED_FFA_FLAGS;
 	} else
 		ffa_args.flags = 0;
@@ -243,9 +243,10 @@ int tmem_ffa_page_free(enum MTEE_MCHUNKS_ID mchunk_id, u64 handle)
 
 	mutex_lock(&tmem_block_mutex);
 
-	if ((mchunk_id == MTEE_MCHUNKS_PROT) ||
-		(mchunk_id == MTEE_MCHUNKS_SAPU_DATA_SHM)) {
-		/* set bit[31]=1 then ffa_lend will do retrieve_req */
+	if (!is_pkvm_enabled() &&
+		((mchunk_id == MTEE_MCHUNKS_PROT) ||
+		(mchunk_id == MTEE_MCHUNKS_SAPU_DATA_SHM))) {
+		/* only for GZ, set bit[31]=1 then ffa_lend will do retrieve_req */
 		ffa_args.flags = PAGED_BASED_FFA_FLAGS;
 	} else
 		ffa_args.flags = 0;
