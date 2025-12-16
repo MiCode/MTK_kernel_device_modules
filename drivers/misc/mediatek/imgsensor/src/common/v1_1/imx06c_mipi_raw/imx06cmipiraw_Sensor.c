@@ -5272,15 +5272,24 @@ static kal_uint32 dump_status(void)
 				setting[i], setting[i+1], reg_data,
 				(setting[i+1] == reg_data ? "" : "is not equal!"));
 	}
+	pr_info("Reg[0x0305] =0x%04X\n",
+				read_cmos_sensor_8(0x0305));
+
 	is_streaming  = read_cmos_sensor_8(0x100);
 	pr_info("is_streaming = 0x%04X\n", is_streaming);
 
 	// check frame cnt
-	for(i = 0; i < 3; i++) {
+	for(i = 0; i < 4; i++) {
 		frame_cnt = read_cmos_sensor_8(0x0005);
 		pr_info("frame_cnt(%d) = 0x%02X\n", i, frame_cnt);
-		mdelay((int)(10000 / fps));
+		mdelay((int)(10000 / fps)+1);
 	}
+
+	// do workaround
+	pr_info("do imx06c workaround\n");
+	streaming_control(0);
+	streaming_control(1);
+
 	return ERROR_NONE;
 }
 
