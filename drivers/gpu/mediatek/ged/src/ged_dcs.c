@@ -137,6 +137,8 @@ static void _dcs_init_core_mask_table_ex(void)
 		g_dcs_opp_setting |= (1 << (g_max_core_num - 1));
 		g_dcs_opp_setting &= ((1U << g_max_core_num) - 1);
 	}
+
+	g_dcs_init = 1;
 }
 
 
