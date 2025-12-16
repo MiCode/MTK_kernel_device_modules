@@ -2012,13 +2012,11 @@ static void core_taskdone(struct kthread_work *work)
 	if (cfg->isr_count)
 		mml_isr_wait(cfg->mml, task);
 
-	if (!mml_drv_auto_guest_support(cfg->mml) && !mml_drv_auto_host_support(cfg->mml)) {
-		/* remove task in qos list and setup next */
-		if (task->pkts[0])
-			mml_core_dvfs_end(task, 0);
-		if (cfg->dual && task->pkts[1])
-			mml_core_dvfs_end(task, 1);
-	}
+	/* remove task in qos list and setup next */
+	if (task->pkts[0])
+		mml_core_dvfs_end(task, 0);
+	if (cfg->dual && task->pkts[1])
+		mml_core_dvfs_end(task, 1);
 
 	if (mml_hw_perf && task->pkts[0]) {
 		perf = cmdq_pkt_get_perf_ret(task->pkts[0]);
@@ -2468,8 +2466,7 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 			task->pkts[pipe]->self_loop = true;
 	}
 
-	if (!mml_drv_auto_guest_support(cfg->mml) && !mml_drv_auto_host_support(cfg->mml))
-		mml_core_dvfs_begin(task, pipe);
+	mml_core_dvfs_begin(task, pipe);
 
 	mml_trace_ex_begin("%s_cmdq", __func__);
 	task->flush_time[pipe] = sched_clock();

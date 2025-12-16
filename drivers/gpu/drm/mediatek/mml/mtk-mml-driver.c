@@ -315,15 +315,23 @@ void dvfs_cache_sz(struct mml_dev *mml,
 
 struct mml_dev *auto_get_mml_dev(void)
 {
-	struct device_node *node;
-	struct platform_device *pdev;
-	const char *compatible = "mediatek,mt6991-mml1";
+	struct device_node *node = NULL;
+	struct platform_device *pdev = NULL;
+	int i;
+	static const char * const compatible_list[] = {
+		"mediatek,mt6991-mml1",
+		"mediatek,mt6881-mml",
+	};
 
-	node = of_find_compatible_node(NULL, NULL, compatible);
-	if (!node) {
-		mml_err("Failed to find node\n");
-		return NULL;
+	for (i = 0; i < ARRAY_SIZE(compatible_list); i++) {
+		node = of_find_compatible_node(NULL, NULL, compatible_list[i]);
+		if (node)
+			break;
 	}
+
+	if (!node)
+		return NULL;
+
 	pdev = of_find_device_by_node(node);
 	of_node_put(node);
 	if (!pdev)
@@ -347,6 +355,37 @@ bool mml_drv_auto_guest_support(struct mml_dev *mml)
 
 	return mml->auto_guest_support;
 }
+
+void __weak vhost_cmdq_set_client(void *client, uint32_t hwid)
+{
+}
+
+void mml_auto_set_cmdq_client(void)
+{
+	int i;
+	struct mml_dev *mml;
+
+	mml = auto_get_mml_dev();
+	if(!mml) {
+		mml_err("%s get mml data failed!", __func__);
+		return;
+	}
+
+	if (mml->cmdq_clt_cnt > MML_MAX_CMDQ_CLTS) {
+		mml_err("%s client cnt %d is invalid!", __func__, mml->cmdq_clt_cnt);
+		return;
+	}
+
+	/* set client for hypervisor */
+	for (i = 0; i < mml->cmdq_clt_cnt; i++) {
+		if (mml->cmdq_clts[i]) {
+			mml_log("mml set cmdq client: %d, cmdq_client_num %d",
+				i, mml->cmdq_clt_cnt);
+			vhost_cmdq_set_client((void *)mml->cmdq_clts[i], 0);
+		}
+	}
+}
+EXPORT_SYMBOL(mml_auto_set_cmdq_client);
 
 int mml_comp_add(u32 id, struct device *dev, const struct component_ops *ops)
 {
@@ -439,32 +478,6 @@ s32 mml_dev_couple_inc(struct mml_dev *mml, enum mml_mode mode)
 
 	return cnt;
 }
-
-void __weak vhost_cmdq_set_client(void *client, uint32_t hwid)
-{
-}
-
-void mml_auto_set_cmdq_client(struct mml_dev *mml)
-{
-	if (mml_drv_auto_host_support(mml)) {
-		int i;
-
-		if (mml->cmdq_clt_cnt > MML_MAX_CMDQ_CLTS) {
-			mml_err("%s client cnt %d is invalid!", __func__, mml->cmdq_clt_cnt);
-			return;
-		}
-
-		/* set client for hypervisor */
-		for (i = 0; i < mml->cmdq_clt_cnt; i++) {
-			if (mml->cmdq_clts[i]) {
-				mml_log("mml set cmdq client: %d, cmdq_client_num %d\n",
-					i, mml->cmdq_clt_cnt);
-				vhost_cmdq_set_client((void *)mml->cmdq_clts[i], 0);
-			}
-		}
-	}
-}
-EXPORT_SYMBOL(mml_auto_set_cmdq_client);
 
 s32 mml_dev_couple_dec(struct mml_dev *mml, enum mml_mode mode)
 {
@@ -785,10 +798,6 @@ struct mml_m2m_ctx *mml_dev_create_m2m_ctx(struct mml_dev *mml,
 	struct mml_m2m_ctx *ctx;
 
 	mutex_lock(&mml->ctx_mutex);
-
-#if IS_ENABLED(CONFIG_VHOST_CMDQ)
-	cmdq_set_client(mml);
-#endif
 
 	create_dev_topology_locked(mml);
 	if (IS_ERR(mml->topology)) {

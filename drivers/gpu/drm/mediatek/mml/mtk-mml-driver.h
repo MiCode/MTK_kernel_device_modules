@@ -594,7 +594,7 @@ s32 mml_auto_clk_enable(struct mml_comp *comp);
 
 s32 mml_auto_clk_disable(struct mml_comp *comp, bool dpc);
 
-void mml_auto_set_cmdq_client(struct mml_dev *mml);
+void mml_auto_set_cmdq_client(void);
 
 bool mml_drv_auto_host_support(struct mml_dev *mml);
 
