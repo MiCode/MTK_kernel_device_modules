@@ -99,7 +99,7 @@ void cmdq_tz_mdp_handle(struct TaskStruct *pTask)
 void cmdq_tz_assign_tzmp_command(struct TaskStruct *pTask)
 {
 #define MAE_SECURE_SUPPORT (1)
-#define MAE_BASE	0x34310000
+#define MAE_BASE	0x15310000
 
 	if (pTask->hwid == 2 && pTask->thread == 9) { /* cmdq task */
 		cmdq_task_wfe(pTask, CMDQ_SYNC_TOKEN_TZMP_AIE_WAIT);
