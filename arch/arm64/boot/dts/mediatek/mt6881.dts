@@ -7518,6 +7518,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 						<&dvfsrc_freq_opp7>;
 			};
 
+			dvfsrc-debugfs {
+				compatible = "mediatek,mt6881-dvfsrc-debugfs";
+			};
+
 			dvfsrc-met {
 				compatible = "mediatek,dvfsrc-met";
 				rc-vcore-supply = <&dvfsrc_vcore>;
