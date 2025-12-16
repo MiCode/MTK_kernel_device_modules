@@ -3794,11 +3794,25 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISC_WAIT>;
 		sw-sync-token-tzmp-isc-set =
 			/bits/ 16 <CMDQ_SYNC_TOKEN_TZMP_ISC_SET>;
-#if 0
-		mediatek,imgsys-hwqos-support;
-		hwqos-sync-token =
-				/bits/ 16 <CMDQ_SYNC_TOKEN_IMGSYS_QOS_LOCK>;
+		mediatek,imgsys-qos-sc-motr = <2>;
+		mediatek,imgsys-qos-sc-nums = <2>;
+		mediatek,imgsys-qos-sc-id = <11 12>;
+		interconnects =
+			<&mmqos SLAVE_LARB(28)
+				&mmqos SLAVE_COMMON(0)>,
+			<&mmqos SLAVE_LARB(11)
+				&mmqos SLAVE_COMMON(0)>,
+			<&mmqos SLAVE_LARB(9)
+				&mmqos SLAVE_COMMON(0)>,
+			<&mmqos SLAVE_LARB(15)
+				&mmqos SLAVE_COMMON(0)>;
+		interconnect-names =
+			"l10_common_r_0",
+			"l22_common_w_0",
+			"l9_common_r_1",
+			"l15_common_w_1";
 		mmqos-supply = <&mmqos>;
+#if 0
 		interrupts = <GIC_SPI 699 IRQ_TYPE_LEVEL_HIGH 0>;
 #endif
 		mediatek,larbs =
