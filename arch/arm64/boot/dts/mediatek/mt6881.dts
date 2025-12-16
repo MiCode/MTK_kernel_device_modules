@@ -13351,28 +13351,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	};
 	vow_scp_dmic_clk_off: vow-scp-dmic-clk-off {
 		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO26__FUNC_GPIO26>;
+			pinmux = <PINMUX_GPIO46__FUNC_GPIO46>;
 			input-enable;
 			bias-pull-down;
 		};
 	};
 	vow_scp_dmic_clk_on: vow-scp-dmic-clk-on {
 		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO26__FUNC_SCP_DMIC_CLK>;
+			pinmux = <PINMUX_GPIO46__FUNC_SCP_DMIC_CLK>;
 			input-schmitt-enable;
 			bias-disable;
 		};
 	};
 	vow_scp_dmic_dat_off: vow-scp-dmic-dat-off {
 		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO27__FUNC_GPIO27>;
+			pinmux = <PINMUX_GPIO47__FUNC_GPIO47>;
 			input-enable;
 			bias-pull-down;
 		};
 	};
 	vow_scp_dmic_dat_on: vow-scp-dmic-dat-on {
 		pins-cmd1-dat {
-			pinmux = <PINMUX_GPIO27__FUNC_SCP_DMIC_DAT>;
+			pinmux = <PINMUX_GPIO47__FUNC_SCP_DMIC_DAT>;
 			input-schmitt-enable;
 			bias-disable;
 		};
