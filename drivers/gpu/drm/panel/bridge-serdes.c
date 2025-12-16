@@ -1885,7 +1885,10 @@ static int serdes_resume(struct device *dev)
 #if ENALBE_INIT_WORK
 		reinit_completion(&ser_des->serdes_pre_init_complete);
 		schedule_work(&ser_des->serdes_pre_init_work);
-		wait_for_completion_timeout(&ser_des->serdes_pre_init_complete, msecs_to_jiffies(1000));
+		int ret = wait_for_completion_timeout(&ser_des->serdes_pre_init_complete,
+			msecs_to_jiffies(1000));
+		if (ret == 0)
+			pr_info("%s: serdes pre-init work timed out\n", __func__);
 #else
 		if (ser_des->driver_data->port == 1)
 			ser_des->port1_pre_enabled = true;
