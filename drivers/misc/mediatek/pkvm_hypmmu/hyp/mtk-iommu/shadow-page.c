@@ -236,7 +236,7 @@ static void add_mem_to_mpool(uint64_t pglist_pfn)
 	unsigned int i = 0U;
 	void *pglist_pa;
 	void *pmm_page = NULL;
-	uint64_t pfn;
+	u64 pfn, nr_pages;
 	int ret;
 
 	if (!share_memory_to_hyp(pglist_pfn << PAGE_SHIFT, PAGE_SIZE))
@@ -249,12 +249,13 @@ static void add_mem_to_mpool(uint64_t pglist_pfn)
 	memcpy(&in_mpt, pmm_page, sizeof(in_mpt));
 
 	for (i = 0; i < in_mpt.mem_block_num; i++) {
-		pfn = (uint64_t)in_mpt.fmpt[i].smpt;
+		pfn = (u64)in_mpt.fmpt[i].smpt;
+		nr_pages = (u64)(1 << in_mpt.fmpt[i].mem_order);
 		hyp_mpool.fmpt[i].smpt = (void *)mod_ops->hyp_va(pfn << PAGE_SHIFT);
 		hyp_mpool.fmpt[i].mem_order = in_mpt.fmpt[i].mem_order;
-		MOD_PUTS2("pfn, size", pfn, (1 << in_mpt.fmpt[i].mem_order) * PAGE_SIZE);
+		MOD_PUTS2("pfn, size", pfn, nr_pages * PAGE_SIZE);
 		/* donate mpool memory to hypervisor */
-		ret = mod_ops->host_donate_hyp(pfn, (1 << in_mpt.fmpt[i].mem_order), false);
+		ret = mod_ops->host_donate_hyp(pfn, nr_pages, false);
 		if (ret) {
 			mod_ops->puts("page pgtbl memory host_donate_hyp : fail");
 			WARN_ON(1);
