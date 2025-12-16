@@ -4503,7 +4503,7 @@ void mtk_oddmr_dump(struct mtk_ddp_comp *comp)
 					readl(mbaddr + i + 0xc));
 			}
 			/* 3 DBI SMI */
-			for (i = 0xf30; i < 0xfd0; i += 16) {
+			for (i = 0xf00; i < 0xfd0; i += 16) {
 				DDPDUMP("ODDMR+%x: 0x%x 0x%x 0x%x 0x%x\n", i, readl(mbaddr + i),
 					readl(mbaddr + i + 0x4), readl(mbaddr + i + 0x8),
 					readl(mbaddr + i + 0xc));
