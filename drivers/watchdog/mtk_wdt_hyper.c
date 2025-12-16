@@ -34,10 +34,6 @@ static bool nowayout = WATCHDOG_NOWAYOUT;
 static unsigned int timeout;
 struct timer_list retry_kick_timer;
 
-__weak int mtk_wdt_hyper_kick(void) { return 0; }
-__weak void mtk_wdt_hyper_suspend(void) { return; }
-__weak void mtk_wdt_hyper_resume(void) { return; }
-
 void mtk_wdt_set_sw_rst_status(void)
 {
 	u32 reg;

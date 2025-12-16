@@ -1,4 +1,5 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
 
 package(
     default_visibility = [
@@ -82,6 +83,11 @@ define_mgk_ddk_ko(
         "include",
     ],
     hdrs = glob(["*.h"]),
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/watchdog:uos_kick".format(kernel_version)
+    ],
+
     copts = [
         "-Wall",
         "-Werror",
