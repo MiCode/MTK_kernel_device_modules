@@ -155,7 +155,7 @@
 		//interrupt-parent = <&pio>;
 		//interrupts = <187 IRQ_TYPE_EDGE_RISING>;
 		pinctrl-names = "default";
-		setting = <&config_compatible>;
+		config = <&config_compatible>;
 		port {
 			max96789_in: endpoint {
 				remote-endpoint = <&dsi_out>;
@@ -224,7 +224,7 @@
 		reg = <0x40>;
 		reset-gpios = <&pio 11 0>;
 		pinctrl-names = "default";
-		setting = <&config_compatible>;
+		config = <&config_compatible>;
 		port {
 			max96789_1_in: endpoint {
 				remote-endpoint = <&dsi1_out>;
