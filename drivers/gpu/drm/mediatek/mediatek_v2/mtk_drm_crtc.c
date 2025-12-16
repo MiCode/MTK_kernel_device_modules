@@ -6665,7 +6665,6 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 
 		addon_config.addon_rsz_config.rsz_src_roi = rsz_roi;
 		addon_config.addon_rsz_config.rsz_dst_roi = rsz_roi;
-		addon_config.addon_rsz_config.lc_tgt_layer = lye_state->lc_tgt_layer;
 
 		if (addon_module[0]) {
 			addon_config.config_type.module = addon_module[0]->module;
@@ -7459,7 +7458,6 @@ static void _mtk_crtc_lye_addon_module_connect(
 			tgt_comp[1] = dual_pipe_comp_mapping(mtk_get_mmsys_id(crtc), tgt_comp[0]);
 		addon_config.addon_rsz_config.rsz_src_roi = state->rsz_src_roi;
 		addon_config.addon_rsz_config.rsz_dst_roi = state->rsz_dst_roi;
-		addon_config.addon_rsz_config.lc_tgt_layer = lye_state->lc_tgt_layer;
 
 		//for exdma
 		if (!addon_module[0]) {

@@ -4043,7 +4043,7 @@ void lye_add_blob_ids(struct drm_mtk_layering_info *l_info,
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 	struct drm_crtc *crtc;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
-	unsigned int disp_idx = 0;
+	unsigned int disp_idx = get_layering_opt(LYE_OPT_SPHRT) ? l_info->disp_idx : 0;
 	unsigned int i;
 
 	memcpy(lye_state->scn, l_rule_info->addon_scn, sizeof(lye_state->scn));
@@ -4054,12 +4054,8 @@ void lye_add_blob_ids(struct drm_mtk_layering_info *l_info,
 			lye_state->scn[i] = NONE;
 		}
 	}
-	lye_state->lc_tgt_layer = 0;
 	l_rule_info->bk_mml_dl_lye = lye_state->mml_dl_lye;
-
-	if (get_layering_opt(LYE_OPT_SPHRT))
-		disp_idx = l_info->disp_idx;
-
+	lye_state->layer_num = l_info->layer_num[disp_idx];
 	lye_state->need_repaint = (l_info->disp_caps[disp_idx]==MTK_NEED_REPAINT);
 
 	crtc = priv->crtc[disp_idx];

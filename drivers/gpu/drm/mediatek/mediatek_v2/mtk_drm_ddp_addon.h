@@ -108,7 +108,7 @@ enum addon_type {
 
 struct mtk_lye_ddp_state {
 	enum addon_scenario scn[HRT_DISP_TYPE_NUM];
-	uint8_t lc_tgt_layer;
+	uint8_t layer_num;
 	u32 rpo_lye;
 	u32 mml_ir_lye;
 	u32 mml_dl_lye;
@@ -154,7 +154,6 @@ struct mtk_addon_rsz_config {
 	struct mtk_rect rsz_src_roi;
 	struct mtk_rect rsz_dst_roi;
 	struct mtk_rsz_param rsz_param;
-	uint8_t lc_tgt_layer;
 	bool is_dc; //for exdma
 };
 
