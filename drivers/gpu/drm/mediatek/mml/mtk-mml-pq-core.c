@@ -1881,6 +1881,60 @@ static void wake_up_sub_task(struct mml_pq_sub_task *sub_task,
 	mml_pq_put_pq_task(pq_task);
 }
 
+static s32 dequeue_msg_for_wrot(struct mml_pq_chan *chan,
+			struct mml_pq_sub_task **out_sub_task,
+			bool err_print)
+{
+	struct mml_pq_sub_task *temp = NULL;
+	struct mml_pq_sub_task *sub_task = NULL;
+	struct mml_pq_sub_task *search_task = NULL;
+	int i = 0;
+
+	mml_pq_msg("%s chan[%p] chan->msg_list[%p]", __func__, chan, &chan->msg_list);
+
+	mutex_lock(&chan->msg_lock);
+
+	list_for_each_entry_safe_reverse(search_task, temp, &chan->msg_list, mbox_list) {
+		if (i++ == 0)  { //last element.
+			atomic_dec(&chan->msg_cnt);
+			list_del(&search_task->mbox_list);
+			sub_task = search_task;
+		} else {	// delete the sub task.
+			struct mml_pq_task *wrot_pq_task = from_wrot_callback(search_task);
+
+			atomic_dec(&chan->msg_cnt);
+			list_del(&search_task->mbox_list);
+			atomic_dec_if_positive(&search_task->queued);
+			mml_pq_put_pq_task(wrot_pq_task);
+		}
+	}
+	mutex_unlock(&chan->msg_lock);
+
+	if (!sub_task) {
+		if (err_print)
+			mml_pq_err("%s temp is null", __func__);
+		return -ENOENT;
+	}
+
+	if (unlikely(!atomic_read(&sub_task->queued))) {
+		mml_pq_log("%s sub_task not queued", __func__);
+		return -EFAULT;
+	}
+
+	mml_pq_msg("%s temp[%p] temp->result[%p] sub_task->job_id[%llu] chan[%p] chan_job_id[%llx]",
+		__func__, sub_task, sub_task->result, sub_task->job_id, chan, chan->job_idx);
+	mml_pq_msg("%s chan_job_id[%llu] temp->mbox_list[%p] chan->job_list[%p]",
+		__func__, chan->job_idx, &sub_task->mbox_list, &chan->job_list);
+
+	mutex_lock(&chan->job_lock);
+	list_add_tail(&sub_task->mbox_list, &chan->job_list);
+	mutex_unlock(&chan->job_lock);
+
+	*out_sub_task = sub_task;
+
+	return 0;
+}
+
 static struct mml_pq_sub_task *wait_next_sub_task(struct mml_pq_chan *chan)
 {
 	struct mml_pq_sub_task *sub_task = NULL;
@@ -1906,7 +1960,10 @@ static struct mml_pq_sub_task *wait_next_sub_task(struct mml_pq_chan *chan)
 		mml_pq_msg("%s finish wait event! wait_result[%d], msg_cnt[%d]",
 			__func__, ret, atomic_read(&chan->msg_cnt));
 
-		ret = dequeue_msg(chan, &sub_task, err_print);
+		if (chan == &pq_mbox->wrot_callback_chan)
+			ret = dequeue_msg_for_wrot(chan, &sub_task, err_print);
+		else
+			ret = dequeue_msg(chan, &sub_task, err_print);
 		if (unlikely(ret)) {
 			if (error_cnt < 5)
 				mml_pq_err("%s err: dequeue msg failed: %d msg_cnt[%d]",
