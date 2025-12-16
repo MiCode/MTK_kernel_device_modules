@@ -1696,7 +1696,7 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 		}
 
 		ser_des->power_en_gpios_count =
-			of_property_count_elems_of_size(dev->of_node, "power-en-gpios", sizeof(u32) * 3);
+			of_property_count_elems_of_size(dev->of_node, "power-en", sizeof(u32) * 3);
 		if (ser_des->power_en_gpios_count < 0) {
 			pr_info("%s: no power-en-gpios in [%s] !!\n", __func__, dev->of_node->name);
 			ser_des->power_en_gpios_count = 0;
@@ -1710,7 +1710,7 @@ static int serdes_iic_driver_probe(struct i2c_client *client)
 				ser_des->power_en_gpio[i] = devm_gpiod_get_index(dev, "power-en", i, GPIOD_OUT_HIGH);
 				if (IS_ERR(ser_des->power_en_gpio[i])) {
 					pr_info("[i2c%d] Fail to get power-en-gpios[%d] %ld!\n", client->adapter->nr,
-						i, PTR_ERR(ser_des->power_en_gpio));
+						i, PTR_ERR(ser_des->power_en_gpio[i]));
 					ser_des->power_en_gpio[i] = NULL;
 				}
 				if (ser_des->power_en_gpio[i])
