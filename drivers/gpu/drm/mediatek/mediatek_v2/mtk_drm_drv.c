@@ -1649,13 +1649,15 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 			DDPINFO("%s mml dl mutex src %s\n", __func__, mtk_dump_comp_str(comp));
 		} else
 			DDPMSG("%s, %d output comp fail\n", __func__, __LINE__);
+
+		if (mtk_crtc_is_frame_trigger_mode(crtc))
+			ret = mtk_crtc->gce_obj.event[EVENT_MML_DISP_DONE_EVENT];
+		else
+			ret = mtk_ddp_comp_io_cmd(comp, NULL, OVL_FRAME_DONE_EVENT, NULL);
+
+		if (ret)
+			submit_kernel->info.disp_done_event = ret;
 	}
-
-	ret = mtk_crtc->gce_obj.event[EVENT_MML_DISP_DONE_EVENT];
-
-	if (ret)
-		submit_kernel->info.disp_done_event = ret;
-
 	submit_kernel->disp_vdo = !mtk_crtc_is_frame_trigger_mode(crtc);
 	mml_drm_split_info(submit_kernel, submit_pq);
 
@@ -13914,3 +13916,4 @@ MODULE_AUTHOR("YT SHEN <yt.shen@mediatek.com>");
 MODULE_DESCRIPTION("Mediatek SoC DRM driver");
 MODULE_IMPORT_NS(DMA_BUF);
 MODULE_LICENSE("GPL v2");
+
