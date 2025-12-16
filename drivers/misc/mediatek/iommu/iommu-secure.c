@@ -60,6 +60,8 @@ enum iommu_atf_cmd {
 	CMD_NUM
 };
 
+#define IOMMU_SEC_CTL			(0xB7D9FB00)
+
 static int mtk_iommu_hw_is_valid(uint32_t type, uint32_t id, uint32_t bank)
 {
 	if (bank >= IOMMU_BK_NUM) {
@@ -101,7 +103,7 @@ static int mtk_iommu_dump_sec_bank(unsigned long cmd, unsigned long in2,
 {
 	struct arm_smccc_res res;
 
-	arm_smccc_smc(MTK_IOMMU_SECURE_CONTROL, cmd, in2, in3, in4, in5, in6, in7, &res);
+	arm_smccc_smc(MTK_IOMMU_SECURE_CONTROL, cmd, in2, in3, IOMMU_SEC_CTL, in5, in6, in7, &res);
 	*out1 = (u32)res.a1;
 	*out2 = (u32)res.a2;
 	*out3 = (u32)res.a3;
@@ -128,7 +130,7 @@ static int mtk_iommu_atf_call(uint32_t type, uint32_t id, uint32_t bank,
 		       __func__, type, id);
 		return SMC_IOMMU_FAIL;
 	}
-	arm_smccc_smc(MTK_IOMMU_SECURE_CONTROL, cmd, in2, in3, in4, in5, in6, in7, &res);
+	arm_smccc_smc(MTK_IOMMU_SECURE_CONTROL, cmd, in2, in3, IOMMU_SEC_CTL, in5, in6, in7, &res);
 
 	return res.a0;
 }
