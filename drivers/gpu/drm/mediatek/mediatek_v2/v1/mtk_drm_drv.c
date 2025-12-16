@@ -4398,6 +4398,10 @@ static const struct mtk_addon_module_data mt6881_addon_wdma1_data[] = {
 	{DISP_WDMA1_v5, ADDON_AFTER, DDP_COMPONENT_SPLIT_OUT_CB2},
 };
 
+static const struct mtk_addon_module_data mt6881_addon_wdma1_ovl_data[] = {
+	{DISP_WDMA1_v5_OVL, ADDON_AFTER, DDP_COMPONENT_PQ0_IN_CB0},
+};
+
 static const struct mtk_addon_module_data mt6881_addon_rsz_data[] = {
 	{DISP_RSZ_v7, ADDON_EMBED, DDP_COMPONENT_OVL0_2L},
 };
@@ -5191,6 +5195,11 @@ static const struct mtk_addon_scenario_data mt6878_addon_main[ADDON_SCN_NR] = {
 static const struct mtk_addon_scenario_data mt6881_addon_main[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK_OVL] = {
+		.module_num = ARRAY_SIZE(mt6881_addon_wdma1_ovl_data),
+		.module_data = mt6881_addon_wdma1_ovl_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
 	[WDMA_WRITE_BACK] = {

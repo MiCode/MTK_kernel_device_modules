@@ -5162,6 +5162,10 @@ void _mtk_crtc_wb_addon_module_disconnect(
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v5) ||
 			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v5) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v5_OVL) ||
+			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v6) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA1) ||
@@ -5625,6 +5629,10 @@ _mtk_crtc_wb_addon_module_connect(
 			addon_module->module == DISP_WDMA0_v4) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v5) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v5) ||
+			(addon_module->type == ADDON_AFTER &&
+			addon_module->module == DISP_WDMA1_v5_OVL) ||
 			(addon_module->type == ADDON_AFTER &&
 			addon_module->module == DISP_WDMA0_v6) ||
 			(addon_module->type == ADDON_AFTER &&
@@ -22881,7 +22889,8 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 				mtk_crtc->crtc_caps.wb_caps[3].support = 1;
 			}
 			if (priv->data->mmsys_id == MMSYS_MT6858 ||
-				priv->data->mmsys_id == MMSYS_MT6878) {
+				priv->data->mmsys_id == MMSYS_MT6878 ||
+				priv->data->mmsys_id == MMSYS_MT6881) {
 				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
 				mtk_crtc->crtc_caps.wb_caps[1].support = 1;
 			}
