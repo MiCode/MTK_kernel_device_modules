@@ -89,7 +89,7 @@
 		port {
 			reg = <0>;
 			dsi_out: endpoint {
-				remote-endpoint = <&max96789_in>;
+				remote-endpoint = <&panel2_in>;
 			};
 		};
 	};
