@@ -883,9 +883,8 @@
 			"cam_0",
 			"dis0-0",
 			"dis0_lp-0";
-		//genpd buck for isp-vcore and cam-vcore comment for bringup AO
-		//isp-vcore-supply = <&mt6363_vbuck1>
-		//cam-vcore-supply = <&mt6363_vbuck1>
+		isp-vcore-supply = <&mt6363_vbuck1>;
+		cam-vcore-supply = <&mt6363_vbuck1>;
 
 		infra-infracfg-ao-reg-bus = <&infra_infracfg_ao_reg_clk>;
 		vlpcfg-reg-bus = <&vlpcfg_reg_bus>;
