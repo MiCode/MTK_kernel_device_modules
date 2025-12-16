@@ -527,13 +527,13 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 			reg_index = VENC_GCON;
 		} else {
 			dev_info(&pdev->dev, "invalid reg name: %s, index: %d", name, i);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err_res;
 		}
 
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (i == VENC_SYS && res == NULL) {
-			dev_info(&pdev->dev,
-				"get memory resource failed. idx:%d", i);
+			dev_info(&pdev->dev, "get memory resource failed. idx:%d", i);
 			ret = -ENXIO;
 			goto err_res;
 		} else if (res == NULL) {
@@ -541,15 +541,12 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 			continue;
 		}
 
-		dev->enc_reg_base[reg_index] =
-			devm_ioremap_resource(&pdev->dev, res);
+		dev->enc_reg_base[reg_index] = devm_ioremap_resource(&pdev->dev, res);
 		if (IS_ERR((__force void *)dev->enc_reg_base[reg_index])) {
-			ret = PTR_ERR(
-				(__force void *)dev->enc_reg_base[reg_index]);
+			ret = PTR_ERR((__force void *)dev->enc_reg_base[reg_index]);
 			goto err_res;
 		}
-		mtk_v4l2_debug(2, "reg[%d] base=0x%lx",
-			reg_index, (unsigned long)dev->enc_reg_base[reg_index]);
+		mtk_v4l2_debug(2, "reg[%d] base=0x%lx", reg_index, (unsigned long)dev->enc_reg_base[reg_index]);
 	}
 
 	ret = of_property_read_u32(pdev->dev.of_node, "support-wfd-region", &support_wfd_region);
@@ -646,9 +643,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		dev->enc_slb_cpu_used_perf, dev->enc_slb_extra,
 		dev->support_acp, mtk_venc_acp_enable, mtk_venc_input_acp_enable);
 
-	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",
-			 "[MTK_V4L2_VENC]");
-
+	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s", "[MTK_V4L2_VENC]");
 	ret = v4l2_device_register(&pdev->dev, &dev->v4l2_dev);
 	if (ret) {
 		mtk_v4l2_err("v4l2_device_register err=%d", ret);
@@ -668,11 +663,9 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	vfd_enc->lock           = &dev->dev_mutex;
 	vfd_enc->v4l2_dev       = &dev->v4l2_dev;
 	vfd_enc->vfl_dir        = VFL_DIR_M2M;
-	vfd_enc->device_caps    = V4L2_CAP_VIDEO_M2M_MPLANE |
-							  V4L2_CAP_STREAMING;
+	vfd_enc->device_caps    = V4L2_CAP_VIDEO_M2M_MPLANE | V4L2_CAP_STREAMING;
 
-	SNPRINTF(vfd_enc->name, sizeof(vfd_enc->name), "%s",
-			 MTK_VCODEC_ENC_NAME);
+	SNPRINTF(vfd_enc->name, sizeof(vfd_enc->name), "%s", MTK_VCODEC_ENC_NAME);
 	video_set_drvdata(vfd_enc, dev);
 	dev->vfd_enc = vfd_enc;
 	platform_set_drvdata(pdev, dev);
@@ -681,22 +674,17 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	if (IS_ERR((__force void *)dev->m2m_dev_enc)) {
 		mtk_v4l2_err("Failed to init mem2mem enc device");
 		ret = PTR_ERR((__force void *)dev->m2m_dev_enc);
-		goto err_enc_mem_init;
+		goto err_enc_m2m_init;
 	}
 
 	venc_worker_probe(dev);
-
-	ret = video_register_device(vfd_enc, VFL_TYPE_VIDEO, -1);
-	if (ret) {
-		mtk_v4l2_err("Failed to register video device");
-		goto err_enc_reg;
-	}
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 	dev->io_domain = iommu_get_domain_for_dev(dev->smmu_dev);
 	if (dev->io_domain == NULL) {
 		mtk_v4l2_err("Failed to get io_domain\n");
-		return -EPROBE_DEFER;
+		ret = -EPROBE_DEFER;
+		goto err_after_enc_worker_probe;
 	}
 
 	ret = dma_set_mask_and_coherent(dev->smmu_dev, DMA_BIT_MASK(34));
@@ -704,7 +692,7 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 		ret = dma_set_mask_and_coherent(dev->smmu_dev, DMA_BIT_MASK(34));
 		if (ret) {
 			dev_info(&pdev->dev, "64-bit DMA enable failed\n");
-			return ret;
+			goto err_after_enc_worker_probe;
 		}
 	}
 	if (!pdev->dev.dma_parms) {
@@ -714,8 +702,6 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	if (pdev->dev.dma_parms)
 		dma_set_max_seg_size(dev->smmu_dev, (unsigned int)DMA_BIT_MASK(34));
 #endif
-	mtk_v4l2_debug(0, "encoder registered as /dev/video%d",
-				   vfd_enc->num);
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_IOMMU)
 	mtk_venc_translation_fault_callback_setting(dev);
@@ -742,19 +728,35 @@ static int mtk_vcodec_enc_probe(struct platform_device *pdev)
 	ret = venc_if_dev_ctx_init(dev);
 	if (ret) {
 		mtk_v4l2_err("Failed to init dev ctx (ret %d)", ret);
-		goto err_enc_reg;
+		goto err_enc_ctx_init;
 	}
 
 	dev_ptr = dev;
 	mtk_vcodec_set_dev(dev, MTK_INST_ENCODER);
 
+	ret = video_register_device(vfd_enc, VFL_TYPE_VIDEO, -1);
+	if (ret) {
+		mtk_v4l2_err("Failed to register video device");
+		goto err_enc_reg_dev;
+	}
+	mtk_v4l2_debug(0, "encoder registered as /dev/video%d", vfd_enc->num);
+
 	return 0;
 
-err_enc_reg:
-	kthread_stop(dev->worker_thread);
+err_enc_reg_dev:
+	venc_if_dev_ctx_deinit(dev);
+err_enc_ctx_init:
+	mtk_vcodec_enc_smi_pwr_ctrl_unregister(dev);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	venc_vcp_remove(dev);
+#endif
+	mtk_unprepare_venc_emi_bw(dev);
+	mtk_unprepare_venc_dvfs(dev);
+err_after_enc_worker_probe:
+	venc_worker_remove(dev);
 	v4l2_m2m_release(dev->m2m_dev_enc);
-err_enc_mem_init:
-	video_unregister_device(vfd_enc);
+err_enc_m2m_init:
+	video_device_release(vfd_enc);
 err_enc_alloc:
 	v4l2_device_unregister(&dev->v4l2_dev);
 err_res:
@@ -782,19 +784,18 @@ static void mtk_vcodec_enc_remove(struct platform_device *pdev)
 	mtk_unprepare_venc_emi_bw(dev);
 	mtk_unprepare_venc_dvfs(dev);
 
-	mtk_v4l2_debug_enter();
 	if (dev->m2m_dev_enc)
 		v4l2_m2m_release(dev->m2m_dev_enc);
 
 	if (dev->vfd_enc)
-		video_unregister_device(dev->vfd_enc);
+		video_unregister_device(dev->vfd_enc); // will do video_device_release
 
 	v4l2_device_unregister(&dev->v4l2_dev);
 	mtk_vcodec_enc_smi_pwr_ctrl_unregister(dev);
 	mtk_vcodec_release_enc_pm(dev);
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
-		venc_vcp_remove(dev);
+	venc_vcp_remove(dev);
 #endif
 	venc_if_dev_ctx_deinit(dev);
 }

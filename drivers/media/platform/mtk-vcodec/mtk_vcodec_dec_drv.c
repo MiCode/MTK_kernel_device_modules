@@ -441,6 +441,51 @@ static int mtk_vcodec_dec_suspend_notifier(struct notifier_block *nb,
 	return NOTIFY_DONE;
 }
 
+static int vdec_reg_name_to_index(const char *name)
+{
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_BASE, name))
+		return VDEC_BASE;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_SYS, name))
+		return VDEC_SYS;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_UFO, name))
+		return VDEC_UFO;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_VLD, name))
+		return VDEC_VLD;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_MC, name))
+		return VDEC_MC;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_MV, name))
+		return VDEC_MV;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_MISC, name))
+		return VDEC_MISC;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_MISC, name))
+		return VDEC_LAT_MISC;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_VLD, name))
+		return VDEC_LAT_VLD;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_SOC_GCON, name))
+		return VDEC_SOC_GCON;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_RACING_CTRL, name))
+		return VDEC_RACING_CTRL;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_CORE1_MISC, name))
+		return VDEC_CORE1_MISC;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT1_MISC, name))
+		return VDEC_LAT1_MISC;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_WDMA, name))
+		return VDEC_LAT_WDMA;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT1_WDMA, name))
+		return VDEC_LAT1_WDMA;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_TOP, name))
+		return VDEC_LAT_TOP;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_UFO_ENC, name))
+		return VDEC_UFO_ENC;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_AVC_VLD, name))
+		return VDEC_LAT_AVC_VLD;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_AVC_VLD, name))
+		return VDEC_AVC_VLD;
+	if (!strcmp(MTK_VDEC_REG_NAME_VDEC_AV1_VLD, name))
+		return VDEC_AV1_VLD;
+	return -1;
+}
+
 static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 {
 	struct mtk_vcodec_dev *dev;
@@ -526,49 +571,11 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	for (i = 0; i < NUM_MAX_VDEC_REG_BASE; i++)
 		dev->dec_reg_base[i] = NULL;
 	for (i = 0; !of_property_read_string_index(pdev->dev.of_node, "reg-names", i, &name); i++) {
-		if (!strcmp(MTK_VDEC_REG_NAME_VDEC_BASE, name)) {
-			reg_index = VDEC_BASE;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_SYS, name)) {
-			reg_index = VDEC_SYS;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_UFO, name)) {
-			reg_index = VDEC_UFO;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_VLD, name)) {
-			reg_index = VDEC_VLD;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_MC, name)) {
-			reg_index = VDEC_MC;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_MV, name)) {
-			reg_index = VDEC_MV;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_MISC, name)) {
-			reg_index = VDEC_MISC;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_MISC, name)) {
-			reg_index = VDEC_LAT_MISC;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_VLD, name)) {
-			reg_index = VDEC_LAT_VLD;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_SOC_GCON, name)) {
-			reg_index = VDEC_SOC_GCON;
-		} else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_RACING_CTRL, name)) {
-			reg_index = VDEC_RACING_CTRL;
-		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_CORE1_MISC, name)) {
-			reg_index = VDEC_CORE1_MISC;
-		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT1_MISC, name)) {
-			reg_index = VDEC_LAT1_MISC;
-		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_WDMA, name)) {
-			reg_index = VDEC_LAT_WDMA;
-		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT1_WDMA, name)) {
-			reg_index = VDEC_LAT1_WDMA;
-		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_TOP, name)) {
-			reg_index = VDEC_LAT_TOP;
-		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_UFO_ENC, name)) {
-			reg_index = VDEC_UFO_ENC;
-		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_LAT_AVC_VLD, name)) {
-			reg_index = VDEC_LAT_AVC_VLD;
-		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_AVC_VLD, name)) {
-			reg_index = VDEC_AVC_VLD;
-		}  else if (!strcmp(MTK_VDEC_REG_NAME_VDEC_AV1_VLD, name)) {
-			reg_index = VDEC_AV1_VLD;
-		} else {
+		reg_index = vdec_reg_name_to_index(name);
+		if (reg_index < 0) {
 			dev_info(&pdev->dev, "invalid reg name: %s, index: %d", name, i);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err_res;
 		}
 		res = platform_get_resource(pdev, IORESOURCE_MEM, i);
 		if (res == NULL) {
@@ -581,8 +588,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 			ret = PTR_ERR((__force void *)dev->dec_reg_base[reg_index]);
 			goto err_res;
 		}
-		mtk_v4l2_debug(2, "reg[%d] base=0x%lx",
-			reg_index, (unsigned long)dev->dec_reg_base[reg_index]);
+		mtk_v4l2_debug(2, "reg[%d] base=0x%lx", reg_index, (unsigned long)dev->dec_reg_base[reg_index]);
 	}
 	// if VDEC_BASE and VDEC_SYS are same which will only config VDEC_SYS in dts,
 	// use VDEC_SYS as VDEC_BASE to avoid check hw active with KE in both
@@ -607,9 +613,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	if (ret)
 		goto err_res;
 
-	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s",
-			 "[/MTK_V4L2_VDEC]");
-
+	SNPRINTF(dev->v4l2_dev.name, sizeof(dev->v4l2_dev.name), "%s", "[MTK_V4L2_VDEC]");
 	ret = v4l2_device_register(&pdev->dev, &dev->v4l2_dev);
 	if (ret) {
 		mtk_v4l2_err("v4l2_device_register err=%d", ret);
@@ -628,11 +632,9 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	vfd_dec->lock           = &dev->dev_mutex;
 	vfd_dec->v4l2_dev       = &dev->v4l2_dev;
 	vfd_dec->vfl_dir        = VFL_DIR_M2M;
-	vfd_dec->device_caps    = V4L2_CAP_VIDEO_M2M_MPLANE |
-							  V4L2_CAP_STREAMING;
+	vfd_dec->device_caps    = V4L2_CAP_VIDEO_M2M_MPLANE | V4L2_CAP_STREAMING;
 
-	SNPRINTF(vfd_dec->name, sizeof(vfd_dec->name), "%s",
-			 MTK_VCODEC_DEC_NAME);
+	SNPRINTF(vfd_dec->name, sizeof(vfd_dec->name), "%s", MTK_VCODEC_DEC_NAME);
 	video_set_drvdata(vfd_dec, dev);
 	dev->vfd_dec = vfd_dec;
 	platform_set_drvdata(pdev, dev);
@@ -641,7 +643,7 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	if (IS_ERR((__force void *)dev->m2m_dev_dec)) {
 		mtk_v4l2_err("Failed to init mem2mem dec device");
 		ret = PTR_ERR((__force void *)dev->m2m_dev_dec);
-		goto err_dec_mem_init;
+		goto err_dec_m2m_init;
 	}
 
 	vdec_worker_probe(dev);
@@ -652,31 +654,25 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	INIT_WORK(&dev->check_alive_work.work, mtk_vdec_check_alive_work);
 	dev->check_alive_work.ctx = NULL;
 #endif
-	ret = video_register_device(vfd_dec, VFL_TYPE_VIDEO, -1);
-	if (ret) {
-		mtk_v4l2_err("Failed to register video device");
-		goto err_dec_reg;
-	}
 
 	for (i = 0; i < NUM_MAX_VDEC_M4U_PORT; i++)
 		dev->dec_m4u_ports[i] = 0;
-	for (i = 0; !of_property_read_string_index(
-			pdev->dev.of_node, "m4u-port-names", i, &name); i++) {
+	for (i = 0; !of_property_read_string_index(pdev->dev.of_node, "m4u-port-names", i, &name); i++) {
 		reg_index = mtk_vdec_m4u_port_name_to_index(name);
 		if (reg_index < 0) {
 			dev_info(&pdev->dev, "invalid m4u port name: %s, index: %d", name, i);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err_after_dec_worker_probe;
 		}
-		ret = of_property_read_u32_index(pdev->dev.of_node,
-			"m4u-ports", i, &port_id);
+		ret = of_property_read_u32_index(pdev->dev.of_node, "m4u-ports", i, &port_id);
 		if (ret) {
 			dev_info(&pdev->dev, "get m4u port name: %s (%d), index: %d fail %d",
 				name, reg_index, i, ret);
-			return -EINVAL;
+			ret = -EINVAL;
+			goto err_after_dec_worker_probe;
 		}
 		dev->dec_m4u_ports[reg_index] = (int)port_id;
-		mtk_v4l2_debug(2, "dec_m4u_ports[%d]=0x%x",
-			reg_index, dev->dec_m4u_ports[reg_index]);
+		mtk_v4l2_debug(2, "dec_m4u_ports[%d]=0x%x", reg_index, dev->dec_m4u_ports[reg_index]);
 	}
 
 	dev->vdec_buf_wq = create_singlethread_workqueue("vdec_buf_dump");
@@ -685,7 +681,8 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	dev->io_domain = iommu_get_domain_for_dev(dev->smmu_dev);
 	if (dev->io_domain == NULL) {
 		mtk_v4l2_err("Failed to get io_domain\n");
-		return -EPROBE_DEFER;
+		ret = -EPROBE_DEFER;
+		goto err_after_dec_worker_probe;
 	}
 
 	ret = dma_set_mask_and_coherent(dev->smmu_dev, DMA_BIT_MASK(34));
@@ -693,20 +690,17 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 		ret = dma_set_mask_and_coherent(dev->smmu_dev, DMA_BIT_MASK(34));
 		if (ret) {
 			dev_info(&pdev->dev, "64-bit DMA enable failed\n");
-			return ret;
+			goto err_after_dec_worker_probe;
 		}
 	}
 	if (!pdev->dev.dma_parms) {
-		pdev->dev.dma_parms =
-			devm_kzalloc(dev->smmu_dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
+		pdev->dev.dma_parms = devm_kzalloc(dev->smmu_dev, sizeof(*pdev->dev.dma_parms), GFP_KERNEL);
 	}
 	if (pdev->dev.dma_parms)
 		dma_set_max_seg_size(dev->smmu_dev, (unsigned int)DMA_BIT_MASK(34));
 
 	mtk_vdec_translation_fault_callback_setting(dev);
 #endif
-	mtk_v4l2_debug(0, "decoder registered as /dev/video%d",
-				   vfd_dec->num);
 
 	mtk_prepare_vdec_dvfs(dev);
 	mtk_prepare_vdec_emi_bw(dev);
@@ -763,19 +757,35 @@ static int mtk_vcodec_dec_probe(struct platform_device *pdev)
 	ret = vdec_if_dev_ctx_init(dev);
 	if (ret) {
 		mtk_v4l2_err("Failed to init dev ctx (ret %d)", ret);
-		goto err_dec_reg;
+		goto err_dec_ctx_init;
 	}
 
 	dev_ptr = dev;
 	mtk_vcodec_set_dev(dev, MTK_INST_DECODER);
 
+	ret = video_register_device(vfd_dec, VFL_TYPE_VIDEO, -1);
+	if (ret) {
+		mtk_v4l2_err("Failed to register video device");
+		goto err_dec_reg_dev;
+	}
+	mtk_v4l2_debug(0, "decoder registered as /dev/video%d", vfd_dec->num);
+
 	return 0;
 
-err_dec_reg:
-	kthread_stop(dev->worker_thread);
+err_dec_reg_dev:
+	vdec_if_dev_ctx_deinit(dev);
+err_dec_ctx_init:
+	mtk_vcodec_dec_smi_pwr_ctrl_unregister(dev);
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	vdec_vcp_remove(dev);
+#endif
+	mtk_unprepare_vdec_emi_bw(dev);
+	mtk_unprepare_vdec_dvfs(dev);
+err_after_dec_worker_probe:
+	vdec_worker_remove(dev);
 	v4l2_m2m_release(dev->m2m_dev_dec);
-err_dec_mem_init:
-	video_unregister_device(vfd_dec);
+err_dec_m2m_init:
+	video_device_release(vfd_dec);
 err_dec_alloc:
 	v4l2_device_unregister(&dev->v4l2_dev);
 err_res:
@@ -814,7 +824,7 @@ static void mtk_vcodec_dec_remove(struct platform_device *pdev)
 		v4l2_m2m_release(dev->m2m_dev_dec);
 
 	if (dev->vfd_dec)
-		video_unregister_device(dev->vfd_dec);
+		video_unregister_device(dev->vfd_dec); // will do video_device_release
 
 	v4l2_device_unregister(&dev->v4l2_dev);
 	mtk_vcodec_dec_smi_pwr_ctrl_unregister(dev);

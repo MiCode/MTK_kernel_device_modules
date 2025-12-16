@@ -1221,7 +1221,7 @@ void venc_vcp_remove(struct mtk_vcodec_dev *dev)
 	spin_lock_irqsave(&dev->mq.lock, flags);
 	list_for_each_entry_safe(mq_node, next, &dev->mq.nodes, list) {
 		list_del(&(mq_node->list));
-		kfree(mq_node);
+		vfree(mq_node);
 	}
 	spin_unlock_irqrestore(&dev->mq.lock, flags);
 }
