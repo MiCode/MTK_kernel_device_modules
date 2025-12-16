@@ -1059,7 +1059,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		}
 	}
 
-	if (bif_enabled(crtc)== BIF_HS_IDLE && !state->lye_state.mml_dl_lye) {
+	if (bif_enabled(crtc)== BIF_HS_IDLE) {
 		unsigned int *addr = NULL;
 
 		if (mtk_crtc->bif_info->sram_en) {
@@ -1109,7 +1109,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 	cmdq_pkt_flush(handle);
 	cmdq_pkt_destroy(handle);
 
-	if (bif_enabled(crtc) == BIF_HS_IDLE && !state->lye_state.mml_dl_lye) {
+	if (bif_enabled(crtc) == BIF_HS_IDLE) {
 		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MMQOS_SUPPORT))
 			mtk_disp_set_hrt_bw(mtk_crtc, 0);
 		mtk_crtc_bif_apsrc_ddren_control(mtk_crtc, NULL, false);
@@ -1161,7 +1161,8 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	int i, j;
 	struct cmdq_pkt *handle = NULL;
-	struct cmdq_client *client = mtk_crtc->gce_obj.client[CLIENT_CFG];
+	enum CRTC_GCE_CLIENT_TYPE client_type = CLIENT_CFG;
+	struct cmdq_client *client;
 	struct mtk_ddp_comp *comp;
 	unsigned int *trace;
 	struct mtk_drm_idlemgr_perf *perf = mtk_crtc->idlemgr->perf;
@@ -1178,13 +1179,33 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 			mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
 		set_bif_stage(mtk_crtc, BIF_DEFAULT_MODE);
 
-		mtk_crtc->bif_info->bif_pkt_info = mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_CFG,
-			crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
-		handle = mtk_crtc->bif_info->bif_pkt_info ? NULL : mtk_crtc->bif_info->bif_pkt_info->cmdq_handle;
+		if (crtc_state->lye_state.mml_dl_lye &&
+			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_DL_SUB_CFG_CLINET))
+			client_type = CLIENT_SUB_CFG;
+
+		mtk_crtc->bif_info->bif_pkt_info = mtk_crtc_request_cmdq_pkt(mtk_crtc,
+			client_type, crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
+		handle = mtk_crtc->bif_info->bif_pkt_info ?
+			mtk_crtc->bif_info->bif_pkt_info->cmdq_handle : NULL;
 	}
+
+	client = mtk_crtc->gce_obj.client[client_type];
 
 	if (!handle)
 		mtk_crtc_pkt_create(&handle, crtc, client);
+
+	/* restore mml dl task and sync with disp */
+	if (stage == BIF_READ_MODE && crtc_state->lye_state.mml_dl_lye) {
+		struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
+
+		if (mml_ctx) {
+			DDPINFO("%s leave hs dl pkt %#lx\n",
+				__func__, (unsigned long)handle);
+			mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &mtk_crtc->mml_cb);
+		}
+
+		mml_drm_racing_config_sync(mml_ctx, handle, mtk_crtc->mml_cfg->disp_id);
+	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt,
 				   MTK_DRM_OPT_IDLEMGR_DISABLE_ROUTINE_IRQ)) {
@@ -1213,30 +1234,13 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	}
 
 	if (stage == BIF_READ_MODE) {
-		struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 		struct mtk_cmdq_cb_data *cb_data;
 
 		CRTC_MMP_MARK(0, leave_idle, 0, (unsigned long)handle);
 
-		/* restore mml dl task and sync with disp */
-		if (state->lye_state.mml_dl_lye) {
-			struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
-
-			if (mml_ctx) {
-				DDPINFO("%s leave hs dl pkt %#lx\n",
-					__func__, (unsigned long)handle);
-				mtk_crtc->mml_cfg->info.disp_done_event = 0;
-				mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &mtk_crtc->mml_cb);
-			}
-		}
-
 		mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
-
-		if (state->lye_state.mml_dl_lye) {
-			struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
-
-			mml_drm_racing_config_sync(mml_ctx, handle, false);
-		}
+		if (crtc_state->lye_state.mml_dl_lye && mtk_crtc->mml_cfg->info.disp_done_event)
+			cmdq_pkt_set_event(handle, mtk_crtc->mml_cfg->info.disp_done_event);
 
 		if (priv->data->bif_path_remove)
 			priv->data->bif_path_remove(mtk_crtc, handle);
@@ -1261,7 +1265,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 			cb_data->crtc = crtc;
 			cb_data->cmdq_handle = handle;
 
-			if (state->lye_state.mml_dl_lye)
+			if (crtc_state->lye_state.mml_dl_lye)
 				mtk_drm_wait_mml_submit_done(&mtk_crtc->mml_cb);
 
 			if (cmdq_pkt_flush_async(handle, vdo_leave_idle_cb, cb_data) < 0)
