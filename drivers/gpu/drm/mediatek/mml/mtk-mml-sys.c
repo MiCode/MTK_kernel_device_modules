@@ -549,7 +549,7 @@ static void sys_config_frame_dl(struct mml_comp *comp, struct mml_task *task,
 		rhs.value = ~(u16)MML_NEXTSPR_DUAL;
 		cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, MML_CMDQ_NEXT_SPR,
 			&lhs, &rhs);
-		if (cfg->disp_vdo && !mutex_dl_disp_sof_vdo)
+		if (cfg->disp_vdo)
 			sys_sync_disp(comp, task, ccfg);
 	} else {
 		/* clear nextspr2 and sync before everything start */
@@ -938,31 +938,16 @@ static s32 sys_mutex(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
-	struct mml_sys *sys = comp_to_sys(comp);
-	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	struct sys_frame_data *sys_frm = sys_frm_data(ccfg);
 
 	/* before mutex enable, insert begin loop for next round */
-	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
-		if (cfg->disp_vdo && !mutex_dl_disp_sof_vdo)
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		if (cfg->disp_vdo) {
+			struct mml_sys *sys = comp_to_sys(comp);
+			struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+			struct sys_frame_data *sys_frm = sys_frm_data(ccfg);
+
 			sys_insert_begin_loop(comp, task, ccfg, sys, sys_frm, pkt);
-	}
-
-	return 0;
-}
-
-static s32 sys_wait(struct mml_comp *comp, struct mml_task *task,
-	struct mml_comp_config *ccfg, u32 idx)
-{
-	struct mml_frame_config *cfg = task->config;
-	struct mml_sys *sys = comp_to_sys(comp);
-	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
-	struct sys_frame_data *sys_frm = sys_frm_data(ccfg);
-
-	/* before mutex enable, insert begin loop for next round */
-	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
-		if (cfg->disp_vdo && mutex_dl_disp_sof_vdo)
-			sys_insert_begin_loop(comp, task, ccfg, sys, sys_frm, pkt);
+		}
 	}
 
 	return 0;
@@ -1248,7 +1233,6 @@ static const struct mml_comp_config_ops sys_config_ops = {
 	.frame = sys_config_frame,
 	.tile = sys_config_tile,
 	.mutex = sys_mutex,
-	.wait = sys_wait,
 	.post = sys_post,
 	.done = sys_done,
 	.repost = sys_repost,
@@ -2744,7 +2728,7 @@ static s32 dl_wait_mt6991f(struct mml_comp *comp, struct mml_task *task,
 	if (task->config->info.mode == MML_MODE_DIRECT_LINK) {
 		struct mml_frame_config *cfg = task->config;
 
-		if (cfg->disp_vdo && !mutex_dl_nopoll_dlo) {
+		if (cfg->disp_vdo) {
 			const phys_addr_t pa = comp->base_pa + MT6991_MML_DLO_ASYNC5_STATUS1;
 			struct dl_frame_data *dl_frm = dl_frm_data(ccfg);
 			u32 size = dl_frm->max_size.height << 16;

@@ -89,10 +89,6 @@ extern int mml_mutex_dl_sof;
 #define mutex_dl_disp_en	(mml_mutex_dl_sof & BIT(0))
 #define mutex_dl_perf_en	(mml_mutex_dl_sof & BIT(1))
 #define mutex_dl_perf_log	(mml_mutex_dl_sof & BIT(2))
-#define mutex_dl_nodone		(mml_mutex_dl_sof & BIT(3))
-#define mutex_dl_noprete	(mml_mutex_dl_sof & BIT(4))
-#define mutex_dl_disp_sof_vdo	(mml_mutex_dl_sof & BIT(5))
-#define mutex_dl_nopoll_dlo	(mml_mutex_dl_sof & BIT(6))	/* for vdo disable dlo poll */
 
 /* define in mtk-mml-wrot.c */
 extern int mml_wrot_bkgd_en;
