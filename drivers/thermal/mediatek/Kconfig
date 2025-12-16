@@ -142,4 +142,13 @@ config MTK_FAN_THERMAL
 	  This option depends on MTK_PWM which is
 	  MTK pwm driver.
 
+config MTK_POWER_LIMITER
+	tristate "Mediatek power limiter"
+	depends on MTK_THERMAL_INTERFACE
+	help
+	  Enable this option to control and limit the power usage
+	  of Mediatek device. It adjusts c/g/apu ttj to limit power
+	  consumption and meet the target power value.
+	  Using stress test apps simultaneously can generate a stable power.
+
 endif

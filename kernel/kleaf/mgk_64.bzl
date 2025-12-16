@@ -1197,6 +1197,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_trace".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:vtskin_temp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:wifi_cooling".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/thermal/mediatek:power_limiter".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-ffa".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version),
@@ -2700,6 +2701,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ffa.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
@@ -3129,6 +3131,7 @@ def get_overlay_modules_list():
         #mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_jatm.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ffa".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/trusty:trusty-ipc".format(kernel_version))
@@ -3694,6 +3697,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ffa.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
@@ -4017,6 +4021,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ffa.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ipc.ko")
@@ -4386,6 +4391,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-debug".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-imax".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp".format(kernel_version))
@@ -4631,6 +4637,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
 
         mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait")
         mgk_64_kleaf_eng_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait")

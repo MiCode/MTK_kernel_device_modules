@@ -154,11 +154,13 @@ enum ttj_user {
 	JATM_OFF = -1,
 	CATM,
 	JATM_ON,
+	FIX_PWR,
 	NR_TTJ_USER
 };
 
 struct ttj_info {
 	int jatm_on;
+	int fix_pwr_on;
 	unsigned int catm_cpu_ttj;
 	unsigned int catm_gpu_ttj;
 	unsigned int catm_apu_ttj;
@@ -249,6 +251,7 @@ extern int set_cpu_min_opp(int gear, int opp);
 extern int set_cpu_active_bitmask(int mask);
 extern int get_cpu_temp(int cpu_id);
 extern void set_ttj(int user);
+extern void set_ttj_for_fixed_power(int user, unsigned int cpu_ttj);
 extern void write_jatm_suspend(int jatm_suspend);
 extern int get_jatm_suspend(void);
 extern int get_catm_ttj(void);

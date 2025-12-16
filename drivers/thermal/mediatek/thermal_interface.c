@@ -746,6 +746,14 @@ static void write_ttj(int user, unsigned int cpu_ttj, unsigned int gpu_ttj,
 	else if (user == JATM_OFF)
 		tm_data.tj_info.jatm_on = 0;
 	else if (user == CATM) {
+		if(tm_data.tj_info.fix_pwr_on == 1)
+			return;
+
+		tm_data.tj_info.catm_cpu_ttj = cpu_ttj;
+		tm_data.tj_info.catm_gpu_ttj = gpu_ttj;
+		tm_data.tj_info.catm_apu_ttj = apu_ttj;
+	} else if (user == FIX_PWR) {
+		tm_data.tj_info.fix_pwr_on = 1;
 		tm_data.tj_info.catm_cpu_ttj = cpu_ttj;
 		tm_data.tj_info.catm_gpu_ttj = gpu_ttj;
 		tm_data.tj_info.catm_apu_ttj = apu_ttj;
@@ -801,6 +809,12 @@ void set_ttj(int user)
 		tm_data.tj_info.gpu_max_ttj, tm_data.tj_info.apu_max_ttj);
 }
 EXPORT_SYMBOL(set_ttj);
+
+void set_ttj_for_fixed_power(int user, unsigned int cpu_ttj)
+{
+	write_ttj(user, cpu_ttj, cpu_ttj, cpu_ttj);
+}
+EXPORT_SYMBOL(set_ttj_for_fixed_power);
 
 void write_jatm_suspend(int jatm_suspend)
 {

@@ -207,3 +207,16 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version)
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "power_limiter",
+    srcs = [
+        "power_limiter.c",
+    ],
+    hdrs = [
+        "power_limiter.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version)
+    ],
+)
