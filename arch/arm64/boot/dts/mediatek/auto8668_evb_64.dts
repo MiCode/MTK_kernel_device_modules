@@ -326,6 +326,23 @@
 	status = "disabled";
 };
 
+&mt6319_6 {
+	compatible = "no use";
+	status = "disabled";
+};
+
+&mt6720 {
+	compatible = "no use";
+	status = "disabled";
+};
+
+&spmi {
+	second_pmic@5 {
+		compatible = "no use";
+		status = "disabled";
+	};
+};
+
 &afe {
 	etdm-in-ch = <2 2 2 16 2>;
 	etdm-out-ch = <2 2 2 16>;

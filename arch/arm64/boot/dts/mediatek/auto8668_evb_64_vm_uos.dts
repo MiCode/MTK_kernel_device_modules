@@ -498,10 +498,6 @@
 	regulator-min-microvolt = <0>;
 };
 
-&mt6373_vbuck4_ufs {
-	regulator-min-microvolt = <0>;
-};
-
 &mt6373_vbuck5 {
 	regulator-min-microvolt = <0>;
 };

@@ -13928,6 +13928,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 /delete-node/ &mt6368_vmch;
 /delete-node/ &mt6368_vmch_eint_low;
 
+/delete-node/ &mt6373_vbuck4_ufs;
 &mt6373_regulator {
 	mt6373_vmddr: vmddr {
 		regulator-compatible = "VMDDR";
