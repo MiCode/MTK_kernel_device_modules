@@ -231,6 +231,7 @@ void mtk_get_output_timing(struct drm_crtc *crtc)
 	struct mtk_ddp_comp *comp;
 	struct drm_display_mode timing = {0};
 	unsigned int connector_enable = 0;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	int ret = 0;
 
 	comp = mtk_ddp_comp_request_output(mtk_crtc);
@@ -240,10 +241,11 @@ void mtk_get_output_timing(struct drm_crtc *crtc)
 	drm_mode_copy(&timing, &crtc->state->adjusted_mode);
 
 	// backup panel timing for android using.
-	mtk_drm_backup_default_timing(mtk_crtc, &timing);
-
-	mtk_ddp_comp_io_cmd(comp, NULL, CONNECTOR_IS_ENABLE, &connector_enable);
-	mtk_drm_connector_notify_guest(mtk_crtc, connector_enable);
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		mtk_drm_backup_default_timing(mtk_crtc, &timing);
+		mtk_ddp_comp_io_cmd(comp, NULL, CONNECTOR_IS_ENABLE, &connector_enable);
+		mtk_drm_connector_notify_guest(mtk_crtc, connector_enable);
+	}
 }
 
 static void store_timing_to_dummy(struct drm_display_mode *timing,
@@ -314,6 +316,7 @@ void mtk_drm_backup_default_timing(struct mtk_drm_crtc *mtk_crtc, struct drm_dis
 {
 	void __iomem *regs_base = NULL;
 	struct mtk_ddp_comp *comp;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
 
 	DDPMSG("%s+, %d\n", __func__, __LINE__);
 
@@ -328,15 +331,16 @@ void mtk_drm_backup_default_timing(struct mtk_drm_crtc *mtk_crtc, struct drm_dis
 		return;
 	}
 
-	regs_base = ioremap(DUMMY_REG_BASE, 0x1000);
-	if (regs_base == NULL) {
-		DDPMSG("[E] %s regs base ioremap fail!", __func__);
-		return;
+	if (priv->data->mmsys_id == MMSYS_MT6991) {
+		regs_base = ioremap(DUMMY_REG_BASE, 0x1000);
+		if (regs_base == NULL) {
+			DDPMSG("[E] %s regs base ioremap fail!", __func__);
+			return;
+		}
+		store_timing_to_dummy(timing, regs_base, comp->id);
+		iounmap(regs_base);
 	}
 
-	store_timing_to_dummy(timing, regs_base, comp->id);
-
-	iounmap(regs_base);
 }
 
 void mtk_drm_crtc_dev_init(struct drm_device *dev)
