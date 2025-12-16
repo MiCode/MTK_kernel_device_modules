@@ -123,6 +123,7 @@
 			    arm64.nomops \
 			    vmalloc=400M swiotlb=noforce \
 			    firmware_class.path=/vendor/firmware \
+			    hyp_trace_printk=1 hyp_event=__hyp_printk \
 			    kvm-arm.protected_prefault=9 \
 			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem,pkvm_cmdq_mt6881,pkvm_isp_6881,pkvm_seninf_6881";
 
