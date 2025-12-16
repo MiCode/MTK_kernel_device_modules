@@ -195,6 +195,11 @@ static const unsigned int ldo_volt_table5[] = {
 	900000, 1000000, 1100000, 1200000, 1300000, 1700000, 1800000, 1810000,
 };
 
+static const unsigned int ldo_volt_table6[] = {
+	550000, 600000, 650000, 700000, 750000, 800000, 900000, 950000,
+	1000000, 1050000, 1100000, 1150000, 1700000, 1750000, 1800000, 1850000,
+};
+
 static int mt6373_buck_enable(struct regulator_dev *rdev)
 {
 	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
@@ -689,6 +694,14 @@ static struct mt6373_regulator_info mt6373_regulators[] = {
 		   MT6373_PMIC_RG_LDO_VEFUSE_LP_SHIFT),
 	MT6373_VMCH_EINT(EINT_HIGH, ldo_volt_table4),
 	MT6373_VMCH_EINT(EINT_LOW, ldo_volt_table4),
+	MT6373_LDO(VMDDR, ldo_volt_table6,
+		   MT6373_PMIC_RG_LDO_VMDDR_EN_ADDR, MT6373_PMIC_RG_LDO_VMDDR_EN_SHIFT,
+		   MT6373_PMIC_RG_VMDDR_VOSEL_ADDR,
+		   MT6373_PMIC_RG_VMDDR_VOSEL_MASK,
+		   MT6373_PMIC_RG_VMDDR_VOCAL_ADDR,
+		   MT6373_PMIC_RG_VMDDR_VOCAL_MASK,
+		   MT6373_PMIC_RG_LDO_VMDDR_LP_ADDR,
+		   MT6373_PMIC_RG_LDO_VMDDR_LP_SHIFT),
 };
 
 static void mt6373_oc_irq_enable_work(struct work_struct *work)
