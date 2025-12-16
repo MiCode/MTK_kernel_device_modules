@@ -2557,6 +2557,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<0 0x15820000 0 0x00100>, // 37 IMGSYS_MAIN_WPE1
 			<0 0x15830000 0 0x00100>, // 38 IMGSYS_MAIN_WPE2
 			<0 0x158b0000 0 0x00100>; // 39 IMGSYS_MAIN_OMC_LITE
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_ISP_MAIN>;
 		mediatek,imgsys-ver = <1>;
 		mediatek,hcp = <&hcp>;
 		mediatek,imgsys-cmdq = <&imgsys_cmdq>;
