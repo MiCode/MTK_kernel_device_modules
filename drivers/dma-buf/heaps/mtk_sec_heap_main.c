@@ -996,6 +996,32 @@ u64 dmabuf_to_secure_handle(const struct dma_buf *dmabuf)
 }
 EXPORT_SYMBOL_GPL(dmabuf_to_secure_handle);
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+static int mtk_sec_dmabuf_release_notifier_cb(struct notifier_block *nb,
+					      unsigned long value, void *data)
+{
+	struct mtk_dmabuf_release_notify *notifier_data = data;
+	struct mtk_sec_heap_buffer *sec_buf;
+
+	if (!is_mtk_sec_heap_dmabuf(notifier_data->dmabuf))
+		goto out;
+
+	sec_buf = notifier_data->dmabuf->priv;
+	if (sec_buf->release_notify)
+		goto out;
+
+	sec_buf->release_notify = notifier_data->release_notify;
+	sec_buf->release_user_data = notifier_data->release_user_data;
+
+out:
+	return NOTIFY_OK;
+}
+
+static struct notifier_block mtk_sec_dmabuf_release_notifier_nb = {
+	.notifier_call = mtk_sec_dmabuf_release_notifier_cb,
+};
+#endif
+
 #if (!(IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)))
 
 int dmabuf_to_sec_id(const struct dma_buf *dmabuf, u64 *sec_hdl)
@@ -1304,6 +1330,10 @@ static int __init mtk_sec_heap_init(void)
 		pr_info("%s region_base_heap_create failed\n", __func__);
 		goto err;
 	}
+
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	mtk_dmabuf_release_register_notifier(&mtk_sec_dmabuf_release_notifier_nb);
+#endif
 
 	pr_info("%s-\n", __func__);
 

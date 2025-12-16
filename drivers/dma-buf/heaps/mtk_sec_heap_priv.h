@@ -81,6 +81,11 @@ struct mtk_sec_heap_buffer {
 
 	int gid; /* slc */
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	void (*release_notify)(const struct dma_buf *dmabuf, void *user_data);
+	void *release_user_data;
+#endif
+
 	/* private part for secure heap */
 	u64 sec_handle; /* keep same type with tmem */
 	struct ssheap_buf_info *ssheap; /* for page base */

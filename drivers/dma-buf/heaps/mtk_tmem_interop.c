@@ -714,11 +714,14 @@ void tmem_page_free(struct dma_buf *dmabuf)
 {
 	int ret = -EINVAL;
 	struct secure_heap_page *sec_heap;
-	struct mtk_sec_heap_buffer *buffer = NULL;
+	struct mtk_sec_heap_buffer *buffer = dmabuf->priv;
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	if (buffer->release_notify)
+		buffer->release_notify(dmabuf, buffer->release_user_data);
+#endif
 	dmabuf_release_check(dmabuf);
 
-	buffer = dmabuf->priv;
 	sec_heap = sec_heap_page_get(buffer->heap);
 	if (!sec_heap) {
 		pr_err("%s, %s can not find secure heap!!\n", __func__,
@@ -938,11 +941,14 @@ void tmem_region_free(struct dma_buf *dmabuf)
 {
 	int ret = -EINVAL;
 	struct secure_heap_region *sec_heap;
-	struct mtk_sec_heap_buffer *buffer = NULL;
+	struct mtk_sec_heap_buffer *buffer = dmabuf->priv;
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	if (buffer->release_notify)
+		buffer->release_notify(dmabuf, buffer->release_user_data);
+#endif
 	dmabuf_release_check(dmabuf);
 
-	buffer = dmabuf->priv;
 	sec_heap = sec_heap_region_get(buffer->heap);
 	if (!sec_heap) {
 		pr_err("%s, %s can not find secure heap!!\n", __func__,

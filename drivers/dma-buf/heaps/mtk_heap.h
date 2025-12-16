@@ -18,6 +18,11 @@ typedef void (*dmaheap_slc_callback)(struct dma_buf *dmabuf);
 
 int mtk_dmaheap_register_slc_callback(dmaheap_slc_callback cb);
 int mtk_dmaheap_unregister_slc_callback(void);
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+int mtk_dmabuf_release_cb_register(struct dma_buf *dmabuf,
+				   void (*release_cb)(const struct dma_buf *, void *user_data),
+				   void *cb_data);
+#endif
 
 int dma_buf_set_gid(struct dma_buf *dmabuf, int gid);
 int dma_buf_get_gid(struct dma_buf *dmabuf);

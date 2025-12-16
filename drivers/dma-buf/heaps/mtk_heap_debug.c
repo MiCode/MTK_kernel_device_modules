@@ -105,6 +105,11 @@ struct dmaheap_buf_copy {
 
 	int gid; /* slc */
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	void (*release_notify)(const struct dma_buf *dmabuf, void *user_data);
+	void *release_user_data;
+#endif
+
 	/* private part for system heap */
 	struct mtk_deferred_freelist_item deferred_free;
 };

@@ -124,6 +124,16 @@ struct mtk_dma_heap_match_data {
 	u32	dmaheap_type;
 };
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+struct mtk_dmabuf_release_notify {
+	struct dma_buf *dmabuf;
+	void (*release_notify)(const struct dma_buf *dmabuf, void *user_data);
+	void *release_user_data;
+};
+extern struct raw_notifier_head mtk_dmabuf_release_notifier_list;
+int mtk_dmabuf_release_register_notifier(struct notifier_block *nb);
+#endif
+
 int mtk_dma_heap_config_parse(struct device *dev, struct mtk_dma_heap_config *heap_config);
 
 const char **mtk_refill_heap_names(void);

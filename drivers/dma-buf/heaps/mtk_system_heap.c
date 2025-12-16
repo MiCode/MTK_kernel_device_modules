@@ -50,6 +50,11 @@ EXPORT_SYMBOL_GPL(dmabuf_rbtree_dump_by_domain);
 const struct file_operations *dma_buf_file_fops;
 EXPORT_SYMBOL_GPL(dma_buf_file_fops);
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+RAW_NOTIFIER_HEAD(mtk_dmabuf_release_notifier_list);
+EXPORT_SYMBOL_GPL(mtk_dmabuf_release_notifier_list);
+#endif
+
 struct system_heap_buffer {
 	struct dma_heap *heap;
 	struct list_head attachments;
@@ -73,6 +78,11 @@ struct system_heap_buffer {
 	unsigned long long       ts; /* us */
 
 	int gid; /* slc */
+
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	void (*release_notify)(const struct dma_buf *dmabuf, void *user_data);
+	void *release_user_data;
+#endif
 
 	/* private part for system heap */
 	struct mtk_deferred_freelist_item deferred_free;
@@ -917,6 +927,11 @@ static void mtk_mm_heap_dma_buf_release(struct dma_buf *dmabuf)
 		 file_inode(dmabuf->file)->i_ino, buffer->len,
 		 dmabuf->name?:"NULL");
 	spin_unlock(&dmabuf->name_lock);
+
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	if (buffer->release_notify)
+		buffer->release_notify(dmabuf, buffer->release_user_data);
+#endif
 
 	dmabuf_release_check(dmabuf);
 
@@ -1775,6 +1790,57 @@ static struct platform_driver mtk_dma_heap_config_driver = {
 	},
 };
 
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+int mtk_dmabuf_release_register_notifier(struct notifier_block *nb)
+{
+	return raw_notifier_chain_register(&mtk_dmabuf_release_notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(mtk_dmabuf_release_register_notifier);
+
+/* Set to NULL to unregister. */
+int mtk_dmabuf_release_cb_register(struct dma_buf *dmabuf,
+				   void (*release_cb)(const struct dma_buf *, void *user_data),
+				   void *cb_data)
+{
+	if (!dmabuf || !release_cb)
+		return -EINVAL;
+
+	struct mtk_dmabuf_release_notify notify_data = {
+		.dmabuf = dmabuf,
+		.release_notify = release_cb,
+		.release_user_data = cb_data,
+	};
+	raw_notifier_call_chain(&mtk_dmabuf_release_notifier_list, 0, &notify_data);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_dmabuf_release_cb_register);
+
+static int mtk_nor_dmabuf_release_notifier_cb(struct notifier_block *nb,
+					      unsigned long value, void *data)
+{
+	struct mtk_dmabuf_release_notify *notifier_data = data;
+	struct system_heap_buffer *nor_buf;
+
+	if (!is_mtk_mm_heap_dmabuf(notifier_data->dmabuf))
+		goto out;
+
+	nor_buf = notifier_data->dmabuf->priv;
+	if (nor_buf->release_notify)
+		goto out;
+
+	nor_buf->release_notify = notifier_data->release_notify;
+	nor_buf->release_user_data = notifier_data->release_user_data;
+
+out:
+	return NOTIFY_OK;
+}
+
+static struct notifier_block mtk_nor_dmabuf_release_notifier_nb = {
+	.notifier_call = mtk_nor_dmabuf_release_notifier_cb,
+};
+#endif
+
 static int mtk_system_heap_create(void)
 {
 	int ret;
@@ -1803,6 +1869,9 @@ static int mtk_system_heap_create(void)
 	}
 
 	mtk_cache_pool_init();
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	mtk_dmabuf_release_register_notifier(&mtk_nor_dmabuf_release_notifier_nb);
+#endif
 	return 0;
 }
 
