@@ -399,6 +399,7 @@ static int power_cost_evaluation(struct cluster_data *cluster)
 	unsigned long cap_avg = 0, prev_cap_avg = 0, prev_new_cap;
 	unsigned int ret = 1;
 
+	irq_log_store();
 	if (unlikely(!cluster || !cluster->inited))
 		return ret;
 
@@ -428,6 +429,7 @@ static int power_cost_evaluation(struct cluster_data *cluster)
 	if (prev_new_cap > prev_cluster->cap_turn_point)
 		ret = 0;
 
+	irq_log_store();
 	return ret;
 }
 
@@ -438,6 +440,7 @@ static void check_freq_min_req(void)
 	struct cluster_data *cluster;
 	unsigned long last_freq_qos_max_of_min;
 
+	irq_log_store();
 	/* no need check with camera mode */
 	if (enable_policy == CAMERA_MODE)
 		return;
@@ -453,6 +456,7 @@ static void check_freq_min_req(void)
 			cluster->boost_by_freq = false;
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	irq_log_store();
 }
 
 uint32_t (*wlan_cur_cpumask_req_hook)(void);
@@ -465,6 +469,7 @@ static void check_wlan_request(void)
 	uint32_t wlan_cpu_req, cluster_cpu_mask;
 	struct cluster_data *cluster;
 
+	irq_log_store();
 	if (wlan_cur_cpumask_req_hook) {
 		wlan_cpu_req = wlan_cur_cpumask_req_hook();
 
@@ -486,6 +491,7 @@ static void check_wlan_request(void)
 			cluster->deiso_reason |= DEISO_WLAN_REQ;
 		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	}
+	irq_log_store();
 }
 
 static bool demand_eval(struct cluster_data *cluster)
@@ -927,6 +933,7 @@ static int get_cpu_active_loading(void)
 	if (!initialized)
 		return 0;
 
+	irq_log_store();
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	for_each_possible_cpu(cpu) {
 		cpu_stat = &per_cpu(cpu_state, cpu);
@@ -960,6 +967,7 @@ static int get_cpu_active_loading(void)
 		cpu_util_state[cpu] = cpu_stat->cpu_util_pct[idx];
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	irq_log_store();
 
 	trace_core_ctl_cpu_loading_util(cpu_active_loading_state, cpu_util_state);
 	return 0;
@@ -1988,6 +1996,7 @@ static void get_busy_cpus(void)
 	unsigned int max_vip_nr_state[MAX_NR_CPUS] = {0};
 	unsigned int over_nr_task = 0, over_act_load = 0, over_rt_vip_nr_task = 0;
 
+	irq_log_store();
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	/* Define need spread cpus */
 	for (cid = 0; cid < num_clusters; cid++) {
@@ -2044,6 +2053,7 @@ static void get_busy_cpus(void)
 		cluster->need_spread_cpus = cpu_count;
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	irq_log_store();
 
 	trace_core_ctl_busy_cpus(busy_state, max_nr_state, max_rt_nr_state, max_vip_nr_state, consider_VIP_task);
 }
@@ -2063,6 +2073,7 @@ static void get_nr_running_big_task(void)
 	int cluster_nr_down[MAX_CLUSTERS] = {0};
 	int i, delta;
 
+	irq_log_store();
 	for (i = 0; i < num_clusters; i++) {
 		sched_get_nr_over_thres_avg(i,
 					  &avg_down[i],
@@ -2071,6 +2082,7 @@ static void get_nr_running_big_task(void)
 					  &nr_up[i]);
 	}
 
+	irq_log_store();
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	for (i = 0; i < num_clusters; i++) {
 		/* reset nr_up and nr_down */
@@ -2112,8 +2124,9 @@ static void get_nr_running_big_task(void)
 		cluster_nr_up[i] = cluster_state[i].nr_up;
 		cluster_nr_down[i] = cluster_state[i].nr_down;
 	}
-
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	irq_log_store();
+
 	trace_core_ctl_nr_over_thres(cluster_nr_up, cluster_nr_down, nr_up, nr_down, avg_up, avg_down);
 }
 
@@ -2175,6 +2188,7 @@ static void check_heaviest_status(void)
 	int cpu, rescue_big_core = NO_NEED_RESCUE;
 	struct cpu_data *cpu_stat;
 
+	irq_log_store();
 	if (num_clusters <= 2)
 		return;
 
@@ -2237,6 +2251,7 @@ static void check_heaviest_status(void)
 	}
 
 print_log:
+	irq_log_store();
 	trace_core_ctl_heaviest_util(big_cpu_ts, heaviest_thres, max_task_util, rescue_big_core);
 }
 
@@ -2253,6 +2268,7 @@ static inline void core_ctl_main_algo(void)
 	unsigned int boost_by_wlan[MAX_CLUSTERS] = {0};
 	unsigned int deiso_reason[MAX_CLUSTERS] = {0};
 
+	irq_log_store();
 	for_each_cluster(cluster, index)
 		cluster->deiso_reason = DEISO_NONE;
 
@@ -2263,6 +2279,7 @@ static inline void core_ctl_main_algo(void)
 	/* get TLP of over threshold tasks */
 	get_nr_running_big_task();
 
+	irq_log_store();
 	index = 0;
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	/* Apply TLP of tasks */
@@ -2291,6 +2308,7 @@ static inline void core_ctl_main_algo(void)
 		cluster->new_need_cpus = temp_need_cpus;
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	irq_log_store();
 
 	/*
 	 * Ensure prime cpu make core-on
@@ -2302,6 +2320,7 @@ static inline void core_ctl_main_algo(void)
 
 	check_wlan_request();
 
+	irq_log_store();
 	index = 0;
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	for_each_cluster(cluster, index) {
@@ -2315,6 +2334,7 @@ static inline void core_ctl_main_algo(void)
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	cpumask_andnot(&active_cpus, cpu_online_mask, cpu_pause_mask);
 
+	irq_log_store();
 	trace_core_ctl_algo_info(enable_policy, need_spread_cpu, nr_assist_cpu, orig_need_cpu,
 				cpumask_bits(&active_cpus)[0], boost_by_freq, boost_by_wlan, deiso_reason);
 }

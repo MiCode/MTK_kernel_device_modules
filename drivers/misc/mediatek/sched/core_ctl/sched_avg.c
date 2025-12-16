@@ -120,6 +120,7 @@ unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 	unsigned long util_est;
 	unsigned int util_pct;
 
+	irq_log_store();
 	/* camera mode only consider CFS loading & orig capacity */
 	if (core_ctl_get_policy() != 2) {
 		cfs_util = mtk_cpu_util_cfs_boost(cpu);
@@ -138,6 +139,7 @@ unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 
 	cpu_util = min_t(unsigned long, cpu_util, capacity);
 	util_pct = (unsigned int)div64_ul((cpu_util * 100), capacity);
+	irq_log_store();
 
 	return util_pct;
 }
@@ -309,11 +311,14 @@ int get_max_nr_running(int cpu)
 	int max_nr = 0;
 	unsigned long flags;
 
+	irq_log_store();
 	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
 	max_nr = per_cpu(nr_max, cpu);
 	/* reset max_nr value */
 	per_cpu(nr_max, cpu) = per_cpu(nr, cpu);
 	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
+	irq_log_store();
+
 	return max_nr;
 }
 EXPORT_SYMBOL(get_max_nr_running);
@@ -323,11 +328,14 @@ int get_max_rt_nr_running(int cpu)
 	int max_rt_nr = 0;
 	unsigned long flags;
 
+	irq_log_store();
 	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
 	max_rt_nr = per_cpu(rt_nr_max, cpu);
 	/* reset max_nr value */
 	per_cpu(rt_nr_max, cpu) = per_cpu(rt_nr, cpu);
 	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
+	irq_log_store();
+
 	return max_rt_nr;
 }
 EXPORT_SYMBOL(get_max_rt_nr_running);
@@ -337,11 +345,14 @@ int get_max_vip_nr_running(int cpu)
 	int max_vip_nr = 0;
 	unsigned long flags;
 
+	irq_log_store();
 	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
 	max_vip_nr = per_cpu(vip_nr_max, cpu);
 	/* reset max_nr value */
 	per_cpu(vip_nr_max, cpu) = per_cpu(vip_nr, cpu);
 	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
+	irq_log_store();
+
 	return max_vip_nr;
 }
 EXPORT_SYMBOL(get_max_vip_nr_running);
@@ -361,6 +372,7 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 	int cluster_nr;
 	struct cpumask cls_cpus;
 
+	irq_log_store();
 	/* Need to make sure initialization done. */
 	if (!init_thres) {
 		*dn_avg = *up_avg = 0;
@@ -387,6 +399,7 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 	arch_get_cluster_cpus(&cls_cpus, cluster_id);
 	cluster_over_thres_table[cluster_id].last_get_over_thres_time = curr_time;
 
+	irq_log_store();
 	/* visit all cpus of this cluster */
 	for_each_cpu(cpu, &cls_cpus) {
 		struct over_thres_stats *cpu_over_thres;
@@ -433,6 +446,8 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 
 	*dn_avg = (unsigned int)div64_u64(dn_tmp_avg * 100, (u64) diff);
 	*up_avg = (unsigned int)div64_u64(up_tmp_avg * 100, (u64) diff);
+
+	irq_log_store();
 
 	return 0;
 }
