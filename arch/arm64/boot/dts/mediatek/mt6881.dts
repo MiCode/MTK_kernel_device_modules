@@ -12303,7 +12303,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		enable-fast-charging-indicator;
 	};
 
-	pmic-oc-debug {
+	pmic_oc_debug: pmic-oc-debug {
 		compatible = "mediatek,mt6879-oc-debug";
 		spmi = <&spmi>;
 		spmi-m = <1>;

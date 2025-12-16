@@ -318,6 +318,14 @@
 	regulator-min-microvolt = <0>;
 };
 
+&pmic_oc_debug {
+	status = "disabled";
+};
+
+&mt6363_dynamic_loading_throttling {
+	status = "disabled";
+};
+
 &afe {
 	etdm-in-ch = <2 2 2 16 2>;
 	etdm-out-ch = <2 2 2 16>;
