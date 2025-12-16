@@ -54,6 +54,47 @@ struct vhost_vdmabuf {
 	struct kvm *kvm;
 };
 
+void vhost_vdmabuf_dmabuf_release_wake_up_waitqueue(void)
+{
+	wake_up_interruptible(&drv_info->vdmabuf_buf_wait_queue);
+}
+
+/* destroy unimported dmabuf if this exits and dump user's unreleased dmabuf.
+ * The meaning of return value is as follows
+ * true: indicates that there are unreleased dmabuf belonging to user.
+ * false: hashtable is entirely composed of unimported dmabuf, so there's no
+ *        need to block Android reboot. vdmabuf can simply clear them out.
+ */
+static bool virtio_vdmabuf_buffers_destroy_and_if_has_imported(struct virtio_vdmabuf_info *info)
+{
+	struct virtio_vdmabuf_buf *found;
+	bool has_imported_buf = false;
+	int i;
+
+	dev_info(info->dev, "==== vdmabuf not freed when aaos reboot ====\n");
+	dev_info(info->dev, "%-20s %-10s %-10s %-20s %-20s\n", "buf_id", "key[0]",
+		 "key[1]", "size", "buf_name");
+	hash_for_each(info->buf_list, i, found, node) {
+		if (!found->imported) {
+			hash_del(&found->node);
+			kfree(found->priv);
+			kfree(found->pages_info);
+			kfree(found);
+			continue;
+		}
+
+		has_imported_buf = true;
+		dev_info(info->dev, "0x%-18llx %-10x %-10x %-20zu %-20s\n",
+			 found->buf_id.id,
+			 found->buf_id.rng_key[0],
+			 found->buf_id.rng_key[1],
+			 found->dma_buf->size,
+			 found->dma_buf->name ? found->dma_buf->name : "<none>");
+	}
+
+	return has_imported_buf;
+}
+
 /* Map from Guest PA to host VA. */
 static void *map_gpa(struct kvm_vcpu *vcpu/* unused */, gpa_t gpa,
 		     size_t size, char *dbg_name)
@@ -648,6 +689,9 @@ static int vhost_vdmabuf_host_release(struct inode *inode, struct file *filp)
 {
 	struct vhost_vdmabuf *vdmabuf = filp->private_data;
 	struct virtio_vdmabuf_event *e, *et;
+	ktime_t t1, t2;
+	int retry = 2000;
+	bool is_empty;
 
 	if (!vdmabuf)
 		return -EINVAL;
@@ -668,6 +712,43 @@ static int vhost_vdmabuf_host_release(struct inode *inode, struct file *filp)
 	vhost_vdmabuf_flush(vdmabuf);
 	vhost_dev_stop(&vdmabuf->dev);
 	vhost_dev_cleanup(&vdmabuf->dev);
+
+	dev_info(drv_info->dev, "%s[%d] wait for users release dmabuf\n",
+		 __func__, __LINE__);
+	t1 = ktime_get();
+	/* wait for all user to free dmabuf when android reboot*/
+	mutex_lock(&drv_info->hash_mutex);
+	do {
+		is_empty = virtio_vdmabuf_hashtable_empty(drv_info);
+		mutex_unlock(&drv_info->hash_mutex);
+		wait_event_interruptible_timeout(drv_info->vdmabuf_buf_wait_queue,
+						 is_empty, msecs_to_jiffies(TIMEOUT_JIFFIES));
+		mutex_lock(&drv_info->hash_mutex);
+	} while (!is_empty && --retry);
+
+	if (!is_empty) {
+		/* If the hash table contains only unimported DMABUF, it only
+		 * needs to be cleared. Block is not required.
+		 */
+		if (!virtio_vdmabuf_buffers_destroy_and_if_has_imported(drv_info)) {
+			dev_info(drv_info->dev, "%s[%d] All DMABUFs are in an unimported state\n",
+				 __func__, __LINE__);
+			goto unblock;
+		}
+
+		mutex_unlock(&drv_info->hash_mutex);
+		while (1) { /* block android reboot */
+			schedule();
+			dev_info(drv_info->dev, "%s:%s[%d] Block Android Reboot Here\n",
+				 __FILE__, __func__, __LINE__);
+		}
+	}
+
+unblock:
+	mutex_unlock(&drv_info->hash_mutex);
+	t2 = ktime_get();
+	dev_info(drv_info->dev, "%s[%d] all dmabuf has been release, time: %lldns\n",
+		 __func__, __LINE__, ktime_to_ns(ktime_sub(t2, t1)));
 	dev_info(drv_info->dev, "%s vmid is 0x%llx. vdmabuf: %p\n",
 		 __func__, vdmabuf->vmid, vdmabuf);
 	kvfree(vdmabuf->evq);

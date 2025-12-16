@@ -13,6 +13,8 @@
 
 #include <linux/virtio_vdmabuf.h>
 
+#define BUF_LIST_HASH_BITS 7
+
 struct virtio_vdmabuf_shared_pages {
 	/* cross-VM ref addr for the buffer */
 	gpa_t ref;
@@ -91,7 +93,7 @@ struct virtio_vdmabuf_info {
 	struct list_head kvm_instances;
 	struct mutex kvm_mutex;
 
-	DECLARE_HASHTABLE(buf_list, 7);
+	DECLARE_HASHTABLE(buf_list, BUF_LIST_HASH_BITS);
 	struct mutex hash_mutex;
 
 	void *priv;
@@ -212,6 +214,7 @@ struct virtio_vdmabuf_buf *vhost_vdmabuf_get_buf(void *data);
 int vhost_vdmabuf_release_buf(struct virtio_vdmabuf_buf_id_t *buf_id);
 int vhost_vdmabuf_dmabuf_init(void);
 void vhost_vdmabuf_dmabuf_deinit(void);
+void vhost_vdmabuf_dmabuf_release_wake_up_waitqueue(void);
 
 extern u32 log_level;
 enum vdmabuf_log_level {
@@ -294,6 +297,19 @@ static inline struct virtio_vdmabuf_buf
 	hash_del(&found->node);
 
 	return found;
+}
+
+/* judge whether the hashtable is empty*/
+static inline bool virtio_vdmabuf_hashtable_empty(struct virtio_vdmabuf_info *info)
+{
+	/* hashtable buckets' number is (1 << 7) */
+	unsigned int bits = BUF_LIST_HASH_BITS;
+
+	for (int i = 0; i < (1 << bits); i++)
+		if (!hlist_empty(&info->buf_list[i]))
+			return false;
+
+	return true;
 }
 
 #endif

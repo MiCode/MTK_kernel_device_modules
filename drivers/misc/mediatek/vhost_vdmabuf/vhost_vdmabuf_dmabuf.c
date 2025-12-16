@@ -237,6 +237,7 @@ static void vhost_vdmabuf_dmabuf_release(struct dma_buf *dma_buf)
 	kfree(imp->pages_info->pages);
 	kfree(imp->pages_info);
 	kfree(imp);
+	vhost_vdmabuf_dmabuf_release_wake_up_waitqueue();
 }
 
 static const struct dma_buf_ops vhost_vdmabuf_dmabuf_ops = {
@@ -302,8 +303,6 @@ static struct virtio_vdmabuf_buf *vhost_vdmabuf_dmabuf_import(void *data)
 		goto fail_import;
 	}
 
-	imp->imported = true;
-
 out:
 	return imp;
 
@@ -355,6 +354,9 @@ static int import_ioctl(struct file *filp, void *data)
 			dma_buf_put(imp->dma_buf);
 		return exp_attr->fd;
 	}
+
+	imp->fd = exp_attr->fd;
+	imp->imported = true;
 
 	pr_info("%s[%d] import suc, fd: %d, buf_id: 0x%llx-key %x-%x\n",
 		__func__, __LINE__, exp_attr->fd, imp->buf_id.id,
