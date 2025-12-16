@@ -9840,7 +9840,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<1>, /*MTK_DRM_OPT_DYN_MIPI_CHANGE*/
 				<0>, /*MTK_DRM_OPT_PRIM_DUAL_PIPE*/
 				<0>, /*MTK_DRM_OPT_MSYNC2_0*/
-				<0>, /*MTK_DRM_OPT_MML_PRIMARY*/
+				<1>, /*MTK_DRM_OPT_MML_PRIMARY*/
 				<0>, /*MTK_DRM_OPT_MML_SUPPORT_CMD_MODE*/
 				<0>, /*MTK_DRM_OPT_MML_PQ*/
 				<0>, /*MTK_DRM_OPT_MML_IR*/
@@ -9875,7 +9875,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		disp_mutex0: disp-mutex0@14001000 {
 			compatible = "mediatek,disp_mutex0",
 					"mediatek,mt6881-disp-mutex";
-			// mediatek,mml = <&mmlsys_config>;
+			mediatek,mml = <&mmlsys_config>;
 			reg = <0 0x14001000 0 0x1000>;
 			// dispsys-num = <1>;
 			interrupts = <GIC_SPI 431 IRQ_TYPE_LEVEL_HIGH 0>;
