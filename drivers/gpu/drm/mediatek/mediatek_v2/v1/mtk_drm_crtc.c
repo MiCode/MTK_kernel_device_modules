@@ -22860,6 +22860,10 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 		/* define each pipe's CRTC ability's default value */
 		/* use it when CRTC not define ability in DTS */
 		if (pipe == 0) {
+			bool cmd_mode = FALSE;
+
+			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+			mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_CHECK_CMD_MODE, &cmd_mode);
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK_OVL))
 				mtk_crtc->crtc_caps.wb_caps[0].support = 1;
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK))
@@ -22900,6 +22904,9 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			if (mtk_drm_helper_get_opt(priv->helper_opt,
 					MTK_DRM_OPT_PARTIAL_UPDATE))
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_PARTIAL_UPDATE;
+
+			if (cmd_mode)
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_EARLY_KICK_IDLE;
 #endif
 		} else {
 

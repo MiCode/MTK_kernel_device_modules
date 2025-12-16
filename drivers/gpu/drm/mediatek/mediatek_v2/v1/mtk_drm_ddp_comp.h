@@ -1431,6 +1431,7 @@ enum mtk_ddp_io_cmd {
 	GET_DEVICE_TYPE,
 	UPDATE_DP_CONNECT_STATE,
 	GET_ENABLE_READY_STATUS,
+	REQ_CHECK_CMD_MODE,
 };
 
 enum mtk_ddp_comp_apsrc_crtc_id {

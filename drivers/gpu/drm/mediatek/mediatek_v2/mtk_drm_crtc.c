@@ -26245,9 +26245,7 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 			bool cmd_mode = FALSE;
 
 			output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-			if (output_comp)
-				mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_CHECK_CMD_MODE,
-				&cmd_mode);
+			mtk_ddp_comp_io_cmd(output_comp, NULL, REQ_CHECK_CMD_MODE, &cmd_mode);
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK_OVL))
 				mtk_crtc->crtc_caps.wb_caps[MTK_DRM_BEFORE_PQ].support = 1;
 			if(mtk_addon_scenario_support(&mtk_crtc->base, WDMA_WRITE_BACK))
@@ -26297,6 +26295,9 @@ int mtk_drm_crtc_create(struct drm_device *drm_dev,
 				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_WAIT_EPT;
 				mtk_crtc->crtc_caps.atomic_commit_reserved_ns = 3000000;
 			}
+
+			if (cmd_mode || priv->bif_support_mode)
+				mtk_crtc->crtc_caps.crtc_ability |= ABILITY_EARLY_KICK_IDLE;
 		} else {
 
 #if defined(DISP_STASH_ENABLE)
