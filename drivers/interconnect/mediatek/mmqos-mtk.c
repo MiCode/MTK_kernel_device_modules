@@ -172,6 +172,7 @@ struct comm_port_bw_record {
 	u32 peak_bw[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
 	u32 l_avg_bw[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
 	u32 l_peak_bw[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
+	u16 ostdl[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
 };
 
 struct chn_bw_record {
@@ -398,19 +399,17 @@ static void mmqos_update_comm_bw(struct device *dev,
 			comm_port, comm_bw, freq, qos_bound, value);
 }
 
-static void mmqos_update_comm_ostdl(struct device *dev, u32 comm_port,
-		u16 max_ratio, struct icc_node *larb)
+static u16 mmqos_calc_comm_ostdl(u16 max_ratio, struct icc_node *larb)
 {
 	struct larb_node *larb_node = (struct larb_node *)larb->data;
 	u32 value;
 	u16 bw_ratio;
-	u32 final_comm_port;
 
 	bw_ratio = larb_node->bw_ratio;
 	if (bw_ratio == 0) {
 		if (log_level & 1 << log_bw)
-			MMQOS_DBG("ignore set comm ostdl for larb%d", LARB_ID(larb->id));
-		return;
+			MMQOS_DBG("ignore calc comm ostdl for larb%d", LARB_ID(larb->id));
+		return 0;
 	}
 
 	if (larb->avg_bw) {
@@ -420,13 +419,27 @@ static void mmqos_update_comm_ostdl(struct device *dev, u32 comm_port,
 	} else
 		value = 0;
 
+	return (u16)value;
+}
+
+static void mmqos_update_comm_ostdl(struct device *dev, u32 comm_port,
+		u16 max_ratio, struct icc_node *larb)
+{
+	struct larb_node *larb_node = (struct larb_node *)larb->data;
+	u16 value;
+	u32 final_comm_port;
+
+	value = mmqos_calc_comm_ostdl(max_ratio, larb);
+	if (value == 0 && larb_node->bw_ratio == 0)
+		return;
+
 	final_comm_port = larb_node->sub_comm_port >= 0? larb_node->sub_comm_port : comm_port;
 	mtk_smi_common_ostdl_set(dev, final_comm_port,
 		larb_node->is_write, value);
 	if (log_level & 1 << log_bw)
 		MMQOS_DBG("%s larb_id=%d comm port=%d is_write=%d bw_ratio=%d avg_bw=%d ostdl=%d",
 			__func__, LARB_ID(larb->id), final_comm_port, larb_node->is_write,
-			bw_ratio, larb->avg_bw, value);
+			larb_node->bw_ratio, larb->avg_bw, value);
 }
 
 static void mmqos_update_setting(struct mtk_mmqos *mmqos)
@@ -1346,15 +1359,15 @@ static void record_last_larb_port(u32 node_id, u32 avg_bw, u32 peak_bw)
 }
 
 static void record_comm_port_bw(u32 comm_id, u32 port_id, u32 larb_id,
-	u32 avg_bw, u32 peak_bw, u32 l_avg, u32 l_peak)
+	u32 avg_bw, u32 peak_bw, u32 l_avg, u32 l_peak, u16 ostdl)
 {
 	u32 idx;
 
 	if (log_level & 1 << log_bw)
-		pr_notice("%s comm%d port%d larb%d %d %d %d %d\n", __func__,
+		pr_notice("%s comm%d port%d larb%d %d %d %d %d ostdl=%d\n", __func__,
 			comm_id, port_id, larb_id,
 			(int)(icc_to_MBps(avg_bw)), (int)(icc_to_MBps(peak_bw)),
-			(int)(icc_to_MBps(l_avg)), (int)(icc_to_MBps(l_peak)));
+			(int)(icc_to_MBps(l_avg)), (int)(icc_to_MBps(l_peak)), ostdl);
 	if (stop_record)
 		return;
 
@@ -1365,6 +1378,7 @@ static void record_comm_port_bw(u32 comm_id, u32 port_id, u32 larb_id,
 	comm_port_bw_rec->peak_bw[comm_id][port_id][idx] = peak_bw;
 	comm_port_bw_rec->l_avg_bw[comm_id][port_id][idx] = l_avg;
 	comm_port_bw_rec->l_peak_bw[comm_id][port_id][idx] = l_peak;
+	comm_port_bw_rec->ostdl[comm_id][port_id][idx] = ostdl;
 	comm_port_bw_rec->idx[comm_id][port_id] = (idx + 1) % RECORD_NUM;
 }
 
@@ -1751,6 +1765,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 				icc_to_MBps(comm_port_node->latest_peak_bw),
 				mmqos->qos_bound, comm_port_node->hrt_type == HRT_MAX_BWL);
 
+		u16 comm_ostdl = 0;
 		if ((mmqos_state & COMM_OSTDL_ENABLE)
 			&& larb_node->is_report_bw_larbs) {
 			if (mmqos_state & VCODEC_BW_BYPASS
@@ -1767,6 +1782,9 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 						comm_id, MASK_8(dst->id), LARB_ID(src->id),
 						(int)icc_to_MBps(src->avg_bw),
 						(int)icc_to_MBps(src->peak_bw));
+				/* Calculate ostdl for recording */
+				comm_ostdl = mmqos_calc_comm_ostdl(mmqos->max_ratio, src);
+				/* Set ostdl to hardware */
 				mmqos_update_comm_ostdl(comm_port_node->larb_dev,
 					port_id, mmqos->max_ratio, src);
 			}
@@ -1788,7 +1806,7 @@ static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
 		record_comm_port_bw(comm_id, port_id, LARB_ID(src->id),
 			src->avg_bw, src->peak_bw,
 			comm_port_node->latest_avg_bw,
-			comm_port_node->latest_peak_bw);
+			comm_port_node->latest_peak_bw, comm_ostdl);
 		rt_mutex_unlock(&comm_port_node->bw_lock);
 		break;
 	case MTK_MMQOS_NODE_LARB:
@@ -2071,12 +2089,42 @@ static void larb_port_ostdl_dump(struct seq_file *file, u32 larb_id, u32 i)
 		larb_port_bw_rec->ostdl[larb_id][i]);
 }
 
-static void larb_port_ostdl_dump_line(u32 larb_id)
+static void dump_record_entry_larb(char *buf, s32 *len, u32 larb_id, u32 i, bool *record)
 {
 	u64 ts, rem_nsec;
+	s32 ret;
+
+	ts = larb_port_bw_rec->time[larb_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+
+	if (ts == 0 &&
+		larb_port_bw_rec->port_id[larb_id][i] == 0 &&
+		larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
+		larb_port_bw_rec->peak_bw[larb_id][i] == 0)
+		return;
+
+	ret = snprintf(buf + *len, MAX_BUF_LEN - *len,
+		"[%5llu.%06llu] port%2d %s %8d %8d ",
+		(u64)ts, rem_nsec / 1000,
+		larb_port_bw_rec->port_id[larb_id][i],
+		larb_port_bw_rec->was_hrt[larb_id][i] ? "hrt" : "   ",
+		larb_port_bw_rec->avg_bw[larb_id][i],
+		larb_port_bw_rec->peak_bw[larb_id][i]);
+	if (ret < 0 || ret >= MAX_BUF_LEN - *len) {
+		pr_notice("%s\n", buf);
+		*len = 0;
+		memset(buf, '\0', sizeof(char) * MAX_BUF_LEN);
+	} else {
+		*len += ret;
+		*record = true;
+	}
+}
+
+static void larb_port_ostdl_dump_line(u32 larb_id)
+{
 	u32 i, start;
-	s32 len = 0, ret = 0;
-	char	buf[MAX_BUF_LEN] = {0};
+	s32 len = 0, ret;
+	char buf[MAX_BUF_LEN] = {0};
 	bool record = false;
 
 	start = larb_port_bw_rec->idx[larb_id];
@@ -2085,58 +2133,72 @@ static void larb_port_ostdl_dump_line(u32 larb_id)
 		"[mmqos] larb%2d ", larb_id);
 	if (ret < 0)
 		pr_notice("Failed to print larb id");
-	len += ret;
-
-	for (i = start; i < RECORD_NUM_LARB_PORT; i++) {
-		ts = larb_port_bw_rec->time[larb_id][i];
-		rem_nsec = do_div(ts, 1000000000);
-
-		if (ts == 0 &&
-			larb_port_bw_rec->port_id[larb_id][i] == 0 &&
-			larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
-			larb_port_bw_rec->peak_bw[larb_id][i] == 0)
-			break;
-
-		ret = snprintf(buf + len, MAX_BUF_LEN - len,
-			"[%5llu.%06llu] port%2d %s %8d %8d ",
-			(u64)ts, rem_nsec / 1000,
-			larb_port_bw_rec->port_id[larb_id][i],
-			larb_port_bw_rec->was_hrt[larb_id][i] ? "hrt" : "   ",
-			larb_port_bw_rec->avg_bw[larb_id][i],
-			larb_port_bw_rec->peak_bw[larb_id][i]);
-		if (ret < 0 || ret >= MAX_BUF_LEN - len) {
-			pr_notice("%s\n", buf);
-			len = 0;
-			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
-		}
+	else
 		len += ret;
-		record = true;
+
+	for (i = start; i < RECORD_NUM_LARB_PORT; i++)
+		dump_record_entry_larb(buf, &len, larb_id, i, &record);
+
+	for (i = 0; i < start; i++)
+		dump_record_entry_larb(buf, &len, larb_id, i, &record);
+
+	if (record)
+		pr_notice("%s\n", buf);
+}
+
+static void dump_record_entry_comm(char *buf, s32 *len, u32 comm_id, u32 port_id, u32 i, bool *record)
+{
+	u64 ts, rem_nsec;
+	s32 ret;
+
+	ts = comm_port_bw_rec->time[comm_id][port_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+
+	if (ts == 0 &&
+		comm_port_bw_rec->avg_bw[comm_id][port_id][i] == 0 &&
+		comm_port_bw_rec->peak_bw[comm_id][port_id][i] == 0 &&
+		comm_port_bw_rec->ostdl[comm_id][port_id][i] == 0)
+		return;
+
+	ret = snprintf(buf + *len, MAX_BUF_LEN - *len,
+		"[%5llu.%06llu] larb%2d avg=%5d peak=%5d ostdl=%4d ",
+		(u64)ts, rem_nsec / 1000,
+		comm_port_bw_rec->larb_id[comm_id][port_id][i],
+		(int)(icc_to_MBps(comm_port_bw_rec->avg_bw[comm_id][port_id][i])),
+		(int)(icc_to_MBps(comm_port_bw_rec->peak_bw[comm_id][port_id][i])),
+		comm_port_bw_rec->ostdl[comm_id][port_id][i]);
+	if (ret < 0 || ret >= MAX_BUF_LEN - *len) {
+		pr_notice("%s\n", buf);
+		*len = 0;
+		memset(buf, '\0', sizeof(char) * MAX_BUF_LEN);
+	} else {
+		*len += ret;
+		*record = true;
 	}
-	for (i = 0; i < start; i++) {
-		ts = larb_port_bw_rec->time[larb_id][i];
-		rem_nsec = do_div(ts, 1000000000);
+}
 
-		if (ts == 0 &&
-			larb_port_bw_rec->port_id[larb_id][i] == 0 &&
-			larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
-			larb_port_bw_rec->peak_bw[larb_id][i] == 0)
-			return;
+static void comm_port_ostdl_dump_line(u32 comm_id, u32 port_id)
+{
+	u32 i, start;
+	s32 len = 0, ret;
+	char buf[MAX_BUF_LEN] = {0};
+	bool record = false;
 
-		ret = snprintf(buf + len, MAX_BUF_LEN - len,
-			"[%5llu.%06llu] port%2d %s %8d %8d ",
-			(u64)ts, rem_nsec / 1000,
-			larb_port_bw_rec->port_id[larb_id][i],
-			larb_port_bw_rec->was_hrt[larb_id][i] ? "hrt" : "   ",
-			larb_port_bw_rec->avg_bw[larb_id][i],
-			larb_port_bw_rec->peak_bw[larb_id][i]);
-		if (ret < 0 || ret >= MAX_BUF_LEN - len) {
-			pr_notice("%s\n", buf);
-			len = 0;
-			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
-		}
+	start = comm_port_bw_rec->idx[comm_id][port_id];
+
+	ret = snprintf(buf + len, MAX_BUF_LEN - len,
+		"[mmqos] comm%d port%d ", comm_id, port_id);
+	if (ret < 0)
+		pr_notice("Failed to print comm port id");
+	else
 		len += ret;
-		record = true;
-	}
+
+	for (i = start; i < RECORD_NUM; i++)
+		dump_record_entry_comm(buf, &len, comm_id, port_id, i, &record);
+
+	for (i = 0; i < start; i++)
+		dump_record_entry_comm(buf, &len, comm_id, port_id, i, &record);
+
 	if (record)
 		pr_notice("%s\n", buf);
 }
@@ -2155,14 +2217,15 @@ static void comm_port_bw_dump(struct seq_file *file, u32 comm_id, u32 port_id, u
 		comm_port_bw_rec->l_peak_bw[comm_id][port_id][i] == 0)
 		return;
 
-	seq_printf(file, "[%5llu.%06llu] comm%d port%d larb%2d %8d %8d %8d %8d\n",
+	seq_printf(file, "[%5llu.%06llu] comm%d port%d larb%2d %8d %8d %8d %8d %8d\n",
 		(u64)ts, rem_nsec / 1000,
 		comm_id, port_id,
 		comm_port_bw_rec->larb_id[comm_id][port_id][i],
 		(int)(icc_to_MBps(comm_port_bw_rec->avg_bw[comm_id][port_id][i])),
 		(int)(icc_to_MBps(comm_port_bw_rec->peak_bw[comm_id][port_id][i])),
 		(int)(icc_to_MBps(comm_port_bw_rec->l_avg_bw[comm_id][port_id][i])),
-		(int)(icc_to_MBps(comm_port_bw_rec->l_peak_bw[comm_id][port_id][i])));
+		(int)(icc_to_MBps(comm_port_bw_rec->l_peak_bw[comm_id][port_id][i])),
+		comm_port_bw_rec->ostdl[comm_id][port_id][i]);
 }
 
 static void chn_bw_dump(struct seq_file *file, u32 comm_id, u32 chnn_id, u32 i)
@@ -2834,8 +2897,8 @@ static int mmqos_bw_dump(struct seq_file *file, void *data)
 	chn_bw_all_dump(file);
 	emi_bw_freq_dump(file);
 
-	seq_printf(file, "MMQoS Common Port BW Dump:        %8s %8s %8s %8s\n",
-		"avg", "peak", "l_avg", "l_peak");
+	seq_printf(file, "MMQoS Common Port BW Dump:        %8s %8s %8s %8s %8s\n",
+		"avg", "peak", "l_avg", "l_peak", "ostdl");
 	for (comm_id = 0; comm_id < MAX_RECORD_COMM_NUM; comm_id++) {
 		for (port_id = 0; port_id < MAX_RECORD_PORT_NUM; port_id++)
 			comm_port_bw_full_dump(file, comm_id, port_id);
@@ -2874,6 +2937,7 @@ EXPORT_SYMBOL_GPL(calculate_hrt_total_bw);
 void mmqos_hrt_dump(void)
 {
 	u32 larb_id = 0;
+	u32 comm_id = 0, port_id = 0;
 
 	if (mmqos_state == MMQOS_DISABLE) {
 		MMQOS_DBG("mmqos not enable");
@@ -2886,6 +2950,14 @@ void mmqos_hrt_dump(void)
 	//mmpc dvfsrc dump
 	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
 		mmpc_dvfsrc_full_dump_line();
+
+	//common port ostdl dump
+	if (mmqos_state & COMM_OSTDL_ENABLE) {
+		for (comm_id = 0; comm_id < MAX_RECORD_COMM_NUM; comm_id++) {
+			for (port_id = 0; port_id < MAX_RECORD_PORT_NUM; port_id++)
+				comm_port_ostdl_dump_line(comm_id, port_id);
+		}
+	}
 
 	//larb port qos bw dump
 	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
@@ -3006,12 +3078,13 @@ int mtk_mmqos_probe(struct platform_device *pdev)
 	mmqos = devm_kzalloc(&pdev->dev, sizeof(*mmqos), GFP_KERNEL);
 	if (!mmqos)
 		return -ENOMEM;
-	gmmqos = mmqos;
 
-	mmqos->dev = &pdev->dev;
 	smi_imu = devm_kzalloc(&pdev->dev, sizeof(*smi_imu), GFP_KERNEL);
 	if (!smi_imu)
 		return -ENOMEM;
+
+	gmmqos = mmqos;
+	mmqos->dev = &pdev->dev;
 
 	last_rec = kzalloc(sizeof(*last_rec), GFP_KERNEL);
 	if (!last_rec)
