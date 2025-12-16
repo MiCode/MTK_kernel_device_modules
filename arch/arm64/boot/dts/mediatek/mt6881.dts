@@ -634,13 +634,13 @@
 		#size-cells = <0>;
 	};
 
-	clkchk {
+	clkchk: clkchk {
 		compatible = "mediatek,mt6881-clkchk";
 		interrupts = <GIC_SPI 363 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "hwv_irq";
 	};
 
-	pdchk {
+	pdchk: pdchk {
 		compatible = "mediatek,mt6881-pdchk";
 		interrupts = <GIC_SPI 363 IRQ_TYPE_LEVEL_HIGH 0>;
 		interrupt-names = "hwv_irq";
@@ -889,6 +889,21 @@
 		infra-infracfg-ao-reg-bus = <&infra_infracfg_ao_reg_clk>;
 		vlpcfg-reg-bus = <&vlpcfg_reg_bus>;
 		hw-voter-regmap = <&hwv>;
+	};
+
+	/* aiot pcie related */
+	aiot_addl_clkitg: aiot-addl-clkitg {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
+	};
+
+	aiot_addl_disable_unused: aiot-addl-disable-unused {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		status = "disabled";
 	};
 
 	vlpcfg_reg_bus: syscon@1c00c000 {
