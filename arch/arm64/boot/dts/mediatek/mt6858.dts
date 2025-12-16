@@ -95,6 +95,7 @@
 			    cgroup.memory=nosocket,nokmem \
 			    disable_dma32=on \
 			    transparent_hugepage=never \
+			    hyp_trace_printk=1 hyp_event=__hyp_printk \
 			    kvm-arm.protected_prefault=9 \
 			    kvm-arm.protected_modules=pkvm_mgmt,pkvm_hypmmu,pkvm_tmem,pkvm_mkp,\
 pkvm_seninf_6858,pkvm_p1_6858,pkvm_cmdq_mt6858";
