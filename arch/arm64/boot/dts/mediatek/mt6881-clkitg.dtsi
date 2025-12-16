@@ -17,7 +17,6 @@
 			<&cksys_reg_clk CLK_CKSYS_REG_IMG1_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_IPE_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_CAM_SEL>,
-			<&cksys_reg_clk CLK_CKSYS_REG_CAMTM_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_PKA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_DMA_SEL>,
 			<&cksys_reg_clk CLK_CKSYS_REG_SSR_KDF_SEL>,
