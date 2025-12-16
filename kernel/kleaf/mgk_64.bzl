@@ -5104,6 +5104,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/samples:vcpu_sample")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/samples:virtio_hello")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/spi_virtio:spi-virt")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio_blk:virtio_blk")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio_conninfra:virtio_conninfra")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio_gpu:virtio_gpu".format(kernel_version))
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio-iommu:virtio-iommu")
