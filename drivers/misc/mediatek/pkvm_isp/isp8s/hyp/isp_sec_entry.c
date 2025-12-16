@@ -13,7 +13,7 @@ ISP_RETURN isp_config_sethsfcam(struct user_pt_regs *regs)
 {
 	ISP_RETURN ret = ISP_RETURN_ERROR;
 	SecMgr_CamInfo *cam_info = NULL;
-	uint64_t pa, enable_raw, En;
+	uint64_t pa, enable_raw, tg_idx, En;
 	void *pfixmap = NULL;
 
 	CALL_FROM_OPS(puts, __func__);
@@ -25,7 +25,8 @@ ISP_RETURN isp_config_sethsfcam(struct user_pt_regs *regs)
 	CALL_FROM_OPS(putx64, pa);
 
 	enable_raw = regs->regs[3];
-	En = regs->regs[4];
+	tg_idx = regs->regs[4];
+	En = regs->regs[5];
 
 	pfixmap = CALL_FROM_OPS(fixmap_map, pa);
 	CALL_FROM_OPS(flush_dcache_to_poc, pfixmap, sizeof(SecMgr_CamInfo));
@@ -34,6 +35,8 @@ ISP_RETURN isp_config_sethsfcam(struct user_pt_regs *regs)
 	CALL_FROM_OPS(puts, "P1 secure status/tg value:");
 
 	CALL_FROM_OPS(putx64, cam_info->Sec_status);
+
+	cam_info->SecTG = tg_idx;
 	CALL_FROM_OPS(putx64, cam_info->SecTG);
 
 	if (En) {
