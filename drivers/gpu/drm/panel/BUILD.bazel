@@ -92,6 +92,7 @@ PANELS = [
     "panel-alpha-jdi-nt36672e-vdo-120hz-threshold",
     "panel-alpha-jdi-nt36672e-vdo-144hz-hfp",
     "panel-alpha-jdi-nt36672e-vdo-60hz",
+    "panel-alpha-jdi-nt36672e-vdo-60hz-frameratev5",
     "panel-boe-hx83102j-vdo",
     "panel-boe-ts127qfmll1dkp0",
     "panel-nt37801-cmd-120hz",
