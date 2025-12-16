@@ -144,6 +144,22 @@ config VHOST_MMDVFS
 	  Also used to isolate the conflicting part of the mmdvfs driver
 	  on main project, default is n.
 
+config VHOST_CONNINFRA
+	tristate "Hypervisor for vhost conninfra"
+	help
+	  This extension enable vhost conninfra driver, vhost conninfra driver enable
+	  for hypervisor project. The vhost driver is located at virt/spm_v1,
+	  Also used to isolate the conflicting part of the conninfra driver
+	  on main project, default is n.
+
+config VHOST_CONNINFRA_TBOX
+	tristate "Hypervisor for vhost conninfra tbox"
+	help
+	  This extension enable vhost conninfra tbox driver, vhost conninfra tbox driver enable
+	  for hypervisor project. The vhost driver is located at virt/spm_v1,
+	  Also used to isolate the conflicting part of the conninfra driver
+	  on main project, default is n.
+
 config VHOST_TIMESYNC
 	tristate "hypervisor vhost timesync driver"
 	help
