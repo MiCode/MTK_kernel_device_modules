@@ -718,7 +718,7 @@ const struct mtk_base_etdm_data mtk_etdm_data[DAI_I2S_NUM] = {
 		.slave_mode_mask = REG_SLAVE_MODE_MASK,
 		.slave_mode_shift = REG_SLAVE_MODE_SFT,
 	},//TF
-	[DAI_IQI2SIN0] = {
+	[DAI_I2SIN_DMA0] = {
 		.enable_reg = ETDM_IN_DMA0_CON0,
 		.enable_mask = REG_ETDM_IN_EN_MASK,
 		.enable_shift = REG_ETDM_IN_EN_SFT,
@@ -1152,12 +1152,12 @@ static int etdm_ip_mode_get(struct snd_kcontrol *kcontrol,
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	struct mtk_afe_i2s_priv *i2sin6_priv = afe_priv->dai_priv[MT6881_DAI_I2S_IN6];
-	struct mtk_afe_i2s_priv *iqi2sin0_priv = afe_priv->dai_priv[MT6881_DAI_IQI2S_IN0];
+	struct mtk_afe_i2s_priv *i2sin_dma0_priv = afe_priv->dai_priv[MT6881_DAI_I2SIN_DMA0];
 
 	if (!strcmp(kcontrol->id.name, "I2SIN6_IP_MODE"))
 		ucontrol->value.enumerated.item[0] = i2sin6_priv->ip_mode;
-	else if (!strcmp(kcontrol->id.name, "IQI2SIN0_IP_MODE"))
-		ucontrol->value.enumerated.item[0] = iqi2sin0_priv->ip_mode;
+	else if (!strcmp(kcontrol->id.name, "I2SIN_DMA0_IP_MODE"))
+		ucontrol->value.enumerated.item[0] = i2sin_dma0_priv->ip_mode;
 
 	return 0;
 }
@@ -1169,7 +1169,7 @@ static int etdm_ip_mode_put(struct snd_kcontrol *kcontrol,
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(component);
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	struct mtk_afe_i2s_priv *i2sin6_priv = afe_priv->dai_priv[MT6881_DAI_I2S_IN6];
-	struct mtk_afe_i2s_priv *iqi2sin0_priv = afe_priv->dai_priv[MT6881_DAI_IQI2S_IN0];
+	struct mtk_afe_i2s_priv *i2sin_dma0_priv = afe_priv->dai_priv[MT6881_DAI_I2SIN_DMA0];
 	unsigned int value = ucontrol->value.integer.value[0];
 
 	if (value >= ARRAY_SIZE(etdm_ip_mode_idx))
@@ -1178,8 +1178,8 @@ static int etdm_ip_mode_put(struct snd_kcontrol *kcontrol,
 	/* 0: One IP multi-channel 1: Multi-IP 2-channel */
 	if (!strcmp(kcontrol->id.name, "I2SIN6_IP_MODE"))
 		i2sin6_priv->ip_mode = etdm_ip_mode_idx[value];
-	else if (!strcmp(kcontrol->id.name, "IQI2SIN0_IP_MODE"))
-		iqi2sin0_priv->ip_mode = etdm_ip_mode_idx[value];
+	else if (!strcmp(kcontrol->id.name, "I2SIN_DMA0_IP_MODE"))
+		i2sin_dma0_priv->ip_mode = etdm_ip_mode_idx[value];
 
 	return 0;
 }
@@ -1266,14 +1266,14 @@ static int etdm_slave_mode_get(struct snd_kcontrol *kcontrol,
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	struct mtk_afe_i2s_priv *i2sin6_priv = afe_priv->dai_priv[MT6881_DAI_I2S_IN6];
 	struct mtk_afe_i2s_priv *i2sout6_priv = afe_priv->dai_priv[MT6881_DAI_I2S_OUT6];
-	struct mtk_afe_i2s_priv *iqi2sin0_priv = afe_priv->dai_priv[MT6881_DAI_IQI2S_IN0];
+	struct mtk_afe_i2s_priv *i2sin_dma0_priv = afe_priv->dai_priv[MT6881_DAI_I2SIN_DMA0];
 
 	if (!strcmp(kcontrol->id.name, "I2SIN6_SLAVE_MODE"))
 		ucontrol->value.enumerated.item[0] = i2sin6_priv->slave_mode;
 	else if (!strcmp(kcontrol->id.name, "I2SOUT6_SLAVE_MODE"))
 		ucontrol->value.enumerated.item[0] = i2sout6_priv->slave_mode;
-	else if (!strcmp(kcontrol->id.name, "IQI2SIN0_SLAVE_MODE"))
-		ucontrol->value.enumerated.item[0] = iqi2sin0_priv->slave_mode;
+	else if (!strcmp(kcontrol->id.name, "I2SIN_DMA0_SLAVE_MODE"))
+		ucontrol->value.enumerated.item[0] = i2sin_dma0_priv->slave_mode;
 	return 0;
 }
 
@@ -1285,7 +1285,7 @@ static int etdm_slave_mode_put(struct snd_kcontrol *kcontrol,
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
 	struct mtk_afe_i2s_priv *i2sin6_priv = afe_priv->dai_priv[MT6881_DAI_I2S_IN6];
 	struct mtk_afe_i2s_priv *i2sout6_priv = afe_priv->dai_priv[MT6881_DAI_I2S_OUT6];
-	struct mtk_afe_i2s_priv *iqi2sin0_priv = afe_priv->dai_priv[MT6881_DAI_IQI2S_IN0];
+	struct mtk_afe_i2s_priv *i2sin_dma0_priv = afe_priv->dai_priv[MT6881_DAI_I2SIN_DMA0];
 	unsigned int value = ucontrol->value.integer.value[0];
 
 	if (value >= ARRAY_SIZE(etdm_slave_mode_idx))
@@ -1296,8 +1296,8 @@ static int etdm_slave_mode_put(struct snd_kcontrol *kcontrol,
 		i2sin6_priv->slave_mode = etdm_slave_mode_idx[value];
 	else if (!strcmp(kcontrol->id.name, "I2SOUT6_SLAVE_MODE"))
 		i2sout6_priv->slave_mode = etdm_slave_mode_idx[value];
-	else if (!strcmp(kcontrol->id.name, "IQI2SIN0_SLAVE_MODE"))
-		iqi2sin0_priv->slave_mode = etdm_slave_mode_idx[value];
+	else if (!strcmp(kcontrol->id.name, "I2SIN_DMA0_SLAVE_MODE"))
+		i2sin_dma0_priv->slave_mode = etdm_slave_mode_idx[value];
 
 	return 0;
 }
@@ -1442,7 +1442,7 @@ static unsigned int get_i2s_wlen(snd_pcm_format_t format)
 #define MTK_AFE_I2SIN1_KCONTROL_NAME "I2SIN1_HD_Mux"
 #define MTK_AFE_I2SIN2_KCONTROL_NAME "I2SIN2_HD_Mux"
 #define MTK_AFE_I2SIN6_KCONTROL_NAME "I2SIN6_HD_Mux"
-#define MTK_AFE_IQI2SIN0_KCONTROL_NAME "IQI2SIN0_HD_Mux"
+#define MTK_AFE_I2SIN_DMA0_KCONTROL_NAME "I2SIN_DMA0_HD_Mux"
 #define MTK_AFE_I2SOUT0_KCONTROL_NAME "I2SOUT0_HD_Mux"
 #define MTK_AFE_I2SOUT1_KCONTROL_NAME "I2SOUT1_HD_Mux"
 #define MTK_AFE_I2SOUT2_KCONTROL_NAME "I2SOUT2_HD_Mux"
@@ -1453,7 +1453,7 @@ static unsigned int get_i2s_wlen(snd_pcm_format_t format)
 #define I2SIN1_HD_EN_W_NAME "I2SIN1_HD_EN"
 #define I2SIN2_HD_EN_W_NAME "I2SIN2_HD_EN"
 #define I2SIN6_HD_EN_W_NAME "I2SIN6_HD_EN"
-#define IQI2SIN0_HD_EN_W_NAME "IQI2SIN0_HD_EN"
+#define I2SIN_DMA0_HD_EN_W_NAME "I2SIN_DMA0_HD_EN"
 #define I2SOUT0_HD_EN_W_NAME "I2SOUT0_HD_EN"
 #define I2SOUT1_HD_EN_W_NAME "I2SOUT1_HD_EN"
 #define I2SOUT2_HD_EN_W_NAME "I2SOUT2_HD_EN"
@@ -1464,7 +1464,7 @@ static unsigned int get_i2s_wlen(snd_pcm_format_t format)
 #define I2SIN1_MCLK_EN_W_NAME "I2SIN1_MCLK_EN"
 #define I2SIN2_MCLK_EN_W_NAME "I2SIN2_MCLK_EN"
 #define I2SIN6_MCLK_EN_W_NAME "I2SIN6_MCLK_EN"
-#define IQI2SIN0_MCLK_EN_W_NAME "IQI2SIN0_MCLK_EN"
+#define I2SIN_DMA0_MCLK_EN_W_NAME "I2SIN_DMA0_MCLK_EN"
 #define I2SOUT0_MCLK_EN_W_NAME "I2SOUT0_MCLK_EN"
 #define I2SOUT1_MCLK_EN_W_NAME "I2SOUT1_MCLK_EN"
 #define I2SOUT2_MCLK_EN_W_NAME "I2SOUT2_MCLK_EN"
@@ -1482,8 +1482,8 @@ static int get_i2s_id_by_name(struct mtk_base_afe *afe,
 		return MT6881_DAI_I2S_IN2;
 	else if (strncmp(name, "I2SIN6", 6) == 0)
 		return MT6881_DAI_I2S_IN6;
-	else if (strncmp(name, "IQI2SIN0", 8) == 0)
-		return MT6881_DAI_IQI2S_IN0;
+	else if (strncmp(name, "I2SIN_DMA0", 8) == 0)
+		return MT6881_DAI_I2SIN_DMA0;
 	else if (strncmp(name, "I2SOUT0", 7) == 0)
 		return MT6881_DAI_I2S_OUT0;
 	else if (strncmp(name, "I2SOUT1", 7) == 0)
@@ -1614,7 +1614,7 @@ static const struct snd_kcontrol_new mtk_dai_i2s_controls[] = {
 		     mt6881_i2s_hd_get, mt6881_i2s_hd_set),
 	SOC_ENUM_EXT(MTK_AFE_I2SIN6_KCONTROL_NAME, mt6881_i2s_enum[0],
 		     mt6881_i2s_hd_get, mt6881_i2s_hd_set),
-	SOC_ENUM_EXT(MTK_AFE_IQI2SIN0_KCONTROL_NAME, mt6881_i2s_enum[0],
+	SOC_ENUM_EXT(MTK_AFE_I2SIN_DMA0_KCONTROL_NAME, mt6881_i2s_enum[0],
 		     mt6881_i2s_hd_get, mt6881_i2s_hd_set),
 	SOC_ENUM_EXT(MTK_AFE_I2SOUT0_KCONTROL_NAME, mt6881_i2s_enum[0],
 		     mt6881_i2s_hd_get, mt6881_i2s_hd_set),
@@ -1640,7 +1640,7 @@ static const struct snd_kcontrol_new mtk_dai_i2s_controls[] = {
 		     etdm_lpbk_get, etdm_lpbk_put),
 	SOC_ENUM_EXT("I2SIN6_IP_MODE", etdm_ip_mode_map_enum,
 		     etdm_ip_mode_get, etdm_ip_mode_put),
-	SOC_ENUM_EXT("IQI2SIN0_IP_MODE", etdm_ip_mode_map_enum,
+	SOC_ENUM_EXT("I2SIN_DMA0_IP_MODE", etdm_ip_mode_map_enum,
 		     etdm_ip_mode_get, etdm_ip_mode_put),
 	SOC_ENUM_EXT("I2SIN6_CH_NUM", etdm_ch_num_map_enum,
 		     etdm_ch_num_get, etdm_ch_num_put),
@@ -1648,7 +1648,7 @@ static const struct snd_kcontrol_new mtk_dai_i2s_controls[] = {
 		     etdm_ch_num_get, etdm_ch_num_put),
 	SOC_ENUM_EXT("I2SIN6_SLAVE_MODE", etdm_slave_mode_map_enum,
 		     etdm_slave_mode_get, etdm_slave_mode_put),
-	SOC_ENUM_EXT("IQI2SIN0_SLAVE_MODE", etdm_slave_mode_map_enum,
+	SOC_ENUM_EXT("I2SIN_DMA0_SLAVE_MODE", etdm_slave_mode_map_enum,
 		     etdm_slave_mode_get, etdm_slave_mode_put),
 	SOC_ENUM_EXT("I2SOUT6_SLAVE_MODE", etdm_slave_mode_map_enum,
 		     etdm_slave_mode_get, etdm_slave_mode_put),
@@ -1702,8 +1702,8 @@ static const struct snd_kcontrol_new i2s_in2_mux_control =
 	SOC_DAPM_ENUM("I2S IN2 Select", i2s_mux_map_enum);
 static const struct snd_kcontrol_new i2s_in6_mux_control =
 	SOC_DAPM_ENUM("I2S IN6 Select", i2s_mux_map_enum);
-static const struct snd_kcontrol_new iqi2s_in0_mux_control =
-	SOC_DAPM_ENUM("IQI2S IN0 Select", i2s_mux_map_enum);
+static const struct snd_kcontrol_new i2sin_dma0_mux_control =
+	SOC_DAPM_ENUM("I2SIN DMA0 Select", i2s_mux_map_enum);
 static const struct snd_kcontrol_new i2s_out0_mux_control =
 	SOC_DAPM_ENUM("I2S OUT0 Select", i2s_mux_map_enum);
 static const struct snd_kcontrol_new i2s_out1_mux_control =
@@ -2197,7 +2197,7 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 	case DAI_I2SIN1:
 	case DAI_I2SIN2:
 	case DAI_I2SIN6:
-	case DAI_IQI2SIN0:
+	case DAI_I2SIN_DMA0:
 		/* set etdm ch */
 		mtk_regmap_update_bits(afe->regmap, etdm_data.ch_reg,
 				       etdm_data.ch_mask,
@@ -2493,7 +2493,7 @@ static const struct snd_soc_dapm_widget mtk_dai_i2s_widgets[] = {
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
-	SND_SOC_DAPM_SUPPLY_S("IQI2SIN0_GPIO", SUPPLY_SEQ_I2S_GPIO,
+	SND_SOC_DAPM_SUPPLY_S("I2SIN_DMA0_GPIO", SUPPLY_SEQ_I2S_GPIO,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_i2s_en_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
@@ -2527,7 +2527,7 @@ static const struct snd_soc_dapm_widget mtk_dai_i2s_widgets[] = {
 	SND_SOC_DAPM_SUPPLY_S("I2SIN6_EN", SUPPLY_SEQ_I2S_EN,
 			      ETDM_IN6_CON0, REG_ETDM_IN_EN_SFT, 0,
 			      NULL, 0),
-	SND_SOC_DAPM_SUPPLY_S("IQI2SIN0_EN", SUPPLY_SEQ_I2S_EN,
+	SND_SOC_DAPM_SUPPLY_S("I2SIN_DMA0_EN", SUPPLY_SEQ_I2S_EN,
 	//TF SND_SOC_NOPM, 0,0,
 			      ETDM_IN_DMA0_CON0, REG_ETDM_IN_EN_SFT, 0,
 			      NULL, 0),
@@ -2648,8 +2648,8 @@ static const struct snd_soc_dapm_widget mtk_dai_i2s_widgets[] = {
 			 SND_SOC_NOPM, 0, 0, &i2s_in2_mux_control),
 	SND_SOC_DAPM_MUX("I2S_IN6_Mux",
 			 SND_SOC_NOPM, 0, 0, &i2s_in6_mux_control),
-	SND_SOC_DAPM_MUX("IQI2S_IN0_Mux",
-			 SND_SOC_NOPM, 0, 0, &iqi2s_in0_mux_control),
+	SND_SOC_DAPM_MUX("I2SIN_DMA0_Mux",
+			 SND_SOC_NOPM, 0, 0, &i2sin_dma0_mux_control),
 };
 
 static int mtk_afe_i2s_share_connect(struct snd_soc_dapm_widget *source,
@@ -2932,12 +2932,12 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SIN6", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SIN6_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SIN6_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
-	{"IQI2SIN0", NULL, "IQI2SIN0_GPIO"},
-	{"IQI2SIN0", NULL, "IQI2SIN0_EN"},
-	{"IQI2SIN0", NULL, IQI2SIN0_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
-	{"IQI2SIN0", NULL, IQI2SIN0_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
-	{IQI2SIN0_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
-	{IQI2SIN0_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{"I2SIN_DMA0", NULL, "I2SIN_DMA0_GPIO"},
+	{"I2SIN_DMA0", NULL, "I2SIN_DMA0_EN"},
+	{"I2SIN_DMA0", NULL, I2SIN_DMA0_HD_EN_W_NAME, mtk_afe_i2s_hd_connect},
+	{"I2SIN_DMA0", NULL, I2SIN_DMA0_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
+	{I2SIN_DMA0_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SIN_DMA0_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
 
 	/* i2sout0 */
 	{"I2SOUT0_CH1", "DL0_CH1", "DL0"},
@@ -3304,8 +3304,8 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SIN6", NULL, "I2S_IN6_Mux"},
 	{"I2S_IN6_Mux", "Dummy_Widget", "I2S_DUMMY_IN"},
 
-	{"IQI2SIN0", NULL, "IQI2S_IN0_Mux"},
-	{"IQI2S_IN0_Mux", "Dummy_Widget", "I2S_DUMMY_IN"},
+	{"I2SIN_DMA0", NULL, "I2SIN_DMA0_Mux"},
+	{"I2SIN_DMA0_Mux", "Dummy_Widget", "I2S_DUMMY_IN"},
 
 	{"I2S_OUT0_Mux", "Dummy_Widget", "I2SOUT0"},
 	{"I2S_DUMMY_OUT", NULL, "I2S_OUT0_Mux"},
@@ -3564,7 +3564,7 @@ static int mtk_dai_i2s_config(struct mtk_base_afe *afe,
 	case DAI_I2SIN1:
 	case DAI_I2SIN2:
 	case DAI_I2SIN6:
-	case DAI_IQI2SIN0:
+	case DAI_I2SIN_DMA0:
 		/* ---etdm in --- */
 		mtk_regmap_update_bits(afe->regmap, etdm_data.init_count_reg,
 				       etdm_data.init_count_mask,
@@ -3914,10 +3914,10 @@ static struct snd_soc_dai_driver mtk_dai_i2s_driver[] = {
 		.ops = &mtk_dai_i2s_ops,
 	},
 	{
-		.name = "IQI2SIN0",
-		.id = MT6881_DAI_IQI2S_IN0,
+		.name = "I2SIN_DMA0",
+		.id = MT6881_DAI_I2SIN_DMA0,
 		.capture = {
-			.stream_name = "IQI2SIN0",
+			.stream_name = "I2SIN_DMA0",
 			.channels_min = 1,
 			.channels_max = 8,
 			.rate_max = 2048000,
@@ -4014,8 +4014,8 @@ static const struct mtk_afe_i2s_priv mt6881_i2s_priv[DAI_I2S_NUM] = {
 		.share_property_name = "i2sin6-share",
 		.share_i2s_id = -1,
 	},
-	[DAI_IQI2SIN0] = {
-		.id = MT6881_DAI_IQI2S_IN0,
+	[DAI_I2SIN_DMA0] = {
+		.id = MT6881_DAI_I2SIN_DMA0,
 		.mclk_id = -1,
 		.share_property_name = "",
 		.share_i2s_id = -1,
@@ -4476,7 +4476,7 @@ static int mt6881_dai_i2s_config(struct mtk_base_afe *afe, int i2s_id,
 	case DAI_I2SIN1:
 	case DAI_I2SIN2:
 	case DAI_I2SIN6:
-	case DAI_IQI2SIN0:
+	case DAI_I2SIN_DMA0:
 		/* ---etdm in --- */
 		mtk_regmap_update_bits(afe->regmap, etdm_data.init_count_reg,
 				       etdm_data.init_count_mask,

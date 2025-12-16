@@ -48,8 +48,8 @@ static struct audio_gpio_attr aud_gpios[MT6881_AFE_GPIO_GPIO_NUM] = {
 	[MT6881_AFE_GPIO_I2SOUT6_ON]    = {"aud-gpio-i2sout6-on", false, NULL},
 	[MT6881_AFE_GPIO_I2SIN6_OFF]    = {"aud-gpio-i2sin6-off", false, NULL},
 	[MT6881_AFE_GPIO_I2SIN6_ON]     = {"aud-gpio-i2sin6-on", false, NULL},
-	[MT6881_AFE_GPIO_IQI2SIN0_OFF]    = {"aud-gpio-iqi2sin0-off", false, NULL},
-	[MT6881_AFE_GPIO_IQI2SIN0_ON]     = {"aud-gpio-iqi2sin0-on", false, NULL},
+	[MT6881_AFE_GPIO_I2SIN_DMA0_OFF]    = {"aud-gpio-i2sin-dma0-off", false, NULL},
+	[MT6881_AFE_GPIO_I2SIN_DMA0_ON]     = {"aud-gpio-i2sin-dma0-on", false, NULL},
 	[MT6881_AFE_GPIO_AP_DMIC_OFF]   = {"aud-gpio-ap-dmic-off", false, NULL},
 	[MT6881_AFE_GPIO_AP_DMIC_ON]    = {"aud-gpio-ap-dmic-on", false, NULL},
 	[MT6881_AFE_GPIO_AP_DMIC1_OFF]  = {"aud-gpio-ap-dmic1-off", false, NULL},
@@ -257,11 +257,11 @@ int mt6881_afe_gpio_request(struct mtk_base_afe *afe, bool enable,
 		else
 			mt6881_afe_gpio_select(afe, MT6881_AFE_GPIO_I2SOUT6_OFF);
 		break;
-	case MT6881_DAI_IQI2S_IN0:
+	case MT6881_DAI_I2SIN_DMA0:
 		if (enable)
-			mt6881_afe_gpio_select(afe, MT6881_AFE_GPIO_IQI2SIN0_ON);
+			mt6881_afe_gpio_select(afe, MT6881_AFE_GPIO_I2SIN_DMA0_ON);
 		else
-			mt6881_afe_gpio_select(afe, MT6881_AFE_GPIO_IQI2SIN0_OFF);
+			mt6881_afe_gpio_select(afe, MT6881_AFE_GPIO_I2SIN_DMA0_OFF);
 		break;
 	case MT6881_DAI_VOW:
 		if (enable) {

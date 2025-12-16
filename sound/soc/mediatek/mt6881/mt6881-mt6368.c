@@ -860,8 +860,8 @@ SND_SOC_DAILINK_DEFS(i2sin6,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2SIN6")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
-SND_SOC_DAILINK_DEFS(iqi2sin0,
-	DAILINK_COMP_ARRAY(COMP_CPU("IQI2SIN0")),
+SND_SOC_DAILINK_DEFS(i2sin_dma0,
+	DAILINK_COMP_ARRAY(COMP_CPU("I2SIN_DMA0")),
 	DAILINK_COMP_ARRAY(COMP_DUMMY()),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2sout1,
@@ -1764,7 +1764,7 @@ static struct snd_soc_dai_link mt6881_mt6368_dai_links[] = {
 		SND_SOC_DAILINK_REG(i2sin6),
 	},
 	{
-		.name = "IQI2SIN0",
+		.name = "I2SIN_DMA0",
 		.dai_fmt = SND_SOC_DAIFMT_I2S | SND_SOC_DAIFMT_CBS_CFS
 			| SND_SOC_DAIFMT_GATED,
 		.ops = &mt6881_mt6368_i2s_ops,
@@ -1773,7 +1773,7 @@ static struct snd_soc_dai_link mt6881_mt6368_dai_links[] = {
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 		.be_hw_params_fixup = mt6881_i2s_hw_params_fixup,
-		SND_SOC_DAILINK_REG(iqi2sin0),
+		SND_SOC_DAILINK_REG(i2sin_dma0),
 	},
 	{
 		.name = "I2SOUT1",

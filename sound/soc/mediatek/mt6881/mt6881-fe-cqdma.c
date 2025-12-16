@@ -509,7 +509,7 @@ static const struct snd_soc_dapm_widget mt6881_dai_cqdma_widgets[] = {
 };
 
 static const struct snd_soc_dapm_route mt6881_dai_cqdma_routes[] = {
-	{"CQDMA0", NULL, "IQI2SIN0"},
+	{"CQDMA0", NULL, "I2SIN_DMA0"},
 };
 
 #define MTK_PCM_RATES (SNDRV_PCM_RATE_8000_48000 |\
