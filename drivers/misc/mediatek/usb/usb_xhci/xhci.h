@@ -2142,9 +2142,7 @@ void xhci_remove_secondary_interrupter_(struct usb_hcd
 				       *hcd, struct xhci_interrupter *ir);
 void xhci_skip_sec_intr_events(struct xhci_hcd *xhci,
 		struct xhci_ring *ring, struct xhci_interrupter *ir);
-void xhci_link_segments_(struct xhci_segment *prev,
-		struct xhci_segment *next,
-		enum xhci_ring_type type, bool chain_links);
+void xhci_set_link_trb_(struct xhci_segment *seg, bool chain_links);
 
 /* xHCI host controller glue */
 typedef void (*xhci_get_quirks_t)(struct device *, struct xhci_hcd *);
