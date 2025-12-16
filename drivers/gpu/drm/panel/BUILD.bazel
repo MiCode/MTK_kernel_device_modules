@@ -108,6 +108,7 @@ PANELS = [
     "panel-hx-nt37701-dphy-cmd",
     "panel-hx-nt37701-dphy-cmd-120hz",
     "panel-vtdr6126a-vdo",
+    "panel-vtdr6126a-vdo-144hz",
     "panel-boe-jd9365da-vdo",
     "bridge-serdes",
 ]
