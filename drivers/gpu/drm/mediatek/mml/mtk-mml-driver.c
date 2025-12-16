@@ -3172,12 +3172,11 @@ static int mml_probe(struct platform_device *pdev)
 
 #if defined(MML_DL_SUPPORT)
 	mml->dl_en = of_property_read_bool(dev->of_node, "dl-enable");
-	if (mml->dl_en)
-		mml_log("direct link mode enable");
-
 	mml->dl_vdo = of_property_read_bool(dev->of_node, "dl-vdo");
-	if (mml->dl_vdo)
-		mml_log("direct link mode vdo enable");
+	if (mml->dl_en || mml->dl_vdo)
+		mml_log("Direct Link mode %s%s",
+			mml->dl_en ? "enable" : "disable",
+			mml->dl_vdo ? " w/dl-vdo" : "");
 #endif
 	mml->dpc_disable = of_property_read_bool(dev->of_node, "dpc-disable");
 	if (mml->dpc_disable)

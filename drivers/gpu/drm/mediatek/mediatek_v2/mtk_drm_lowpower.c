@@ -1067,6 +1067,17 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 			mtk_crtc_bif_enable_racing(mtk_crtc, handle);
 
 			cmdq_pkt_clear_event(handle, mtk_crtc->bif_info->wb_frame_done_event);
+
+			/* stop mml dl to make mml stop during hs idle */
+			if (state->lye_state.mml_dl_lye) {
+				struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
+
+				CRTC_MMP_MARK(0, mml_dbg, (unsigned long)handle, DISP_MML_IR_CLEAR);
+
+				mml_drm_racing_stop_sync(mml_ctx, handle);
+				DDPINFO("%s stop sync pkt %#lx\n", __func__, (unsigned long)handle);
+			}
+
 			cmdq_pkt_wfe(handle, mtk_crtc->bif_info->wb_frame_done_event);
 			mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
 			mtk_crtc_bif_keep_read_path(crtc, handle);
@@ -1139,9 +1150,6 @@ static void vdo_leave_idle_cb(struct cmdq_cb_data data)
 	struct mtk_cmdq_cb_data *cb_data = data.data;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(cb_data->crtc);
 
-	if (cb_data->pkt_info)
-		mtk_crtc->bif_info->bif_pkt_info = cb_data->pkt_info;
-
 	atomic_set(&mtk_crtc->bif_info->bif_release, 1);
 	wake_up_interruptible(&mtk_crtc->bif_info->bif_task_wq);
 
@@ -1170,11 +1178,9 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 			mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
 		set_bif_stage(mtk_crtc, BIF_DEFAULT_MODE);
 
-		mtk_crtc->gce_obj.pkt_info = mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_CFG,
+		mtk_crtc->bif_info->bif_pkt_info = mtk_crtc_request_cmdq_pkt(mtk_crtc, CLIENT_CFG,
 			crtc_state->prop_val[CRTC_PROP_PRES_FENCE_IDX]);
-
-		mtk_crtc->bif_info->bif_pkt_info = mtk_crtc->gce_obj.pkt_info;
-		handle = (mtk_crtc->gce_obj.pkt_info == NULL) ? NULL : mtk_crtc->gce_obj.pkt_info->cmdq_handle;
+		handle = mtk_crtc->bif_info->bif_pkt_info ? NULL : mtk_crtc->bif_info->bif_pkt_info->cmdq_handle;
 	}
 
 	if (!handle)
@@ -1207,11 +1213,31 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 	}
 
 	if (stage == BIF_READ_MODE) {
+		struct mtk_crtc_state *state = to_mtk_crtc_state(crtc->state);
 		struct mtk_cmdq_cb_data *cb_data;
 
 		CRTC_MMP_MARK(0, leave_idle, 0, (unsigned long)handle);
 
+		/* restore mml dl task and sync with disp */
+		if (state->lye_state.mml_dl_lye) {
+			struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
+
+			if (mml_ctx) {
+				DDPINFO("%s leave hs dl pkt %#lx\n",
+					__func__, (unsigned long)handle);
+				mtk_crtc->mml_cfg->info.disp_done_event = 0;
+				mml_drm_submit(mml_ctx, mtk_crtc->mml_cfg, &mtk_crtc->mml_cb);
+			}
+		}
+
 		mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
+
+		if (state->lye_state.mml_dl_lye) {
+			struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
+
+			mml_drm_racing_config_sync(mml_ctx, handle, false);
+		}
+
 		if (priv->data->bif_path_remove)
 			priv->data->bif_path_remove(mtk_crtc, handle);
 
@@ -1231,10 +1257,12 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 			cmdq_pkt_destroy(handle);
 			kfree(cb_data);
 		} else {
-			cb_data = mtk_crtc->gce_obj.pkt_info->cb_data;
+			cb_data = mtk_crtc->bif_info->bif_pkt_info->cb_data;
 			cb_data->crtc = crtc;
 			cb_data->cmdq_handle = handle;
-			mtk_crtc->bif_info->bif_pkt_info->cb_data = cb_data;
+
+			if (state->lye_state.mml_dl_lye)
+				mtk_drm_wait_mml_submit_done(&mtk_crtc->mml_cb);
 
 			if (cmdq_pkt_flush_async(handle, vdo_leave_idle_cb, cb_data) < 0)
 				DDPPR_ERR("%s: %d,fail\n", __func__, __LINE__);

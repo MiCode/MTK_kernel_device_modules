@@ -1711,7 +1711,7 @@ s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 	/* debug current task idx */
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3, jobid << 16);
 
-	mml_mmp(racing_stop_sync, MMPROFILE_FLAG_START, jobid, 0);
+	mml_mmp(racing_stop_sync, MMPROFILE_FLAG_PULSE, jobid, (unsigned long)pkt);
 
 	/* set NEXT bit on, to let mml know should jump next */
 	lhs.reg = true;
@@ -1726,6 +1726,7 @@ s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 	rhs.value = ~(u16)MML_NEXTSPR_NEXT;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, MML_CMDQ_NEXT_SPR, &lhs, &rhs);
 
+	mml_mmp(racing_stop_sync, MMPROFILE_FLAG_START, jobid, 0);
 	tp_path = mml_drm_query_dl_path(dctx, NULL, 0);
 	if (tp_path)
 		cmdq_check_thread_complete(tp_path->clt->chan);

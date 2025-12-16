@@ -5270,6 +5270,7 @@ void mtk_bif_slbc_release_wq(struct mtk_drm_crtc *mtk_crtc)
 	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 	mtk_crtc_release_cmdq_pkt(mtk_crtc->bif_info->bif_pkt_info);
 	mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_RELEASE, __LINE__);
+	mtk_crtc->bif_info->bif_pkt_info = NULL;
 	atomic_set(&mtk_crtc->bif_info->bif_release, 0);
 	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 }
@@ -6172,6 +6173,7 @@ static void calc_mml_config(struct drm_crtc *crtc,
 }
 
 static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mode,
+				     enum addon_scenario scenario,
 				     const struct mtk_addon_module_data *addon_module,
 				     const struct mtk_addon_module_data *addon_module_dual,
 				     union mtk_addon_config *addon_config,
@@ -6210,7 +6212,11 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 	c->submit.job = &_job;
 	for (i = 0; i < MML_MAX_OUTPUTS; ++i)
 		c->submit.pq_param[i] = &_pq_param[i];
-	copy_mml_submit(mtk_crtc->mml_cfg_pq, &(c->submit));
+
+	if (scenario == MML_DL && mtk_crtc->mml_cfg)
+		copy_mml_submit(mtk_crtc->mml_cfg, &c->submit);
+	else if (scenario == MML_RSZ && mtk_crtc->mml_cfg_pq)
+		copy_mml_submit(mtk_crtc->mml_cfg_pq, &c->submit);
 
 	/* call mml_calc_cfg to calc how to split for rsz dual pipe */
 	calc_mml_config(crtc, addon_config, crtc_state);
@@ -6241,6 +6247,7 @@ static void mml_addon_module_connect(struct drm_crtc *crtc, unsigned int ddp_mod
 
 static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 	unsigned int ddp_mode,
+	enum addon_scenario scenario,
 	const struct mtk_addon_module_data *addon_module,
 	const struct mtk_addon_module_data *addon_module_dual,
 	union mtk_addon_config *addon_config,
@@ -6249,7 +6256,6 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 	int w = crtc->state->adjusted_mode.hdisplay;
 	int h = crtc->state->adjusted_mode.vdisplay;
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
-	struct mtk_ddp_comp *output_comp;
 	struct mtk_rect ovl_roi = {0, 0, w, h};
 	unsigned int i = 0;
 	const struct mtk_addon_module_data *m[] = {addon_module, addon_module_dual};
@@ -6259,17 +6265,20 @@ static void mml_addon_module_disconnect(struct drm_crtc *crtc,
 	addon_config->config_type.type = ADDON_DISCONNECT;
 	addon_config->config_type.module = addon_module->module;
 	addon_config->addon_mml_config.ctx = mml_ctx;
-	addon_config->addon_mml_config.submit.disp_vdo = !mtk_crtc_is_frame_trigger_mode(crtc);
 
-	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (output_comp &&
-		drm_crtc_index(crtc) == 0) {
-		ovl_roi.width = mtk_ddp_comp_io_cmd(
-			output_comp, NULL,
-			DSI_GET_VIRTUAL_WIDTH, NULL);
-		ovl_roi.height = mtk_ddp_comp_io_cmd(
-			output_comp, NULL,
-			DSI_GET_VIRTUAL_HEIGH, NULL);
+	if (scenario == MML_DL && mtk_crtc->mml_cfg)
+		copy_mml_submit(mtk_crtc->mml_cfg, &addon_config->addon_mml_config.submit);
+	else if (scenario == MML_RSZ && mtk_crtc->mml_cfg_pq)
+		copy_mml_submit(mtk_crtc->mml_cfg_pq, &addon_config->addon_mml_config.submit);
+	else {
+		struct mtk_ddp_comp *output_comp = mtk_ddp_comp_request_output(mtk_crtc);
+
+		if (output_comp && drm_crtc_index(crtc) == 0) {
+			ovl_roi.width = mtk_ddp_comp_io_cmd(output_comp, NULL,
+				DSI_GET_VIRTUAL_WIDTH, NULL);
+			ovl_roi.height = mtk_ddp_comp_io_cmd(output_comp, NULL,
+				DSI_GET_VIRTUAL_HEIGH, NULL);
+		}
 	}
 
 	if (mtk_crtc->is_dual_pipe)
@@ -6739,8 +6748,8 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 		}
 
 		mtk_addon_get_comp(crtc, lye_state->mml_ir_lye, &addon_config.config_type.tgt_comp, NULL);
-		mml_addon_module_disconnect(crtc, ddp_mode, addon_module[0], addon_module[1],
-					    &addon_config, cmdq_handle);
+		mml_addon_module_disconnect(crtc, ddp_mode, MML_RSZ,
+			addon_module[0], addon_module[1], &addon_config, cmdq_handle);
 		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_ir_lye,
 			MMP_MML_IR_LYE | MMP_ADDON_DISCONNECT);
 	}
@@ -6755,8 +6764,8 @@ static void _mtk_crtc_lye_addon_module_disconnect(
 		}
 
 		mtk_addon_get_comp(crtc, lye_state->mml_dl_lye, &addon_config.config_type.tgt_comp, NULL);
-		mml_addon_module_disconnect(crtc, ddp_mode, addon_module[0], addon_module[1],
-					    &addon_config, cmdq_handle);
+		mml_addon_module_disconnect(crtc, ddp_mode, MML_DL,
+			addon_module[0], addon_module[1], &addon_config, cmdq_handle);
 		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_dl_lye,
 			MMP_MML_DL_LYE | MMP_ADDON_DISCONNECT);
 	}
@@ -7553,8 +7562,8 @@ static void _mtk_crtc_lye_addon_module_connect(
 			return;
 		}
 		mtk_addon_get_comp(crtc, lye_state->mml_ir_lye, &addon_config.config_type.tgt_comp, NULL);
-		mml_addon_module_connect(crtc, ddp_mode, addon_module[0], addon_module[1],
-					 &addon_config, cmdq_handle);
+		mml_addon_module_connect(crtc, ddp_mode, MML_RSZ,
+			addon_module[0], addon_module[1], &addon_config, cmdq_handle);
 		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_ir_lye,
 			MMP_MML_IR_LYE | MMP_ADDON_CONNECT);
 	}
@@ -7579,8 +7588,8 @@ static void _mtk_crtc_lye_addon_module_connect(
 				lye_state->mml_dl_lye = 0;
 			return;
 		}
-		mml_addon_module_connect(crtc, ddp_mode, addon_module[0], addon_module[1],
-					 &addon_config, cmdq_handle);
+		mml_addon_module_connect(crtc, ddp_mode, MML_DL,
+			addon_module[0], addon_module[1], &addon_config, cmdq_handle);
 		CRTC_MMP_MARK(0, mml_dbg, lye_state->mml_dl_lye,
 			MMP_MML_DL_LYE | MMP_ADDON_CONNECT);
 	}

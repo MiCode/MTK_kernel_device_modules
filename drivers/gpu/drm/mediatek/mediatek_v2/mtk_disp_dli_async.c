@@ -171,14 +171,19 @@ static void mtk_dli_async_addon_config_dl_mt6993(struct mtk_ddp_comp *comp,
 
 	priv = mtk_crtc->base.dev->dev_private;
 	dli_in_relay_size = dli->data->regs[OVL_DL_IN_RELAY0_SIZE];
-
 	pipe = addon_config->addon_mml_config.pipe;
-	width = addon_config->addon_mml_config.mml_dst_roi[pipe].width;
-	height = addon_config->addon_mml_config.mml_dst_roi[pipe].height;
 
-	DDPINFO("%s addon:%d comp:%s dli:%#x p:%u w:%u h:%u\n",
-		__func__, addon_config->config_type.module, mtk_dump_comp_str(comp),
-		dli_in_relay_size, pipe, width, height);
+	if (addon_config->config_type.type == ADDON_CONNECT) {
+		width = addon_config->addon_mml_config.mml_dst_roi[pipe].width;
+		height = addon_config->addon_mml_config.mml_dst_roi[pipe].height;
+	} else {
+		width = 0;
+		height = 0;
+	}
+
+	DDPINFO("%s addon:%d type:%d comp:%s dli:%#x p:%u w:%u h:%u\n",
+		__func__, addon_config->config_type.module, addon_config->config_type.type,
+		mtk_dump_comp_str(comp), dli_in_relay_size, pipe, width, height);
 
 	cmdq_pkt_write(handle, NULL, comp->regs_pa + dli_in_relay_size,
 		1 << 30 | height << 16 | width, U32_MAX);
@@ -221,9 +226,9 @@ static void mtk_dli_async_addon_config_mt6993(struct mtk_ddp_comp *comp,
 		mtk_dli_async_addon_config_cwb_mt6993(comp, prev, next, addon_config, handle);
 #endif
 	else
-		DDPINFO("%s addon:%d comp:%s addon module:%d not support\n",
-			__func__, addon_config->config_type.module, mtk_dump_comp_str(comp),
-			addon_config->config_type.module);
+		DDPINFO("%s addon:%d comp:%s addon module:%d type:%d not support\n",
+			__func__, addon_config->config_type.module, addon_config->config_type.type,
+			mtk_dump_comp_str(comp), addon_config->config_type.module);
 }
 
 static void mtk_dli_async_size_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg,
