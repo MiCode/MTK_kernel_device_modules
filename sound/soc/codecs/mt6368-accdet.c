@@ -704,14 +704,10 @@ static u32 accdet_get_auxadc(void)
 		}
 	}
 
-	pr_info("%s() vol_val:%d offset:%d real vol:%d mv!\n", __func__, vol,
-		accdet->auxadc_offset,
-		(vol < accdet->auxadc_offset) ? 0 : (vol-accdet->auxadc_offset));
+	pr_info("%s() vol_val:%d mv!\n", __func__, vol);
 
-	if (vol < accdet->auxadc_offset)
+	if (vol < 0)
 		vol = 0;
-	else
-		vol -= accdet->auxadc_offset;
 
 	return vol;
 }
