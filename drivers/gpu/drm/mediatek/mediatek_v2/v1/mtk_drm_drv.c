@@ -7812,6 +7812,7 @@ static const struct mtk_mmsys_driver_data mt6881_mmsys_driver_data = {
 	.need_rpo_ratio_for_mmclk = true,
 	.need_emi_eff = true,
 	.pf_ts_type = IRQ_CMDQ_CB,
+	.respective_ostdl = true,
 };
 
 #ifdef MTK_DRM_FENCE_SUPPORT

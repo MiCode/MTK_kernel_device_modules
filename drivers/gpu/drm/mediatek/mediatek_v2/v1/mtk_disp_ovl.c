@@ -7106,7 +7106,7 @@ static const struct mtk_disp_ovl_data mt6881_ovl_driver_data = {
 	.mmsys_mapping = &mtk_ovl_mmsys_mapping_MT6878,
 	.source_bpc = 10,
 	.pqout_ufodin_loop = true,
-	.support_undo_alpha = false,
+	.support_undo_alpha = true,
 	.ovl_phy_mapping = &mtk_ovl_phy_mapping_MT6878,
 };
 
