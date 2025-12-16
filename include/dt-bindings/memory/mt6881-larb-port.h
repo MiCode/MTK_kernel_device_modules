@@ -14,8 +14,18 @@
 #define APU_TAB					(1)
 
 /* iova region definition */
-#define NORMAL_DOM				(0)
+/*
+ * for auto, android uos only has one region(SZ_4K ~ SZ_4G),
+ * and yocto sos only has one region(SZ_4G ~ SZ_16G) also.
+ * Currently, we have only received requirements for
+ * using disp/mdp on Android.
+ */
+#if defined(CONFIG_HYPER_SOS)
+#define CAM_DOM					(0)
+#else
 #define CAM_DOM					(1)
+#endif
+#define NORMAL_DOM				(0)
 #define LK_RESV_DOM				(2)
 #define VIDEO_UP_DOM0				(3)
 #define VIDEO_UP_DOM1				(4)
