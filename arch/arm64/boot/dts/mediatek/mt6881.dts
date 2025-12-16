@@ -13540,6 +13540,21 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	regulator-read-only;
 };
 
+&spmi {
+	second_pmic@5 {
+		regulators {
+			mt6368_vmddq: vmddq {
+				regulator-compatible = "VMDDQ";
+				regulator-name = "mt6368_vmddq";
+				regulator-min-microvolt = <550000>;
+				regulator-max-microvolt = <1850000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+		};
+	};
+};
+
 &mt6368_vbuck2 {
 	regulator-read-only;
 };
