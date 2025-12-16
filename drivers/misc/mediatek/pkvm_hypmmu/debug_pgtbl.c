@@ -27,16 +27,11 @@ static int setup_hvc_call(void)
 
 int debug_pgtbl_init(void)
 {
-	int ret;
-
 	setup_hvc_call();
 
 	debug_iommu_page = alloc_pages(GFP_KERNEL | __GFP_ZERO, PGTBL_PAGE_ORDER);
-	ret = pkvm_el2_mod_call(debug_init_iommu_hvc,
-			page_to_phys(debug_iommu_page) >> PAGE_SHIFT, PGTBL_PAGE_ORDER);
-	if (ret != 0)
-		pr_info("debug_init_pgtbl fail\n");
-
+	pkvm_el2_mod_call(debug_init_iommu_hvc,
+		page_to_phys(debug_iommu_page) >> PAGE_SHIFT, PGTBL_PAGE_ORDER);
 
 	return 0;
 }
