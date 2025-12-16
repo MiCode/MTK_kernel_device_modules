@@ -1805,7 +1805,7 @@ static void mtk_vdec_queue_noseqheader_event(struct mtk_vcodec_ctx *ctx)
 
 void mtk_vdec_queue_error_event(struct mtk_vcodec_ctx *ctx)
 {
-	static struct v4l2_event ev_error = {
+	struct v4l2_event ev_error = {
 		.type = V4L2_EVENT_MTK_VDEC_ERROR,
 	};
 
@@ -1818,7 +1818,7 @@ void mtk_vdec_queue_error_event(struct mtk_vcodec_ctx *ctx)
 
 void mtk_vdec_queue_error_code_event(struct mtk_vcodec_ctx *ctx, unsigned int info, unsigned int hw_id)
 {
-	static struct v4l2_event ev_error = {
+	struct v4l2_event ev_error = {
 		.type = V4L2_EVENT_MTK_VDEC_ERROR_INFO,
 	};
 	unsigned int prev_err_cnt = ctx->err_code_cnt[hw_id];
