@@ -160,6 +160,9 @@ struct monitor_global_t {
 	struct monitor_size_nents total_end_cpu;
 	struct monitor_size_nents total_begin_cpu_part;
 	struct monitor_size_nents total_end_cpu_part;
+
+	unsigned int timeout_record_enable;
+	atomic64_t sync_timeout_cnt;
 };
 static struct monitor_global_t monitor_globals;
 
@@ -231,6 +234,7 @@ static const struct dma_monitor_dbg monitor_helper[] = {
 	{"log_end_cpu:", &monitor_globals.log_end_cpu, MONITOR_CMD_NULL},
 	{"log_begin_cpu_partial:", &monitor_globals.log_begin_cpu_partial, MONITOR_CMD_NULL},
 	{"log_end_cpu_partial:", &monitor_globals.log_end_cpu_partial, MONITOR_CMD_NULL},
+	{"timeout_record_enable:", &monitor_globals.timeout_record_enable, MONITOR_CMD_INT_VALUE},
 
 	{"dump_kernel:", &monitor_globals.dump_kernel, MONITOR_CMD_NULL},
 	{"dump_detail:", &monitor_globals.dump_detail, MONITOR_CMD_NULL},
@@ -283,6 +287,9 @@ void heap_monitor_init(void)
 	monitor_globals.trace_level = DMABUF_TRACE_HIGH;
 #endif
 
+	monitor_globals.timeout_record_enable = 0;
+	atomic64_set(&monitor_globals.sync_timeout_cnt, 0);
+
 	monitor_globals.enable = 1;
 	monitor_globals.start_log_time = sched_clock();
 }
@@ -327,11 +334,14 @@ static void monitor_clear_log(void)
 	monitor_globals.start_log_time = sched_clock();
 }
 
+static void mtk_dmabuf_set_timeout_record_enable(unsigned int timeout_record);
+
 ssize_t heap_monitor_proc_write(struct file *file, const char *buf,
 				       size_t count, loff_t *data)
 {
 	char cmdline[DMA_MONITOR_CMDLINE_LEN];
-	int i = 0, vlu = 0;
+	unsigned int vlu =0;
+	int i = 0;
 	int helper_len = 0;
 	const char *helper_str = NULL;
 
@@ -360,28 +370,31 @@ ssize_t heap_monitor_proc_write(struct file *file, const char *buf,
 			pr_info("%s set as 0\n", helper_str);
 		} else {
 			if (monitor_helper[i].cmd_type == MONITOR_CMD_TRACE_LEVEL &&
-				sscanf(cmdline, "trace_level:%u\n", &vlu) == 1 &&
-				vlu >= 0 && vlu <= DMABUF_TRACE_ALL)
+				sscanf(cmdline, "trace_level:%10u\n", &vlu) == 1 &&
+				vlu <= DMABUF_TRACE_ALL)
 				monitor_globals.trace_level = vlu;
 			else if (monitor_helper[i].cmd_type == MONITOR_CMD_INT_VALUE &&
-				 sscanf(cmdline, "monitor_pid:%u\n", &vlu) == 1)
+				 sscanf(cmdline, "monitor_pid:%10u\n", &vlu) == 1)
 				monitor_globals.monitor_pid = vlu;
+			else if (monitor_helper[i].cmd_type == MONITOR_CMD_INT_VALUE &&
+				 sscanf(cmdline, "timeout_record_enable:%10u\n", &vlu) == 1)
+				mtk_dmabuf_set_timeout_record_enable(vlu);
 
 #if IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
 			if (monitor_helper[i].cmd_type == MONITOR_CMD_REFILL_HIGH &&
 				refill_order_callback &&
-				sscanf(cmdline, "refill_high_water8:%u\n", &vlu) == 1)
+				sscanf(cmdline, "refill_high_water8:%10u\n", &vlu) == 1)
 				refill_order_callback(0, vlu);
 			else if (monitor_helper[i].cmd_type == MONITOR_CMD_REFILL_HIGH &&
 				 refill_order_callback &&
-				 sscanf(cmdline, "refill_high_water4:%u\n", &vlu) == 1)
+				 sscanf(cmdline, "refill_high_water4:%10u\n", &vlu) == 1)
 				refill_order_callback(1, vlu);
 			else if (monitor_helper[i].cmd_type == MONITOR_CMD_REFILL_HIGH &&
 				 refill_order_callback &&
-				 sscanf(cmdline, "refill_high_water0:%u\n", &vlu) == 1)
+				 sscanf(cmdline, "refill_high_water0:%10u\n", &vlu) == 1)
 				refill_order_callback(2, vlu);
 			else if (monitor_helper[i].cmd_type == MONITOR_CMD_MTKMM_PREFILL &&
-				 sscanf(cmdline, "mtk_mm_prefill:%u\n", &vlu) == 1)
+				 sscanf(cmdline, "mtk_mm_prefill:%10u\n", &vlu) == 1)
 				dma_heap_pool_prefill(vlu * SZ_1M, "mtk_mm");
 #endif
 			break;
@@ -604,7 +617,7 @@ static void dmabuf_log_show_heap(struct seq_file *s)
 			continue;
 
 		heap_priv = dma_heap_get_drvdata(heap);
-		if (heap_priv && !heap_priv->uncached) {
+		if (heap_priv && !heap_priv->uncached && !heap_priv->coherent) {
 			pool_total_size = mtk_dmabuf_page_pool_size(heap);
 			if (!pool_total_size)
 				continue;
@@ -743,6 +756,7 @@ static void dmabuf_log_show(struct seq_file *s)
 
 	dmabuf_dump(s, "-------- info --------\n");
 	dmabuf_dump(s, "log count:%u\n", log_count);
+	dmabuf_dump(s, "sync_timeout_cnt=%lld\n", atomic64_read(&monitor_globals.sync_timeout_cnt));
 
 	if (monitor_globals.dump_detail) {
 		dmabuf_dump(s, "log time(ms):%llu\n",
@@ -1035,3 +1049,30 @@ int dmabuf_trace_mark_write(char *fmt, ...)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(dmabuf_trace_mark_write);
+
+static void mtk_dmabuf_set_timeout_record_enable(unsigned int timeout_record)
+{
+	monitor_globals.timeout_record_enable = timeout_record;
+	if (timeout_record == 1)
+		atomic64_set(&monitor_globals.sync_timeout_cnt, 0);
+}
+
+bool mtk_dmabuf_sync_timeout_record_enable(void)
+{
+	return monitor_globals.timeout_record_enable == 1;
+}
+
+u64 mtk_dmabuf_get_sync_timeout_cnt(void)
+{
+	return atomic64_read(&monitor_globals.sync_timeout_cnt);
+}
+
+void mtk_dmabuf_inc_sync_timeout_cnt(void)
+{
+	if (atomic64_read(&monitor_globals.sync_timeout_cnt) < LONG_MAX) {
+		atomic64_inc(&monitor_globals.sync_timeout_cnt);
+	} else {
+		pr_info("[%s] sync_timeout_cnt reset to 0\n", __func__);
+		atomic64_set(&monitor_globals.sync_timeout_cnt, 0);
+	}
+}

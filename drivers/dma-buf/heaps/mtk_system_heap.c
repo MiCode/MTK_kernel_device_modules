@@ -360,6 +360,51 @@ static int dma_coherent_check(struct dma_buf *dmabuf, struct device *dev, bool u
 	return 0;
 }
 
+#define RUN_TIMEOUT_NS		(2000000ULL) /* 2ms */
+
+static void run_timeout_count(u64 start, u64 end)
+{
+	if (end - start > RUN_TIMEOUT_NS)
+		mtk_dmabuf_inc_sync_timeout_cnt();
+}
+
+static unsigned int buffer_calc_frag_ratio(struct system_heap_buffer *buffer)
+{
+	struct sg_table *table = &buffer->sg_table;
+	unsigned long size;
+
+	if (buffer->len < PAGE_SIZE)
+		size = PAGE_SIZE;
+	else
+		size = buffer->len;
+
+	return (table->nents * 100) / (size / PAGE_SIZE);
+}
+
+#define CACHE_SYNC_START(record_enable, sync_start) do { \
+	record_enable = mtk_dmabuf_sync_timeout_record_enable(); \
+	if (record_enable) { \
+		sync_start = sched_clock(); \
+	} \
+} while (0)
+
+#define CACHE_SYNC_END(record_enable, sync_start, sync_end) do { \
+	if (record_enable) { \
+		sync_end = sched_clock(); \
+		run_timeout_count(sync_start, sync_end); \
+	} \
+} while (0)
+
+#define CACHE_SYNC_TRACE_START(record_enable, sync_start) do { \
+	DMABUF_TRACE_LOW_BEGIN("dmabuf_cache_sync"); \
+	CACHE_SYNC_START(record_enable, sync_start); \
+} while (0)
+
+#define CACHE_SYNC_TRACE_END(record_enable, sync_start, sync_end) do { \
+	CACHE_SYNC_END(record_enable, sync_start, sync_end); \
+	DMABUF_TRACE_LOW_END(); \
+} while (0)
+
 static int system_heap_attach(struct dma_buf *dmabuf,
 			      struct dma_buf_attachment *attachment)
 {
@@ -441,6 +486,8 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 	int attr = attachment->dma_map_attrs;
 	struct iova_cache_data *cache_data;
 	u64 tm1, tm2, tm_mid;
+	u64 sync_start, sync_end;
+	bool record_enable;
 	int ret;
 
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(attachment->dev);
@@ -482,8 +529,11 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 
 		a->mapped = true;
 
-		if (!(attr & DMA_ATTR_SKIP_CPU_SYNC))
+		if (!(attr & DMA_ATTR_SKIP_CPU_SYNC)) {
+			CACHE_SYNC_START(record_enable, sync_start);
 			dma_sync_sgtable_for_device(attachment->dev, table, direction);
+			CACHE_SYNC_END(record_enable, sync_start, sync_end);
+		}
 
 		tm2 = sched_clock();
 		if (tm2 - tm1 > RUN_TIMEOUT_TO_LOG)
@@ -495,7 +545,12 @@ static struct sg_table *mtk_mm_heap_map_dma_buf(struct dma_buf_attachment *attac
 	}
 
 	/* first map OR device without iommus attribute */
-	if (iommu_dma_map_sgtable(attachment->dev, table, direction, attr, ssid)) {
+	if (!(attr & DMA_ATTR_SKIP_CPU_SYNC))
+		CACHE_SYNC_START(record_enable, sync_start);
+	ret = iommu_dma_map_sgtable(attachment->dev, table, direction, attr, ssid);
+	if (!(attr & DMA_ATTR_SKIP_CPU_SYNC))
+		CACHE_SYNC_END(record_enable, sync_start, sync_end);
+	if (ret) {
 		pr_info("%s map fail tab:%llu, dom:%d, dev:%s\n",
 			__func__, tab_id, dom_id, dev_name(attachment->dev));
 		mutex_unlock(&buffer->map_lock);
@@ -538,23 +593,35 @@ static struct sg_table *system_heap_map_dma_buf(struct dma_buf_attachment *attac
 	struct dma_heap_attachment *a = attachment->priv;
 	struct sg_table *table = a->table;
 	int attr = attachment->dma_map_attrs;
+	struct system_heap_buffer *buffer = attachment->dmabuf->priv;
+	u64 sync_start, sync_end;
+	bool record_enable;
 	int ret;
 
 	if (a->uncached)
 		attr |= DMA_ATTR_SKIP_CPU_SYNC;
 
+	DMABUF_TRACE_BEGIN("%s(%lu,%u)", __func__, buffer->len, buffer->sg_table.nents);
+	if (!(attr & DMA_ATTR_SKIP_CPU_SYNC))
+		CACHE_SYNC_START(record_enable, sync_start);
 	ret = iommu_dma_map_sgtable(attachment->dev, table, direction, attr, a->ssid);
-	if (ret)
+	if (!(attr & DMA_ATTR_SKIP_CPU_SYNC))
+		CACHE_SYNC_END(record_enable, sync_start, sync_end);
+	if (ret) {
+		DMABUF_TRACE_END();
 		return ERR_PTR(ret);
+	}
 
 	if (a->uncached && needs_swiotlb_bounce(attachment->dev, table)) {
 		pr_err("Cannot map uncached system heap buffer for %s, as it requires SWIOTLB",
 			dev_name(attachment->dev));
 		dma_unmap_sgtable(attachment->dev, table, direction, attr);
+		DMABUF_TRACE_END();
 		return ERR_PTR(-EINVAL);
 	}
 
 	a->mapped = true;
+	DMABUF_TRACE_END();
 	return table;
 }
 
@@ -566,7 +633,11 @@ static void system_heap_unmap_dma_buf(struct dma_buf_attachment *attachment,
 	int attr = attachment->dma_map_attrs;
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(attachment->dev);
 	struct dma_buf *buf = attachment->dmabuf;
+	struct system_heap_buffer *buffer = buf->priv;
+	u64 sync_start, sync_end;
+	bool record_enable;
 
+	DMABUF_TRACE_LOW_BEGIN("%s(%lu,%u)", __func__, buffer->len, buffer->sg_table.nents);
 	if (a->uncached)
 		attr |= DMA_ATTR_SKIP_CPU_SYNC;
 	a->mapped = false;
@@ -577,12 +648,21 @@ static void system_heap_unmap_dma_buf(struct dma_buf_attachment *attachment,
 	 * system heap: unmap it every time
 	 */
 	if (is_mtk_mm_heap_dmabuf(buf) && fwspec) {
-		if (!(attr & DMA_ATTR_SKIP_CPU_SYNC))
+		if (!(attr & DMA_ATTR_SKIP_CPU_SYNC)) {
+			CACHE_SYNC_START(record_enable, sync_start);
 			dma_sync_sgtable_for_cpu(attachment->dev, table, direction);
+			CACHE_SYNC_END(record_enable, sync_start, sync_end);
+		}
+		DMABUF_TRACE_LOW_END();
 		return;
 	}
 
+	if (!(attr & DMA_ATTR_SKIP_CPU_SYNC))
+		CACHE_SYNC_START(record_enable, sync_start);
 	iommu_dma_unmap_sgtable(attachment->dev, table, direction, attr, a->ssid);
+	if (!(attr & DMA_ATTR_SKIP_CPU_SYNC))
+		CACHE_SYNC_END(record_enable, sync_start, sync_end);
+	DMABUF_TRACE_LOW_END();
 }
 
 static int system_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
@@ -591,7 +671,10 @@ static int system_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 	struct system_heap_buffer *buffer = dmabuf->priv;
 	struct dma_heap_attachment *a;
 	bool synced = false;
+	u64 sync_start, sync_end;
+	bool record_enable;
 
+	DMABUF_TRACE_LOW_BEGIN("%s(%lu,%u)", __func__, buffer->len, buffer->sg_table.nents);
 	mutex_lock(&buffer->lock);
 
 	if (buffer->vmap_cnt)
@@ -605,13 +688,16 @@ static int system_heap_dma_buf_begin_cpu_access(struct dma_buf *dmabuf,
 			if (synced && is_cache_sync_dev(a->dev))
 				continue;
 
+			CACHE_SYNC_TRACE_START(record_enable, sync_start);
 			dma_sync_sgtable_for_cpu(a->dev, a->table, direction);
+			CACHE_SYNC_TRACE_END(record_enable, sync_start, sync_end);
 			if (!synced)
 				synced = is_cache_sync_dev(a->dev);
 		}
 	}
 	mutex_unlock(&buffer->lock);
 	dmabuf_log_begin_cpu(dmabuf);
+	DMABUF_TRACE_LOW_END();
 
 	return 0;
 }
@@ -622,7 +708,10 @@ static int system_heap_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
 	struct system_heap_buffer *buffer = dmabuf->priv;
 	struct dma_heap_attachment *a;
 	bool synced = false;
+	u64 sync_start, sync_end;
+	bool record_enable;
 
+	DMABUF_TRACE_LOW_BEGIN("%s(%lu,%u)", __func__, buffer->len, buffer->sg_table.nents);
 	mutex_lock(&buffer->lock);
 
 	if (buffer->vmap_cnt)
@@ -636,13 +725,16 @@ static int system_heap_dma_buf_end_cpu_access(struct dma_buf *dmabuf,
 			if (synced && is_cache_sync_dev(a->dev))
 				continue;
 
+			CACHE_SYNC_TRACE_START(record_enable, sync_start);
 			dma_sync_sgtable_for_device(a->dev, a->table, direction);
+			CACHE_SYNC_TRACE_END(record_enable, sync_start, sync_end);
 			if (!synced)
 				synced = is_cache_sync_dev(a->dev);
 		}
 	}
 	mutex_unlock(&buffer->lock);
 	dmabuf_log_end_cpu(dmabuf);
+	DMABUF_TRACE_LOW_END();
 
 	return 0;
 }
@@ -854,6 +946,8 @@ static void system_heap_buf_free(struct mtk_deferred_freelist_item *item,
 	buffer = container_of(item, struct system_heap_buffer, deferred_free);
 	heap_priv = dma_heap_get_drvdata(buffer->heap);
 	page_pools = heap_priv ? heap_priv->page_pools : NULL;
+	DMABUF_TRACE_LOW_BEGIN("%s(0x%llx,%lu,%u)", __func__, (u64)buffer & 0xFFFFFF,
+			       buffer->len, buffer->sg_table.nents);
 
 	/* Zero the buffer pages before adding back to the pool */
 	if (reason == MTK_DF_NORMAL)
@@ -896,6 +990,7 @@ static void system_heap_buf_free(struct mtk_deferred_freelist_item *item,
 
 	sg_free_table(table);
 	kfree(buffer);
+	DMABUF_TRACE_LOW_END();
 }
 
 static void mtk_mm_heap_dma_buf_release(struct dma_buf *dmabuf)
@@ -910,6 +1005,8 @@ static void mtk_mm_heap_dma_buf_release(struct dma_buf *dmabuf)
 	u32 ssid = SMMU_NO_SSID;
 	int k;
 
+	DMABUF_TRACE_LOW_BEGIN("%s(0x%llx,%lu,%u)", __func__, (u64)buffer & 0xFFFFFF,
+			       buffer->len, buffer->sg_table.nents);
 	/*
 	 * in 32bit project compile the arithmetic division, the "/" will
 	 * cause the __aeabi_uldivmod error.
@@ -951,9 +1048,11 @@ static void mtk_mm_heap_dma_buf_release(struct dma_buf *dmabuf)
 			if (smmu_v3_enable)
 				ssid = smmu_tab_id_to_ssid(cache_data->tab_id);
 
+			DMABUF_TRACE_LOW_BEGIN("iommu_dma_unmap_sgtable");
 			iommu_dma_unmap_sgtable(dev_info.dev, table,
 						dev_info.direction,
 						attrs, ssid);
+			DMABUF_TRACE_LOW_END();
 			cache_data->mapped[k] = false;
 			sg_free_table(table);
 			kfree(table);
@@ -970,6 +1069,7 @@ static void mtk_mm_heap_dma_buf_release(struct dma_buf *dmabuf)
 			__func__, atomic64_read(&dma_heap_normal_total));
 		atomic64_set(&dma_heap_normal_total, 0);
 	}
+	DMABUF_TRACE_LOW_END();
 }
 
 static void system_heap_dma_buf_release(struct dma_buf *dmabuf)
@@ -982,6 +1082,8 @@ static void system_heap_dma_buf_release(struct dma_buf *dmabuf)
 	struct scatterlist *sg;
 	int i, j;
 
+	DMABUF_TRACE_LOW_BEGIN("%s(0x%llx,%lu,%u)", __func__, (u64)buffer & 0xFFFFFF,
+			       buffer->len, buffer->sg_table.nents);
 	dmabuf_release_check(dmabuf);
 
 	heap_priv = dma_heap_get_drvdata(buffer->heap);
@@ -1021,6 +1123,7 @@ static void system_heap_dma_buf_release(struct dma_buf *dmabuf)
 			__func__, atomic64_read(&dma_heap_normal_total));
 		atomic64_set(&dma_heap_normal_total, 0);
 	}
+	DMABUF_TRACE_LOW_END();
 }
 
 static int system_heap_dma_buf_get_flags(struct dma_buf *dmabuf, unsigned long *flags)
@@ -1050,8 +1153,11 @@ static int mtk_mm_heap_dma_buf_begin_cpu_access_partial(struct dma_buf *dmabuf,
 	struct dma_heap_attachment *a;
 	struct sg_table *sgt_tmp;
 	bool synced = false;
+	u64 sync_start, sync_end;
+	bool record_enable;
 	int ret;
 
+	DMABUF_TRACE_LOW_BEGIN("%s(%lu,%u)", __func__, buffer->len, buffer->sg_table.nents);
 	mutex_lock(&buffer->lock);
 
 	ret = dmabuf_check_user_args(offset, len, buffer->len);
@@ -1059,6 +1165,7 @@ static int mtk_mm_heap_dma_buf_begin_cpu_access_partial(struct dma_buf *dmabuf,
 		pr_err("%s: invalid args, off:0x%x, len:0x%x, buf_len:0x%lx\n",
 		       __func__, offset, len, buffer->len);
 		mutex_unlock(&buffer->lock);
+		DMABUF_TRACE_LOW_END();
 		return ret;
 	}
 
@@ -1081,8 +1188,10 @@ static int mtk_mm_heap_dma_buf_begin_cpu_access_partial(struct dma_buf *dmabuf,
 				return -ENOMEM;
 			}
 
+			CACHE_SYNC_TRACE_START(record_enable, sync_start);
 			dma_sync_sg_for_cpu(a->dev, sgt_tmp->sgl,
 					    sgt_tmp->nents, direction);
+			CACHE_SYNC_TRACE_END(record_enable, sync_start, sync_end);
 			if (!synced)
 				synced = is_cache_sync_dev(a->dev);
 
@@ -1093,6 +1202,7 @@ static int mtk_mm_heap_dma_buf_begin_cpu_access_partial(struct dma_buf *dmabuf,
 
 	mutex_unlock(&buffer->lock);
 	dmabuf_log_begin_cpu_partial(dmabuf, len);
+	DMABUF_TRACE_LOW_END();
 
 	return 0;
 }
@@ -1105,8 +1215,11 @@ static int mtk_mm_heap_dma_buf_end_cpu_access_partial(struct dma_buf *dmabuf,
 	struct dma_heap_attachment *a;
 	struct sg_table *sgt_tmp;
 	bool synced = false;
+	u64 sync_start, sync_end;
+	bool record_enable;
 	int ret;
 
+	DMABUF_TRACE_LOW_BEGIN("%s(%lu,%u)", __func__, buffer->len, buffer->sg_table.nents);
 	mutex_lock(&buffer->lock);
 
 	ret = dmabuf_check_user_args(offset, len, buffer->len);
@@ -1114,6 +1227,7 @@ static int mtk_mm_heap_dma_buf_end_cpu_access_partial(struct dma_buf *dmabuf,
 		pr_err("%s: invalid args, off:0x%x, len:0x%x, buf_len:0x%lx\n",
 		       __func__, offset, len, buffer->len);
 		mutex_unlock(&buffer->lock);
+		DMABUF_TRACE_LOW_END();
 		return ret;
 	}
 
@@ -1135,8 +1249,10 @@ static int mtk_mm_heap_dma_buf_end_cpu_access_partial(struct dma_buf *dmabuf,
 				return -ENOMEM;
 			}
 
+			CACHE_SYNC_TRACE_START(record_enable, sync_start);
 			dma_sync_sg_for_device(a->dev, sgt_tmp->sgl,
 					       sgt_tmp->nents, direction);
+			CACHE_SYNC_TRACE_END(record_enable, sync_start, sync_end);
 			if (!synced)
 				synced = is_cache_sync_dev(a->dev);
 
@@ -1147,6 +1263,7 @@ static int mtk_mm_heap_dma_buf_end_cpu_access_partial(struct dma_buf *dmabuf,
 
 	mutex_unlock(&buffer->lock);
 	dmabuf_log_end_cpu_partial(dmabuf, len);
+	DMABUF_TRACE_LOW_END();
 
 	return 0;
 }
@@ -1253,6 +1370,8 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	struct task_struct *task = current->group_leader;
 	struct mtk_dmabuf_page_pool **page_pools;
 	struct mtk_heap_priv_info *heap_priv = dma_heap_get_drvdata(heap);
+	unsigned int orders_num[NUM_ORDERS] = {0};
+	unsigned int j, order;
 	u64 tm1, tm2, tm_mid;
 
 	tm1 = sched_clock();
@@ -1327,6 +1446,13 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	tm_mid = sched_clock();
 	sg = table->sgl;
 	list_for_each_entry_safe(page, tmp_page, &pages, lru) {
+		order = compound_order(page);
+		for (j = 0; j < NUM_ORDERS; j++) {
+			if (order == orders[j]) {
+				orders_num[j]++;
+				break;
+			}
+		}
 		sg_set_page(sg, page, page_size(page), 0);
 		sg = sg_next(sg);
 		list_del(&page->lru);
@@ -1359,7 +1485,10 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	exp_info.size = buffer->len;
 	exp_info.flags = fd_flags;
 	exp_info.priv = buffer;
-	DMABUF_TRACE_BEGIN("dma_buf_export");
+	DMABUF_TRACE_BEGIN("dma_buf_export(0x%llx,size:%lu,nent:%u,order:%u-%u-%u,frag:%u%%)",
+			   (u64)buffer & 0xFFFFFF, buffer->len, buffer->sg_table.nents,
+			   orders_num[0], orders_num[1], orders_num[2],
+			   buffer_calc_frag_ratio(buffer));
 	dmabuf = dma_buf_export(&exp_info);
 	DMABUF_TRACE_END();
 	if (IS_ERR(dmabuf)) {
@@ -1376,9 +1505,16 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 	 * unmap it now so we don't get corruption later on.
 	 */
 	if (buffer->uncached) {
+		u64 sync_start, sync_end;
+		bool record_enable;
+
+		DMABUF_TRACE_BEGIN("dmabuf_cache_sync");
+		CACHE_SYNC_START(record_enable, sync_start);
 		dma_map_sgtable(dma_heap_get_dev(heap), table, DMA_BIDIRECTIONAL, 0);
 		dma_unmap_sgtable(dma_heap_get_dev(heap), table, DMA_BIDIRECTIONAL,
 				  DMA_ATTR_SKIP_CPU_SYNC);
+		CACHE_SYNC_END(record_enable, sync_start, sync_end);
+		DMABUF_TRACE_END();
 	}
 
 	atomic64_add(dmabuf->size, &dma_heap_normal_total);
@@ -1391,7 +1527,7 @@ static struct dma_buf *system_heap_do_allocate(struct dma_heap *heap,
 			buffer->len, buffer->sg_table.nents,
 			dma_heap_get_name(heap), mtk_dmabuf_page_pool_size(heap)>>10);
 
-	DMABUF_TRACE_END("%s(nents:%d)", __func__, i);
+	DMABUF_TRACE_END();
 	return dmabuf;
 
 free_pages:
@@ -1449,7 +1585,7 @@ static long mtk_get_pool_size(struct dma_heap *heap)
 	struct mtk_heap_priv_info *heap_priv;
 
 	heap_priv = heap ? dma_heap_get_drvdata(heap) : NULL;
-	if (heap_priv && !heap_priv->uncached)
+	if (heap_priv && !heap_priv->uncached && !heap_priv->coherent)
 		return mtk_dmabuf_page_pool_size(heap);
 
 	return 0;

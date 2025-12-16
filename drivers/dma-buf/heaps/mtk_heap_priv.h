@@ -173,6 +173,10 @@ void dmabuf_log_end_cpu(struct dma_buf *dmabuf);
 void dmabuf_log_begin_cpu_partial(struct dma_buf *dmabuf, u32 sync_size);
 void dmabuf_log_end_cpu_partial(struct dma_buf *dmabuf, u32 sync_size);
 
+bool mtk_dmabuf_sync_timeout_record_enable(void);
+u64 mtk_dmabuf_get_sync_timeout_cnt(void);
+void mtk_dmabuf_inc_sync_timeout_cnt(void);
+
 u32 dmabuf_trace_level(void);
 int dmabuf_trace_mark_write(char *fmt, ...);
 
@@ -210,6 +214,7 @@ static void __maybe_unused dmabuf_release_check(const struct dma_buf *dmabuf)
 	const char *device_name = NULL;
 	int attach_cnt = 0;
 	struct dma_buf_attachment *attach_obj;
+	bool is_empty;
 
 	if (!dma_resv_trylock(dmabuf->resv)) {
 		/* get lock fail, maybe is using, skip check */
@@ -217,12 +222,19 @@ static void __maybe_unused dmabuf_release_check(const struct dma_buf *dmabuf)
 	}
 
 	/* Don't dump inode number here, it will cause KASAN issue !! */
-	if (WARN(!list_empty(&dmabuf->attachments),
-		 "%s: size:%zu dbg_name:%s exp:%s, %s\n", __func__,
-		 dmabuf->size,
-		 dmabuf->name,
-		 dmabuf->exp_name,
-		 "Release dmabuf before detach all attachments, dump attach below:")) {
+	is_empty = list_empty(&dmabuf->attachments);
+	if (!is_empty) {
+		char dmabuf_name[DMA_BUF_NAME_LEN] = {0};
+
+		spin_lock((spinlock_t *)&dmabuf->name_lock);
+		if (snprintf(dmabuf_name, DMA_BUF_NAME_LEN, "%s",
+			     dmabuf->name?:"NULL") >= DMA_BUF_NAME_LEN)
+			dmabuf_name[DMA_BUF_NAME_LEN - 1] = '\0';
+		spin_unlock((spinlock_t *)&dmabuf->name_lock);
+
+		WARN(!is_empty, "%s: size:%zu dbg_name:%s exp:%s, %s\n", __func__,
+		     dmabuf->size, dmabuf_name, dmabuf->exp_name,
+		     "Release dmabuf before detach all attachments, dump attach below:");
 
 		/* dump all attachment info */
 		list_for_each_entry(attach_obj, &dmabuf->attachments, node) {
