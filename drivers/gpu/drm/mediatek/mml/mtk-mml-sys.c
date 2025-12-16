@@ -3591,7 +3591,6 @@ static const struct mml_data mt6993_mmlt_data = {
 	.reg = sys_mt6993,
 	.sof_grp_bit = 12,
 	.cb_sof_grp_bit = 28,
-	.dvfs_ver = mml_dvfs_cache_sz_wxh,
 };
 
 static const struct mml_data mt6993_mmlf_data = {
@@ -3622,7 +3621,6 @@ static const struct mml_data mt6993_mmlf_data = {
 	.reg = sys_mt6993,
 	.sof_grp_bit = 12,
 	.cb_sof_grp_bit = 28,
-	.dvfs_ver = mml_dvfs_cache_sz_wxh,
 };
 
 static const struct mml_data mt6993_mmld_data = {
@@ -3655,7 +3653,6 @@ static const struct mml_data mt6993_mmld_data = {
 	.cb_sof_grp_bit = 28,
 	.irq = true,
 	.wla20 = true,
-	.dvfs_ver = mml_dvfs_cache_sz_wxh,
 };
 
 const struct of_device_id mtk_mml_of_ids[] = {
