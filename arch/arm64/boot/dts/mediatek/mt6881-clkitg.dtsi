@@ -107,20 +107,6 @@
 			<&mdpsys_config_clk CLK_MDP_FIMG_IMG_DL_ASYNC1_MML>;
 	};
 
-	bring-up-disp-pwm-0@16 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x16>;
-		clocks =
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DISP_PWM0_DISP_PWM_0>;
-	};
-
-	bring-up-disp-pwm-1@17 {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0x17>;
-		clocks =
-			<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DISP_PWM1_DISP_PWM_1>;
-	};
-
 	bring-up-pd-vde0@1e {
 		compatible = "mediatek,scpsys-bring-up";
 		reg = <0x1e>;
