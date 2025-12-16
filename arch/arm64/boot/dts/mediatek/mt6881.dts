@@ -4383,13 +4383,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"cam_main_seninf_camtm_con",
 				"cam_main_camsv_a_con";
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
-#if 0
-		iommus =
-				<M4U_L13_P3_CAMSV_TOP_CQI_A>,
-				<M4U_L13_P0_CAMSV_TOP_A0>,
-				<M4U_L14_P1_CAMSV_TOP_A1>,
-				<M4U_L13_P4_CAMSV_TOP_A0_STG>,
-				<M4U_L14_P4_CAMSV_TOP_A1_STG>;
+		iommus-ports =
+				<&disp_iommu M4U_L13_P3_CAMSV_TOP_CQI_A>,
+				<&disp_iommu M4U_L13_P0_CAMSV_TOP_A0>,
+				<&disp_iommu M4U_L14_P1_CAMSV_TOP_A1>,
+				<&disp_iommu M4U_L13_P4_CAMSV_TOP_A0_STG>,
+				<&disp_iommu M4U_L14_P4_CAMSV_TOP_A1_STG>;
 		mmqos-supply = <&mmqos>;
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_L13_P3_CAMSV_TOP_CQI_A)
@@ -4408,7 +4407,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"l13_stg0_a",
 			"l14_imgo1_a",
 			"l14_stg1_a";
-#endif
 	};
 
 	camsv2@3a610000 {
@@ -4444,21 +4442,20 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"cam_main_seninf_camtm_con",
 				"cam_main_camsv_b_con";
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
-#if 0
-		iommus =
-				<M4U_L14_P2_CAMSV_TOP_CQI_B>,
-				<M4U_L14_P0_CAMSV_TOP_B0>,
-				<M4U_L13_P1_CAMSV_TOP_B1>,
-				<M4U_L14_P3_CAMSV_TOP_B0_STG>,
-				<M4U_L13_P5_CAMSV_TOP_B1_STG>;
+		iommus-ports =
+				<&disp_iommu M4U_L14_P2_CAMSV_TOP_CQI_B>,
+				<&disp_iommu M4U_L14_P0_CAMSV_TOP_B0>,
+				<&disp_iommu M4U_L13_P1_CAMSV_TOP_B1>,
+				<&disp_iommu M4U_L14_P3_CAMSV_TOP_B0_STG>,
+				<&disp_iommu M4U_L13_P5_CAMSV_TOP_B1_STG>;
 		mmqos-supply = <&mmqos>;
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_L14_P2_CAMSV_TOP_CQI_B)
-				&mmqos SLAVE_COMMON(1)>,
+				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L14_P0_CAMSV_TOP_B0)
-				&mmqos SLAVE_COMMON(1)>,
+				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L14_P3_CAMSV_TOP_B0_STG)
-				&mmqos SLAVE_COMMON(1)>,
+				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L13_P1_CAMSV_TOP_B1)
 				&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L13_P5_CAMSV_TOP_B1_STG)
@@ -4469,7 +4466,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"l14_stg0_b",
 			"l13_imgo1_b",
 			"l13_stg1_b";
-#endif
 	};
 
 	camsv3@3a620000 {
@@ -4502,11 +4498,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"cam_main_seninf_camtm_con",
 				"cam_main_camsv_c_con";
 		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
-#if 0
-		iommus =
-				<M4U_L25_P1_CAMSV_TOP_CQI_C>,
-				<M4U_L25_P0_CAMSV_TOP_C0>,
-				<M4U_L25_P2_CAMSV_TOP_C0_STG>;
+		iommus-ports =
+				<&disp_iommu M4U_L25_P1_CAMSV_TOP_CQI_C>,
+				<&disp_iommu M4U_L25_P0_CAMSV_TOP_C0>,
+				<&disp_iommu M4U_L25_P2_CAMSV_TOP_C0_STG>;
 		mmqos-supply = <&mmqos>;
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_L25_P1_CAMSV_TOP_CQI_C)
@@ -4519,7 +4514,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"l25_cqi_c",
 			"l25_imgo0_c",
 			"l25_stg0_c";
-#endif
 	};
 
 	pda: pda@1a660000 {
