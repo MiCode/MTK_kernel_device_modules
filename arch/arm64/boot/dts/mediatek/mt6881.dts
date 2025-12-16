@@ -12991,7 +12991,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			      &mt6368_vusb
 			      &mt6368_vaux18
 			      &mt6368_vrf13_aif
-			      &mt6368_vrf18_aif
 			      &mt6368_vant18
 			      &mt6368_vio28
 			      &mt6368_vfp
@@ -14237,6 +14236,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 /delete-node/ &mt6363_vbuck1_sshub;
 /delete-node/ &mt6363_vbuck2_sshub;
 /delete-node/ &mt6363_vbuck4_sshub;
+/delete-node/ &mt6368_vrf18_aif;
 /delete-node/ &mt6368_vmch;
 /delete-node/ &mt6368_vmch_eint_low;
 
