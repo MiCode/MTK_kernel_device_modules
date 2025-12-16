@@ -2606,12 +2606,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<&gce_m_2 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 			<&gce_m_2 28 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
 			/* qos thread */
-			<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
-#if 0
+			<&gce_m 27 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>,
+
 			/* secure thread */
 			<&gce_m_sec 10 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
 			/* sec mae */
-			<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>,
+			<&gce_m_sec 11 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
+#if 0
 			/* slc */
 			<&gce_m_sec 8 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_2>;
 #endif
@@ -3908,13 +3909,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"TRAW_DIP1_LARB40",
 			"TRAW_DIP1_TRAW",
 			"TRAW_CAP_DIP1_TRAW_CAP",
-			"mmdvfs_mux";
+			"mmdvfs_clk";
 #if 0
-		operating-points-v2 = <&opp_table_img>;
-		mediatek,imgsys-dvfs-pix-mode = <4>;
-		imgsys-supply = <&gce_m_sec>;
 		mediatek,imgsys-qof-ver = <31>;
 #endif
+		operating-points-v2 = <&opp_table_img>;
+		mediatek,imgsys-dvfs-pix-mode = <1>;
+		imgsys-supply = <&gce_m_sec>;
 	};
 
 	remoteproc_ccd: remoteproc-ccd {
