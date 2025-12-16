@@ -870,6 +870,8 @@ static int __init transceiver_init(void)
 	phys_addr_t tx_addr, rx_addr;
 	uint32_t tx_size, rx_size;
 
+	pr_info("%s\n", __func__);
+
 	mutex_init(&dev->enable_lock);
 	mutex_init(&dev->flush_lock);
 	mutex_init(&dev->config_lock);
@@ -1043,6 +1045,8 @@ out_device:
 static void __exit transceiver_exit(void)
 {
 	struct transceiver_device *dev = &transceiver_dev;
+
+	pr_info("%s\n", __func__);
 
 	share_mem_config_handler_unregister(SHARE_MEM_SUPER_DATA_PAYLOAD_TYPE);
 	share_mem_config_handler_unregister(SHARE_MEM_DATA_PAYLOAD_TYPE);

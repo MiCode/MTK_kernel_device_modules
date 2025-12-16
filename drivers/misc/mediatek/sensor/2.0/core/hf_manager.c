@@ -2317,6 +2317,8 @@ static int __init hf_manager_init(void)
 	struct device *dev;
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO / 2 };
 
+	pr_info("%s\n", __func__);
+
 	init_hf_core(&hfcore);
 
 	hf_manager_major = register_chrdev(0, "hf_manager", &hf_manager_fops);
@@ -2367,6 +2369,7 @@ err_exit:
 
 static void __exit hf_manager_exit(void)
 {
+	pr_info("%s\n", __func__);
 	kthread_destroy_worker(hfcore.kworker);
 	device_destroy(hf_manager_class, MKDEV(hf_manager_major, 0));
 	class_destroy(hf_manager_class);
