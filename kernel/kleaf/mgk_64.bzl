@@ -1665,6 +1665,7 @@ mgk_64_kleaf_platform_modules = {
     "//vendor/mediatek/kernel_modules/mtkcam/imgsensor/src-v4l2:imgsensor":"mt6983 mt6879 mt6985 mt6886 mt6895 mt6897 mt6989 mt6878",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_mt6991":"mt6991",
     "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_mt6993":"mt6993",
+    "//vendor/mediatek/kernel_modules/mtkcam/mtk-pda:pda_drv_mt6881":"mt6881",
 
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s":"mt6993",
     "//vendor/mediatek/kernel_modules/mtkcam/imgsys/imgsys/isp8s:imgsys_8s_mt6881":"mt6881",
