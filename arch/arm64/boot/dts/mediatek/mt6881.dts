@@ -12799,14 +12799,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO105__FUNC_GPIO105>;
 			input-enable;
-			bias-pull-down;
+			bias-pull-down = <MTK_PUPD_SET_R1R0_10>;
 		};
 	};
 	connsys_pin_pmic_faultb_enable: connsys-pin-pmic-faultb-enable {
 		pins-cmd-dat {
 			pinmux = <PINMUX_GPIO105__FUNC_GPIO105>;
 			input-enable;
-			bias-pull-up;
+			bias-pull-up = <MTK_PUPD_SET_R1R0_10>;
 		};
 	};
 	connsys_combo_gpio_init: connsys-combo-gpio-init {
