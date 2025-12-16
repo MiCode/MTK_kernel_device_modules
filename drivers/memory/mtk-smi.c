@@ -294,6 +294,87 @@ enum smi_log_level {
 	log_disable_ultra,
 };
 
+#if IS_ENABLED(CONFIG_HYPER_SOS)
+static struct platform_device *p_larb_dev[MTK_LARB_NR_MAX];
+static struct platform_device *p_common_dev[MTK_COMMON_NR_MAX];
+
+struct platform_device *mtk_smi_virt_get_smi_dev(bool is_larb, u32 id)
+{
+	struct platform_device *pdev;
+
+	if (is_larb && id < MTK_LARB_NR_MAX)
+		pdev = p_larb_dev[id];
+	else if (!is_larb && id < MTK_COMMON_NR_MAX)
+		pdev = p_common_dev[id];
+	else {
+		pr_notice("%s %s id:%d overflow\n", __func__,
+			   is_larb? "larb" : "common", id);
+		return ERR_PTR(-EINVAL);
+	}
+
+	if (!pdev) {
+		pr_notice("%s %s%d get failed\n", __func__,
+			   is_larb? "larb" : "common", id);
+		return ERR_PTR(-ENODEV);
+	}
+
+	return pdev;
+}
+EXPORT_SYMBOL_GPL(mtk_smi_virt_get_smi_dev);
+#endif
+
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+#include <uapi/linux/virtio_smi.h>
+
+static int __maybe_unused mtk_smi_common_resume_virt(struct device *dev)
+{
+	struct mtk_smi *common = dev_get_drvdata(dev);
+	int ret;
+
+	ret = vsmi_common_power_on(common->commid);
+	if (ret)
+		dev_notice(dev, "%s vsmi_common_power_on fail, ret=%d\n",
+				__func__, ret);
+	return ret;
+}
+
+static int __maybe_unused mtk_smi_common_suspend_virt(struct device *dev)
+{
+	struct mtk_smi *common = dev_get_drvdata(dev);
+	int ret;
+
+	ret = vsmi_common_power_off(common->commid);
+	if (ret)
+		dev_notice(dev, "%s vsmi_common_power_off fail, ret=%d\n",
+				__func__, ret);
+	return ret;
+}
+
+static int __maybe_unused mtk_smi_larb_resume_virt(struct device *dev)
+{
+	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
+	int ret;
+
+	ret = vsmi_larb_power_on(larb->larbid);
+	if (ret)
+		dev_notice(dev, "%s vsmi_larb_power_on fail, ret=%d\n",
+				__func__, ret);
+	return ret;
+}
+
+static int __maybe_unused mtk_smi_larb_suspend_virt(struct device *dev)
+{
+	struct mtk_smi_larb *larb = dev_get_drvdata(dev);
+	int ret;
+
+	ret = vsmi_larb_power_off(larb->larbid);
+	if (ret)
+		dev_notice(dev, "%s vsmi_larb_power_off fail, ret=%d\n",
+				__func__, ret);
+	return ret;
+}
+#endif
+
 static u32 enable_perm_aee = 1;
 static u32 smi_ut_result;
 
@@ -4594,6 +4675,11 @@ static int mtk_smi_larb_probe(struct platform_device *pdev)
 		dev_notice(dev, "skip rpm callback\n");
 	}
 
+#if IS_ENABLED(CONFIG_HYPER_SOS)
+	if (larb->larbid < MTK_LARB_NR_MAX)
+		p_larb_dev[larb->larbid] = pdev;
+#endif
+
 	if (of_property_read_bool(dev->of_node, "init-power-on") &&
 						(larb->smi.ctrl_type == PM_CTRL)) {
 		dev_notice(dev, "%s: init power on\n", __func__);
@@ -4966,7 +5052,11 @@ static int __maybe_unused mtk_smi_larb_suspend_pm_ops(struct device *dev)
 }
 
 static const struct dev_pm_ops smi_larb_pm_ops = {
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	SET_RUNTIME_PM_OPS(mtk_smi_larb_resume_virt, mtk_smi_larb_suspend_virt, NULL)
+#else
 	SET_RUNTIME_PM_OPS(mtk_smi_larb_suspend_pm_ops, mtk_smi_larb_resume_pm_ops, NULL)
+#endif
 };
 
 static struct platform_driver mtk_smi_larb_driver = {
@@ -6517,6 +6607,11 @@ static int mtk_smi_common_probe(struct platform_device *pdev)
 	if (of_property_read_bool(dev->of_node, "skip-rpm-cb"))
 		common->skip_rpm_cb = true;
 
+#if IS_ENABLED(CONFIG_HYPER_SOS)
+	if (common->commid < MTK_COMMON_NR_MAX)
+		p_common_dev[common->commid] = pdev;
+#endif
+
 	if (of_property_read_bool(dev->of_node, "init-power-on") &&
 						(common->ctrl_type == PM_CTRL)) {
 		dev_notice(dev, "%s: init power on\n", __func__);
@@ -6690,7 +6785,11 @@ static int __maybe_unused mtk_smi_common_suspend_pm_ops(struct device *dev)
 }
 
 static const struct dev_pm_ops smi_common_pm_ops = {
+#if IS_ENABLED(CONFIG_HYPER_VM_UOS)
+	SET_RUNTIME_PM_OPS(mtk_smi_common_suspend_virt, mtk_smi_common_resume_virt, NULL)
+#else
 	SET_RUNTIME_PM_OPS(mtk_smi_common_suspend_pm_ops, mtk_smi_common_resume_pm_ops, NULL)
+#endif
 };
 
 static inline struct mtk_smi *get_smi_from_dev(struct device *dev)
