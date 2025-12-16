@@ -87,7 +87,7 @@ struct mutex swpm_get_sram_data_mutex = __MUTEX_INITIALIZER(swpm_get_sram_data_m
 struct mutex swpm_pmsr_access_rights_mutex = __MUTEX_INITIALIZER(swpm_pmsr_access_rights_mutex);
 
 static char xpu_ip_str[NR_XPU_IP][MAX_IP_NAME_LENGTH] = {
-	"DISP", "VENC", "VDEC", "SCP",
+	"DISP", "VENC", "VDEC", "SCP", "MCU",
 };
 /* ddr bw ip (total r/total w/cpu/gpu/mm/md) */
 static char ddr_bc_ip_str[NR_DDR_BC_IP][MAX_IP_NAME_LENGTH] = {
@@ -331,12 +331,19 @@ static int swpm_get_data_from_sram(void)
 
 static int swpm_periodic_update_data(void *arg)
 {
-	while(1) {
+	while(!kthread_should_stop()) {
 		swpm_get_data_from_sram();
 		usleep_range_state(DEFAULT_UPDATE_US, DEFAULT_UPDATE_US + 100, TASK_INTERRUPTIBLE);
 	}
 
 	return 0;
+}
+
+static void swpm_stop_thread(struct task_struct *thread)
+{
+	if (thread) {
+		kthread_stop(thread);
+	}
 }
 
 static void swpm_sp_routine(void)
@@ -818,4 +825,5 @@ void swpm_v6881_ext_init(void)
 
 void swpm_v6881_ext_exit(void)
 {
+	swpm_stop_thread(swpm_psp_update_thread);
 }

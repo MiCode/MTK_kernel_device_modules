@@ -21,6 +21,7 @@ enum xpu_ip_state {
 	XPU_IP_VENC,
 	XPU_IP_VDEC,
 	XPU_IP_SCP,
+	XPU_IP_MCU,
 
 	NR_XPU_IP,
 };
