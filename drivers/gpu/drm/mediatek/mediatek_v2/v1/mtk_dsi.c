@@ -3181,15 +3181,14 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 		}
 
 		if (mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base)) {
-			if (dsi->driver_data->need_legacy_ratio &&
-				priv->data->mmsys_id != MMSYS_MT6858)
-				output_valid_us = ultra_lo_non_legacy_ratio + 5;
-			else
-				output_valid_us = ultra_lo_fifo_us + 5;
+			output_valid_us = ultra_lo_fifo_us + 5;
 			output_valid_us = dbg_output_valid ? dbg_output_valid : output_valid_us;
 			output_valid = DIV_ROUND_UP(output_valid_us * consume_rate, 1000);
 			output_valid = output_valid < (u32)buf_con ? output_valid : (u32)buf_con;
 		}
+		DDPINFO(
+			"%s,output_valid_us:%d,output_valid:%d,consume_rate:%d,buf_con:%d\n",
+			__func__, output_valid_us,output_valid,consume_rate,buf_con);
 	} else {
 		urgent_lo_fifo_us = dsi->driver_data->urgent_lo_fifo_us ?
 					dsi->driver_data->urgent_lo_fifo_us : 11;

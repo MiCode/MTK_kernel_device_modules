@@ -36,7 +36,7 @@
 #include <linux/atomic.h>
 
 #define DATA_RATE0		550
-#define DATA_RATE1		1000
+#define DATA_RATE1		1100
 #define DATA_RATE2		720
 
 #define MODE2_FPS		90
@@ -64,7 +64,21 @@
 #define MODE0_VBP		10
 
 #define FRAME_WIDTH		(1220)
+#define FRAME_HTOTAL         (FRAME_WIDTH + MODE1_HFP + MODE0_HSA + MODE0_HBP)
+#define FRAME_60_HTOTAL      (FRAME_WIDTH + MODE0_HFP + MODE0_HSA + MODE0_HBP)
 #define	FRAME_HEIGHT		(2712)
+#define FRAME_VTOTAL         (FRAME_HEIGHT + MODE0_VFP + MODE0_VSA + MODE0_VBP)
+#define FRAME_FRAME_TOTAL    (FRAME_HTOTAL * FRAME_VTOTAL)
+#define FRAME_FRAME_60_TOTAL (FRAME_60_HTOTAL * FRAME_VTOTAL)
+#define FRAME_CLK_60_X10     ((FRAME_FRAME_60_TOTAL * MODE0_FPS) / 100)
+#define FRAME_CLK_90_X10     ((FRAME_FRAME_TOTAL * MODE2_FPS) / 100)
+#define FRAME_CLK_120_X10     ((FRAME_FRAME_TOTAL * MODE1_FPS) / 100)
+#define FRAME_CLK_60		(((FRAME_CLK_60_X10 % 10) != 0) ?              \
+			(FRAME_CLK_60_X10 / 10 + 1) : (FRAME_CLK_60_X10 / 10))
+#define FRAME_CLK_90		(((FRAME_CLK_90_X10 % 10) != 0) ?              \
+			(FRAME_CLK_90_X10 / 10 + 1) : (FRAME_CLK_90_X10 / 10))
+#define FRAME_CLK_120		(((FRAME_CLK_120_X10 % 10) != 0) ?              \
+			(FRAME_CLK_120_X10 / 10 + 1) : (FRAME_CLK_120_X10 / 10))
 
 #define FHD_FRAME_WIDTH    (1080)
 #define FHD_HFP            (160)
@@ -674,7 +688,7 @@ static int lcm_enable(struct drm_panel *panel)
 }
 
 static const struct drm_display_mode default_mode = {
-	.clock = 273139,
+	.clock = FRAME_CLK_60,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + MODE0_HFP,
 	.hsync_end = FRAME_WIDTH + MODE0_HFP + MODE0_HSA,
@@ -686,7 +700,7 @@ static const struct drm_display_mode default_mode = {
 };
 
 static const struct drm_display_mode middle_mode = {
-	.clock = 347526,
+	.clock = FRAME_CLK_90,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + MODE2_HFP,
 	.hsync_end = FRAME_WIDTH + MODE2_HFP + MODE2_HSA,
@@ -698,7 +712,7 @@ static const struct drm_display_mode middle_mode = {
 };
 
 static const struct drm_display_mode performence_mode = {
-	.clock = 463368,
+	.clock = FRAME_CLK_120,
 	.hdisplay = FRAME_WIDTH,
 	.hsync_start = FRAME_WIDTH + MODE1_HFP,
 	.hsync_end = FRAME_WIDTH + MODE1_HFP + MODE1_HSA,
