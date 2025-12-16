@@ -13550,6 +13550,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				regulator-max-microvolt = <1850000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
 			};
 		};
 	};
