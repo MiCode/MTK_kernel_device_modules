@@ -51,6 +51,12 @@
 
 #include "mtk_iommu.h"
 
+#if IS_ENABLED(CONFIG_HYPER_SOS)
+#define CONFIG_VHOST_IOMMU
+#define TAB_MAX 2
+static struct iommu_group *vgroup[TAB_MAX];
+#endif
+
 #define REG_MMU_PT_BASE_ADDR			0x000
 
 #define REG_MMU_STA				0x008
@@ -539,7 +545,8 @@ static const struct mtk_iommu_iova_region mt6879_multi_dom_apu[] = {
 static const struct mtk_iommu_iova_region mt6881_multi_dom_mm[] = {
 #if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 	{ .iova_base = SZ_4K, .size = (SZ_4G * 4 - SZ_4K), .type = NORMAL},	/* 0.NORMAL */
-	{ .iova_base = SZ_4K, .size = (SZ_4G - SZ_4K - SZ_64M), .type = NORMAL},/* 1.CAM/IMG: 4G */
+	 /* for auto, SZ_4K ~ SZ_4G is reserved in yocto side for UOS(AAOS) */
+	{ .iova_base = SZ_4K, .size = (SZ_4G - SZ_4K), .type = NORMAL},/* 1.CAM/IMG: 4G */
 	{ .iova_base = 0x106000000ULL, .size = SZ_32M, .type = NORMAL},		/* 1.LK_RESV:32MB */
 	{ .iova_base = 0x110000000ULL, .size = SZ_128M * 6, .type = PROTECTED}, /* 4,VDO_UP_768MB */
 	{ .iova_base = 0x140000000ULL, .size = 0x60000000, .type = NORMAL}, /* 5,VDO_UP_1.5G */
@@ -843,6 +850,17 @@ static const struct mtk_iommu_iova_region mt8192_multi_dom[] = {
 
 static phys_addr_t mtk_iommu_iova_to_phys(struct iommu_domain *domain,
 					  dma_addr_t iova);
+
+#ifdef CONFIG_VHOST_IOMMU
+struct iommu_group *mtk_iommu_viommu_get_vgroup(unsigned int tabid)
+{
+	if (tabid >= TAB_MAX)
+		return NULL;
+
+	return vgroup[tabid];
+}
+EXPORT_SYMBOL_GPL(mtk_iommu_viommu_get_vgroup);
+#endif
 
 #if IS_ENABLED(CONFIG_ARCH_DMA_ADDR_T_64BIT)
 uint64_t mtee_iova_to_phys(unsigned long iova, u32 tab_id, u32 *sr_info,
@@ -2252,6 +2270,10 @@ static struct iommu_group *mtk_iommu_device_group(struct device *dev)
 	struct list_head *hw_list;
 	struct iommu_group *group;
 	int domid;
+#ifdef CONFIG_VHOST_IOMMU
+	unsigned int tabid;
+	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
+#endif
 
 	c_data = dev_iommu_priv_get(dev);
 	if (!c_data) {
@@ -2281,10 +2303,19 @@ static struct iommu_group *mtk_iommu_device_group(struct device *dev)
 			data->plat_data->iommu_type, data->plat_data->iommu_id,
 			dev_name(dev), domid);
 		group = iommu_group_alloc();
-		if (!IS_ERR(group))
+		if (!IS_ERR(group)) {
 			data->m4u_group[domid] = group;
-		else
+		#ifdef CONFIG_VHOST_IOMMU
+			if (fwspec) {
+				tabid = MTK_M4U_TO_TAB(fwspec->ids[0]);
+				vgroup[tabid] = group;
+			} else {
+				dev_err(dev, "fwspec is null\n");
+			}
+		#endif
+		} else {
 			dev_err(dev, "Failed to allocate M4U IOMMU group\n");
+		}
 	} else {
 		iommu_group_ref_get(group);
 	}
