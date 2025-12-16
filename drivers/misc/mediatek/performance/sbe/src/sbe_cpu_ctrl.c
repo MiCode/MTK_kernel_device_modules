@@ -317,6 +317,12 @@ void sbe_set_dptv2_policy(struct sbe_render_info *thr, int start)
 	}
 }
 
+void sbe_force_reset_dptv2_policy(void)
+{
+	set_flt_coef_margin_ctrl(0);
+	sbe_systrace_c(10000, 6666, 0, "[ux]dpt_policy_force_reset");
+}
+
 int sbe_set_sbb(int pid, int set, int active_ratio)
 {
 	if (set)
@@ -978,6 +984,7 @@ EXIT:
 void sbe_do_frame_err(struct sbe_render_info *thr, int frame_count,
 		unsigned long long frameID, unsigned long long ts)
 {
+
 	if (!thr)
 		return;
 

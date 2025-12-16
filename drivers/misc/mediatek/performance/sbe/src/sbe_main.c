@@ -81,6 +81,7 @@ static void sbe_do_recycle(struct work_struct *work)
 	non_empty += !!sbe_check_render_info_status();
 	non_empty += !!sbe_check_spid_loading_status();
 	sbe_forece_reset_fpsgo_critical_tasks();
+	sbe_force_reset_dptv2_policy();
 	sbe_put_tree_lock(__func__);
 
 	mutex_lock(&sbe_recycle_lock);
@@ -985,6 +986,8 @@ static int sbe_do_clear_scrolling_info(int tgid, char *name, unsigned long long 
 	unsigned int display_rate = 0;
 	struct scroll_policy_details_info scroll_policy_info = {0};
 
+	sbe_force_reset_dptv2_policy();
+
 	if (!name || tgid < 0 ) {
 		ret = SBE_INPUT_ERROR;
 		return ret;
@@ -1047,6 +1050,8 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 	struct xgf_policy_cmd xgf_attr_iter;
 	struct fpsgo_boost_attr attr_iter;
 	struct scroll_policy_details_info scroll_policy_info = {0};
+
+	sbe_force_reset_dptv2_policy();
 
 	if (num < 0 || num >= FPSGO_MAX_RENDER_INFO_SIZE
 		|| specific_name == NULL || tgid <= 0 || name == NULL) {
@@ -1302,6 +1307,7 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 	if (!start) {
 		sbe_get_tree_lock(__func__);
 		sbe_forece_reset_fpsgo_critical_tasks();
+		sbe_force_reset_dptv2_policy();
 		sbe_put_tree_lock(__func__);
 	}
 

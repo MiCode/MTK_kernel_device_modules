@@ -73,6 +73,7 @@ void  __sbe_set_per_task_cap(struct sbe_render_info *thr, int min_cap, int max_c
 int get_sbe_critical_basic_cap(void);
 void sbe_core_ctl_ignore_vip_task(struct sbe_render_info *thr, int ignore_enable);
 int get_sbe_sbe_without_dptv2_enable(void);
+void sbe_force_reset_dptv2_policy(void);
 
 struct ux_frame_info {
 	unsigned long long frameID;
