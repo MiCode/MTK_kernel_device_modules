@@ -15951,6 +15951,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 					<SMMU_L26_P10_PDA_1_WDMA>;
 			mediatek,cam-bwr = <&cam_bwr>;
 			mmqos-supply = <&mmqos>;
+			ccf-apply;
 			interconnects =
 				<&mmqos MASTER_LARB_PORT(SMMU_L26_P4_PDA_1_RDMA0)
 						&mmqos SLAVE_COMMON(1)>,
