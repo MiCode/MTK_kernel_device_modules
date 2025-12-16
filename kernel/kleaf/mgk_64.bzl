@@ -1763,6 +1763,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/vdec_fmt:vdec-fmt".format(kernel_version): "mt6789 mt6855 mt6895",
 
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6878".format(kernel_version): "mt6878",
+    "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6881".format(kernel_version): "mt6881",
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6895".format(kernel_version): "mt6895",
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml-mt6993".format(kernel_version): "mt6993",
