@@ -33,10 +33,7 @@
 		compatible = "mediatek,clk-bring-up";
 		reg = <0x4>;
 		clocks =
-			<&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>,
-			<&camsys_mraw_clk CLK_CAM_MR_LARB13_SMI>,
-			<&camsys_mraw_clk CLK_CAM_MR_LARB14_SMI>,
-			<&camsys_mraw_clk CLK_CAM_MR_LARB25_SMI>,
+			<&venc_gcon_clk CLK_VEN1_CKE0_LARB_SMI>;
 	};
 
 	bring-up-vdec@a {
@@ -55,27 +52,6 @@
 			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_CLDMA_BCLK_DPMAIF>,
 			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_DPMAIF_MAIN_DPMAIF>,
 			<&infra_infracfg_ao_reg_clk CLK_INFRA_AO_REG_RG_MMW_DPMAIF26M_CK_DPMAIF>;
-	};
-
-	bring-up-camsv@e {
-		compatible = "mediatek,clk-bring-up";
-		reg = <0xe>;
-		clocks =
-			<&camsys_mraw_clk CLK_CAM_MR_LARB13_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_LARB14_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_LARB19_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_LARB25_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_LARB26_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_LARB29_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_SENINF_CAMTM_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_CAMSV_TOP_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_CAMSV_A_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_CAMSV_B_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_CAMSV_C_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_CAMSV_D_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_CAMSV_E_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_CAMSV_CAMSV>,
-			<&camsys_mraw_clk CLK_CAM_MR_FAKE_ENG_CAMSV>;
 	};
 
 	bring-up-ccci@f {
