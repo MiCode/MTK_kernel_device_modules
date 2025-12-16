@@ -46,6 +46,7 @@
 #define SPI_DEBUG1_REG                    0x0050
 #define SPI_SLICE_EN_REG                  0x005c
 #define SPI_CFG5_REG                      0x0068
+#define SPI_FIFO_WAIT_THR                 0x0090
 
 #define PERI_SPI_RST                      0x0000
 #define PERI_SPI_RST_SET                  0x0004
@@ -130,6 +131,7 @@
 #define MTK_SPI_SLICE_EN_MAX_TICK_DLY   128
 #define MTK_SPI_PAD_SEL                 0
 #define MTK_SPI_MAX_RESET_BIT           31
+#define MTK_SPI_MAX_FIFO_CNT            31
 
 
 #define MTK_SPI_PAUSE_INT_STATUS 0x2
@@ -185,6 +187,13 @@ struct mtk_spi_compatible {
 	bool infra_req;
 	/* after a timeout occurs, a global reset is required*/
 	bool hw_reset;
+	/* SPI increases slices to improve IP timing. However, due to
+	 * changes in sampling time, there is a risk of FIFO data corruption
+	 * when the DMA engine operates at low bandwidth. Therefore, when
+	 * switching to quad and dual modes under heavy load, the FIFO depth
+	 * is reduced to prevent the risk of data errors.
+	 */
+	bool fifo_cnt_thr;
 };
 
 struct mtk_spi {
@@ -220,6 +229,7 @@ struct mtk_spi {
 	bool err_occur;
 	spinlock_t eh_spi_lock;
 	bool dma_en;
+	u32 valid_cnt_thr;
 };
 
 static const struct mtk_spi_compatible mtk_common_compat;
@@ -243,6 +253,7 @@ static const struct mtk_spi_compatible mt6881_compat = {
 	.dummy_cycle = true,
 	.infra_req = true,
 	.hw_reset = true,
+	.fifo_cnt_thr = true,
 };
 
 static const struct mtk_spi_compatible mt6858_compat = {
@@ -510,6 +521,8 @@ static void spi_dump_reg(struct mtk_spi *mdata, struct spi_controller *ctrl)
 	spi_debug("pad_sel:0x%.8x\n", readl(mdata->base + SPI_PAD_SEL_REG));
 	if (mdata->dev_comp->slice_en)
 		spi_debug("slice_en:0x%.8x\n", readl(mdata->base + SPI_SLICE_EN_REG));
+	if (mdata->dev_comp->fifo_cnt_thr)
+		spi_debug("fifo_cnt:0x%.8x\n", readl(mdata->base + SPI_FIFO_WAIT_THR));
 	spi_debug("||**************%s end**************||\n", __func__);
 }
 
@@ -1249,6 +1262,14 @@ static int mtk_spi_fifo_transfer(struct spi_controller *ctrl,
 	return 0;
 }
 
+static bool mtk_spi_xfer_not_rx_single_mode(struct spi_transfer *xfer)
+{
+	if ((xfer->rx_buf) && (xfer->rx_nbits != SPI_NBITS_SINGLE))
+		return true;
+	return false;
+}
+
+
 static int mtk_spi_dma_transfer(struct spi_controller *ctrl,
 				struct spi_device *spi,
 				struct spi_transfer *xfer)
@@ -1328,6 +1349,15 @@ static int mtk_spi_transfer_one(struct spi_controller *ctrl,
 			reg_val |= spi_set_nbit(xfer->rx_nbits);
 		}
 		writel(reg_val, mdata->base + SPI_CFG3_REG);
+		/* to set fifo threshold*/
+		if ((mdata->dev_comp->fifo_cnt_thr)) {
+			reg_val = 0;
+			if (mtk_spi_xfer_not_rx_single_mode(xfer)  && (ctrl->can_dma(ctrl, spi, xfer)))
+				reg_val |= mdata->valid_cnt_thr;
+			else
+				reg_val |= MTK_SPI_MAX_FIFO_CNT;
+			writel(reg_val, mdata->base + SPI_FIFO_WAIT_THR);
+		}
 	}
 
 	mdata->err_occur = false;
@@ -1673,6 +1703,16 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 		reg_val &= ~SPI_CFG3_HALF_DUPLEX_DIR;
 	writel(reg_val, mdata->base + SPI_CFG3_REG);
 
+	/* to set fifo threshold */
+	if (mdata->dev_comp->fifo_cnt_thr) {
+		reg_val = 0;
+		if (nio != 1 && op->data.dir == SPI_MEM_DATA_IN)
+			reg_val |= mdata->valid_cnt_thr;
+		else
+			reg_val |= MTK_SPI_MAX_FIFO_CNT;
+		writel(reg_val, mdata->base + SPI_FIFO_WAIT_THR);
+	}
+
 	tx_size = 1 + op->addr.nbytes + op->dummy.nbytes;
 	if (op->data.dir == SPI_MEM_DATA_OUT)
 		tx_size += op->data.nbytes;
@@ -1911,6 +1951,19 @@ static int mtk_spi_probe(struct platform_device *pdev)
 			dev_err(&pdev->dev,
 				"getting reset_bit fail or wrong reset_bit[%d], ret = %d\n",
 				mdata->reset_bit, ret);
+			ret = -EINVAL;
+			goto err_put_ctrl;
+		}
+	}
+
+	if (mdata->dev_comp->fifo_cnt_thr) {
+		ret = of_property_read_u32(pdev->dev.of_node,
+					"mediatek,valid-cnt-thr",
+					&mdata->valid_cnt_thr);
+		if (ret < 0) {
+			dev_err(&pdev->dev,
+				"getting valid count threshold fail or wrong cnt[%d], ret = %d\n",
+				mdata->valid_cnt_thr, ret);
 			ret = -EINVAL;
 			goto err_put_ctrl;
 		}
