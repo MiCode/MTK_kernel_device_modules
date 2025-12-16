@@ -25,35 +25,35 @@
 };
 
 &cpu0 {
-	cpu-idle-states = <&s2idle>;
+	cpu-idle-states = <>;
 };
 
 &cpu1 {
-	cpu-idle-states = <&s2idle>;
+	cpu-idle-states = <>;
 };
 
 &cpu2 {
-	cpu-idle-states = <&s2idle>;
+	cpu-idle-states = <>;
 };
 
 &cpu3 {
-	cpu-idle-states = <&s2idle>;
+	cpu-idle-states = <>;
 };
 
 &cpu4 {
-	cpu-idle-states = <&s2idle>;
+	cpu-idle-states = <>;
 };
 
 &cpu5 {
-	cpu-idle-states = <&s2idle>;
+	cpu-idle-states = <>;
 };
 
 &cpu6 {
-	cpu-idle-states = <&s2idle>;
+	cpu-idle-states = <>;
 };
 
 &cpu7 {
-	cpu-idle-states = <&s2idle>;
+	cpu-idle-states = <>;
 };
 
 &extcon_usb{
