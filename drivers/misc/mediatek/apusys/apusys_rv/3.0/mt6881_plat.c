@@ -1083,7 +1083,8 @@ static int mt6881_rproc_exit(struct mtk_apu *apu)
 
 const struct mtk_apu_platdata mt6881_platdata = {
 	.flags		= F_APU_IPI_UT_SUPPORT |
-		F_FAST_ON_OFF | F_AUTO_BOOT | F_PRELOAD_FIRMWARE,
+		F_FAST_ON_OFF | F_AUTO_BOOT | F_PRELOAD_FIRMWARE |
+		F_SECURE_BOOT | F_SECURE_COREDUMP | F_APUSYS_RV_TAG_SUPPORT,
 	.ops		= {
 		.init	= mt6881_rproc_init,
 		.exit	= mt6881_rproc_exit,
