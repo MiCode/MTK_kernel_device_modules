@@ -11863,6 +11863,14 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		};
 	};
 
+	snd_scp_ultra: snd-scp-ultra {
+		compatible = "mediatek,snd-scp-ultra";
+		scp-ultra-dl-memif-id = <0x7>;
+		scp-ultra-ul-memif-id = <0x15>;
+		ultra-toggle-clr-irq;
+		ultra-sema-support;
+	};
+
 	consys: consys@18000000 {
 		compatible = "mediatek,mt6881-6631-consys";
 		#thermal-sensor-cells = <0>;
