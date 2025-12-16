@@ -108,9 +108,6 @@
 #define MIPITX_CK_SW_LPTX_PRE_OE	(0x0348UL)
 #define MIPITX_CKC_SW_LPTX_PRE_OE	(0x0368UL)
 
-#define MIPI_DPHY_LANE_NUM 5
-#define MIPI_DPHY_LANE_PN 2
-
 #define MIPITX_DPHY	0
 #define MIPITX_CPHY	1
 
@@ -125,9 +122,6 @@ struct mtk_mipi_tx {
 	struct clk_hw pll_hw;
 	struct clk *pll;
 	unsigned int disp_offset[2]; //for mt6989 dispsys1 dsi0/dsi1 reg offset
-	u32 has_efuse;
-	unsigned int efuse_code_backup[MIPI_DPHY_LANE_PN][MIPI_DPHY_LANE_NUM];
-	unsigned int efuse_dem_backup[MIPI_DPHY_LANE_PN][MIPI_DPHY_LANE_NUM];
 };
 
 struct mtk_mipitx_data {
@@ -183,8 +177,6 @@ struct mtk_mipitx_data {
 	int (*power_off_signal)(struct phy *phy);
 	unsigned int (*dsi_get_pcw)(unsigned long data_rate, unsigned int pcw_ratio);
 	unsigned int (*dsi_get_data_rate)(struct phy *phy);
-	const u32 efuse_read_bit;
-	const u32 efuse_readdem_bit;
 	void (*backup_mipitx_impedance)(struct mtk_mipi_tx *mipi_tx);
 	void (*refill_mipitx_impedance)(struct mtk_mipi_tx *mipi_tx);
 	void (*pll_rate_switch_gce)(struct phy *phy, void *handle, unsigned long rate);
