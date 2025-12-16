@@ -824,39 +824,39 @@ static const struct drm_display_mode performance_mode = {
 };
 #else
 static const struct drm_display_mode default_mode = {
-	.clock = 475956,
+	.clock = 469056,
 	.hdisplay = 1080,
 	.hsync_start = 1080 + 216,//HFP
 	.hsync_end = 1080 + 216 + 20,//HSA
 	.htotal = 1080 + 216 + 20 + 80,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 3230,//VFP
-	.vsync_end = 2400 + 3230 + 10,//VSA
-	.vtotal = 2400 + 3230 + 10 + 10,//VBP 4948
+	.vsync_start = 2400 + 3180,//VFP
+	.vsync_end = 2400 + 3180 + 10,//VSA
+	.vtotal = 2400 + 3180 + 10 + 10,//VBP 4948
 };
 
 static const struct drm_display_mode performance_mode = {
-	.clock = 479000,
+	.clock = 469894,
 	.hdisplay = 1080,
 	.hsync_start = 1080 + 216,//HFP
 	.hsync_end = 1080 + 216 + 20,//HSA
 	.htotal = 1080 + 216 + 20 + 80,//HBP
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 1375,//VFP
-	.vsync_end = 2400 + 1375 + 10,//VSA
-	.vtotal = 2400 + 1375 + 10 + 10,//VBP
+	.vsync_start = 2400 + 1320,//VFP
+	.vsync_end = 2400 + 1320 + 10,//VSA
+	.vtotal = 2400 + 1320 + 10 + 10,//VBP
 };
 #endif
 static const struct drm_display_mode performance_mode1 = {
-	.clock = 478500,
+	.clock = 470732,
 	.hdisplay = 1080,
 	.hsync_start = 1080 + 216,//HFP
 	.hsync_end = 1080 + 216 + 20,//HSA
 	.htotal = 1080 + 216 + 20 + 80,//HBP 1248
 	.vdisplay = 2400,
-	.vsync_start = 2400 + 425,//VFP
-	.vsync_end = 2400 + 425 + 10,//VSA
-	.vtotal = 2400 + 425 + 10 + 10,//VBP 2920
+	.vsync_start = 2400 + 390,//VFP
+	.vsync_end = 2400 + 390 + 10,//VSA
+	.vtotal = 2400 + 390 + 10 + 10,//VBP 2920
 };
 
 
@@ -927,9 +927,9 @@ static struct mtk_panel_params ext_params = {
 	.dyn = {
 		.switch_en = 0,
 		.pll_clk = 428,
-		.vfp_lp_dyn = 4178,
-		.hfp = 396,
-		.vfp = 2528,
+		.vfp_lp_dyn = 5020,
+		.hfp = 216,
+		.vfp = 3250,
 	},
 };
 
@@ -1000,9 +1000,9 @@ static struct mtk_panel_params ext_params_90hz = {
 	.dyn = {
 		.switch_en = 0,
 		.pll_clk = 428,
-		.vfp_lp_dyn = 2528,
-		.hfp = 396,
-		.vfp = 879,
+		.vfp_lp_dyn = 3250,
+		.hfp = 216,
+		.vfp = 1374,
 	},
 };
 
@@ -1068,9 +1068,9 @@ static struct mtk_panel_params ext_params_120hz = {
 	.dyn = {
 		.switch_en = 0,
 		.pll_clk = 428,
-		.vfp_lp_dyn = 2528,
-		.hfp = 396,
-		.vfp = 54,
+		.vfp_lp_dyn = 3250,
+		.hfp = 216,
+		.vfp = 430,
 	},
 };
 
