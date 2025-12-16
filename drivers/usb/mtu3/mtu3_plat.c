@@ -143,8 +143,8 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	if (vcore_req_support)
 		spm_msk |= SSUSB_SPM_VCORE_EN;
 
-	/* Clear FORCE HW Request which is default on since MT6989 */
-	spm_ctrl &= ~SSUSB_SPM_FORCE_HW_REQ_MSK;
+	/* Clear FORCE HW Request and DDREN_ACK_DIS */
+	spm_ctrl &= ~(SSUSB_SPM_FORCE_HW_REQ_MSK | SSUSB_SPM_DDREN_ACK_DIS);
 
 	switch (state) {
 	case MTU3_STATE_POWER_OFF:
@@ -158,6 +158,8 @@ static void ssusb_hwrscs_req_v2_v3(struct ssusb_mtk *ssusb,
 	case MTU3_STATE_OFFLOAD:
 		spm_ctrl |= SSUSB_SPM_REQ_OFFLOAD_MSK;
 		spm_ctrl &= ~(SSUSB_SPM_REQ_OFFLOAD_MSK ^ spm_msk);
+		/* disable ddren ack if release ddren/apsrc/emi request */
+		spm_ctrl |= SSUSB_SPM_DDREN_ACK_DIS;
 		/* set apsrc=0 and ddren=1, inform peri not to protect bus */
 		if (of_device_is_compatible(ssusb->dev->of_node, "mediatek,mt6899-mtu3"))
 			spm_ctrl |= SSUSB_SPM_DDR_EN;
