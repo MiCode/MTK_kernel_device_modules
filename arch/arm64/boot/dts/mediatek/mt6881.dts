@@ -8515,13 +8515,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_PORT_L49_P0_GCE_D>;
 			dma-mask-bit = <35>;
 			mediatek,smi = <&smi_mdp_sub_comm0>;
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_D_GCE>,
+				<&mminfra_config_clk CLK_MMINFRA_GCE_26M_GCE>;
+			clock-names = "gce","gce-timer";
 #if 0
 			mboxes = <&gce 13 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			prebuilt-enable;
-			power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
-			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_D>,
-				<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
-			clock-names = "gce","gce-timer";
 			cmdq-dump-buf-size = <1>;
 			cmdq-tfa-read-dbg;
 #endif
@@ -8533,6 +8533,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#mbox-cells = <3>;
 			mboxes = <&gce 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			dma-mask-bit = <35>;
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_D_GCE>;
+			clock-names = "gce";
 		};
 
 		gce_m: gce@1e990000 {
@@ -8547,13 +8550,13 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_PORT_L49_P1_GCE_M>;
 			dma-mask-bit = <35>;
 			mediatek,smi = <&smi_mdp_sub_comm0>;
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_M_GCE>,
+				<&mminfra_config_clk CLK_MMINFRA_GCE_26M_GCE>;
+			clock-names = "gce","gce-timer";
 #if 0
 			mboxes = <&gce_m 13 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			prebuilt-enable;
-			power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
-			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_M>,
-				<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
-			clock-names = "gce","gce-timer";
 			cmdq-dump-buf-size = <1>;
 			cmdq-tfa-read-dbg;
 #endif
@@ -8565,6 +8568,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#mbox-cells = <3>;
 			mboxes = <&gce_m 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			dma-mask-bit = <35>;
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_D_GCE>;
+			clock-names = "gce";
 		};
 
 		gce_m_2: gce@1e9a0000 {
@@ -8582,13 +8588,16 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_PORT_L49_P2_GCE_M2>;
 			dma-mask-bit = <35>;
 			mediatek,smi = <&smi_mdp_sub_comm0>;
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_M2_GCE>,
+				<&mminfra_config_clk CLK_MMINFRA_GCE_26M_GCE>;
+			clock-names = "gce","gce-timer";
 #if 0
 			mboxes = <&gce_m 13 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			prebuilt-enable;
 			power-domains = <&scpsys MT6878_POWER_DOMAIN_MM_INFRA>;
 			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_M>,
 				<&mminfra_config_clk CLK_MMINFRA_GCE_26M>;
-			clock-names = "gce","gce-timer";
 			cmdq-dump-buf-size = <1>;
 			cmdq-tfa-read-dbg;
 #endif
@@ -8600,6 +8609,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#mbox-cells = <3>;
 			mboxes = <&gce_m_2 15 CMDQ_NO_TIMEOUT CMDQ_THR_PRIO_1>;
 			dma-mask-bit = <35>;
+			power-domains = <&scpsys MT6881_POWER_DOMAIN_MM_INFRA_SHUTDOWN>;
+			clocks = <&mminfra_config_clk CLK_MMINFRA_GCE_D_GCE>;
+			clock-names = "gce";
 		};
 
 		cmdq_test: cmdq-test@0 {
