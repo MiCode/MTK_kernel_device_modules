@@ -11,6 +11,7 @@
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
 #include <linux/phy/phy.h>
+#include <linux/string.h>
 #include "mtk_log.h"
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_drv.h"
@@ -386,6 +387,10 @@
 
 #define MT6991_MIPITX_PA_CON		(0x0044UL)
 #define MT6991_DSI_DPHY_LANE_SWAP	(0x0018UL)
+
+#define MT6881_MIPI0_BASE	(0x11E50000UL)
+#define MT6881_MIPI1_BASE	(0x11E10000UL)
+
 
 enum MIPITX_PAD_VALUE {
 	PAD_D2P_T0A = 0,
@@ -7000,6 +7005,153 @@ void backup_mipitx_impedance(struct mtk_mipi_tx *mipi_tx)
 #endif /* mipitx impedance print */
 }
 
+static int read_efuse_test_code(unsigned int index)
+{
+	struct device_node *np_chosen = NULL;
+	struct devinfo_tag *tags;
+	struct devinfo_tag {
+		unsigned int data_size;
+		unsigned int data[300];
+	};
+
+	if (index > 300){
+		pr_err("index is error\n");
+		return 0;
+	}
+
+	np_chosen = of_find_node_by_path("/chosen");
+	tags = (struct devinfo_tag *) of_get_property(np_chosen, "atag,devinfo", NULL);
+
+	return tags->data[index];
+}
+
+struct efuse_struct {
+	unsigned int d1_dem;
+	unsigned int d1;
+	unsigned int ck_dem;
+	unsigned int ck;
+	unsigned int d0_dem;
+	unsigned int d0;
+	unsigned int d2_dem;
+	unsigned int d2;
+	unsigned int d3_dem;
+	unsigned int d3;
+};
+
+static void backup_mipitx_impedance_mt6881(struct mtk_mipi_tx *mipi_tx)
+{
+	unsigned int i = 0;
+	unsigned int j = 0;
+	unsigned short ver = -1;
+	unsigned int efuse_value[3] = {0};
+	unsigned int FAB_value = 0;
+	struct efuse_struct ef;
+
+	if((unsigned long)mipi_tx->regs_pa == MT6881_MIPI0_BASE)
+		ver = 0;
+	else if((unsigned long)mipi_tx->regs_pa == MT6881_MIPI1_BASE)
+		ver = 1;
+
+	DDPMSG("%s MIPI_TX MIPI %d\n", __func__, ver);
+
+	if(ver == -1)
+		return;
+
+	efuse_value[0] = read_efuse_test_code(104);		//190
+	efuse_value[1] = read_efuse_test_code(105);		//194
+	efuse_value[2] = read_efuse_test_code(106);		//198
+
+	DDPMSG("%s: read efuse_value0=0x%x\n", __func__, efuse_value[0]);
+	DDPMSG("%s: read efuse_value1=0x%x\n", __func__, efuse_value[1]);
+	DDPMSG("%s: read efuse_value2=0x%x\n", __func__, efuse_value[2]);
+
+	if (efuse_value[0] == 0 && efuse_value[1] == 0 && efuse_value[2] == 0)
+		return;
+
+	mipi_tx->has_efuse = 1;
+
+	/* muti mipi tx efuse should blong per-mipi */
+	if(ver == 0) {
+		ef.d1_dem = (efuse_value[0] >> 28) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.d1 = (efuse_value[0] >> 24) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+		ef.ck_dem = (efuse_value[0] >> 20) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.ck = (efuse_value[0] >> 16) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+		ef.d0_dem = (efuse_value[0] >> 12) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.d0 = (efuse_value[0] >> 8) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+		ef.d2_dem = (efuse_value[0] >> 4) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.d2 = (efuse_value[0] >> 0) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+		ef.d3_dem = (efuse_value[1] >> 4) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.d3 = (efuse_value[1] >> 0) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+	} else if (ver == 1) {
+		ef.d0_dem = (efuse_value[1] >> 28) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.d0 = (efuse_value[1] >> 24) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+		ef.d2_dem = (efuse_value[1] >> 20) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.d2 = (efuse_value[1] >> 16) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+		ef.d3_dem = (efuse_value[2] >> 20) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.d3 = (efuse_value[2] >> 16) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+		ef.d1_dem = (efuse_value[2] >> 12) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.d1 = (efuse_value[2] >> 8) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+		ef.ck_dem = (efuse_value[2] >> 4) & ((1U << mipi_tx->driver_data->efuse_readdem_bit)-1);
+		ef.ck = (efuse_value[2] >> 0) & ((1U << mipi_tx->driver_data->efuse_read_bit)-1);
+	}
+
+	/* seq d2 d0 ck d1 d3 */
+	mipi_tx->efuse_code_backup[0][0] = (ef.d2 & 0x1) | ((ef.d2 & 0x2) << 7) |
+		((ef.d2 & 0x4) << 14)  | ((ef.d2 & 0x8) << 21);
+
+	mipi_tx->efuse_dem_backup[0][0] = (ef.d2_dem & 0x1) | ((ef.d2_dem & 0x2) << 7) |
+		((ef.d2_dem & 0x4) << 14);
+
+	mipi_tx->efuse_code_backup[0][1] = (ef.d0 & 0x1) | ((ef.d0 & 0x2) << 7) |
+		((ef.d0 & 0x4) << 14)  | ((ef.d0 & 0x8) << 21);
+
+	mipi_tx->efuse_dem_backup[0][1] = (ef.d0_dem & 0x1) | ((ef.d0_dem & 0x2) << 7) |
+		((ef.d0_dem & 0x4) << 14);
+
+	mipi_tx->efuse_code_backup[0][2] = (ef.ck & 0x1) | ((ef.ck & 0x2) << 7) |
+		((ef.ck & 0x4) << 14)  | ((ef.ck & 0x8) << 21);
+
+	mipi_tx->efuse_dem_backup[0][2] = (ef.ck_dem & 0x1) | ((ef.ck_dem & 0x2) << 7) |
+		((ef.ck_dem & 0x4) << 14);
+
+	mipi_tx->efuse_code_backup[0][3] = (ef.d1 & 0x1) | ((ef.d1 & 0x2) << 7) |
+		((ef.d1 & 0x4) << 14)  | ((ef.d1 & 0x8) << 21);
+
+	mipi_tx->efuse_dem_backup[0][3] = (ef.d1_dem & 0x1) | ((ef.d1_dem & 0x2) << 7) |
+		((ef.d1_dem & 0x4) << 14);
+
+	mipi_tx->efuse_code_backup[0][4] = (ef.d3 & 0x1) | ((ef.d3 & 0x2) << 7) |
+		((ef.d3 & 0x4) << 14)  | ((ef.d3 & 0x8) << 21);
+
+	mipi_tx->efuse_dem_backup[0][4] = (ef.d3_dem & 0x1) | ((ef.d3_dem & 0x2) << 7) |
+		((ef.d3_dem & 0x4) << 14);
+
+	/* dup state dp to dn */
+	memcpy(mipi_tx->efuse_code_backup[1],mipi_tx->efuse_code_backup[0],sizeof(unsigned int)*MIPI_DPHY_LANE_NUM);
+	memcpy(mipi_tx->efuse_dem_backup[1],mipi_tx->efuse_dem_backup[0],sizeof(unsigned int)*MIPI_DPHY_LANE_NUM);
+
+	/* backup mipitx impedance */
+	for (j = 0; j < MIPI_DPHY_LANE_NUM; j++) {
+		DDPDBG("%s efuse: 0x%08x 0x%08x 0x%08x 0x%08x\n", __func__,
+			mipi_tx->efuse_code_backup[0][j],
+			mipi_tx->efuse_code_backup[1][j],
+			mipi_tx->efuse_dem_backup[0][j],
+			mipi_tx->efuse_dem_backup[1][j]);
+	}
+
+	for (i = 0; i < MIPI_DPHY_LANE_NUM; i++) {
+		DDPDBG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
+			readl((mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100)));
+	}
+}
+
 static void backup_mipitx_impedance_mt6886(struct mtk_mipi_tx *mipi_tx)
 {
 	unsigned int i = 0;
@@ -7241,6 +7393,40 @@ void refill_mipitx_impedance(struct mtk_mipi_tx *mipi_tx)
 		}
 	}
 #endif /* mipitx impedance print */
+}
+
+static void refill_mipitx_impedance_mt6881(struct mtk_mipi_tx *mipi_tx)
+{
+	/* backup mipitx impedance */
+	unsigned int i = 0;
+	unsigned int j = 0;
+
+	if(mipi_tx->has_efuse != 1)
+		return;
+
+	DDPMSG("%s MIPI_TX\n", __func__);
+
+	for (j = 0; j < MIPI_DPHY_LANE_NUM; j++) {
+		writel(mipi_tx->efuse_code_backup[0][j], mipi_tx->regs +
+				MIPITX_D2P_RTCODE0_MT6886 + j * 0x100);
+		writel(mipi_tx->efuse_code_backup[1][j], mipi_tx->regs +
+				MIPITX_D2N_RTCODE0_MT6886 + j * 0x100);
+		writel(mipi_tx->efuse_dem_backup[0][j], mipi_tx->regs +
+				MIPITX_D2P_RT_DEM_CODE_MT6886 + j * 0x100);
+		writel(mipi_tx->efuse_dem_backup[1][j], mipi_tx->regs +
+				MIPITX_D2N_RT_DEM_CODE_MT6886 + j * 0x100);
+	}
+	for (i = 0; i < MIPI_DPHY_LANE_NUM; i++) {
+		DDPDBG("[0x%08lx 0x%08lx 0x%08lx 0x%08lx]:0x%08x 0x%08x 0x%08x 0x%08x\n",
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100,
+			(unsigned long)mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100,
+			readl((mipi_tx->regs + MIPITX_D2P_RTCODE0_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2N_RTCODE0_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2P_RT_DEM_CODE_MT6886 + i * 0x100)),
+			readl((mipi_tx->regs + MIPITX_D2N_RT_DEM_CODE_MT6886 + i * 0x100)));
+	}
 }
 
 static void refill_mipitx_impedance_mt6886(struct mtk_mipi_tx *mipi_tx)
@@ -9162,8 +9348,10 @@ static const struct mtk_mipitx_data mt6881_mipitx_data = {
 	.dsi_get_pcw = _dsi_get_pcw_mt6989,
 	// .dsi_get_pcw_khz = _dsi_get_pcw_khz_mt6989,
 	.dsi_get_data_rate = _dsi_get_data_rate_N4,
-	.backup_mipitx_impedance = backup_mipitx_impedance_mt6897,
-	.refill_mipitx_impedance = refill_mipitx_impedance_mt6897,
+	.efuse_read_bit = 4,
+	.efuse_readdem_bit = 3,
+	.backup_mipitx_impedance = backup_mipitx_impedance_mt6881,
+	.refill_mipitx_impedance = refill_mipitx_impedance_mt6881,
 	.pll_rate_switch_gce = mtk_mipi_tx_pll_rate_switch_gce_N4,
 	// .pll_rate_khz_switch_gce = mtk_mipi_tx_pll_rate_khz_switch_gce_N4,
 	.phy = MIPITX_DPHY,
