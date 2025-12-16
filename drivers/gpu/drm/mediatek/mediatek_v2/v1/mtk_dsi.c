@@ -12012,6 +12012,7 @@ cmd_mode_transfer:
 			mtk_dsi_mask(mtk_dsi, DSI_RACK(mtk_dsi->driver_data), RACK, RACK);
 		} else {
 			if (mtk_dsi->driver_data->esd_poll_microp) {
+				DDPINFO("%s use gce poll microp\n", __func__);
 				mtk_dsi_cmdq_poll(comp, handle,
 						comp->regs_pa + mtk_dsi->driver_data->reg_up_intsta, 0x1, 0x1);
 				cmdq_pkt_write(handle,
@@ -17096,8 +17097,8 @@ static const struct mtk_dsi_driver_data mt6881_dsi_driver_data = {
 	.dsi_rx_data_rd_max_sz = 10,
 	.dsi_cmd_v2_en = true,
 	.support_rd_cmdq = 1,
-	// .reg_up_intsta = 0xc4,
-	// .esd_poll_microp = true,
+	.reg_up_intsta = 0xc4,
+	.esd_poll_microp = true,
 };
 
 static const struct mtk_dsi_driver_data mt2701_dsi_driver_data = {
