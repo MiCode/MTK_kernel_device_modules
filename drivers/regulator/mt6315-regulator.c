@@ -82,16 +82,22 @@ static const struct linear_range mt_volt_range1[] = {
 
 static int mt6315_regulator_enable(struct regulator_dev *rdev)
 {
-	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only")) {
+		dev_info(&rdev->dev, "[%s]: set %s regulator-read-only, no enable\n",
+			 __func__, rdev->desc->name);
 		return 0;
+	}
 	return regmap_write(rdev->regmap, rdev->desc->enable_reg + SET_OFFSET,
 			    rdev->desc->enable_mask);
 }
 
 static int mt6315_regulator_disable(struct regulator_dev *rdev)
 {
-	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only")) {
+		dev_info(&rdev->dev, "[%s]: set %s regulator-read-only, no disable\n",
+			 __func__, rdev->desc->name);
 		return 0;
+	}
 	return regmap_write(rdev->regmap, rdev->desc->enable_reg + CLR_OFFSET,
 			    rdev->desc->enable_mask);
 }

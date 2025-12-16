@@ -290,18 +290,46 @@ static const unsigned int ldo_volt_table5[] = {
 
 static int mt6363_buck_enable(struct regulator_dev *rdev)
 {
-	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only")) {
+		dev_info(&rdev->dev, "[%s]: set %s regulator-read-only, no enable\n",
+			 __func__, rdev->desc->name);
 		return 0;
+	}
 	return regmap_write(rdev->regmap, rdev->desc->enable_reg + SET_OFFSET,
 			    rdev->desc->enable_mask);
 }
 
 static int mt6363_buck_disable(struct regulator_dev *rdev)
 {
-	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only")) {
+		dev_info(&rdev->dev, "[%s]: set %s regulator-read-only, no disable\n",
+			 __func__, rdev->desc->name);
 		return 0;
+	}
 	return regmap_write(rdev->regmap, rdev->desc->enable_reg + CLR_OFFSET,
 			    rdev->desc->enable_mask);
+}
+
+static int mt6363_sram_ldo_enable(struct regulator_dev *rdev)
+{
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only")) {
+		dev_info(&rdev->dev, "[%s]: set %s regulator-read-only, no enable\n",
+			 __func__, rdev->desc->name);
+		return 0;
+	}
+	return regmap_update_bits(rdev->regmap, rdev->desc->enable_reg,
+				  rdev->desc->enable_mask, rdev->desc->enable_mask);
+}
+
+static int mt6363_sram_ldo_disable(struct regulator_dev *rdev)
+{
+	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only")) {
+		dev_info(&rdev->dev, "[%s]: set %s regulator-read-only, no disable\n",
+			 __func__, rdev->desc->name);
+		return 0;
+	}
+	return regmap_update_bits(rdev->regmap, rdev->desc->enable_reg,
+				  rdev->desc->enable_mask, 0);
 }
 
 static inline unsigned int mt6363_map_mode(unsigned int mode)
@@ -565,8 +593,8 @@ static const struct regulator_ops mt6363_volt_range_ops = {
 	.set_voltage_sel = regulator_set_voltage_sel_regmap,
 	.get_voltage_sel = regulator_get_voltage_sel_regmap,
 	.set_voltage_time_sel = regulator_set_voltage_time_sel,
-	.enable = regulator_enable_regmap,
-	.disable = regulator_disable_regmap,
+	.enable = mt6363_sram_ldo_enable,
+	.disable = mt6363_sram_ldo_disable,
 	.is_enabled = regulator_is_enabled_regmap,
 	.set_mode = mt6363_regulator_set_mode,
 	.get_mode = mt6363_regulator_get_mode,
