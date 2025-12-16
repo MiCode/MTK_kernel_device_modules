@@ -5113,6 +5113,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio-iommu:virtio-iommu")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio_nodes:virtio_nodes")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio_sensor:sensor_virtio")
+        mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/virtio_vsock:vmw_vsock_virtio_transport")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/virt/vmctl:vmctl")
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/pinctrl/mediatek:virtio-eint".format(kernel_version))
         mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/watchdog:mtk_wdt_hyper".format(kernel_version))
