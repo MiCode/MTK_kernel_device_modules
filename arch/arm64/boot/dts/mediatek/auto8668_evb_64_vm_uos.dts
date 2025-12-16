@@ -146,6 +146,11 @@
 	compatible = "virtio,mmio";
 };
 
+&viommu {
+	compatible = "pci-iommu";
+	#iommu-cells = <1>;
+	status = "okay";
+};
 
 #include <auto8668p1_64_vm_uos/cust.dtsi>
 #include "mediatek/cust_mt6881_camera_v4l2.dtsi"

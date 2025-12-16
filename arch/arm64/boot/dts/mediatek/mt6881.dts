@@ -10674,6 +10674,10 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#iommu-cells = <1>;
 		};
 
+		viommu: viommu {
+			status = "disabled";
+		};
+
 		flashlight_core: flashlight-core {
 			compatible = "mediatek,flashlight_core";
 			low-battery-level = <2>;
