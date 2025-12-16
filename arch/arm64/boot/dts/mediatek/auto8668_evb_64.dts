@@ -81,9 +81,6 @@
 };
 
 &spmi {
-	reg = <0 0x1cc18000 0 0x00671c>,
-		<0 0x1cc14000 0 0x0030c0>;
-	reg-names = "pmif","spmimst";
 	interrupts-extended = <&pio 215 IRQ_TYPE_LEVEL_HIGH>,
 			<&gic GIC_SPI 624 IRQ_TYPE_LEVEL_HIGH 0>,
 			<&gic GIC_SPI 642 IRQ_TYPE_LEVEL_HIGH 0>;
