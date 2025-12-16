@@ -360,7 +360,7 @@ static ssize_t limit_table_proc_write(struct file *file,
 
 	mutex_lock(&gpufreq_debug_lock);
 
-	if (sscanf(buf, "%6s %2d %2d %2d", cmd, &limiter, &ceiling, &floor) == 4) {
+	if (sscanf(buf, "%6s %2d %7d %7d", cmd, &limiter, &ceiling, &floor) == 4) {
 		if (sysfs_streq(cmd, "set")) {
 			ret = gpufreq_set_limit(TARGET_DEFAULT, limiter, ceiling, floor);
 			if (ret)
