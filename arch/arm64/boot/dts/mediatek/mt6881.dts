@@ -3928,68 +3928,24 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	camisp_vcore: camisp-vcore {
 		compatible = "mediatek,mt6881-camisp-vcore";
 		iommus = <&disp_iommu M4U_L16_P0_CAM_RAW_A_DMA_R_0_U0>;
-#if 0
 		clocks =
-		    <&cam_vcore_r1a_clk CAM_V_R1A_G_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_SV0_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_SV1_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_TX6_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_TX13_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_TX47_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_TX16_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_TX22_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_TX90_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_SUB_COMM0_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_SUB_COMM1_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_SUB_COMM2_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_SUB_COMM3_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X51_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X50_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X45_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X43_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X52_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X44_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X91_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X54_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X48_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X93_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X46_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X53_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X94_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X22_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X60_GALS_CAM_VCORE>,
-		    <&cam_vcore_r1a_clk CAM_V_R1A_X90_GALS_CAM_VCORE>;
+			<&cam_vcore_r1a_clk CLK__VCORE_CAM_RAW>,
+			<&cam_vcore_r1a_clk CLK__BLS_PART_CAM_RAW>,
+			<&cam_vcore_r1a_clk CLK__BLS_FULL_CAM_RAW>,
+			<&cam_vcore_r1a_clk CLK__RESV0_GALS_CAM_RAW>,
+			<&cam_vcore_r1a_clk CLK__RESV1_GALS_CAM_RAW>,
+			<&cam_vcore_r1a_clk CLK__VCORE_CAM2MM0_CAM_RAW>,
+			<&cam_vcore_r1a_clk CLK__VCORE_CAM2MM1_CAM_RAW>;
 		clock-names =
-		    "camsys_vcore_g_cam_vcore",
-		    "camsys_vcore_sv0_gals",
-		    "camsys_vcore_sv1_gals",
-		    "camsys_vcore_tx6_gals",
-		    "camsys_vcore_tx13_gals",
-		    "camsys_vcore_tx47_gals",
-		    "camsys_vcore_tx16_gals",
-		    "camsys_vcore_tx22_gals",
-		    "camsys_vcore_tx90_gals",
-		    "camsys_vcore_sub_comm0",
-		    "camsys_vcore_sub_comm1",
-		    "camsys_vcore_sub_comm2",
-		    "camsys_vcore_sub_comm3",
-		    "camsys_vcore_x51_gals",
-		    "camsys_vcore_x50_gals",
-		    "camsys_vcore_x45_gals",
-		    "camsys_vcore_x43_gals",
-		    "camsys_vcore_x52_gals",
-		    "camsys_vcore_x44_gals",
-		    "camsys_vcore_x91_gals",
-		    "camsys_vcore_x54_gals",
-		    "camsys_vcore_x48_gals",
-		    "camsys_vcore_x93_gals",
-		    "camsys_vcore_x46_gals",
-		    "camsys_vcore_x53_gals",
-		    "camsys_vcore_x94_gals",
-		    "camsys_vcore_x22_gals",
-		    "camsys_vcore_x60_gals",
-		    "camsys_vcore_x90_gals";
-#endif
+			"camsys_vcore_cam_raw",
+			"camsys_vcore_bls_part_cam_raw",
+			"camsys_vcore_bls_full_cam_raw",
+			"camsys_vcore_resv0_gals_cam_raw",
+			"camsys_vcore_resv1_gals_cam_raw",
+			"camsys_vcore_cam2mm0_cam_raw",
+			"camsys_vcore_cam2mm1_cam_raw";
+
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_VCORE>;
 	};
 
 	camisp: camisp@1a010000 {
@@ -3999,45 +3955,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,ccd = <&remoteproc_ccd>;
 		mediatek,camisp-vcore = <&camisp_vcore>;
 		camsys-pkvm-enable = <1>;
-		//ccf-apply;
 		iommus = <&disp_iommu M4U_L16_P0_CAM_RAW_A_DMA_R_0_U0>;
 		clocks =
+		    <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_MAIN_CAM_RAW>,
+		    <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBA_CAM_RAW>,
+		    <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SUBB_CAM_RAW>,
+		    <&cam_main_r1a_clk CLK_CAM_MAIN_CAMTG_CAM_RAW>,
+		    <&cam_main_r1a_clk CLK_CAM_MAIN_SUB_COMM_0C_0_CAM_RAW>,
+		    <&cam_main_r1a_clk CLK_CAM_MAIN_SUB_COMM_1_CAM_RAW>,
+		    <&cam_main_r1a_clk CLK_CAM_MAIN_CAM_QOF_CON_1_CAM_RAW>,
 		    <&mmdvfs_clk CLK_MMDVFS_CAM>;
 		clock-names =
+		    "camsys_main_cam_main_cam_raw",
+		    "camsys_main_cam_suba_cam_raw",
+		    "camsys_main_cam_subb_cam_raw",
+		    "camsys_main_camtg_cam_raw",
+		    "camsys_main_sub_comm_0c_0_cam_raw",
+		    "camsys_main_sub_comm_1_cam_raw",
+		    "camsys_main_cam_qof_con_1_cam_raw",
 		    "mmdvfs_clk";
 		operating-points-v2 = <&opp_table_cam>;
-
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_MAIN>;
 #if 0
-		clocks =
-		    <&cam_main_r1a_clk CAM_M_CAM_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_CAM_SUBA_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_CAM_SUBB_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_CAM_SUBC_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_CAM_MRAW_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_CAMTG_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_SENINF_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_CAM_QOF_CON_1_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_CAM_WLA_CON_1_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_CAM_DVC_CON_1_CAM_MAIN>,
-		    <&cam_main_r1a_clk CAM_M_CAM_CVFS_CON_1_CAM_MAIN>,
-		    <&cksys_mm_clk CKSYS_MM_CAM_SEL>,
-		    <&cksys_mm_clk CKSYS_MM_CAMTM_SEL>,
-		    <&mmdvfs_clk CLK_MMDVFS_CAM>;
-		clock-names =
-		    "camsys_main_cam",
-		    "camsys_main_cam_suba",
-		    "camsys_main_cam_subb",
-		    "camsys_main_cam_subc",
-		    "camsys_main_cam_mraw",
-		    "camsys_main_camtg",
-		    "camsys_main_seninf",
-		    "camsys_main_cam_qof_con_1",
-		    "camsys_main_cam_wla_con_1",
-		    "camsys_main_cam_dvc_con_1",
-		    "camsys_main_cam_cvfs_con_1",
-		    "cksys_mm_cam_sel",
-		    "cksys_mm_camtm_sel",
-		    "mmdvfs_mux";
 		nvmem-cells = <&efuse_segment>, <&isp_efuse_data>;
 		nvmem-cell-names = "efuse_segment_cell", "isp-efuse-data";
 #endif
@@ -4054,18 +3993,21 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,cam-id = <0>;
 		interrupts = <GIC_SPI 263 IRQ_TYPE_LEVEL_HIGH 0>;
 		iommus = <&disp_iommu M4U_L16_P0_CAM_RAW_A_DMA_R_0_U0>;
-#if 0
-		mediatek,larbs = <&smi_larb16>;
 		clocks =
-		    <&camsys_rawa_clk CAM_RA_LARBX_CAM_RAWA>,
-		    <&camsys_rawa_clk CAM_RA_CAM_CAM_RAWA>,
-		    <&camsys_rawa_clk CAM_RA_CAMTG_CAM_RAWA>,
-		    <&camsys_rawa_clk CAM_RA_CAM_26M_CAM_RAWA>;
+			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SENINF_TG_SUBA_CAM_RAW>,
+			<&camsys_rawa_clk CLK_CAM_RA_LARBX_CAM_RAW>,
+			<&camsys_rawa_clk CLK_CAM_RA_CAM_CAM_RAW>,
+			<&camsys_rawa_clk CLK_CAM_RA_CAMTG_CAM_RAW>,
+			<&camsys_rawa_clk CLK_CAM_RA_CAM_26M_CAM_RAW>;
 		clock-names =
-			"camsys_rawa_larbx_cgpdn",
-			"camsys_rawa_cam_cgpdn",
-			"camsys_rawa_camtg_cgpdn",
-			"camsys_rawa_cam_26m_cgpdn";
+			"camsys_main_cam_seninf_tg_suba_cam_raw",
+			"camsys_rawa_larbx_cam_raw",
+			"camsys_rawa_cam_cam_raw",
+			"camsys_rawa_camtg_cam_raw",
+			"camsys_rawa_cam_26m_cam_raw";
+		mediatek,larbs = <&smi_larb16>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBA>;
+#if 0
 		mediatek,smmu-dma-axid =
 			<SMMU_L16_P0_CAM2_RAW_R_0_P0_16_U0>,
 			<SMMU_L16_P1_CAM2_RAW_R_0_P1_16_U0>,
@@ -4132,16 +4074,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		reg-names = "base", "inner_base";
 		mediatek,cam-id = <0>;
 		iommus = <&disp_iommu M4U_L16_P0_CAM_RAW_A_DMA_R_0_U0>;
-#if 0
 		clocks =
-		    <&camsys_rmsa_clk CAMSYS_RMSA_LARBX_CAM_RMSA>,
-		    <&camsys_rmsa_clk CAMSYS_RMSA_CAM_CAM_RMSA>,
-		    <&camsys_rmsa_clk CAMSYS_RMSA_CAMTG_CAM_RMSA>;
+			<&camsys_rmsa_clk CLK_CAMSYS_RMSA_LARBX_CAM_RAW>,
+			<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAM_CAM_RAW>,
+			<&camsys_rmsa_clk CLK_CAMSYS_RMSA_CAMTG_CAM_RAW>;
 		clock-names =
-			"camsys_rmsa_larbx_cgpdn",
-			"camsys_rmsa_cam_cgpdn",
-			"camsys_rmsa_camtg_cgpdn";
-#endif
+			"camsys_rmsa_larbx_cam_raw",
+			"camsys_rmsa_cam_cam_raw",
+			"camsys_rmsa_camtg_cam_raw";
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBA>;
 	};
 
 	cam_yuv_a: cam-yuv-a@1a780000 {
@@ -4153,16 +4094,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		reg-names = "base", "inner_base", "dmatop_base", "inner_dmatop_base";
 		mediatek,cam-id = <0>;
 		iommus = <&disp_iommu M4U_L17_P0_CAM_YUV_DMA_W_0_U0>;
-#if 0
-		mediatek,larbs = <&smi_larb17>;
 		clocks =
-		    <&camsys_yuva_clk CAM_YA_LARBX_CAM_YUVA>,
-		    <&camsys_yuva_clk CAM_YA_CAM_CAM_YUVA>,
-		    <&camsys_yuva_clk CAM_YA_CAMTG_CAM_YUVA>;
+			<&camsys_yuva_clk CLK_CAM_YA_LARBX_CAM_RAW>,
+			<&camsys_yuva_clk CLK_CAM_YA_CAM_CAM_RAW>,
+			<&camsys_yuva_clk CLK_CAM_YA_CAMTG_CAM_RAW>;
 		clock-names =
-			"camsys_yuva_larbx_cgpdn",
-			"camsys_yuva_cam_cgpdn",
-			"camsys_yuva_camtg_cgpdn";
+			"camsys_yuva_larbx_cam_raw",
+			"camsys_yuva_cam_cam_raw",
+			"camsys_yuva_camtg_cam_raw";
+		mediatek,larbs = <&smi_larb17>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBA>;
+#if 0
 		mmqos-supply = <&mmqos>;
 		mediatek,smmu-dma-axid =
 			<SMMU_L17_P0_CAM3_YUV_W_0_17_U0>,
@@ -4207,18 +4149,21 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		mediatek,cam-id = <1>;
 		interrupts = <GIC_SPI 265 IRQ_TYPE_LEVEL_HIGH 0>;
 		iommus = <&disp_iommu M4U_L33_P0_CAM_RAW_A_DMA_R_0_U1>;
-#if 0
-		mediatek,larbs = <&smi_larb43>;
 		clocks =
-		    <&camsys_rawb_clk CAM_RB_LARBX_CAM_RAWB>,
-		    <&camsys_rawb_clk CAM_RB_CAM_CAM_RAWB>,
-		    <&camsys_rawb_clk CAM_RB_CAMTG_CAM_RAWB>,
-		    <&camsys_rawb_clk CAM_RB_CAM_26M_CAM_RAWB>;
+			<&cam_main_r1a_clk CLK_CAM_MAIN_CAM_SENINF_TG_SUBB_CAM_RAW>,
+			<&camsys_rawb_clk CLK_CAM_RB_LARBX_CAM_RAW>,
+			<&camsys_rawb_clk CLK_CAM_RB_CAM_CAM_RAW>,
+			<&camsys_rawb_clk CLK_CAM_RB_CAMTG_CAM_RAW>,
+			<&camsys_rawb_clk CLK_CAM_RB_CAM_26M_CAM_RAW>;
 		clock-names =
-			"camsys_rawb_larbx_cgpdn",
-			"camsys_rawb_cam_cgpdn",
-			"camsys_rawb_camtg_cgpdn",
-			"camsys_rawb_cam_26m_cgpdn";
+			"camsys_main_cam_seninf_tg_subb_cam_raw",
+			"camsys_rawb_larbx_cam_raw",
+			"camsys_rawb_cam_cam_raw",
+			"camsys_rawb_camtg_cam_raw",
+			"camsys_rawb_cam_26m_cam_raw";
+		mediatek,larbs = <&smi_larb33>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBB>;
+#if 0
 		mmqos-supply = <&mmqos>;
 		mediatek,smmu-dma-axid =
 			<SMMU_L43_P0_CAM2_RAW_R_0_P0_16_U1>,
@@ -4285,16 +4230,15 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 		reg-names = "base", "inner_base";
 		mediatek,cam-id = <1>;
 		iommus = <&disp_iommu M4U_L33_P0_CAM_RAW_A_DMA_R_0_U1>;
-#if 0
 		clocks =
-		    <&camsys_rmsb_clk CAMSYS_RMSB_LARBX_CAM_RMSB>,
-		    <&camsys_rmsb_clk CAMSYS_RMSB_CAM_CAM_RMSB>,
-		    <&camsys_rmsb_clk CAMSYS_RMSB_CAMTG_CAM_RMSB>;
+			<&camsys_rmsb_clk CLK_CAMSYS_RMSB_LARBX_CAM_RAW>,
+			<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAM_CAM_RAW>,
+			<&camsys_rmsb_clk CLK_CAMSYS_RMSB_CAMTG_CAM_RAW>;
 		clock-names =
-			"camsys_rmsb_larbx_cgpdn",
-			"camsys_rmsb_cam_cgpdn",
-			"camsys_rmsb_camtg_cgpdn";
-#endif
+			"camsys_rmsb_larbx_cam_raw",
+			"camsys_rmsb_cam_cam_raw",
+			"camsys_rmsb_camtg_cam_raw";
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBB>;
 	};
 
 	cam_yuv_b: cam-yuv-b@1a980000 {
@@ -4310,16 +4254,17 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"inner_dmatop_base";
 		mediatek,cam-id = <1>;
 		iommus = <&disp_iommu M4U_L34_P0_CAM_YUV_DMA_W_0_U1>;
-#if 0
-		mediatek,larbs = <&smi_larb45>;
 		clocks =
-		    <&camsys_yuvb_clk CAM_YB_LARBX_CAM_YUVB>,
-		    <&camsys_yuvb_clk CAM_YB_CAM_CAM_YUVB>,
-		    <&camsys_yuvb_clk CAM_YB_CAMTG_CAM_YUVB>;
+			<&camsys_yuvb_clk CLK_CAM_YB_LARBX_CAM_RAW>,
+			<&camsys_yuvb_clk CLK_CAM_YB_CAM_CAM_RAW>,
+			<&camsys_yuvb_clk CLK_CAM_YB_CAMTG_CAM_RAW>;
 		clock-names =
-			"camsys_yuvb_larbx_cgpdn",
-			"camsys_yuvb_cam_cgpdn",
-			"camsys_yuvb_camtg_cgpdn";
+			"camsys_yuvb_larbx_cam_raw",
+			"camsys_yuvb_cam_cam_raw",
+			"camsys_yuvb_camtg_cam_raw";
+		mediatek,larbs = <&smi_larb34>;
+		power-domains = <&scpsys MT6881_POWER_DOMAIN_CAM_SUBB>;
+#if 0
 		mmqos-supply = <&mmqos>;
 		mediatek,smmu-dma-axid =
 			<SMMU_L45_P0_CAM3_YUV_W_0_17_U1>,
