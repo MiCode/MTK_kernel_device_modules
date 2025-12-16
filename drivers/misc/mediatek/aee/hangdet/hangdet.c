@@ -1390,7 +1390,8 @@ static void kwdt_process_kick(int local_bit, int cpu,
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_AEE_HANGDET_IMPROVE_PERFORMANCE)
-	save_kick_log(msg_buf);
+	if (ret >= 0)
+		save_kick_log(msg_buf);
 	save_kick_log(tmr_buf[cpu]);
 #endif
 
