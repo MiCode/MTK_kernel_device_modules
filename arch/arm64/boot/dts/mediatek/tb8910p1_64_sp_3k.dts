@@ -15,14 +15,6 @@
 	bootargs_ext = "arm64.nosme";
 };
 
-&clkbuf_ctrl {
-	compatible = "mediatek,mt8910-clkbuf";
-};
-
-&mt6687_clkbuf {
-	compatible = "mediatek,mt6687-tb-clkbuf";
-};
-
 &android {
 	hardware = "mt8910";
 };
