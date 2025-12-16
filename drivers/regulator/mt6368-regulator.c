@@ -191,6 +191,11 @@ static const unsigned int ldo_volt_table4[] = {
 	2700000, 2800000, 2900000, 3000000, 3100000, 3300000, 3400000, 3500000,
 };
 
+static const unsigned int ldo_volt_table5[] = {
+	550000, 600000, 650000, 700000, 750000, 800000, 900000, 950000,
+	1000000, 1050000, 1100000, 1150000, 1700000, 1750000, 1800000, 1850000,
+};
+
 static int mt6368_buck_enable(struct regulator_dev *rdev)
 {
 	if (of_property_read_bool(rdev->dev.of_node, "regulator-read-only"))
@@ -475,6 +480,14 @@ static struct mt6368_regulator_info mt6368_regulators[] = {
 		    MT6368_PMIC_RG_BUCK_VPA_LP_SHIFT,
 		    MT6368_PMIC_RG_VPA_MODESET_ADDR,
 		    MT6368_PMIC_RG_VPA_MODESET_SHIFT),
+	MT6368_LDO(VMDDQ, ldo_volt_table5,
+		   MT6368_PMIC_RG_LDO_VMDDQ_EN_ADDR, MT6368_PMIC_RG_LDO_VMDDQ_EN_SHIFT,
+		   MT6368_PMIC_RG_VMDDQ_VOSEL_ADDR,
+		   MT6368_PMIC_RG_VMDDQ_VOSEL_MASK,
+		   MT6368_PMIC_RG_VMDDQ_VOCAL_ADDR,
+		   MT6368_PMIC_RG_VMDDQ_VOCAL_MASK,
+		   MT6368_PMIC_RG_LDO_VMDDQ_LP_ADDR,
+		   MT6368_PMIC_RG_LDO_VMDDQ_LP_SHIFT),
 	MT6368_LDO(VUSB, ldo_volt_table1,
 		   MT6368_PMIC_RG_LDO_VUSB_EN_ADDR, MT6368_PMIC_RG_LDO_VUSB_EN_SHIFT,
 		   MT6368_PMIC_RG_VUSB_VOSEL_ADDR,
