@@ -383,7 +383,8 @@ static void free_v7s_page(struct v7s_page *page)
 	list_add_tail(&page->node, &page_list);
 	avail_pages++;
 #if (ENABLE_MPOOL_IOMMU_PGTBL)
-	list_remove_entry(page);
+	if (page)
+		list_remove_entry(page);
 #endif
 
 	dump_usage();
@@ -693,6 +694,7 @@ arm_v7s_iopte install_table(arm_v7s_iopte *pte)
 	if (!page) {
 		mod_ops->puts("out of v7s pages");
 		WARN_ON(1);
+		return 0;
 	}
 	pa = v7s_page_to_phys(page);
 	new = (arm_v7s_iopte)(pa | ARM_V7S_PTE_TYPE_TABLE);
