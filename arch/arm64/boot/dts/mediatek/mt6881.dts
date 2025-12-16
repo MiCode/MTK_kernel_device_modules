@@ -10183,8 +10183,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1100e000 0 0x1000>;
 			interrupts = <GIC_SPI 599 IRQ_TYPE_LEVEL_HIGH 0>;
 			#pwm-cells = <2>;
-			//clocks = <&cksys_clk CLK_CK_DISP_PWM_SEL>;
-			//clock-names = "main";
+			clocks = <&cksys_reg_clk CLK_CKSYS_REG_DISP_PWM_SEL>,
+					<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DISP_PWM0_DISP_PWM_0>;
+			clock-names = "main", "mm";
 			status = "disabled";
 		};
 
@@ -10194,8 +10195,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1100f000 0 0x1000>;
 			interrupts = <GIC_SPI 598 IRQ_TYPE_LEVEL_HIGH 0>;
 			#pwm-cells = <2>;
-			//clocks = <&cksys_clk CLK_CK_DISP_PWM_SEL>;
-			//clock-names = "main";
+			clocks = <&cksys_reg_clk CLK_CKSYS_REG_DISP_PWM_SEL>,
+					<&pericfg_ao_reg_clk CLK_PERICFG_AO_REG_PERI_DISP_PWM1_DISP_PWM_1>;
+			clock-names = "main", "mm";
 			status = "disabled";
 		};
 
