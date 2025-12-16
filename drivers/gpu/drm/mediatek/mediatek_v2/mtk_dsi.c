@@ -91,6 +91,10 @@ module_param(dbg_output_valid, int, 0644);
 #define HRT_ISSUE_TIMER_TIMEOUT 100 //unit:s
 static struct timer_list hrt_issue_timer;
 
+#define NODBG_PREURGENT_LINE 0xFFFF
+int dbg_preurgent_line = NODBG_PREURGENT_LINE;
+module_param(dbg_preurgent_line, int, 0644);
+
 #define DSI_START 0x00
 #define SKEWCAL_START BIT(4)
 #define SLEEPOUT_START BIT(2)
@@ -3566,6 +3570,10 @@ static void mtk_dsi_tx_buf_rw(struct mtk_dsi *dsi)
 			}
 
 			mtk_dsi_mask(dsi, DSI_BUF_CON0(dsi->driver_data), BUF_PREURGENT_MODE, 0);
+			if (dbg_preurgent_line == NODBG_PREURGENT_LINE)
+				buf_preurgent_high = dsi->driver_data->preurgent_line;
+			else
+				buf_preurgent_high = dbg_preurgent_line;
 			writel(buf_preurgent_high, dsi->regs + DSI_BUF_PREURGENT_HIGH(dsi->driver_data));
 			if (priv && priv->data &&
 				priv->data->mmsys_id == MMSYS_MT6989) // MT6989 MT6878 MT6899
@@ -18707,6 +18715,7 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.support_rd_cmdq = 1,
 	.reg_up_intsta = 0x14,
 	.esd_poll_microp = true,
+	.preurgent_line = 17,
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {

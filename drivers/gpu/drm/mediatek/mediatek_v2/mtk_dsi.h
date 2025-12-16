@@ -131,6 +131,7 @@ struct mtk_dsi_driver_data {
 	bool support_frame_tb_v5;
 	bool esd_poll_microp;
 	enum UDR_AEE_MODE underrun_aee_mode;
+	u32 preurgent_line;
 };
 
 struct mtk_dsi {
