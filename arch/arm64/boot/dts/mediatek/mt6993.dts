@@ -7465,7 +7465,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			event-ir-disp-ready = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_IR_DISP_READY>;
 			event-ir-mml-stop = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_MML_STOP>;
 			event-ir-disp-done = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>;
-			event-ir-eof = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_DISP_DONE_EVENT>;
 			event-mml-config = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_STREAM_CONFIG>;
 			event-racing-pipe0 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE0>;
 			event-racing-pipe1 = /bits/ 16 <CMDQ_SYNC_TOKEN_MML_PIPE1>;
