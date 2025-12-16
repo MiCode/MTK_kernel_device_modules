@@ -5892,6 +5892,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 	mmdvfs {
 		compatible = "mediatek,mmdvfs";
 		mediatek,mmdvfs-clk = <&mmdvfs_clk>;
+		mediatek,dvfsrc = <&dvfsrc>;
 		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 		operating-points-v2 = <&opp_table_disp>;
 		mediatek,support-mux = "disp0", "mminfra";
