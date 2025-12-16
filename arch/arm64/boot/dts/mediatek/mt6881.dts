@@ -1015,6 +1015,19 @@
 		mediatek,enable = <1>;
 	};
 
+	dfd_soc: dfd-soc {
+		compatible = "mediatek,dfd_soc";
+		enabled = <1>;
+		dfd-timeout = <0x1000>;
+		dfd-timeout-debug = <0x1000>;
+		buf-length = <0x500000>;
+		buf-length-debug = <0x500000>;
+		buf-addr-align = <0x400000>;
+		buf-addr-max = <0xffffffff>;
+		dfd-soc-disable-efuse = <25 14>;
+		efuse-sec-ctrl = <27 0 6>;
+	};
+
 	cm_mgr: cm-mgr@c100000 {
 		compatible = "mediatek,mt6881-cm_mgr";
 		reg = <0 0xc100000 0 0x9000>;
