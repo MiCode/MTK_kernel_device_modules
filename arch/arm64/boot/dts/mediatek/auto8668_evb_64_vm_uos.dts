@@ -15,6 +15,38 @@
 	bootargs_ext = "";
 };
 
+&cpu0 {
+	cpu-idle-states = <&s2idle>;
+};
+
+&cpu1 {
+	cpu-idle-states = <&s2idle>;
+};
+
+&cpu2 {
+	cpu-idle-states = <&s2idle>;
+};
+
+&cpu3 {
+	cpu-idle-states = <&s2idle>;
+};
+
+&cpu4 {
+	cpu-idle-states = <&s2idle>;
+};
+
+&cpu5 {
+	cpu-idle-states = <&s2idle>;
+};
+
+&cpu6 {
+	cpu-idle-states = <&s2idle>;
+};
+
+&cpu7 {
+	cpu-idle-states = <&s2idle>;
+};
+
 &extcon_usb{
 	status = "disabled";
 };
