@@ -299,6 +299,10 @@ static const struct mtk_gate afe_clks[] = {
 			"cksys_aud_engen1_ck"/* parent */, 13),
 	GATE_AFE1_V(CLK_AFE_APLL_TUNER1_AUDIO, "afe_apll_tuner1_audio",
 			"afe_apll_tuner1"/* parent */),
+	GATE_AFE1(CLK_AFE_CQDMA_BUS, "afe_cqdma_b",
+			"cksys_axi_peri_ck"/* parent */, 14),
+	GATE_AFE1_V(CLK_AFE_CQDMA_BUS_AUDIO, "afe_cqdma_b_audio",
+			"afe_cqdma_b"/* parent */),
 	/* AFE2 */
 	GATE_AFE2(CLK_AFE_AUD_PAD_TOP_MOSI_EN, "afe_aud_pad_mosi",
 			"cksys_f26m_ck"/* parent */, 7),
