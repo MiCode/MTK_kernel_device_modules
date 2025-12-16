@@ -2437,12 +2437,8 @@ static int mtk_atomic_commit(struct drm_device *drm,
 		mtk_bwm_calc_hrt_bw(crtc, state);
 	}
 
-	if (private->data->support_bif) {
-		if (drm_crtc_index(crtc) == 0 && (atomic_read(&private->kernel_pm.wakelock_cnt) == 1))
-			set_bif_enable(crtc, true, __LINE__);
-		else
-			set_bif_enable(crtc, false, __LINE__);
-	}
+	if (drm_crtc_index(crtc) != 0 || atomic_read(&private->kernel_pm.wakelock_cnt) != 1)
+		set_bif_enable(crtc, false, __LINE__);
 
 #ifdef IF_ZERO /*TODO: use async atomic_commit would occur crtc_state and crtc race condition */
 	if (async)

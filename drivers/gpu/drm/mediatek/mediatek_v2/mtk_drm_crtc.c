@@ -757,16 +757,23 @@ void mtk_crtc_bif_apsrc_ddren_control(struct mtk_drm_crtc *mtk_crtc, struct cmdq
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
 
-	if (priv->data->bif_sodi_config)
-		priv->data->bif_sodi_config(mtk_crtc, handle, en);
-
-	if (priv->data->bif_resource_ctrl)
-		priv->data->bif_resource_ctrl(mtk_crtc,handle, en);
-
 	if (en) {
+		if (priv->data->bif_resource_ctrl)
+			priv->data->bif_resource_ctrl(mtk_crtc,handle, en);
+
+		if (priv->data->bif_sodi_config)
+			priv->data->bif_sodi_config(mtk_crtc, handle, en);
+
 		CRTC_MMP_EVENT_END(0, bif_src_release, 0, 0);
 		drm_trace_tag_end("bif_read");
 	} else {
+		// enter read mode
+		if (priv->data->bif_sodi_config)
+			priv->data->bif_sodi_config(mtk_crtc, handle, en);
+
+		if (priv->data->bif_resource_ctrl)
+			priv->data->bif_resource_ctrl(mtk_crtc,handle, en);
+
 		CRTC_MMP_EVENT_START(0, bif_src_release, 0, 0);
 		drm_trace_tag_start("bif_read");
 	}
@@ -10303,6 +10310,12 @@ static void mtk_crtc_update_ddp_state(struct drm_crtc *crtc,
 			mtk_crtc_atomic_ddp_config(crtc, old_mtk_state, cmdq_handle);
 			break;
 		} else if (lyeblob_ids->lye_idx == prop_lye_idx) {
+			if (drm_crtc_index(crtc) == 0 && atomic_read(&priv->kernel_pm.wakelock_cnt) == 1 &&
+			    crtc_state->lye_state.layer_num > 0)
+				set_bif_enable(crtc, true, __LINE__);
+			else
+				set_bif_enable(crtc, false, __LINE__);
+
 			if (index == 0 || sphrt_enable) {
 				mtk_crtc_disp_mode_switch_begin(crtc,
 					old_crtc_state, crtc_state,
@@ -17241,6 +17254,9 @@ void mtk_crtc_stop_ddp(struct mtk_drm_crtc *mtk_crtc,
 
 	if (bif_enabled(crtc))
 		mtk_crtc_bif_comp_stop(mtk_crtc, cmdq_handle);
+
+	if (priv->data->bif_resource_ctrl)
+		mtk_vidle_bif_mtcmos_ctrl(0);
 }
 
 /* Stop trig loop and stop all modules in this CRTC */

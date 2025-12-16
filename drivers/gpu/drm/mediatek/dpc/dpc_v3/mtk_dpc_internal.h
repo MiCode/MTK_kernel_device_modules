@@ -537,6 +537,7 @@ enum mtk_dpc_cap_id {
 	DPC_CAP_MMINFRA_PLL,
 	DPC_CAP_PMIC_VCORE,
 	DPC_CAP_DSI,
+	DPC_CAP_BIF,
 	DPC_CAP_CNT
 };
 #define has_cap(id) (g_priv && (g_priv->vidle_mask & BIT(id)))
@@ -669,6 +670,8 @@ struct mtk_dpc {
 	void __iomem *mminfra_voter;
 	void __iomem *mminfra_dummy;
 
+	enum mtk_panel_type panel_type;
+
 	struct mtk_dpc_mtcmos_cfg *mtcmos_cfg;
 	int subsys_cnt;
 
@@ -691,6 +694,7 @@ struct mtk_dpc {
 	void (*power_release)(const u32 user);
 	void (*power_keep_by_gce)(struct cmdq_pkt *pkt, const u32 user, const u16 gpr, void *reuse);
 	void (*power_release_by_gce)(struct cmdq_pkt *pkt, const u32 user, void *reuse);
+	void (*bif_mtcmos_ctrl)(const u32 stage);
 	int (*config)(const u32 subsys, bool en);
 	void (*analysis)(void);
 	void (*dsi_pll_set)(const u32 value);

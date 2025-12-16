@@ -31599,6 +31599,7 @@ void mtk_crtc_bif_resource_control_MT6993(struct mtk_drm_crtc *mtk_crtc, struct 
 	struct drm_crtc *crtc = &mtk_crtc->base;
 	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
+	mtk_vidle_bif_mtcmos_ctrl(en ? 2 : 1);
 	mtk_vidle_bif_resource_ctrl(en, handle);
 
 	if (priv->data->wla_config)

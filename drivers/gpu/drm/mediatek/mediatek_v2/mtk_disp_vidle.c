@@ -104,7 +104,7 @@ void mtk_vidle_flag_init(void *_crtc)
 		type = PANEL_TYPE_CMD;
 	else if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO) ||
 		mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_VDO_PANEL))
-		type = PANEL_TYPE_VDO;
+		type = priv->bif_support_mode ? PANEL_TYPE_VDO_BIF : PANEL_TYPE_VDO;
 	else
 		DDPMSG("%s, invalid panel type:%d\n", __func__, type);
 
@@ -717,7 +717,7 @@ static void mtk_vidle_enable_v1(bool en, void *_drm_priv)
 
 static void mtk_vidle_enable_v2(bool _en, void *_drm_priv)
 {
-	u8 en = 0;
+	u8 en = _en;
 	struct mtk_drm_private *drm_priv = NULL;
 
 	if (!disp_dpc_driver.dpc_enable)
@@ -729,9 +729,6 @@ static void mtk_vidle_enable_v2(bool _en, void *_drm_priv)
 	if (unlikely(!_drm_priv))
 		return;
 	drm_priv = _drm_priv;
-
-	if (_en)
-		en = mtk_crtc_is_frame_trigger_mode(drm_priv->crtc[0]) ? 1 : 2;
 
 	disp_dpc_driver.dpc_enable(en);
 
@@ -886,11 +883,19 @@ void mtk_vidle_dsi_pll_set(const u32 value)
 	if (disp_dpc_driver.dpc_dsi_pll_set)
 		disp_dpc_driver.dpc_dsi_pll_set(value);
 }
+
 void mtk_vidle_bif_resource_ctrl(const bool en, struct cmdq_pkt *pkt)
 {
 	if (disp_dpc_driver.dpc_bif_resource_ctrl)
 		disp_dpc_driver.dpc_bif_resource_ctrl(en, pkt);
 }
+
+void mtk_vidle_bif_mtcmos_ctrl(const u32 stage)
+{
+	if (disp_dpc_driver.dpc_bif_mtcmos_ctrl)
+		disp_dpc_driver.dpc_bif_mtcmos_ctrl(stage);
+}
+
 u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 {
 	unsigned long flags = 0;
@@ -933,6 +938,10 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 		break;
 	case VIDLE_HINT_HSIDLE_LEAVE:
 		vidle_data.hint.hsidle_fuse--;
+		break;
+	case VIDLE_HINT_FORCE_CONFIG:
+		atomic_set(&g_need_config, 1);
+		vidle_data.hint.mtcmos_debounce = VIDLE_MTCMOS_DEBOUNCE;
 		break;
 	default:
 		break;

@@ -67,11 +67,13 @@ enum mtk_vidle_voter_status {
 enum mtk_dpc_mtcmos_mode {
 	DPC_MTCMOS_MANUAL,
 	DPC_MTCMOS_AUTO,
+	DPC_MTCMOS_FORCE_AUTO,
 };
 
 enum mtk_panel_type {
 	PANEL_TYPE_CMD,
 	PANEL_TYPE_VDO,
+	PANEL_TYPE_VDO_BIF,
 	PANEL_TYPE_COUNT,
 };
 
@@ -265,6 +267,7 @@ struct dpc_funcs {
 	void (*dpc_apsrc_enable)(bool en, const enum mtk_vidle_voter_user user);
 
 	void (*dpc_bif_resource_ctrl)(const bool en, struct cmdq_pkt *pkt);
+	void (*dpc_bif_mtcmos_ctrl)(const u32 stage);
 
 	/* V1 ONLY */
 	void (*dpc_dc_force_enable)(const bool en);
