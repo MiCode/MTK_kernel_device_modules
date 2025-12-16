@@ -1471,7 +1471,7 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/regulator:mtk-vmm-isp71-regulator".format(kernel_version): "mt6895",
-    "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:mtk_vmm_spm".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:mtk_vmm_spm".format(kernel_version): "mt6895 mt6881",
     "//kernel_device_modules-{}/drivers/misc/mediatek/vmm_spm:mtk_vmm_spm_mt6989".format(kernel_version): "mt6989",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v3:mcupm".format(kernel_version): "mt6993 mt6881",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v2_1:mcupm".format(kernel_version): "mt6881",
