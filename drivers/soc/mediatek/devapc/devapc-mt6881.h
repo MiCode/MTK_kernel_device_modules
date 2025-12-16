@@ -1714,7 +1714,7 @@ static const struct mtk_device_info mt6881_devices_mminfra[] = {
 	{-1, -1, 556, "OOB_way_en", true},
 	{-1, -1, 557, "Decode_error", true},
 	{-1, -1, 558, "Decode_error", true},
-	{-1, -1, 559, "Decode_error", true},
+	{-1, -1, 559, "Decode_error", false},
 	{-1, -1, 560, "Decode_error", true},
 	{-1, -1, 561, "GCE_D_APB_S", false},
 	{-1, -1, 562, "GCE_M_APB_S", false},
