@@ -202,8 +202,9 @@ int tmem_ffa_page_alloc(enum MTEE_MCHUNKS_ID mchunk_id,
 	/* set ffa_mem_ops_args */
 	set_memory_region_attrs(mchunk_id, &ffa_args, mem_region_attrs, 0);
 	ffa_args.use_txbuf = true;
-	if ((mchunk_id == MTEE_MCHUNKS_PROT) ||
-		(mchunk_id == MTEE_MCHUNKS_SAPU_DATA_SHM)) {
+	if (!is_pkvm_enabled() &&
+		((mchunk_id == MTEE_MCHUNKS_PROT) ||
+		(mchunk_id == MTEE_MCHUNKS_SAPU_DATA_SHM))) {
 		/* set bit[31]=1 then ffa_lend will do retrieve_req */
 		ffa_args.flags = PAGED_BASED_FFA_FLAGS;
 	} else

@@ -260,8 +260,7 @@ int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 		return tmem_ffa_page_alloc(MTEE_MCHUNKS_TEE, sg_tbl, handle);
 
 	/* we need the FF-A handle of EL2 SPM to do memory mapping at MTEE */
-	if (!is_pkvm_enabled() &&
-		((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE)))
+	if ((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE))
 		return tmem_ffa_page_alloc(MTEE_MCHUNKS_PROT, sg_tbl, handle);
 
 	return 0;
