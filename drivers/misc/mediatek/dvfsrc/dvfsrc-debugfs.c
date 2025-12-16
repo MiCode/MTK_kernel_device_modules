@@ -166,6 +166,10 @@ static const int mt6858_regs[] = {
 	[DVFSRC_FAKE_TEMP]  = 0x28C,
 };
 
+static const int mt6881_regs[] = {
+	[DVFSRC_FAKE_TEMP]  = 0x28C,
+};
+
 static const struct dvfsrc_dbgfs_data mt6991_dvfsrc_debugfs_data = {
 	.regs = mt6991_regs,
 };
@@ -176,6 +180,10 @@ static const struct dvfsrc_dbgfs_data mt6899_dvfsrc_debugfs_data = {
 
 static const struct dvfsrc_dbgfs_data mt6858_dvfsrc_debugfs_data = {
 	.regs = mt6858_regs,
+};
+
+static const struct dvfsrc_dbgfs_data mt6881_dvfsrc_debugfs_data = {
+	.regs = mt6881_regs,
 };
 
 static const struct of_device_id of_mtk_dvfsrc_dbgfs_match_tbl[] = {
@@ -190,6 +198,10 @@ static const struct of_device_id of_mtk_dvfsrc_dbgfs_match_tbl[] = {
 	{
 		.compatible = "mediatek,mt6858-dvfsrc-debugfs",
 		.data = &mt6858_dvfsrc_debugfs_data,
+	},
+		{
+		.compatible = "mediatek,mt6881-dvfsrc-debugfs",
+		.data = &mt6881_dvfsrc_debugfs_data,
 	},
 	{}
 };
