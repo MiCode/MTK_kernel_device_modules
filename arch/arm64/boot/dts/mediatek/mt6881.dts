@@ -1170,7 +1170,7 @@
 				<7 0x1000>, /* gpu */
 				<8 0x1000>; /* slbc */
 
-		sspm-share-region-base = <0x24000>; /* 144K */
+		sspm-share-region-base = <0x28000>; /* 160K */
 		sspm-share-region-size = <0x8000>; /* 32K */
 	};
 
