@@ -2150,13 +2150,16 @@ static int mtk_drm_idlemgr_monitor_thread(void *data)
 			 * will flicker into idle repaint, so let it not
 			 * into idle repaint as workaround.
 			 */
-			if (mtk_crtc_is_frame_trigger_mode(crtc) == 0 &&
-				((mtk_drm_idlemgr_get_rsz_ratio(mtk_state) >=
-				MAX_ENTER_IDLE_RSZ_RATIO) ||
-				mtk_planes_is_yuv_fmt(crtc))) {
-				DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__,
+			if (mtk_crtc_is_frame_trigger_mode(crtc) == 0) {
+				if ((mtk_drm_idlemgr_get_rsz_ratio(mtk_state) >=
+					MAX_ENTER_IDLE_RSZ_RATIO) ||
+					(mtk_planes_is_yuv_fmt(crtc) &&
+					mtk_drm_helper_get_opt(priv->helper_opt,
+					MTK_DRM_OPT_IDLEMGR_BY_REPAINT))) {
+					DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__,
 						__LINE__, false);
-				continue;
+					continue;
+				}
 			}
 		}
 
