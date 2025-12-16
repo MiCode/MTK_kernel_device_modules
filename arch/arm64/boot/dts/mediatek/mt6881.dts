@@ -7371,6 +7371,56 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x1000e000 0 0x1000>;
 		};
 
+		lastbus: lastbus@10023000 {
+			compatible = "mediatek,lastbus";
+			reg = <0 0x10023000 0 0x1000>;
+			enabled = <1>;
+			sw-version = <1>;
+			timeout-ms = <200>;
+			timeout-type = <0>;
+			timeout-warning = <0>;
+			monitors {
+				monitor1 {
+					monitor-name = "debug_ctrl_ao_INFRA_AO";
+					base = <0x10023000>;
+					num-ports = <46>;
+					bus-status-offset = <0x20>;
+					bus-status-num = <7>;
+					bus-freq-mhz = <156>;
+				};
+				monitor2 {
+					monitor-name = "debug_ctrl_ao_INFRA_AO1";
+					base = <0x1002b000>;
+					num-ports = <18>;
+					bus-freq-mhz = <156>;
+				};
+				monitor3 {
+					monitor-name = "debug_ctrl_ao_EMISYS_NAO";
+					base = <0x10042000>;
+					num-ports = <12>;
+					bus-status-offset = <0x10>;
+					bus-status-num = <4>;
+					bus-freq-mhz = <856>;
+				};
+				monitor4 {
+					monitor-name = "debug_ctrl_ao_PERI_PAR_AO";
+					base = <0x11037000>;
+					num-ports = <22>;
+					bus-status-offset = <0x10>;
+					bus-status-num = <3>;
+					bus-freq-mhz = <78>;
+				};
+				monitor5 {
+					monitor-name = "debug_ctrl_ao_VLP_AO";
+					base = <0x1c01d000>;
+					num-ports = <12>;
+					bus-status-offset = <0xc>;
+					bus-status-num = <3>;
+					bus-freq-mhz = <156>;
+				};
+			};
+		};
+
 		sleep-reg-md@1000f000 {
 			compatible = "mediatek,sleep_reg_md";
 			reg = <0 0x1000f000 0 0x1000>;
