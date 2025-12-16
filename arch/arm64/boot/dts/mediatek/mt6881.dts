@@ -10396,6 +10396,22 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				"M4U_PORT_VDEC_VIDEO_UP_SEC";
 
 			/* dvfs params */
+			dvfs-qos-ver = <2>;
+			vdec-mmdvfs-in-vcp = <1>;
+			vdec-mmdvfs-in-adaptive = <1>;
+			vdec-thermal-hint-mode; /* vdec thermal throttle enable */
+			vdec-cpu-hint-mode = <1>;
+			throughput-min = <218000000>;
+			throughput-normal-max = <546000000>;
+			mmqos-supply = <&mmqos>;
+			interconnects =
+				<&mmqos SLAVE_LARB(4) &mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(5) &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_vdec_r", "path_vdec_w";
+			interconnect-num = <2>;
+			bandwidth-table = // avg occupy
+				<4 0 1710>,
+				<4 1 590>; /* larb_id, rw, base_bw*/
 		};
 
 		venc@17000000 {
@@ -10437,7 +10453,27 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 M4U_L7_P13_RCH 0>,
 				<0 M4U_L7_P14_FCS_SUB_R 0>;
 
+			interconnects =
+				<&mmqos SLAVE_LARB(7) &mmqos SLAVE_COMMON(0)>,
+				<&mmqos SLAVE_LARB(8) &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "path_venc_smi_mon_r", "path_venc_smi_mon_w";
+			interconnect-num = <2>;
+
 			/* dvfs params */
+			dvfs-qos-ver = <1>;
+			venc-mmdvfs-in-vcp = <1>;
+			venc-mmdvfs-in-adaptive = <1>;
+			venc-thermal-hint-mode; /* venc thermal throttle enable */
+			venc-cpu-hint-mode = <1>;
+			mmqos-supply = <&mmqos>;
+			need-smi-monitor = <1>;	  /* enable smi bw monitor in kernel */
+			smi-monitor-in-vcp = <1>; /* specify the monitor location, 1 for vcp, 0 for kernel */
+			commlarb-id = <6 6 6 6>;		/* Monitor port of <comm0 comm1> */
+			common-id = <0>;		/* <DISP_COMM MDP_COMM> */
+			monitor-id = <3>;		/* Monitor id of <comm_0 comm_1> */
+			bandwidth-table = // avg occupy
+				<7 0 647>,
+				<7 1 293>; /* larb_id, rw, base_bw*/
 		};
 
 		smi-larb7@17010000 {
