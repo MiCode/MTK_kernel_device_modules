@@ -964,8 +964,7 @@ static int mt6379_charger_set_online(struct mt6379_charger_data *cdata,
 		cdata->bc12_dn[idx] = false;
 		/* reset calibrated when plug out */
 		mutex_lock(&cdata->icc_trim_lock);
-		cdata->icc_needs_trim = cdata->dynamic_icc_trim_en ? true :
-					cdata->icc_needs_trim;
+		cdata->icc_needs_trim = cdata->dynamic_icc_trim_en ? true : cdata->icc_needs_trim;
 		mutex_unlock(&cdata->icc_trim_lock);
 	}
 
@@ -1582,21 +1581,21 @@ static int mt6379_force_set_icc_offset_step(struct mt6379_charger_data *cdata, i
 	u32 val = 0;
 	int ret = 0;
 
-	mutex_lock(&cdata->icc_trim_lock);
+	scoped_guard(mutex, &cdata->icc_trim_lock);
 
 	if (cdata->icc_trimmed) {
 		ret = mt6379_charger_field_get(cdata, F_ICC_ORIGIN, &val);
 		if (ret) {
 			dev_info(dev, "%s, Failed to get original icc offset data (ret:%d)\n",
 				 __func__, ret);
-			goto out;
+			return ret;
 		}
 
 		ret = mt6379_charger_field_set(cdata, F_ICC_OFFSET, val);
 		if (ret) {
 			dev_info(dev, "%s, Failed to roll back icc offset step to default (ret:%d)\n",
 				 __func__, ret);
-			goto out;
+			return ret;
 		}
 
 		cdata->current_icc_offset_step = 0;
@@ -1605,20 +1604,15 @@ static int mt6379_force_set_icc_offset_step(struct mt6379_charger_data *cdata, i
 	ret = mt6379_set_icc_trim_step_to_reg(cdata, offset);
 	if (ret) {
 		dev_info(dev, "%s, Failed to set trim icc offset step (ret:%d)\n", __func__, ret);
-		goto out;
+		return ret;
 	}
 
 	cdata->icc_needs_trim = false;
 
 	ret = mt6379_store_icc_offset_step(cdata);
-	if (ret) {
+	if (ret)
 		dev_info(dev, "%s, Failed to save icc offset step data to phone (ret:%d)\n",
 			 __func__, ret);
-		goto out;
-	}
-
-out:
-	mutex_unlock(&cdata->icc_trim_lock);
 
 	return ret;
 }
@@ -1716,17 +1710,15 @@ static int mt6379_icc_calibrate(struct mt6379_charger_data *cdata)
 {
 	int ret, online = 0, ipeak = 0, avg_diff_uA = 0, offset_step = 0;
 	u32 val, cv = 0, vrec = 0, vbat = 0, chg_ocp = 0;
+	bool diff_valid = false, needs_trim = true;
 	struct device *dev = cdata->dev;
-	bool diff_valid = false;
 
-	mutex_lock(&cdata->icc_trim_lock);
+	scoped_guard(mutex, &cdata->icc_trim_lock);
 	dev_info(dev, "%s ++, icc needs trim = %d(%s)\n",
 		 __func__, cdata->icc_needs_trim, cdata->icc_needs_trim ? "Yes!" : "No!");
 
-	if (!cdata->icc_needs_trim) {
-		mutex_unlock(&cdata->icc_trim_lock);
+	if (!cdata->icc_needs_trim)
 		return 0;
-	}
 
 	/* 1. Check vbus & ic stat is in fast charging */
 	ret = mt6379_charger_get_online(cdata, &online);
@@ -1862,6 +1854,7 @@ static int mt6379_icc_calibrate(struct mt6379_charger_data *cdata)
 	}
 
 	cdata->icc_needs_trim = false;
+	needs_trim = false;
 
 #if MT6379_DOUBLE_CHECK_ICC_OFFSET_VALID_EN
 	/* 10. Double-Check to confirm if |(gauge ibat - ICC setting)| <= 50mA */
@@ -1878,6 +1871,7 @@ static int mt6379_icc_calibrate(struct mt6379_charger_data *cdata)
 		      abs(avg_diff_uA) < MT6379_ICC_DIFF_VALID_uA) ? true : diff_valid;
 	if (!diff_valid) {
 		cdata->icc_needs_trim = true;
+		needs_trim = true;
 		goto recover_battery_device;
 	}
 #endif /* MT6379_DOUBLE_CHECK_ICC_OFFSET_VALID_EN */
@@ -1896,8 +1890,7 @@ recover_battery_device:
 	customer_turn_on_battery_device();
 
 not_finished:
-	mutex_unlock(&cdata->icc_trim_lock);
-	if (cdata->dynamic_icc_trim_en && cdata->icc_needs_trim)
+	if (cdata->dynamic_icc_trim_en && needs_trim)
 		schedule_delayed_work(&cdata->icc_cali_work,
 				      msecs_to_jiffies(MT6379_RESTART_ICC_TRIM_INTERVAL_MS));
 
@@ -1913,13 +1906,11 @@ static bool mt6379_get_icc_trimmed_status(struct mt6379_charger_data *cdata)
 	int ret = 0;
 	u32 val = 0;
 
-	mutex_lock(&cdata->icc_trim_lock);
+	scoped_guard(mutex, &cdata->icc_trim_lock);
 
 	ret = mt6379_charger_field_get(cdata, F_ICC_TRIMMED, &val);
 	if (ret)
 		dev_info(cdata->dev, "%s, Failed to get icc trimmed status\n", __func__);
-
-	mutex_unlock(&cdata->icc_trim_lock);
 
 	return ret == 0 ? !!val : false;
 }
@@ -1965,9 +1956,8 @@ static ssize_t current_icc_offset_step_show(struct device *dev, struct device_at
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
 	int val;
 
-	mutex_lock(&cdata->icc_trim_lock);
+	scoped_guard(mutex, &cdata->icc_trim_lock);
 	val = cdata->current_icc_offset_step;
-	mutex_unlock(&cdata->icc_trim_lock);
 
 	return sysfs_emit(buf, "%d\n", val);
 }
@@ -1980,7 +1970,7 @@ static ssize_t icc_cali_mode_store(struct device *dev, struct device_attribute *
 	unsigned long magic = 0;
 	int ret = 0;
 
-	mutex_lock(&cdata->icc_trim_lock);
+	scoped_guard(mutex, &cdata->icc_trim_lock);
 
 	ret = kstrtoul(buf, 0, &magic);
 	if (ret) {
@@ -1992,8 +1982,6 @@ static ssize_t icc_cali_mode_store(struct device *dev, struct device_attribute *
 	dev_info(cdata->dev, "%s, Set mode to: %s\n",
 		 __func__, cdata->dynamic_icc_trim_en ? "Dynamic" : "One-Shot");
 
-	mutex_unlock(&cdata->icc_trim_lock);
-
 	return count;
 }
 
@@ -2002,9 +1990,8 @@ static ssize_t icc_cali_mode_show(struct device *dev, struct device_attribute *a
 	struct mt6379_charger_data *cdata = power_supply_get_drvdata(to_power_supply(dev));
 	bool val = false;
 
-	mutex_lock(&cdata->icc_trim_lock);
+	scoped_guard(mutex, &cdata->icc_trim_lock);
 	val = cdata->dynamic_icc_trim_en;
-	mutex_unlock(&cdata->icc_trim_lock);
 
 	return sysfs_emit(buf, "%s\n", val ? "-> [Dynamic]\tOne-Shot" : "Dynamic\t-> [One-Shot]");
 }

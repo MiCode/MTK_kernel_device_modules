@@ -9,6 +9,7 @@
 
 #include <linux/bitfield.h>
 #include <linux/cdev.h>
+#include <linux/cleanup.h>
 #include <linux/iio/consumer.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -1500,7 +1501,7 @@ static void mt6379_2p_battery_baton_force_en(struct mt6379_priv *priv, bool en)
 	if (!priv->using_2p)
 		return;
 
-	mutex_lock(&priv->baton_lock);
+	scoped_guard(mutex, &priv->baton_lock);
 	ret = regmap_update_bits(priv->regmap, rg[bat_idx][MT6379_REG_BATON_ANA_CON0],
 				 MT6379_MASK_FORCE_BATON_EN, en ? MT6379_MASK_FORCE_BATON_EN : 0);
 	if (ret) {
@@ -1521,8 +1522,6 @@ static void mt6379_2p_battery_baton_force_en(struct mt6379_priv *priv, bool en)
 		dev_info(priv->dev, "Failed to read %s HK1 0x87\n", priv->desc->gauge_name);
 		return;
 	}
-
-	mutex_unlock(&priv->baton_lock);
 
 	dev_info(priv->dev, "%s %s force_on_baton, HK1 0x87:0x%X\n",
 		 en ? "enable" : "disable", priv->desc->gauge_name, reg_val);
@@ -4572,13 +4571,12 @@ static long adc_cali_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 	int adc_in_data[2] = { 1, 1 };
 	int *user_data_addr;
 
-	mutex_lock(&gm->gauge->fg_mutex);
+	scoped_guard(mutex, &gm->gauge->fg_mutex);
 	user_data_addr = (int *)arg;
 	ret = copy_from_user(adc_in_data, user_data_addr, sizeof(adc_in_data));
 	if (adc_in_data[1] < 0) {
 		bm_err(gm, "%s, %s unknown data: %d\n",
 		       __func__, priv->desc->gauge_name, adc_in_data[1]);
-		mutex_unlock(&gm->gauge->fg_mutex);
 		return -EFAULT;
 	}
 
@@ -4586,10 +4584,8 @@ static long adc_cali_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 	case Get_META_BAT_VOL:
 		adc_out_data[0] = gauge_get_int_property(gm, GAUGE_PROP_BATTERY_VOLTAGE);
 
-		if (copy_to_user(user_data_addr, adc_out_data, sizeof(adc_out_data))) {
-			mutex_unlock(&gm->gauge->fg_mutex);
+		if (copy_to_user(user_data_addr, adc_out_data, sizeof(adc_out_data)))
 			return -EFAULT;
-		}
 
 		bm_notice(gm, "%s, **** unlocked_ioctl: %s Get_META_BAT_VOL Done!\n",
 			  __func__, priv->desc->gauge_name);
@@ -4597,10 +4593,8 @@ static long adc_cali_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 	case Get_META_BAT_SOC:
 		adc_out_data[0] = gm->ui_soc;
 
-		if (copy_to_user(user_data_addr, adc_out_data, sizeof(adc_out_data))) {
-			mutex_unlock(&gm->gauge->fg_mutex);
+		if (copy_to_user(user_data_addr, adc_out_data, sizeof(adc_out_data)))
 			return -EFAULT;
-		}
 
 		bm_notice(gm, "%s, **** unlocked_ioctl: %s Get_META_BAT_SOC Done!\n",
 			  __func__, priv->desc->gauge_name);
@@ -4611,10 +4605,8 @@ static long adc_cali_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 		bm_err(gm, "%s, %s Get_BAT_CAR_TUNE_VALUE, res=%d\n",
 		       __func__, priv->desc->gauge_name, adc_out_data[0]);
 
-		if (copy_to_user(user_data_addr, adc_out_data, sizeof(adc_out_data))) {
-			mutex_unlock(&gm->gauge->fg_mutex);
+		if (copy_to_user(user_data_addr, adc_out_data, sizeof(adc_out_data)))
 			return -EFAULT;
-		}
 
 		bm_notice(gm, "%s, **** unlocked_ioctl: %s Get_META_BAT_CAR_TUNE_VALUE Done!\n",
 			  __func__, priv->desc->gauge_name);
@@ -4634,10 +4626,8 @@ static long adc_cali_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
 		adc_out_data[0] = temp_car_tune;
 
-		if (copy_to_user(user_data_addr, adc_out_data, sizeof(adc_out_data))) {
-			mutex_unlock(&gm->gauge->fg_mutex);
+		if (copy_to_user(user_data_addr, adc_out_data, sizeof(adc_out_data)))
 			return -EFAULT;
-		}
 
 		bm_err(gm, "%s, **** unlocked_ioctl: %s Set_BAT_CAR_TUNE_VALUE[%d], tmp_car_tune=%d result=%d, ret=%d\n",
 		       __func__, priv->desc->gauge_name, adc_in_data[1], adc_out_data[0], temp_car_tune, ret);
@@ -4668,11 +4658,8 @@ static long adc_cali_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 	default:
 		bm_err(gm, "%s, **** unlocked_ioctl: %s unknown IOCTL: 0x%08x\n",
 		       __func__, priv->desc->gauge_name, cmd);
-		mutex_unlock(&gm->gauge->fg_mutex);
 		return -EINVAL;
 	}
-
-	mutex_unlock(&gm->gauge->fg_mutex);
 
 	return 0;
 }

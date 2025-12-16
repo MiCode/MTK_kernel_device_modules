@@ -11,6 +11,7 @@
 #define __LINUX_MT6379_CHARGER_H
 
 #include <linux/atomic.h>
+#include <linux/cleanup.h>
 #include <linux/iio/consumer.h>
 #include <linux/mutex.h>
 #include <linux/notifier.h>
