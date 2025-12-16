@@ -1493,6 +1493,10 @@ const struct of_device_id mml_tdshp_driver_dt_match[] = {
 		.data = &mt6878_tdshp_data,
 	},
 	{
+		.compatible = "mediatek,mt6881-mml_tdshp",
+		.data = &mt6878_tdshp_data,
+	},
+	{
 		.compatible = "mediatek,mt6991-mml0_tdshp",
 		.data = &mt6991_mmlt_tdshp_data,
 	},

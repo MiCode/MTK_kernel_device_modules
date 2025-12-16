@@ -3409,6 +3409,10 @@ const struct of_device_id mml_wrot_driver_dt_match[] = {
 		.data = &mt6878_wrot_data
 	},
 	{
+		.compatible = "mediatek,mt6881-mml_wrot",
+		.data = &mt6878_wrot_data
+	},
+	{
 		.compatible = "mediatek,mt6991-mml0_wrot",
 		.data = &mt6991_wrot_data,
 	},

@@ -1008,6 +1008,10 @@ const struct of_device_id mml_rsz_driver_dt_match[] = {
 		.data = &mt6878_rsz_data,
 	},
 	{
+		.compatible = "mediatek,mt6881-mml_rsz",
+		.data = &mt6878_rsz_data,
+	},
+	{
 		.compatible = "mediatek,mt6991-mml0_rsz",
 		.data = &mt6991_mmlt_rsz_data,
 	},

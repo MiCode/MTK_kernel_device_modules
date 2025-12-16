@@ -3700,6 +3700,10 @@ const struct of_device_id mtk_mml_of_ids[] = {
 		.data = &mt6879_mml_data,
 	},
 	{
+		.compatible = "mediatek,mt6881-mml",
+		.data = &mt6879_mml_data,
+	},
+	{
 		.compatible = "mediatek,mt6991-mml1",
 		.data = &mt6991_mmlf_data,
 	},

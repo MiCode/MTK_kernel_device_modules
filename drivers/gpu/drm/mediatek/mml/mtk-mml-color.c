@@ -610,6 +610,10 @@ const struct of_device_id mml_color_driver_dt_match[] = {
 		.data = &mt6983_color_data,
 	},
 	{
+		.compatible = "mediatek,mt6881-mml_color",
+		.data = &mt6983_color_data,
+	},
+	{
 		.compatible = "mediatek,mt6991-mml_color",
 		.data = &mt6989_color_data,
 	},

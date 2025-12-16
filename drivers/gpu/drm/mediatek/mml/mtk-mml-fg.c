@@ -161,6 +161,45 @@ static const u16 fg_reg_table_mt6989[FG_REG_MAX_COUNT] = {
 	[FG_AR_COEFF_CFG ... FG_AR_COEFF_CR_6] = REG_NOT_SUPPORT
 };
 
+static const u16 fg_reg_table_mt6881[FG_REG_MAX_COUNT] = {
+	[FG_TRIGGER] = 0x000,
+	[FG_STATUS] = 0x004,
+	[FG_CTRL_0] = 0x020,
+	[FG_CK_EN] = 0x024,
+	[FG_SHADOW_CTRL] = 0x028,
+	[FG_BACK_DOOR_0] = 0x02c,
+	[FG_CRC_TBL_0] = 0x030,
+	[FG_CRC_TBL_1] = 0x034,
+	[FG_PIC_INFO_0] = 0x400,
+	[FG_PIC_INFO_1] = 0x404,
+	[FG_TILE_INFO_0] = 0x418,
+	[FG_TILE_INFO_1] = 0x41c,
+	[FG_DEBUG_0] = 0x500,
+	[FG_DEBUG_1] = 0x504,
+	[FG_DEBUG_2] = 0x508,
+	[FG_DEBUG_3] = 0x50c,
+	[FG_DEBUG_4] = 0x510,
+	[FG_DEBUG_5] = 0x514,
+	[FG_DEBUG_6] = 0x518,
+	[FG_PPS_0] = 0x408,
+	[FG_PPS_1] = 0x40C,
+	[FG_PPS_2] = 0x410,
+	[FG_PPS_3] = 0x414,
+	[FG_LUMA_TBL_BASE] = 0x008,
+	[FG_CB_TBL_BASE] = 0x00c,
+	[FG_CR_TBL_BASE] = 0x010,
+	[FG_LUT_BASE] = 0x014,
+	[FG_SMI_CFG_0] = 0x050,
+	[FG_LUMA_TBL_BASE_MSB] = 0x05c,
+	[FG_CB_TBL_BASE_MSB] = 0x060,
+	[FG_CR_TBL_BASE_MSB] = 0x064,
+	[FG_LUT_BASE_MSB] = 0x068,
+	[FG_IRQ_CTRL] = 0x018,
+	[FG_IRQ_STATUS] = 0x01c,
+	[FG_SRAM_CTRL] = 0x070,
+	[FG_SRAM_STATUS] = 0x074,
+	[FG_AR_COEFF_CFG ... FG_AR_COEFF_CR_6] = REG_NOT_SUPPORT
+};
 
 static const u16 fg_reg_table_mt6991[FG_REG_MAX_COUNT] = {
 	[FG_TRIGGER] = 0x000,
@@ -251,6 +290,13 @@ static const struct fg_data mt6899_mmlf_fg_data = {
 static const struct fg_data mt6989_fg_data = {
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
 	.reg_table = fg_reg_table_mt6989,
+	.sram_pp = true,
+};
+
+static const struct fg_data mt6881_fg_data = {
+	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.reg_table = fg_reg_table_mt6881,
+	.tile_width = 640,
 	.sram_pp = true,
 };
 
@@ -1098,38 +1144,40 @@ static void fg_debug_dump(struct mml_comp *comp)
 	}
 	value[31] = readl(base + fg->data->reg_table[FG_CRC_TBL_0]);
 	value[32] = readl(base + fg->data->reg_table[FG_CRC_TBL_1]);
-	value[33] = readl(base + fg->data->reg_table[FG_AR_COEFF_CFG]);
-	value[34] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_0]);
-	value[35] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_1]);
-	value[36] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_2]);
-	value[37] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_3]);
-	value[38] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_4]);
-	value[39] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_5]);
-	value[40] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_0]);
-	value[41] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_1]);
-	value[42] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_2]);
-	value[43] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_3]);
-	value[44] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_4]);
-	value[45] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_5]);
-	value[46] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_6]);
-	value[47] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_0]);
-	value[48] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_1]);
-	value[49] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_2]);
-	value[50] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_3]);
-	value[51] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_4]);
-	value[52] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_5]);
-	value[53] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_6]);
-	value[54] = readl(base + fg->data->reg_table[FG_SHADOW_CTRL]);
-	value[55] = readl(base + fg->data->reg_table[FG_SMI_CFG_0]);
-	value[56] = readl(base + fg->data->reg_table[FG_DEBUG_7]);
+	if (fg->data->hw_ar) {
+		value[33] = readl(base + fg->data->reg_table[FG_AR_COEFF_CFG]);
+		value[34] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_0]);
+		value[35] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_1]);
+		value[36] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_2]);
+		value[37] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_3]);
+		value[38] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_4]);
+		value[39] = readl(base + fg->data->reg_table[FG_AR_COEFF_Y_5]);
+		value[40] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_0]);
+		value[41] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_1]);
+		value[42] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_2]);
+		value[43] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_3]);
+		value[44] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_4]);
+		value[45] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_5]);
+		value[46] = readl(base + fg->data->reg_table[FG_AR_COEFF_CB_6]);
+		value[47] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_0]);
+		value[48] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_1]);
+		value[49] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_2]);
+		value[50] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_3]);
+		value[51] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_4]);
+		value[52] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_5]);
+		value[53] = readl(base + fg->data->reg_table[FG_AR_COEFF_CR_6]);
+		value[54] = readl(base + fg->data->reg_table[FG_SHADOW_CTRL]);
+		value[55] = readl(base + fg->data->reg_table[FG_SMI_CFG_0]);
+		value[56] = readl(base + fg->data->reg_table[FG_DEBUG_7]);
 
-	base = (void *)ioremap(0x3EFF0000, 4096);
-	value[57] = readl(base + 0x060); // DISP_DPC_DISP_MASK_CFG
-	value[58] = readl(base + 0x064); // DISP_DPC_MML_MASK_CFG
-	value[59] = readl(base + 0x068); // DISP_DPC_DISP_DDRSRC_EMIREQ_CFG
-	value[60] = readl(base + 0x06C); // DISP_DPC_MML_DDRSRC_EMIREQ_CFG
-	value[61] = readl(base + 0x0B8); // DISP_DPC_DDREN_CFG
-	iounmap((void *)base);
+		base = (void *)ioremap(0x3EFF0000, 4096);
+		value[57] = readl(base + 0x060); // DISP_DPC_DISP_MASK_CFG
+		value[58] = readl(base + 0x064); // DISP_DPC_MML_MASK_CFG
+		value[59] = readl(base + 0x068); // DISP_DPC_DISP_DDRSRC_EMIREQ_CFG
+		value[60] = readl(base + 0x06C); // DISP_DPC_MML_DDRSRC_EMIREQ_CFG
+		value[61] = readl(base + 0x0B8); // DISP_DPC_DDREN_CFG
+		iounmap((void *)base);
+	}
 
 	mml_err("FG_TRIGGER %#010x FG_STATUS %#010x",
 		value[0], value[1]);
@@ -1306,6 +1354,10 @@ const struct of_device_id mml_fg_driver_dt_match[] = {
 	{
 		.compatible = "mediatek,mt6989-mml_fg",
 		.data = &mt6989_fg_data
+	},
+	{
+		.compatible = "mediatek,mt6881-mml_fg",
+		.data = &mt6881_fg_data
 	},
 	{
 		.compatible = "mediatek,mt6991-mml0_fg",

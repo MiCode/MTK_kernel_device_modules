@@ -155,6 +155,7 @@ define_mgk_ddk_ko(
 
 platforms = [
     "mt6878",
+    "mt6881",
     "mt6895",
     "mt6991",
     "mt6993",

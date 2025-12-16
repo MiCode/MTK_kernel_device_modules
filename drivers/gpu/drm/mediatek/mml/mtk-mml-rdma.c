@@ -3024,6 +3024,10 @@ const struct of_device_id mml_rdma_driver_dt_match[] = {
 		.data = &mt6878_rdma_data,
 	},
 	{
+		.compatible = "mediatek,mt6881-mml_rdma",
+		.data = &mt6878_rdma_data,
+	},
+	{
 		.compatible = "mediatek,mt6991-mml0_rdma",
 		.data = &mt6991_mmlt_rdma_data,
 	},
