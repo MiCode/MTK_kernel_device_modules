@@ -11267,7 +11267,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0 0x11203e00 0 0x0100>;
 			reg-names = "mac", "ippc";
 			vusb33-supply = <&mt6368_vusb>;
-			interrupts = <GIC_SPI 512 IRQ_TYPE_LEVEL_HIGH 0>;
+			interrupts-extended = <&gic GIC_SPI 512 IRQ_TYPE_LEVEL_HIGH 0>,
+						<&pio 201 IRQ_TYPE_LEVEL_HIGH>;
+			interrupt-names = "device", "wakeup";
 			phy-cells = <1>;
 			phys = <&u2port0 PHY_TYPE_USB2>;
 			clocks = <&cksys_reg_clk CLK_CKSYS_REG_USB_TOP_SEL>,
@@ -11284,6 +11286,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,clk-mgr;
 			mediatek,hwrscs-vers = <3>;
 			mediatek,noise-still-tr;
+			mediatek,syscon-wakeup = <&pericfg_ao_reg_clk 0x214 108>;
+			wakeup-source;
 			usb-role-switch;
 			cdp-block;
 			usb-psy-name = "mtk-master-charger";
