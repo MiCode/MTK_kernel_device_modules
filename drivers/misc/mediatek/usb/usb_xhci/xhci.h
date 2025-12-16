@@ -2102,6 +2102,7 @@ void xhci_remove_stream_mapping_(struct xhci_ring *ring);
 void xhci_ring_free_(struct xhci_hcd *xhci, struct xhci_ring *ring);
 int xhci_ring_expansion(struct xhci_hcd *xhci, struct xhci_ring *ring,
 		unsigned int num_trbs, gfp_t flags);
+void xhci_initialize_ring_segments_(struct xhci_hcd *xhci, struct xhci_ring *ring);
 void xhci_initialize_ring_info_(struct xhci_ring *ring);
 void xhci_free_endpoint_ring(struct xhci_hcd *xhci,
 		struct xhci_virt_device *virt_dev,
