@@ -497,9 +497,20 @@ static int serdes_get_status_cmd_from_dts(struct serdes_bridge *ser_des,
 		tmp_p++;
 		reg_width = be32_to_cpu(*tmp_p++);
 		if (reg_width == 0) {
-			offset += (3 + be32_to_cpu(*tmp_p));
-			tmp_p += be32_to_cpu(*tmp_p);
+			u32 data_len = be32_to_cpu(*tmp_p);
+
+			if (data_len > (len - offset - 3)) {
+				pr_info("%s: Invalid data length in device tree!\n", __func__);
+				return -1;
+			}
+
+			offset += (3 + data_len);
+			tmp_p += data_len;
 		} else {
+			if ((offset + 5) > len) {
+				pr_info("%s: Invalid offset increment!\n", __func__);
+				return -1;
+			}
 			offset += 5;
 			tmp_p += 3;
 		}
@@ -607,9 +618,19 @@ static int serdes_get_cmd_from_dts(struct serdes_bridge *ser_des,
 		tmp_p++;
 		reg_width = be32_to_cpu(*tmp_p++);
 		if (reg_width == 0) {
-			offset += (3 + be32_to_cpu(*tmp_p));
-			tmp_p += be32_to_cpu(*tmp_p);
+			u32 data_len = be32_to_cpu(*tmp_p);
+
+			if (data_len > (len - offset - 3)) {
+				pr_info("%s: invalid data length %u\n", __func__, data_len);
+				return -1;
+			}
+			offset += (3 + data_len);
+			tmp_p += data_len;
 		} else {
+			if ((offset + 5) > len) {
+				pr_info("%s: Invalid offset increment!\n", __func__);
+				return -1;
+			}
 			offset += 5;
 			tmp_p += 3;
 		}
