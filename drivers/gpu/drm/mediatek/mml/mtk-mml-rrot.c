@@ -2627,12 +2627,12 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
 
 	} else if (MML_FMT_IS_RGB(format)) {
-		if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
-			stash_cmd_num = mml_color_get_y_size(format, w, h, src->y_stride) / pgsz;
-		} else {
+		stash_cmd_num = mml_color_get_y_size(format, w, h, src->y_stride) / pgsz;
+
+		if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
 			u32 slice_num = w / 32;
 
-			stash_cmd_num = h * slice_num;
+			stash_cmd_num = stash_cmd_num * slice_num;
 		}
 
 		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
@@ -2658,7 +2658,43 @@ static u32 rrot_qos_stash_bw_get(struct mml_comp *comp, struct mml_task *task,
 
 		stash_cmd_num = plane_y + plane_yv * 2;
 		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
-	}
+
+	} else if (format == MML_FMT_UYVY) {
+		stash_cmd_num = w * h * 2 / pgsz;
+		if (rotate == MML_ROT_90 || rotate == MML_ROT_270) {
+			u32 slice_num = w / 64;
+
+			stash_cmd_num = stash_cmd_num * slice_num;
+		}
+
+		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
+
+	} else if (format == MML_FMT_NV12 || format == MML_FMT_NV12_10L
+		|| format == MML_FMT_NV21 || format == MML_FMT_NV21_10L) {
+		u32 plane_y, plane_yv;
+		u32 bpp = MML_FMT_BITS_PER_PIXEL(format) == 8 ? 100 : 125; // will div 100
+
+		if (rotate == MML_ROT_0 || rotate == MML_ROT_180) {
+			plane_y = w * h * bpp / (100 * pgsz);
+			plane_yv = w * h * bpp / (2 * 100 * pgsz);
+		} else {
+			u32 y_cmd_per_slice, uv_cmd_per_slice;
+			u32 y_slice_num, uv_slice_num;
+
+			y_cmd_per_slice = h * w * bpp / (100 * pgsz);
+			y_slice_num = w / 64 / bin_hor;
+			uv_cmd_per_slice = h / 2 * (w * bpp / (100 * pgsz));
+			uv_slice_num = w / 2 / 32 / bin_hor;
+
+			plane_y = y_cmd_per_slice * y_slice_num;
+			plane_yv = uv_cmd_per_slice * uv_slice_num;
+		}
+
+		stash_cmd_num = plane_y + plane_yv * 2;
+		stash_bw = stash_cmd_num * 16 * 1000 / acttime;
+
+	} else
+		mml_log("%s using min stash bw for fmt %u", __func__, format);
 
 	rrot_frm->stash_bw = stash_bw;
 	mml_msg("%s bw %u bin %u acttime %u cmd num %u dual %d",
