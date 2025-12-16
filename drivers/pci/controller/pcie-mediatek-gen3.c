@@ -939,7 +939,8 @@ static int mtk_pcie_startup_port(struct mtk_pcie_port *port)
 	val |= PCI_CLASS(PCI_CLASS_BRIDGE_PCI << 8);
 	writel_relaxed(val, port->base + PCIE_PCI_IDS_1);
 
-	port->data->clkbuf_control(port, true);
+	if (port->data && port->data->clkbuf_control)
+		port->data->clkbuf_control(port, true);
 
 	if (port->data && port->data->pre_init) {
 		err = port->data->pre_init(port);
@@ -1815,7 +1816,8 @@ static void mtk_pcie_power_down(struct mtk_pcie_port *port)
 	phy_power_off(port->phy);
 	phy_exit(port->phy);
 
-	port->data->clkbuf_control(port, false);
+	if (port->data && port->data->clkbuf_control)
+		port->data->clkbuf_control(port, false);
 
 	/* Disable clocks and assert reset after MTCOMS off
 	 * to ensure the MTCOMS off sequence
