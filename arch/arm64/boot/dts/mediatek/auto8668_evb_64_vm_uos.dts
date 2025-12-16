@@ -610,6 +610,31 @@
 	regulator-min-microvolt = <0>;
 };
 
+&pmic_oc_debug {
+	status = "disabled";
+};
+
+&mt6363_dynamic_loading_throttling {
+	status = "disabled";
+};
+
+&mt6319_6 {
+	compatible = "no use";
+	status = "disabled";
+};
+
+&mt6720 {
+	compatible = "no use";
+	status = "disabled";
+};
+
+&spmi {
+	second_pmic@5 {
+		compatible = "no use";
+		status = "disabled";
+	};
+};
+
 /* MD/RF always-on setting */
 &mt6363_vbuck5 {
 	regulator-min-microvolt = <0>;
