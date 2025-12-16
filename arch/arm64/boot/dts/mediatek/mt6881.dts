@@ -9437,31 +9437,22 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			reg = <0 0x14000000 0 0x1000>;
 			#address-cells = <2>;
 			#size-cells = <2>;
-			// mmqos-supply = <&mmqos>;
+			mmqos-supply = <&mmqos>;
 			dma-ranges = <0x0 0x0 0x0 0x0 0x4 0x0>;
 			iommus = <&disp_iommu M4U_L0_P1_DISP_OVL0_2L>;
-			// fake-engine = <&smi_larb0 M4U_PORT_L0_DISP_FAKE0>,
-				      // <&smi_larb1 M4U_PORT_L1_DISP_FAKE1>;
+			fake-engine = <&smi_larb0 M4U_L0_P9_DISP_FAKE_ENG0>,
+				      <&smi_larb1 M4U_L1_P9_DISP_FAKE_ENG1>;
 			#clock-cells = <1>;
 			power-domains = <&scpsys MT6881_POWER_DOMAIN_DIS0_SHUTDOWN>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_MUTEX0_DISP>,
 			<&dispsys_config_clk CLK_MM_DISP_APB_BUS_DISP>,
 			<&dispsys_config_clk CLK_MM_26M_DISP>;
 			clock-num = <3>;
-			// pd-others = <&disp_dpc>;
-			// pd-names = "mminfra_in_dpc";
-#if 0
+			pd-others = <&disp_dpc>;
+			pd-names = "mminfra_in_dpc";
 			operating-points-v2 = <&opp_table_disp>;
 			vdisp-dvfs-opp = /bits/ 8 <3>;
 			mmdvfs-dvfsrc-vcore-supply = <&dvfsrc_vcore>;
-			interconnects = <&mmqos SLAVE_LARB(41) &mmqos SLAVE_COMMON(0)>,
-					<&mmqos SLAVE_LARB(42) &mmqos SLAVE_COMMON(1)>,
-					<&mmqos SLAVE_LARB(43) &mmqos SLAVE_COMMON(1)>;
-			interconnect-names = "disp_hrt_qos",
-					"disp_hrt_by_larb",
-					"disp_dp_hrt_by_larb";
-#endif
-			// disp-larb-list = <0 1>;
 			pre-define-bw = <0xffffffff>, <4200>, <0>;
 			crtc-ovl-usage = <7>, <4>, <8>;
 #if 0
@@ -9673,8 +9664,8 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			helper-value = <0>, /*MTK_DRM_OPT_STAGE*/
 				<1>, /*MTK_DRM_OPT_USE_CMDQ*/
 				<1>, /*MTK_DRM_OPT_USE_M4U*/
-				<0>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
-				<0>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
+				<1>, /*MTK_DRM_OPT_MMQOS_SUPPORT*/
+				<1>, /*MTK_DRM_OPT_MMDVFS_SUPPORT*/
 				<0>, /*MTK_DRM_OPT_SODI_SUPPORT*/
 				<1>, /*MTK_DRM_OPT_IDLE_MGR*/
 				<0>, /*MTK_DRM_OPT_IDLEMGR_SWTCH_DECOUPLE*/
@@ -9733,7 +9724,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<0>, /*MTK_DRM_OPT_VIDLE_HOME_SCREEN_IDLE*/
 				<0>, /*MTK_DRM_OPT_VIDLE_FULL_SCENARIO*/
 				<0>, /*MTK_DRM_OPT_DPC_PRE_TE_EN*/
-				<0>, /*MTK_DRM_OPT_MMDVFS_MODE_SWITCH*/
+				<1>, /*MTK_DRM_OPT_MMDVFS_MODE_SWITCH*/
 				<0>, /*MTK_DRM_OPT_CHECK_TRIGGER_MERGE*/
 				<0>, /*MTK_DRM_OPT_VIRTUAL_DISP*/
 				<1>, /*MTK_DRM_OPT_OVL_BW_MONITOR*/
@@ -9741,7 +9732,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				<1>, /*MTK_DRM_OPT_SPHRT*/
 				<1>, /*MTK_DRM_OPT_SDPA_OVL_SWITCH*/
 				<0>, /*MTK_DRM_OPT_HRT_BY_LARB*/
-				<0>, /*MTK_DRM_OPT_MAX_CHANNEL_HRT*/
+				<1>, /*MTK_DRM_OPT_MAX_CHANNEL_HRT*/
 				<1>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
 				<0>; /*MTK_DRM_OPT_TILE_OVERHEAD*/
 		};
@@ -9770,18 +9761,27 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_L0_P1_DISP_OVL0_2L>,
 				<&disp_iommu M4U_L0_P0_DISP_OVL0_2L_HDR>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL0_2L_DISP>;
-#if 0
+
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L0_P1_DISP_OVL0_2L_RDMA0)
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P1_DISP_OVL0_2L)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L0_P1_DISP_OVL0_2L_RDMA0)
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P0_DISP_OVL0_2L_1)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L0_P1_DISP_OVL0_2L_RDMA0)
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P1_DISP_OVL0_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P1_DISP_OVL0_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P0_DISP_OVL0_2L_1)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P0_DISP_OVL0_2L_HDR)
 						&mmqos SLAVE_COMMON(0)>;
-			interconnect-names = "DDP_COMPONENT_OVL0_2L_qos",
+			interconnect-names =
+						"DDP_COMPONENT_OVL0_2L_qos",
+						"DDP_COMPONENT_OVL0_2L_qos_other",
 						"DDP_COMPONENT_OVL0_2L_fbdc_qos",
-						"DDP_COMPONENT_OVL0_2L_hrt_qos";
-#endif
+						"DDP_COMPONENT_OVL0_2L_hrt_qos",
+						"DDP_COMPONENT_OVL0_2L_hrt_qos_other",
+						"DDP_COMPONENT_OVL0_2L_hdr_qos";
 		};
 
 		disp_ovl1_2l: disp-ovl1-2l@14003000 {
@@ -9794,18 +9794,27 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_L1_P2_DISP_OVL1_2L>,
 				<&disp_iommu M4U_L1_P1_DISP_OVL1_2L_HDR>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL1_2L_DISP>;
-#if 0
+
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L1_P2_DISP_OVL1_2L_RDMA0)
-						&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L1_P2_DISP_OVL1_2L_RDMA0)
-						&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L1_P2_DISP_OVL1_2L_RDMA0)
-						&mmqos SLAVE_COMMON(1)>;
-			interconnect-names = "DDP_COMPONENT_OVL1_2L_qos",
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P2_DISP_OVL1_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P2_DISP_OVL1_2L_1)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P2_DISP_OVL1_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P2_DISP_OVL1_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P2_DISP_OVL1_2L_1)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P1_DISP_OVL1_2L_HDR)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+						"DDP_COMPONENT_OVL1_2L_qos",
+						"DDP_COMPONENT_OVL1_2L_qos_other",
 						"DDP_COMPONENT_OVL1_2L_fbdc_qos",
-						"DDP_COMPONENT_OVL1_2L_hrt_qos";
-#endif
+						"DDP_COMPONENT_OVL1_2L_hrt_qos",
+						"DDP_COMPONENT_OVL1_2L_hrt_qos_other",
+						"DDP_COMPONENT_OVL1_2L_hdr_qos";
 		};
 
 		disp_ovl2_2l: disp-ovl2-2l@14004000 {
@@ -9818,18 +9827,27 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_L0_P4_DISP_OVL2_2L>,
 				<&disp_iommu M4U_L0_P3_DISP_OVL2_2L_HDR>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL2_2L_DISP>;
-#if 0
+
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L0_P4_DISP_OVL2_2L_RDMA0)
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P4_DISP_OVL2_2L)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L0_P4_DISP_OVL2_2L_RDMA0)
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P3_DISP_OVL2_2L_1)
 						&mmqos SLAVE_COMMON(0)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L0_P4_DISP_OVL2_2L_RDMA0)
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P4_DISP_OVL2_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P4_DISP_OVL2_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P3_DISP_OVL2_2L_1)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P3_DISP_OVL2_2L_HDR)
 						&mmqos SLAVE_COMMON(0)>;
-			interconnect-names = "DDP_COMPONENT_OVL2_2L_qos",
+			interconnect-names =
+						"DDP_COMPONENT_OVL2_2L_qos",
+						"DDP_COMPONENT_OVL2_2L_qos_other",
 						"DDP_COMPONENT_OVL2_2L_fbdc_qos",
-						"DDP_COMPONENT_OVL2_2L_hrt_qos";
-#endif
+						"DDP_COMPONENT_OVL2_2L_hrt_qos",
+						"DDP_COMPONENT_OVL2_2L_hrt_qos_other",
+						"DDP_COMPONENT_OVL2_2L_hdr_qos";
 		};
 
 		disp_ovl3_2l: disp-ovl3-2l@14005000 {
@@ -9842,18 +9860,27 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			iommus = <&disp_iommu M4U_L1_P5_DISP_OVL3_2L>,
 				<&disp_iommu M4U_L1_P4_DISP_OVL3_2L_HDR>;
 			clocks = <&dispsys_config_clk CLK_MM_DISP_OVL3_2L_DISP>;
-#if 0
+
 			interconnects =
-				<&mmqos MASTER_LARB_PORT(M4U_L1_P5_DISP_OVL3_2L_RDMA0)
-						&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L1_P5_DISP_OVL3_2L_RDMA0)
-						&mmqos SLAVE_COMMON(1)>,
-				<&mmqos MASTER_LARB_PORT(M4U_L1_P5_DISP_OVL3_2L_RDMA0)
-						&mmqos SLAVE_COMMON(1)>;
-			interconnect-names = "DDP_COMPONENT_OVL3_2L_qos",
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P5_DISP_OVL3_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P5_DISP_OVL3_2L_1)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P5_DISP_OVL3_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P5_DISP_OVL3_2L)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L0_P5_DISP_OVL3_2L_1)
+						&mmqos SLAVE_COMMON(0)>,
+				<&mmqos MASTER_LARB_PORT(M4U_L1_P4_DISP_OVL3_2L_HDR)
+						&mmqos SLAVE_COMMON(0)>;
+			interconnect-names =
+						"DDP_COMPONENT_OVL3_2L_qos",
+						"DDP_COMPONENT_OVL3_2L_qos_other",
 						"DDP_COMPONENT_OVL3_2L_fbdc_qos",
-						"DDP_COMPONENT_OVL3_2L_hrt_qos";
-#endif
+						"DDP_COMPONENT_OVL3_2L_hrt_qos",
+						"DDP_COMPONENT_OVL3_2L_hrt_qos_other",
+						"DDP_COMPONENT_OVL3_2L_hdr_qos";
 		};
 
 		disp_rsz1: disp-rsz1@14007000 {
@@ -10026,9 +10053,9 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb = <&smi_larb0>;
 			mediatek,smi-id = <0>;
 			iommus = <&disp_iommu M4U_L0_P8_DISP_POSTMASK0>;
-			// interconnects = <&mmqos MASTER_LARB_PORT(M4U_L0_P5_DISP_POSTMASK0)
-					 // &mmqos SLAVE_COMMON(0)>;
-			// interconnect-names = "DDP_COMPONENT_POSTMASK0_hrt_qos";
+			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L0_P8_DISP_POSTMASK0)
+					 &mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_POSTMASK0_hrt_qos";
 		};
 
 		disp_dither0: disp-dither0@14011000 {
@@ -10208,12 +10235,12 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			mediatek,larb = <&smi_larb1>;
 			mediatek,smi-id = <1>;
 			iommus = <&disp_iommu M4U_L1_P8_DISP_WDMA1>;
-			// interconnects = <&mmqos MASTER_LARB_PORT(M4U_L1_P8_DISP_WDMA1)
-					// &mmqos SLAVE_COMMON(0)>,
-					// <&mmqos MASTER_LARB_PORT(M4U_L1_P8_DISP_WDMA1)
-					// &mmqos SLAVE_COMMON(0)>;
-			// interconnect-names = "DDP_COMPONENT_WDMA1_qos",
-					// "DDP_COMPONENT_WDMA1_hrt_qos";
+			interconnects = <&mmqos MASTER_LARB_PORT(M4U_L1_P8_DISP_WDMA1)
+					&mmqos SLAVE_COMMON(0)>,
+					<&mmqos MASTER_LARB_PORT(M4U_L1_P8_DISP_WDMA1)
+					&mmqos SLAVE_COMMON(0)>;
+			interconnect-names = "DDP_COMPONENT_WDMA1_qos",
+					"DDP_COMPONENT_WDMA1_hrt_qos";
 		};
 
 		disp_dsc_wrap1: disp-dsc-wrap1@14022000 {
