@@ -331,16 +331,16 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x40004F, 0x08 },   /* AK7709_C0_04F_BICK_SYNCDOMAIN_SEL8 */
 	{ 0x400050, 0xB3 },   /* AK7709_C0_050_SDIN1_DIGITAL_IN_FMT */
 	{ 0x400051, 0x01 },   /* AK7709_C0_051_SDIN1_SYNC_DOMAIN_SEL */
-	{ 0x400052, 0x00 },   /* AK7709_C0_052_SDIN2_DIGITAL_IN_FMT */
-	{ 0x400053, 0x00 },   /* AK7709_C0_053_SDIN2_SYNC_DOMAIN_SEL */
-	{ 0x400054, 0x00 },   /* AK7709_C0_054_SDIN3_DIGITAL_IN_FMT */
-	{ 0x400055, 0x00 },   /* AK7709_C0_055_SDIN3_SYNC_DOMAIN_SEL */
+	{ 0x400052, 0xB3 },   /* AK7709_C0_052_SDIN2_DIGITAL_IN_FMT */
+	{ 0x400053, 0x01 },   /* AK7709_C0_053_SDIN2_SYNC_DOMAIN_SEL */
+	{ 0x400054, 0xB3 },   /* AK7709_C0_054_SDIN3_DIGITAL_IN_FMT */
+	{ 0x400055, 0x01 },   /* AK7709_C0_055_SDIN3_SYNC_DOMAIN_SEL */
 	{ 0x400056, 0x00 },   /* AK7709_C0_056_SDIN4_DIGITAL_IN_FMT */
 	{ 0x400057, 0x00 },   /* AK7709_C0_057_SDIN4_SYNC_DOMAIN_SEL */
 	{ 0x400058, 0x00 },   /* AK7709_C0_058_SDIN5_DIGITAL_IN_FMT */
 	{ 0x400059, 0x00 },   /* AK7709_C0_059_SDIN5_SYNC_DOMAIN_SEL */
-	{ 0x40005A, 0x00 },   /* AK7709_C0_05A_SDIN6_DIGITAL_IN_FMT */
-	{ 0x40005B, 0x00 },   /* AK7709_C0_05B_SDIN6_SYNC_DOMAIN_SEL */
+	{ 0x40005A, 0xB3 },   /* AK7709_C0_05A_SDIN6_DIGITAL_IN_FMT */
+	{ 0x40005B, 0x01 },   /* AK7709_C0_05B_SDIN6_SYNC_DOMAIN_SEL */
 	{ 0x40005C, 0x00 },   /* AK7709_C0_05C_SDIN7_DIGITAL_IN_FMT */
 	{ 0x40005D, 0x00 },   /* AK7709_C0_05D_SDIN7_SYNC_DOMAIN_SEL */
 	{ 0x40005E, 0x00 },   /* AK7709_C0_05E_SDIN8_DIGITAL_IN_FMT */
@@ -359,11 +359,11 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x40006B, 0x03 },   /* AK7709_C0_06B_SDOUT3_SYNC_DOMAIN_SEL */
 	{ 0x40006C, 0xB3 },   /* AK7709_C0_06C_SDOUT4_DIGITAL_OUT_FMT */
 	{ 0x40006D, 0x03 },   /* AK7709_C0_06D_SDOUT4_SYNC_DOMAIN_SEL */
-	{ 0x40006E, 0x00 },   /* AK7709_C0_06E_SDOUT5_DIGITAL_OUT_FMT */
+	{ 0x40006E, 0xB3 },   /* AK7709_C0_06E_SDOUT5_DIGITAL_OUT_FMT */
 	{ 0x40006F, 0x00 },   /* AK7709_C0_06F_SDOUT5_SYNC_DOMAIN_SEL */
-	{ 0x400070, 0x30 },   /* AK7709_C0_070_SDOUT6_DIGITAL_OUT_FMT */
+	{ 0x400070, 0xB3 },   /* AK7709_C0_070_SDOUT6_DIGITAL_OUT_FMT */
 	{ 0x400071, 0x00 },   /* AK7709_C0_071_SDOUT6_SYNC_DOMAIN_SEL */
-	{ 0x400072, 0x00 },   /* AK7709_C0_072_SDOUT7_DIGITAL_OUT_FMT */
+	{ 0x400072, 0xB3 },   /* AK7709_C0_072_SDOUT7_DIGITAL_OUT_FMT */
 	{ 0x400073, 0x00 },   /* AK7709_C0_073_SDOUT7_SYNC_DOMAIN_SEL */
 	{ 0x400074, 0xB0 },   /* AK7709_C0_074_SDOUT8_DIGITAL_OUT_FMT */
 	{ 0x400075, 0x00 },   /* AK7709_C0_075_SDOUT8_SYNC_DOMAIN_SEL */
@@ -772,8 +772,8 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x400300, 0x30 },   /* AK7709_C0_300_PIN_FUNCTION_SEL1 */
 	{ 0x400301, 0x02 },   /* AK7709_C0_301_PIN_FUNCTION_SEL2 */
 	{ 0x400302, 0x51 },   /* AK7709_C0_302_PIN_FUNCTION_SEL3 */
-	{ 0x400303, 0x12 },   /* AK7709_C0_303_PIN_FUNCTION_SEL4 */
-	{ 0x400304, 0x02 },   /* AK7709_C0_304_PIN_FUNCTION_SEL5 */
+	{ 0x400303, 0x11 },   /* AK7709_C0_303_PIN_FUNCTION_SEL4 */
+	{ 0x400304, 0x22 },   /* AK7709_C0_304_PIN_FUNCTION_SEL5 */
 	{ 0x400305, 0x00 },   /* AK7709_C0_305_PIN_FUNCTION_SEL6 */
 	{ 0x400306, 0x00 },   /* AK7709_C0_306_PIN_FUNCTION_SEL7 */
 	{ 0x400307, 0x00 },   /* AK7709_C0_307_PIN_FUNCTION_SEL8 */
@@ -781,7 +781,7 @@ static const struct reg_default ak7709_reg[] = {
 	{ 0x400309, 0x00 },   /* AK7709_C0_309_PIN_FUNCTION_SEL10 */
 	{ 0x40030A, 0x00 },   /* AK7709_C0_30A_PIN_FUNCTION_SEL11 */
 	{ 0x40030B, 0x00 },   /* AK7709_C0_30B_PIN_FUNCTION_SEL12 */
-	{ 0x40030C, 0xFF },   /* AK7709_C0_30C_PIN_FUNCTION_SEL13 */
+	{ 0x40030C, 0x40 },   /* AK7709_C0_30C_PIN_FUNCTION_SEL13 */
 	{ 0x40030D, 0x00 },   /* AK7709_C0_30D_STO_FLG_SET */
 	{ 0x40030E, 0x00 },   /* AK7709_C0_30E_ESDIO_STATE1 */
 	{ 0x40030F, 0x00 },   /* AK7709_C0_30F_ESDIO_STATE2 */
@@ -52312,8 +52312,6 @@ static long ak7709_ioctl(struct file *file, unsigned int cmd,
 	}
 
 	return ret;
-
-
 }
 
 static int init_ak7709_pd(struct ak7709_priv *data)
@@ -52404,7 +52402,6 @@ static int ak7709_set_bias_level(struct snd_soc_component *component,
 
 	dev_info(ak7709->dev, "%s(), level:%d\n", __func__, level);
 
-#if !IS_ENABLED(CONFIG_DEVICE_MODULES_SND_SOC_MT6991)
 	switch (level) {
 	case SND_SOC_BIAS_ON:
 		break;
@@ -52421,7 +52418,6 @@ static int ak7709_set_bias_level(struct snd_soc_component *component,
 	default:
 		break;
 	}
-#endif /* CONFIG_DEVICE_MODULES_SND_SOC_MT6991 */
 
 	dapm->bias_level = level;
 
@@ -52681,7 +52677,6 @@ static int ak7709_init_reg(struct snd_soc_component *component)
 	return 0;
 }
 
-
 static int ak7709_parse_dt(struct ak7709_priv *ak7709)
 {
 	struct device *dev;
@@ -52780,7 +52775,6 @@ static int ak7709_resume(struct snd_soc_component *component)
 	return 0;
 }
 
-#if !IS_ENABLED(CONFIG_DEVICE_MODULES_SND_SOC_MT6991)
 static int ak7709_load_dsp_firmware(struct ak7709_priv *ak7709)
 {
 	int ret = 0;
@@ -52822,7 +52816,6 @@ static void ak7709_fw_work(struct work_struct *work)
 		dev_info(ak7709->dev, "%s, dsp inited, do nothing!\n", __func__);
 	}
 }
-#endif /*CONFIG_DEVICE_MODULES_SND_SOC_MT6991*/
 
 static const struct snd_soc_component_driver soc_codec_dev_ak7709 = {
 	.probe = ak7709_probe,
@@ -52904,14 +52897,14 @@ static int ak7709_i2c_probe(struct i2c_client *i2c,
 	if (ret) {
 		dev_info(ak7709->dev, "%s() gpio parse dts failed\n", __func__);
 		ak7709->pdn_gpio = -1;
-		// return ret;
+		return ret;
 	}
 
 	if (ak7709->pdn_gpio > 0) {
 		ret = gpio_request(ak7709->pdn_gpio, "ak7709 pdn");
 		if (ret) {
 			dev_info(ak7709->dev, "%s() gpio request failed, ret:%d\n", __func__, ret);
-			// return ret;
+			return ret;
 		}
 	}
 	/* power up*/
@@ -53013,14 +53006,14 @@ static int ak7709_spi_probe(struct spi_device *spi)
 	if (ret) {
 		dev_info(ak7709->dev, "%s() gpio parse dts failed\n", __func__);
 		ak7709->pdn_gpio = -1;
-		// return ret;
+		return ret;
 	}
 
 	if (ak7709->pdn_gpio > 0) {
 		ret = gpio_request(ak7709->pdn_gpio, "ak7709 pdn");
 		if (ret) {
 			dev_info(ak7709->dev, "%s() gpio request failed, ret:%d\n", __func__, ret);
-			// return ret;
+			return ret;
 		}
 	}
 	/* power up*/
@@ -53030,6 +53023,7 @@ static int ak7709_spi_probe(struct spi_device *spi)
 		dev_info(ak7709->dev, "%s() ak7709 enable ctrl interface failed: %d\n", __func__, ret);
 		return ret;
 	}
+
 	/* read ak7709 chipid */
 	for (i = 0; i < ARRAY_SIZE(devid); i++) {
 		ret = regmap_read(ak7709->regmap, AK7709_C0_400_DEVICE_ID1 + i, &devid[i].val);
@@ -53056,11 +53050,7 @@ static int ak7709_spi_probe(struct spi_device *spi)
 		return ret;
 	}
 
-	mtk_spk_set_type(MTK_SPK_AKM_AK7709);
-
-#if !IS_ENABLED(CONFIG_DEVICE_MODULES_SND_SOC_MT6991)
 	INIT_DELAYED_WORK(&ak7709->fw_work, ak7709_fw_work);
-#endif
 
 	return 0;
 }
