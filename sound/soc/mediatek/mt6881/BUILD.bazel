@@ -33,6 +33,10 @@ define_mgk_ddk_ko(
             True: ["mt6881-dai-src-auto.c"],
             False:["mt6881-dai-src.c"],
         },
+        "CONFIG_SND_SOC_MTK_CQDMA_SUPPORT": {
+            True: ["mt6881-fe-cqdma.c",
+	           "mt6881-fe-cqdma.h"],
+        },
     },
     includes = [
         ".",

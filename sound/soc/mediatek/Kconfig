@@ -534,3 +534,12 @@ config LK_I2S_AO_CLK_SUPPORT
 	  Please make sure LK already enabled I2S always on clock then select Y.
 	  Select Y if you have such device.
 	  If unsure select "N".
+
+config SND_SOC_MTK_CQDMA_SUPPORT
+	tristate "Enable ASoC driver and support for CQDMA engine on Mediatek chips"
+	help
+	  This option enables the ASoC driver for Mediatek chips that support
+	  the CQDMA engine. CQDMA is a hardware engine that facilitates efficient data transfer
+          between memory and peripheral devices.
+          Select Y if you have such a device.
+	  If unsure, select "N".

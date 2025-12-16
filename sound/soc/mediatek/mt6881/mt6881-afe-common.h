@@ -109,6 +109,10 @@ enum {
 	MT6881_MEMIF_ETDM_IN1,
 	MT6881_MEMIF_ETDM_IN2,
 	MT6881_MEMIF_ETDM_IN6,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	MT6881_CQDMA0,
+	MT6881_CQDMA1,
+#endif
 	MT6881_MEMIF_NUM,
 	MT6881_DAI_ADDA = MT6881_MEMIF_NUM,
 	MT6881_DAI_ADDA_CH34,
@@ -241,6 +245,11 @@ enum {
 	MT6881_IRQ_24,
 	MT6881_IRQ_25,
 	MT6881_IRQ_26,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	MT6881_IRQ_CQDMA_START,
+	MT6881_IRQ_CQDMA0 = MT6881_IRQ_CQDMA_START,
+	MT6881_IRQ_CQDMA1,
+#endif
 	MT6881_IRQ_NUM,
 };
 
@@ -895,6 +904,9 @@ int mt6881_dai_hw_gain_register(struct mtk_base_afe *afe);
 int mt6881_dai_src_register(struct mtk_base_afe *afe);
 int mt6881_dai_pcm_register(struct mtk_base_afe *afe);
 int mt6881_dai_tdm_register(struct mtk_base_afe *afe);
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+int mt6881_dai_cqdma_register(struct mtk_base_afe *afe);
+#endif
 
 int mt6881_dai_hostless_register(struct mtk_base_afe *afe);
 

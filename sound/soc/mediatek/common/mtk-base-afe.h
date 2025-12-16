@@ -142,6 +142,51 @@ struct mtk_base_memif_data {
 	int maxlen_reg;
 	int maxlen_mask;
 	int maxlen_shift;
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	/* CQDMA */
+	int src_addr_reg;
+	int src_addr_mask;
+	int src_addr_shift;
+	int rsize_reg;
+	int rsize_mask;
+	int rsize_shift;
+	int wsize_reg;
+	int wsize_mask;
+	int wsize_shift;
+	int burst_len_reg;
+	int burst_len_mask;
+	int burst_len_shift;
+	int trans_len1_reg;
+	int trans_len1_mask;
+	int trans_len1_shift;
+	int irqs_cnt_reg;
+	int irqs_cnt_mask;
+	int irqs_cnt_shift;
+	int reloader_cnt_reg;
+	int reloader_cnt_mask;
+	int reloader_cnt_shift;
+	int int_flag_reg;
+	int int_flag_mask;
+	int int_flag_shift;
+	int en_reg;
+	int en_mask;
+	int en_shift;
+	int en_ro_reg;
+	int en_ro_mask;
+	int en_ro_shift;
+	int int_en_reg;
+	int int_en_mask;
+	int int_en_shift;
+	int pause_reg;
+	int pause_mask;
+	int pause_shift;
+	int flush_reg;
+	int flush_mask;
+	int flush_shift;
+	int warm_rst_reg;
+	int warm_rst_mask;
+	int warm_rst_shift;
+#endif
 };
 
 struct mtk_base_irq_data {
@@ -265,7 +310,15 @@ struct mtk_base_afe_memif {
 	size_t dram_dma_bytes;
 	int using_passthrough;
 #endif
-
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	int (*get_cqdma_base_addr)(struct mtk_base_afe *afe, int id,
+		dma_addr_t *dma_addr);
+	int (*get_cqdma_hw_ptr)(struct mtk_base_afe *afe, int id,
+		dma_addr_t *hw_ptr);
+	int (*update_cqdma_ptr)(struct mtk_base_afe *afe, int id);
+	int (*get_cqdma_irq_flag)(struct mtk_base_afe *afe, int id);
+	int (*clr_cqdma_irq_flag)(struct mtk_base_afe *afe, int id);
+#endif
 	int pid;
 	int tid;
 	char process_name[MAX_NAME_LEN];

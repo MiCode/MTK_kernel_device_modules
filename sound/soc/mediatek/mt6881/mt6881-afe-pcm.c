@@ -5465,6 +5465,102 @@ static const struct mtk_base_memif_data memif_data[MT6881_MEMIF_NUM] = {
 		.msb_reg = -1,
 		.msb_shift = -1,
 	},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	[MT6881_CQDMA0] = {
+		.name = "CQDMA0",
+		.id = MT6881_CQDMA0,
+		.src_addr_reg = AUDIO_DMA_G_DMA_0_SRC_ADDR,
+		.src_addr_mask = SRC_ADDR_MASK,
+		.src_addr_shift = SRC_ADDR_SFT,
+		.reg_ofs_base = AUDIO_DMA_G_DMA_0_DST_ADDR,
+		.reg_ofs_cur = AUDIO_DMA_G_DMA_0_DST_ADDR_RO,
+		.reg_ofs_base_msb = AUDIO_DMA_G_DMA_0_DST_ADDR2,
+		.reg_ofs_cur_msb = AUDIO_DMA_G_DMA_0_DST_ADDR2_RO,
+		.rsize_reg = AUDIO_DMA_G_DMA_0_CON,
+		.rsize_mask = RSIZE_MASK,
+		.rsize_shift = RSIZE_SFT,
+		.wsize_reg = AUDIO_DMA_G_DMA_0_CON,
+		.wsize_mask = WSIZE_MASK,
+		.wsize_shift = WSIZE_SFT,
+		.burst_len_reg = AUDIO_DMA_G_DMA_0_CON,
+		.burst_len_mask = BURST_LEN_MASK,
+		.burst_len_shift = BURST_LEN_SFT,
+		.trans_len1_reg = AUDIO_DMA_G_DMA_0_LEN1,
+		.trans_len1_mask = LEN1_MASK,
+		.trans_len1_shift = LEN1_SFT,
+		.irqs_cnt_reg = AUDIO_DMA_G_DMA_0_IRQS_CNT,
+		.irqs_cnt_mask = IRQS_CNT_MASK,
+		.irqs_cnt_shift = IRQS_CNT_SFT,
+		.reloader_cnt_reg = AUDIO_DMA_G_DMA_0_DSTADDR_CNT,
+		.reloader_cnt_mask = REG_RELOADER_CNT_MASK,
+		.reloader_cnt_shift = REG_RELOADER_CNT_SFT,
+		.int_flag_reg = AUDIO_DMA_G_DMA_0_INT_FLAG,
+		.int_flag_mask = FLAG_MASK,
+		.int_flag_shift = FLAG_SFT,
+		.en_reg = AUDIO_DMA_G_DMA_0_EN,
+		.en_mask = EN_MASK,
+		.en_shift = EN_SFT,
+		.pause_reg = AUDIO_DMA_G_DMA_0_STOP,
+		.pause_mask = PAUSE_MASK,
+		.pause_shift = PAUSE_SFT,
+		.flush_reg = AUDIO_DMA_G_DMA_0_FLUSH,
+		.flush_mask = FLUSH_MASK,
+		.flush_shift = FLUSH_SFT,
+		.en_ro_reg = AUDIO_DMA_G_DMA_0_EN_RO,
+		.en_ro_mask = EN_RO_MASK,
+		.en_ro_shift = EN_RO_SFT,
+		.warm_rst_reg = AUDIO_DMA_G_DMA_0_RST,
+		.warm_rst_mask = WARM_RST_MASK,
+		.warm_rst_shift = WARM_RST_SFT,
+	},
+	[MT6881_CQDMA1] = {
+		.name = "CQDMA1",
+		.id = MT6881_CQDMA1,
+		.src_addr_reg = AUDIO_DMA_G_DMA_1_SRC_ADDR,
+		.src_addr_mask = SRC_ADDR_MASK,
+		.src_addr_shift = SRC_ADDR_SFT,
+		.reg_ofs_base = AUDIO_DMA_G_DMA_1_DST_ADDR,
+		.reg_ofs_cur = AUDIO_DMA_G_DMA_1_DST_ADDR_RO,
+		.reg_ofs_base_msb = AUDIO_DMA_G_DMA_1_DST_ADDR2,
+		.reg_ofs_cur_msb = AUDIO_DMA_G_DMA_1_DST_ADDR2_RO,
+		.rsize_reg = AUDIO_DMA_G_DMA_1_CON,
+		.rsize_mask = RSIZE_MASK,
+		.rsize_shift = RSIZE_SFT,
+		.wsize_reg = AUDIO_DMA_G_DMA_1_CON,
+		.wsize_mask = WSIZE_MASK,
+		.wsize_shift = WSIZE_SFT,
+		.burst_len_reg = AUDIO_DMA_G_DMA_1_CON,
+		.burst_len_mask = BURST_LEN_MASK,
+		.burst_len_shift = BURST_LEN_SFT,
+		.trans_len1_reg = AUDIO_DMA_G_DMA_1_LEN1,
+		.trans_len1_mask = LEN1_MASK,
+		.trans_len1_shift = LEN1_SFT,
+		.irqs_cnt_reg = AUDIO_DMA_G_DMA_1_IRQS_CNT,
+		.irqs_cnt_mask = IRQS_CNT_MASK,
+		.irqs_cnt_shift = IRQS_CNT_SFT,
+		.reloader_cnt_reg = AUDIO_DMA_G_DMA_1_DSTADDR_CNT,
+		.reloader_cnt_mask = REG_RELOADER_CNT_MASK,
+		.reloader_cnt_shift = REG_RELOADER_CNT_SFT,
+		.int_flag_reg = AUDIO_DMA_G_DMA_1_INT_FLAG,
+		.int_flag_mask = FLAG_MASK,
+		.int_flag_shift = FLAG_SFT,
+		.en_reg = AUDIO_DMA_G_DMA_1_EN,
+		.en_mask = EN_MASK,
+		.en_shift = EN_SFT,
+		.pause_reg = AUDIO_DMA_G_DMA_1_STOP,
+		.pause_mask = PAUSE_MASK,
+		.pause_shift = PAUSE_SFT,
+		.flush_reg = AUDIO_DMA_G_DMA_1_FLUSH,
+		.flush_mask = FLUSH_MASK,
+		.flush_shift = FLUSH_SFT,
+		.en_ro_reg = AUDIO_DMA_G_DMA_1_EN_RO,
+		.en_ro_mask = EN_RO_MASK,
+		.en_ro_shift = EN_RO_SFT,
+		.warm_rst_reg = AUDIO_DMA_G_DMA_1_RST,
+		.warm_rst_mask = WARM_RST_MASK,
+		.warm_rst_shift = WARM_RST_SFT,
+	},
+#endif
 };
 
 static const struct mtk_base_irq_data irq_data[MT6881_IRQ_NUM] = {
@@ -5900,6 +5996,18 @@ static const struct mtk_base_irq_data irq_data[MT6881_IRQ_NUM] = {
 		.irq_scp_en_reg = AFE_IRQ_MCU_SCP_EN,
 		.irq_scp_en_shift = IRQ26_MCU_SCP_EN_SFT,
 	},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	[MT6881_IRQ_CQDMA0] = {
+		.id = MT6881_IRQ_CQDMA0,
+		.irq_clr_reg = AUDIO_DMA_G_DMA_0_INT_FLAG,
+		.irq_clr_shift = AFE_IRQ26_CLR_CFG_SFT,
+	},
+	[MT6881_IRQ_CQDMA1] = {
+		.id = MT6881_IRQ_CQDMA1,
+		.irq_clr_reg = AUDIO_DMA_G_DMA_1_INT_FLAG,
+		.irq_clr_shift = AFE_IRQ26_CLR_CFG_SFT,
+	},
+#endif
 };
 
 #if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
@@ -5938,6 +6046,10 @@ static const int memif_irq_usage[MT6881_MEMIF_NUM] = {
 	[MT6881_MEMIF_ETDM_IN1] = MT6881_IRQ_0,
 	[MT6881_MEMIF_ETDM_IN2] = MT6881_IRQ_0,
 	[MT6881_MEMIF_ETDM_IN6] = MT6881_IRQ_0,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	[MT6881_CQDMA0] = MT6881_IRQ_CQDMA0,
+	[MT6881_CQDMA1] = MT6881_IRQ_CQDMA1,
+#endif
 };
 #else
 static const int memif_irq_usage[MT6881_MEMIF_NUM] = {
@@ -6338,6 +6450,10 @@ static irqreturn_t mt6881_afe_irq_handler(int irq_id, void *dev)
 	unsigned int cus_status = 0;
 	unsigned int cus_status_mcu;
 	unsigned int cus_mcu_en = 0;
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	unsigned int cqdma_irq_en = 0;
+	unsigned int status_cqdma = 0;
+#endif
 	unsigned int tmp_reg = 0;
 	int ret, cus_ret;
 	int i, j;
@@ -6356,6 +6472,26 @@ static irqreturn_t mt6881_afe_irq_handler(int irq_id, void *dev)
 	/* only care IRQ which is sent to MCU */
 	status_mcu = status & mcu_en & AFE_IRQ_STATUS_BITS;
 	cus_status_mcu = cus_status & cus_mcu_en & AFE_IRQ_STATUS_BITS;
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	/* CQDMA IRQ enable */
+	regmap_read(afe->regmap, AUDIO_DMA_G_DMA_0_INT_EN, &cqdma_irq_en);
+	/* AFE_CUSTOM_IRQ_MCU_STATUS bit30 ~ 31 for cqdma IRQ to MCU */
+	status_cqdma = cus_status & cqdma_irq_en & AFE_IRQ_STATUS_BITS;
+	if (cus_ret || (status_cqdma == 0)) {
+		dev_info_ratelimited(
+			afe->dev,
+			"%s(), irq status err, cus_ret %d, status_cqdma 0x%x, cqdma_irq_en 0x%x\n",
+			 __func__,
+			 cus_ret, status_cqdma, cqdma_irq_en);
+		for (j = 0; j < 2; ++j) {
+			for (i = MT6881_IRQ_CQDMA_START; i < MT6881_IRQ_NUM; ++i) {
+				regmap_update_bits(afe->regmap, irq_data[i].irq_clr_reg,
+						FLAG_MASK_SFT,
+						0x0 << FLAG_SFT);
+			}
+		}
+	}
+#endif
 	if ((ret || (status_mcu == 0)) &&
 	    (cus_ret || (cus_status_mcu == 0))) {
 		dev_info_ratelimited(
@@ -6410,6 +6546,13 @@ static irqreturn_t mt6881_afe_irq_handler(int irq_id, void *dev)
 
 		if (status_mcu & (0x1 << irq->irq_data->id))
 			snd_pcm_period_elapsed(memif->substream);
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+		/* for CQDMA update ptr */
+		if (status_cqdma & (0x1 << irq->irq_data->id)) {
+			if (memif->update_cqdma_ptr)
+				memif->update_cqdma_ptr(afe, i);
+		}
+#endif
 	}
 
 	ktime_get_ts64(&ts64);
@@ -6432,6 +6575,13 @@ static irqreturn_t mt6881_afe_irq_handler(int irq_id, void *dev)
 					tmp_reg^0xc0000000);
 		}
 	}
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	for (i = MT6881_IRQ_CQDMA_START; i < MT6881_IRQ_NUM; ++i) {
+		regmap_update_bits(afe->regmap, irq_data[i].irq_clr_reg,
+				FLAG_MASK_SFT,
+				0x0 << FLAG_SFT);
+	}
+#endif
 #else
 	arm_smccc_smc(SMC_SC_NBL_VHM_REQ, 0x90000001, hwirq, AFE_IRQ_STATUS_BITS, res.a1,
 			res.a2, 0, r7, &res);
@@ -6475,7 +6625,13 @@ static int mt6881_afe_runtime_suspend(struct device *dev)
 				0xc0000000,
 				tmp_reg^0xc0000000);
 	}
-
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	for (i = MT6881_IRQ_CQDMA_START; i < MT6881_IRQ_NUM; ++i) {
+		regmap_update_bits(afe->regmap, irq_data[i].irq_clr_reg,
+				FLAG_MASK_SFT,
+				0x0 << FLAG_SFT);
+	}
+#endif
 	/* reset sgen */
 	regmap_write(afe->regmap, AFE_SINEGEN_CON0, 0x0);
 	regmap_update_bits(afe->regmap, AFE_SINEGEN_CON1,
@@ -14372,6 +14528,9 @@ static const dai_register_cb dai_register_cbs[] = {
 	mt6881_dai_pcm_register,
 	mt6881_dai_hostless_register,
 	mt6881_dai_memif_register,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_CQDMA_SUPPORT)
+	mt6881_dai_cqdma_register,
+#endif
 };
 
 static int mt6881_afe_pcm_dev_probe(struct platform_device *pdev)
