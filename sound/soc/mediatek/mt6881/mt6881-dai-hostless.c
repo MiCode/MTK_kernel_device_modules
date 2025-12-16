@@ -655,6 +655,27 @@ static struct snd_soc_dai_driver mtk_dai_hostless_driver[] = {
 		},
 		.ops = &mtk_dai_hostless_ops,
 	},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	{
+		.name = "Hostless_UL37 DAI",
+		.id = MT6881_DAI_HOSTLESS_UL37,
+		.capture = {
+			.stream_name = "Hostless_UL37 UL",
+			.channels_min = 1,
+			.channels_max = 4,
+			.rates = MTK_HOSTLESS_RATES,
+			.formats = MTK_HOSTLESS_FORMATS,
+		},
+		.playback = {
+			.stream_name = "Hostless_UL37 DL",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_HOSTLESS_RATES,
+			.formats = MTK_HOSTLESS_FORMATS,
+		},
+		.ops = &mtk_dai_hostless_ops,
+	},
+#else
 	{
 		.name = "Hostless_UL24 DAI",
 		.id = MT6881_DAI_HOSTLESS_UL24,
@@ -674,6 +695,7 @@ static struct snd_soc_dai_driver mtk_dai_hostless_driver[] = {
 		},
 		.ops = &mtk_dai_hostless_ops,
 	},
+#endif
 	{
 		.name = "Hostless HW Gain AAudio DAI",
 		.id = MT6881_DAI_HOSTLESS_HW_GAIN_AAUDIO,

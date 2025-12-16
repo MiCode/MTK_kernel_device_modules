@@ -186,7 +186,11 @@ int mt6881_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 		strscpy(memif->process_name, "NULL", sizeof(memif->process_name) - 1);
 
 		/* add delay for bt memif to avoid dl noise */
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+		if (id == MT6881_MEMIF_DL44)
+#else
 		if (id == MT6881_MEMIF_DL23)
+#endif
 			mtk_memif_set_pbuf_size(afe, id, MT6881_MEMIF_PBUF_SIZE_32_BYTES);
 
 		if (!strcmp(memif->data->name, "VUL_CM0")
@@ -506,6 +510,44 @@ static struct snd_soc_dai_driver mt6881_memif_dai_driver[] = {
 		},
 		.ops = &mt6881_memif_dai_ops,
 	},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	{
+		.name = "DL44",
+		.id = MT6881_MEMIF_DL44,
+		.playback = {
+			.stream_name = "DL44",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_PCM_RATES,
+			.formats = MTK_PCM_FORMATS,
+		},
+		.ops = &mt6881_memif_dai_ops,
+	},
+	{
+		.name = "DL45",
+		.id = MT6881_MEMIF_DL45,
+		.playback = {
+			.stream_name = "DL45",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_PCM_RATES,
+			.formats = MTK_PCM_FORMATS,
+		},
+		.ops = &mt6881_memif_dai_ops,
+	},
+	{
+		.name = "DL46",
+		.id = MT6881_MEMIF_DL46,
+		.playback = {
+			.stream_name = "DL46",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_PCM_RATES,
+			.formats = MTK_PCM_FORMATS,
+		},
+		.ops = &mt6881_memif_dai_ops,
+	},
+#else
 	{
 		.name = "DL23",
 		.id = MT6881_MEMIF_DL23,
@@ -542,6 +584,7 @@ static struct snd_soc_dai_driver mt6881_memif_dai_driver[] = {
 		},
 		.ops = &mt6881_memif_dai_ops,
 	},
+#endif
 	{
 		.name = "DL_24CH",
 		.id = MT6881_MEMIF_DL_24CH,
@@ -698,6 +741,32 @@ static struct snd_soc_dai_driver mt6881_memif_dai_driver[] = {
 		},
 		.ops = &mt6881_memif_dai_ops,
 	},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	{
+		.name = "UL37",
+		.id = MT6881_MEMIF_VUL37,
+		.capture = {
+			.stream_name = "UL37",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_PCM_RATES,
+			.formats = MTK_PCM_FORMATS,
+		},
+		.ops = &mt6881_memif_dai_ops,
+	},
+	{
+		.name = "UL38",
+		.id = MT6881_MEMIF_VUL38,
+		.capture = {
+			.stream_name = "UL38",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_PCM_RATES,
+			.formats = MTK_PCM_FORMATS,
+		},
+		.ops = &mt6881_memif_dai_ops,
+	},
+#else
 	{
 		.name = "UL24",
 		.id = MT6881_MEMIF_VUL24,
@@ -722,6 +791,7 @@ static struct snd_soc_dai_driver mt6881_memif_dai_driver[] = {
 		},
 		.ops = &mt6881_memif_dai_ops,
 	},
+#endif
 	{
 		.name = "UL_CM0",
 		.id = MT6881_MEMIF_VUL_CM0,
@@ -1616,9 +1686,15 @@ unsigned int virtio_id_memif_index_mapping[MT6881_MEMIF_NUM] = {
 	MT6881_MEMIF_DL6,
 	MT6881_MEMIF_DL7,
 	MT6881_MEMIF_DL8,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	MT6881_MEMIF_DL44,
+	MT6881_MEMIF_DL45,
+	MT6881_MEMIF_DL46,
+#else
 	MT6881_MEMIF_DL23,
 	MT6881_MEMIF_DL24,
 	MT6881_MEMIF_DL25,
+#endif
 	MT6881_MEMIF_DL_24CH,
 	MT6881_MEMIF_DL_48CH,
 	MT6881_MEMIF_VUL9,
@@ -1634,9 +1710,17 @@ unsigned int virtio_id_memif_index_mapping[MT6881_MEMIF_NUM] = {
 	MT6881_MEMIF_VUL_CM2,
 	MT6881_MEMIF_VUL10,
 	MT6881_MEMIF_VUL6,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	MT6881_MEMIF_VUL38,
+#else
 	MT6881_MEMIF_VUL25,
+#endif
 	MT6881_MEMIF_VUL8,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	MT6881_MEMIF_VUL37,
+#else
 	MT6881_MEMIF_VUL24,
+#endif
 	MT6881_MEMIF_ETDM_IN1,
 	MT6881_MEMIF_ETDM_IN2,
 	MT6881_MEMIF_ETDM_IN6,
@@ -2059,6 +2143,11 @@ enum {
 	CM1_MUX_VUL9_16CH,
 	CM1_MUX_MASK,
 };
+enum {
+	CM2_MUX_VUL10_2CH,
+	CM2_MUX_VUL10_32CH,
+	CM2_MUX_MASK,
+};
 
 static int ul_cm0_event(struct snd_soc_dapm_widget *w,
 			struct snd_kcontrol *kcontrol,
@@ -2177,8 +2266,13 @@ static const struct snd_kcontrol_new memif_ul0_ch1_mix[] = {
 				    I_DL6_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH1", AFE_CONN018_1,
 				    I_DL7_CH1, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH1", AFE_CONN018_3,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL44_CH1", AFE_CONN018_2,
 				    I_DL44_CH1, 1, 0),
+#else
+	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH1", AFE_CONN018_2,
+				    I_DL44_CH1, 1, 0),
+#endif
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN018_1,
 				    I_DL_24CH_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH1", AFE_CONN018_2,
@@ -2230,8 +2324,13 @@ static const struct snd_kcontrol_new memif_ul0_ch2_mix[] = {
 				    I_DL6_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH2", AFE_CONN019_1,
 				    I_DL7_CH2, 1, 0),
-	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH2", AFE_CONN019_3,
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL44_CH2", AFE_CONN019_2,
 				    I_DL44_CH2, 1, 0),
+#else
+	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH2", AFE_CONN019_2,
+				    I_DL44_CH2, 1, 0),
+#endif
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN019_1,
 				    I_DL_24CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH2", AFE_CONN019_2,
@@ -2275,10 +2374,17 @@ static const struct snd_kcontrol_new memif_ul1_ch1_mix[] = {
 				    I_DL6_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH1", AFE_CONN020_1,
 				    I_DL7_CH1, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL44_CH1", AFE_CONN020_3,
+				    I_DL44_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL45_CH1", AFE_CONN020_3,
+					I_DL45_CH1, 1, 0),
+#else
 	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH1", AFE_CONN020_3,
 				    I_DL44_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN020_3,
 					I_DL45_CH1, 1, 0),
+#endif
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN020_1,
 				    I_DL_24CH_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH1", AFE_CONN020_2,
@@ -2320,10 +2426,17 @@ static const struct snd_kcontrol_new memif_ul1_ch2_mix[] = {
 				    I_DL6_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH2", AFE_CONN021_1,
 				    I_DL7_CH2, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL44_CH2", AFE_CONN021_3,
+				    I_DL44_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL45_CH2", AFE_CONN021_3,
+					I_DL45_CH2, 1, 0),
+#else
 	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH2", AFE_CONN021_3,
 				    I_DL44_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN021_3,
 					I_DL45_CH2, 1, 0),
+#endif
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN021_1,
 				    I_DL_24CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH2", AFE_CONN021_2,
@@ -2423,6 +2536,10 @@ static const struct snd_kcontrol_new memif_ul4_ch1_mix[] = {
 				    I_DL_24CH_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH1", AFE_CONN026_2,
 				    I_DL_48CH_CH1, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL45_CH1", AFE_CONN026_3,
+				    I_DL45_CH1, 1, 0),
+#endif
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH1", AFE_CONN026_4,
 				    I_PCM_0_CAP_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN026_4,
@@ -2454,6 +2571,10 @@ static const struct snd_kcontrol_new memif_ul4_ch2_mix[] = {
 				    I_DL_24CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH2", AFE_CONN027_2,
 				    I_DL_48CH_CH2, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL45_CH2", AFE_CONN027_3,
+				    I_DL45_CH2, 1, 0),
+#endif
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH1", AFE_CONN027_4,
 				    I_PCM_0_CAP_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH2", AFE_CONN027_4,
@@ -2501,6 +2622,10 @@ static const struct snd_kcontrol_new memif_ul5_ch1_mix[] = {
 #endif
 	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH1", AFE_CONN028_0,
 				    I_CONNSYS_I2S_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH1", AFE_CONN028_4,
+				    I_I2SIN2_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH1", AFE_CONN028_5,
+				    I_I2SIN6_CH1, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul5_ch2_mix[] = {
@@ -2536,6 +2661,10 @@ static const struct snd_kcontrol_new memif_ul5_ch2_mix[] = {
 #endif
 	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH2", AFE_CONN029_0,
 				    I_CONNSYS_I2S_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH2", AFE_CONN028_4,
+				    I_I2SIN2_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH2", AFE_CONN029_4,
+				    I_I2SIN6_CH2, 1, 0),
 };
 
 static const struct snd_kcontrol_new memif_ul6_ch1_mix[] = {
@@ -2698,6 +2827,48 @@ static const struct snd_kcontrol_new memif_ul10_ch2_mix[] = {
 				    I_ADDA_UL_CH4, 1, 0),
 };
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+static const struct snd_kcontrol_new memif_ul37_ch1_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN092_0,
+				    I_ADDA_UL_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH1", AFE_CONN092_0,
+				    I_CONNSYS_I2S_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL0_CH1", AFE_CONN092_1,
+				    I_DL0_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL1_CH1", AFE_CONN092_1,
+				    I_DL1_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH1", AFE_CONN092_1,
+				    I_DL2_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL3_CH1", AFE_CONN092_1,
+				    I_DL3_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH1", AFE_CONN092_1,
+				    I_DL4_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH1", AFE_CONN092_1,
+				    I_DL6_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH1", AFE_CONN092_1,
+				    I_DL7_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL44_CH1", AFE_CONN092_3,
+				    I_DL44_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL45_CH1", AFE_CONN092_3,
+				    I_DL45_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN092_1,
+				    I_DL_24CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH1", AFE_CONN092_2,
+				    I_DL_48CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH1", AFE_CONN092_4,
+				    I_PCM_0_CAP_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN092_4,
+				    I_PCM_1_CAP_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH1", AFE_CONN092_4,
+				    I_I2SIN2_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH1", AFE_CONN092_5,
+				    I_I2SIN6_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH1", AFE_CONN092_6,
+				    I_SRC_0_OUT_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH1", AFE_CONN092_6,
+				    I_SRC_2_OUT_CH1, 1, 0),
+};
+#else
 static const struct snd_kcontrol_new memif_ul24_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN066_0,
 				    I_ADDA_UL_CH1, 1, 0),
@@ -2740,7 +2911,56 @@ static const struct snd_kcontrol_new memif_ul24_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH1", AFE_CONN066_6,
 				    I_SRC_2_OUT_CH1, 1, 0),
 };
+#endif
 
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+static const struct snd_kcontrol_new memif_ul37_ch2_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN093_0,
+				    I_ADDA_UL_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("CONNSYS_I2S_CH2", AFE_CONN093_0,
+				    I_CONNSYS_I2S_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL0_CH2", AFE_CONN093_1,
+				    I_DL0_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL1_CH2", AFE_CONN093_1,
+				    I_DL1_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH2", AFE_CONN093_1,
+				    I_DL2_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL3_CH2", AFE_CONN093_1,
+				    I_DL3_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH2", AFE_CONN093_1,
+				    I_DL4_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH2", AFE_CONN093_1,
+				    I_DL6_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH2", AFE_CONN093_1,
+				    I_DL7_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL44_CH2", AFE_CONN093_3,
+				    I_DL44_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL45_CH2", AFE_CONN093_3,
+				    I_DL45_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN093_1,
+				    I_DL_24CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH2", AFE_CONN093_2,
+				    I_DL_48CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH1", AFE_CONN093_4,
+				    I_PCM_0_CAP_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH2", AFE_CONN093_4,
+				    I_PCM_0_CAP_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN093_4,
+				    I_PCM_1_CAP_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH2", AFE_CONN093_4,
+				    I_PCM_1_CAP_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH2", AFE_CONN093_4,
+				    I_I2SIN1_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH2", AFE_CONN093_4,
+				    I_I2SIN2_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH2", AFE_CONN093_5,
+				    I_I2SIN6_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH2", AFE_CONN093_6,
+				    I_SRC_0_OUT_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH2", AFE_CONN093_6,
+				    I_SRC_2_OUT_CH2, 1, 0),
+};
+#else
 static const struct snd_kcontrol_new memif_ul24_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN067_0,
 				    I_ADDA_UL_CH2, 1, 0),
@@ -2789,6 +3009,7 @@ static const struct snd_kcontrol_new memif_ul24_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH2", AFE_CONN067_6,
 				    I_SRC_2_OUT_CH2, 1, 0),
 };
+#endif
 
 static const struct snd_kcontrol_new mtk_dsp_dl_playback_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("DSP_DL0", SND_SOC_NOPM, 0, 1, 0),
@@ -3560,11 +3781,17 @@ static const struct snd_soc_dapm_widget mt6881_memif_widgets[] = {
 			   memif_ul10_ch1_mix, ARRAY_SIZE(memif_ul10_ch1_mix)),
 	SND_SOC_DAPM_MIXER("UL10_CH2", SND_SOC_NOPM, 0, 0,
 			   memif_ul10_ch2_mix, ARRAY_SIZE(memif_ul10_ch2_mix)),
-
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SND_SOC_DAPM_MIXER("UL37_CH1", SND_SOC_NOPM, 0, 0,
+			   memif_ul37_ch1_mix, ARRAY_SIZE(memif_ul37_ch1_mix)),
+	SND_SOC_DAPM_MIXER("UL37_CH2", SND_SOC_NOPM, 0, 0,
+			   memif_ul37_ch2_mix, ARRAY_SIZE(memif_ul37_ch2_mix)),
+#else
 	SND_SOC_DAPM_MIXER("UL24_CH1", SND_SOC_NOPM, 0, 0,
 			   memif_ul24_ch1_mix, ARRAY_SIZE(memif_ul24_ch1_mix)),
 	SND_SOC_DAPM_MIXER("UL24_CH2", SND_SOC_NOPM, 0, 0,
 			   memif_ul24_ch2_mix, ARRAY_SIZE(memif_ul24_ch2_mix)),
+#endif
 
 	SND_SOC_DAPM_MIXER("DSP_DL", SND_SOC_NOPM, 0, 0,
 			   mtk_dsp_dl_playback_mix,
@@ -3786,10 +4013,17 @@ static const struct snd_soc_dapm_route mt6881_memif_routes[] = {
 	{"UL1_CH2", "DL4_CH2", "Hostless_UL1 UL"},
 	{"UL1_CH1", "DL7_CH1", "Hostless_UL1 UL"},
 	{"UL1_CH2", "DL7_CH2", "Hostless_UL1 UL"},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	{"UL1_CH1", "DL44_CH1", "Hostless_UL1 UL"},
+	{"UL1_CH2", "DL44_CH2", "Hostless_UL1 UL"},
+	{"UL1_CH1", "DL45_CH1", "Hostless_UL1 UL"},
+	{"UL1_CH2", "DL45_CH2", "Hostless_UL1 UL"},
+#else
 	{"UL1_CH1", "DL23_CH1", "Hostless_UL1 UL"},
 	{"UL1_CH2", "DL23_CH2", "Hostless_UL1 UL"},
 	{"UL1_CH1", "DL24_CH1", "Hostless_UL1 UL"},
 	{"UL1_CH2", "DL24_CH2", "Hostless_UL1 UL"},
+#endif
 	{"UL1_CH1", "DL_24CH_CH1", "Hostless_UL1 UL"},
 	{"UL1_CH2", "DL_24CH_CH2", "Hostless_UL1 UL"},
 	{"UL1_CH1", "DL_48CH_CH1", "Hostless_UL1 UL"},
@@ -3874,6 +4108,10 @@ static const struct snd_soc_dapm_route mt6881_memif_routes[] = {
 	{"UL4_CH2", "DL_24CH_CH2", "Hostless_UL4 UL"},
 	{"UL4_CH1", "DL_48CH_CH1", "Hostless_UL4 UL"},
 	{"UL4_CH2", "DL_48CH_CH2", "Hostless_UL4 UL"},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO_DSP)
+	{"UL4_CH1", "DL45_CH1", "Hostless_UL4 UL"},
+	{"UL4_CH2", "DL45_CH2", "Hostless_UL4 UL"},
+#endif
 	{"Hostless_UL4 UL", NULL, "UL4_VIRTUAL_INPUT"},
 
 	{"UL4_CH1", "PCM_0_CAP_CH1", "PCM 0 Capture"},
@@ -3901,6 +4139,8 @@ static const struct snd_soc_dapm_route mt6881_memif_routes[] = {
 #endif
 	{"UL5_CH1", "CONNSYS_I2S_CH1", "Connsys I2S"},
 	{"UL5_CH2", "CONNSYS_I2S_CH2", "Connsys I2S"},
+	{"UL5_CH1", "I2SIN2_CH1", "I2SIN2"},
+	{"UL5_CH2", "I2SIN2_CH2", "I2SIN2"},
 
 	{"UL6", NULL, "UL6_CH1"},
 	{"UL6", NULL, "UL6_CH2"},
@@ -4151,6 +4391,44 @@ static const struct snd_soc_dapm_route mt6881_memif_routes[] = {
 	{"UL10_CH2", "ADDA_UL_CH3", "ADDA_CH34_UL_Mux"},
 	{"UL10_CH2", "ADDA_UL_CH4", "ADDA_CH34_UL_Mux"},
 /*lindsay ul24,25 改 37,38?*/
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	{"UL37", NULL, "UL37_CH1"},
+	{"UL37", NULL, "UL37_CH2"},
+	{"UL37_CH1", "ADDA_UL_CH1", "ADDA_UL_Mux"},
+	{"UL37_CH1", "I2SIN6_CH1", "I2SIN6"},
+	{"UL37_CH2", "I2SIN6_CH2", "I2SIN6"},
+	{"UL37_CH1", "DL0_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL0_CH2", "Hostless_UL37 UL"},
+	{"UL37_CH1", "DL1_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL1_CH2", "Hostless_UL37 UL"},
+	{"UL37_CH1", "DL6_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL6_CH2", "Hostless_UL37 UL"},
+	{"UL37_CH1", "DL2_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL2_CH2", "Hostless_UL37 UL"},
+	{"UL37_CH1", "DL3_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL3_CH2", "Hostless_UL37 UL"},
+	{"UL37_CH1", "DL4_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL4_CH2", "Hostless_UL37 UL"},
+	{"UL37_CH1", "DL7_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL7_CH2", "Hostless_UL37 UL"},
+	{"UL37_CH1", "DL44_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL44_CH2", "Hostless_UL37 UL"},
+	{"UL37_CH1", "DL45_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL45_CH2", "Hostless_UL37 UL"},
+
+	{"UL37_CH1", "DL_24CH_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL_24CH_CH2", "Hostless_UL37 UL"},
+	{"UL37_CH1", "DL_48CH_CH1", "Hostless_UL37 UL"},
+	{"UL37_CH2", "DL_48CH_CH2", "Hostless_UL37 UL"},
+	{"Hostless_UL37 UL", NULL, "UL37_VIRTUAL_INPUT"},
+
+	{"UL38", NULL, "UL38_CH1"},
+	{"UL38", NULL, "UL38_CH2"},
+	{"UL38_CH1", "I2SIN6_CH1", "I2SIN6"},
+	{"UL38_CH2", "I2SIN6_CH2", "I2SIN6"},
+	// {"UL38_CH1", "I2SIN0_CH1", "I2SIN0"},
+	// {"UL38_CH2", "I2SIN0_CH2", "I2SIN0"},
+#else
 	{"UL24", NULL, "UL24_CH1"},
 	{"UL24", NULL, "UL24_CH2"},
 	{"UL24_CH1", "ADDA_UL_CH1", "ADDA_UL_Mux"},
@@ -4186,11 +4464,12 @@ static const struct snd_soc_dapm_route mt6881_memif_routes[] = {
 	// {"UL25_CH2", "I2SIN6_CH2", "I2SIN6"},
 	// {"UL25_CH1", "I2SIN0_CH1", "I2SIN0"},
 	// {"UL25_CH2", "I2SIN0_CH2", "I2SIN0"},
+#endif
 
-	// {"UL26", NULL, "UL26_CH1"},
-	// {"UL26", NULL, "UL26_CH2"},
-	// {"UL26_CH1", "I2SIN6_CH1", "I2SIN6"},
-	// {"UL26_CH2", "I2SIN6_CH2", "I2SIN6"},
+	{"UL26", NULL, "UL26_CH1"},
+	{"UL26", NULL, "UL26_CH2"},
+	{"UL26_CH1", "I2SIN6_CH1", "I2SIN6"},
+	{"UL26_CH2", "I2SIN6_CH2", "I2SIN6"},
 	// {"UL26_CH1", "I2SIN0_CH1", "I2SIN0"},
 	// {"UL26_CH2", "I2SIN0_CH2", "I2SIN0"},
 
@@ -4685,6 +4964,113 @@ static const struct mtk_base_memif_data memif_data[MT6881_MEMIF_NUM] = {
 		.maxlen_mask = DL8_MAXLEN_MASK,
 		.maxlen_shift = DL8_MAXLEN_SFT,
 	},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	[MT6881_MEMIF_DL44] = {
+		.name = "DL44",
+		.id = MT6881_MEMIF_DL44,
+		.reg_ofs_base = AFE_DL44_BASE,
+		.reg_ofs_cur = AFE_DL44_CUR,
+		.reg_ofs_end = AFE_DL44_END,
+		.reg_ofs_base_msb = AFE_DL44_BASE_MSB,
+		.reg_ofs_cur_msb = AFE_DL44_CUR_MSB,
+		.reg_ofs_end_msb = AFE_DL44_END_MSB,
+		.fs_reg = AFE_DL44_CON0,
+		.fs_shift = DL44_SEL_FS_SFT,
+		.fs_maskbit = DL44_SEL_FS_MASK,
+		.mono_reg = AFE_DL44_CON0,
+		.mono_shift = DL44_MONO_SFT,
+		.enable_reg = AFE_DL44_CON0,
+		.enable_shift = DL44_ON_SFT,
+		.hd_reg = AFE_DL44_CON0,
+		.hd_mask = DL44_HD_MODE_MASK,
+		.hd_shift = DL44_HD_MODE_SFT,
+		.hd_align_reg = AFE_DL44_CON0,
+		.hd_align_mshift = DL44_HALIGN_SFT,
+		.agent_disable_reg = -1,
+		.agent_disable_shift = -1,
+		.msb_reg = -1,
+		.msb_shift = -1,
+		.pbuf_reg = AFE_DL44_CON0,
+		.pbuf_mask = DL44_PBUF_SIZE_MASK,
+		.pbuf_shift = DL44_PBUF_SIZE_SFT,
+		.minlen_reg = AFE_DL44_CON0,
+		.minlen_mask = DL44_MINLEN_MASK,
+		.minlen_shift = DL44_MINLEN_SFT,
+		.maxlen_reg = AFE_DL44_CON0,
+		.maxlen_mask = DL44_MAXLEN_MASK,
+		.maxlen_shift = DL44_MAXLEN_SFT,
+	},
+	[MT6881_MEMIF_DL45] = {
+		.name = "DL45",
+		.id = MT6881_MEMIF_DL45,
+		.reg_ofs_base = AFE_DL45_BASE,
+		.reg_ofs_cur = AFE_DL45_CUR,
+		.reg_ofs_end = AFE_DL45_END,
+		.reg_ofs_base_msb = AFE_DL45_BASE_MSB,
+		.reg_ofs_cur_msb = AFE_DL45_CUR_MSB,
+		.reg_ofs_end_msb = AFE_DL45_END_MSB,
+		.fs_reg = AFE_DL45_CON0,
+		.fs_shift = DL45_SEL_FS_SFT,
+		.fs_maskbit = DL45_SEL_FS_MASK,
+		.mono_reg = AFE_DL45_CON0,
+		.mono_shift = DL45_MONO_SFT,
+		.enable_reg = AFE_DL45_CON0,
+		.enable_shift = DL45_ON_SFT,
+		.hd_reg = AFE_DL45_CON0,
+		.hd_mask = DL45_HD_MODE_MASK,
+		.hd_shift = DL45_HD_MODE_SFT,
+		.hd_align_reg = AFE_DL45_CON0,
+		.hd_align_mshift = DL45_HALIGN_SFT,
+		.agent_disable_reg = -1,
+		.agent_disable_shift = -1,
+		.msb_reg = -1,
+		.msb_shift = -1,
+		.pbuf_reg = AFE_DL45_CON0,
+		.pbuf_mask = DL45_PBUF_SIZE_MASK,
+		.pbuf_shift = DL45_PBUF_SIZE_SFT,
+		.minlen_reg = AFE_DL45_CON0,
+		.minlen_mask = DL45_MINLEN_MASK,
+		.minlen_shift = DL45_MINLEN_SFT,
+		.maxlen_reg = AFE_DL45_CON0,
+		.maxlen_mask = DL45_MAXLEN_MASK,
+		.maxlen_shift = DL45_MAXLEN_SFT,
+	},
+	[MT6881_MEMIF_DL46] = {
+		.name = "DL46",
+		.id = MT6881_MEMIF_DL46,
+		.reg_ofs_base = AFE_DL46_BASE,
+		.reg_ofs_cur = AFE_DL46_CUR,
+		.reg_ofs_end = AFE_DL46_END,
+		.reg_ofs_base_msb = AFE_DL46_BASE_MSB,
+		.reg_ofs_cur_msb = AFE_DL46_CUR_MSB,
+		.reg_ofs_end_msb = AFE_DL46_END_MSB,
+		.fs_reg = AFE_DL46_CON0,
+		.fs_shift = DL46_SEL_FS_SFT,
+		.fs_maskbit = DL46_SEL_FS_MASK,
+		.mono_reg = AFE_DL46_CON0,
+		.mono_shift = DL46_MONO_SFT,
+		.enable_reg = AFE_DL46_CON0,
+		.enable_shift = DL46_ON_SFT,
+		.hd_reg = AFE_DL46_CON0,
+		.hd_mask = DL46_HD_MODE_MASK,
+		.hd_shift = DL46_HD_MODE_SFT,
+		.hd_align_reg = AFE_DL46_CON0,
+		.hd_align_mshift = DL46_HALIGN_SFT,
+		.agent_disable_reg = -1,
+		.agent_disable_shift = -1,
+		.msb_reg = -1,
+		.msb_shift = -1,
+		.pbuf_reg = AFE_DL46_CON0,
+		.pbuf_mask = DL46_PBUF_SIZE_MASK,
+		.pbuf_shift = DL46_PBUF_SIZE_SFT,
+		.minlen_reg = AFE_DL46_CON0,
+		.minlen_mask = DL46_MINLEN_MASK,
+		.minlen_shift = DL46_MINLEN_SFT,
+		.maxlen_reg = AFE_DL46_CON0,
+		.maxlen_mask = DL46_MAXLEN_MASK,
+		.maxlen_shift = DL46_MAXLEN_SFT,
+	},
+#else
 	[MT6881_MEMIF_DL23] = {
 		.name = "DL23",
 		.id = MT6881_MEMIF_DL23,
@@ -4790,6 +5176,7 @@ static const struct mtk_base_memif_data memif_data[MT6881_MEMIF_NUM] = {
 		.maxlen_mask = DL46_MAXLEN_MASK,
 		.maxlen_shift = DL46_MAXLEN_SFT,
 	},
+#endif
 	[MT6881_MEMIF_DL_24CH] = {
 		.name = "DL_24CH",
 		.id = MT6881_MEMIF_DL_24CH,
@@ -5218,6 +5605,78 @@ static const struct mtk_base_memif_data memif_data[MT6881_MEMIF_NUM] = {
 		.msb_reg = -1,
 		.msb_shift = -1,
 	},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	[MT6881_MEMIF_VUL37] = {
+		.name = "VUL37",
+		.id = MT6881_MEMIF_VUL37,
+		.reg_ofs_base = AFE_VUL37_BASE,
+		.reg_ofs_cur = AFE_VUL37_CUR,
+		.reg_ofs_end = AFE_VUL37_END,
+		.reg_ofs_base_msb = AFE_VUL37_BASE_MSB,
+		.reg_ofs_cur_msb = AFE_VUL37_CUR_MSB,
+		.reg_ofs_end_msb = AFE_VUL37_END_MSB,
+		.fs_reg = AFE_VUL37_CON0,
+		.fs_shift = VUL37_SEL_FS_SFT,
+		.fs_maskbit = VUL37_SEL_FS_MASK,
+		.mono_reg = AFE_VUL37_CON0,
+		.mono_shift = VUL37_MONO_SFT,
+		.enable_reg = AFE_VUL37_CON0,
+		.enable_shift = VUL37_ON_SFT,
+		.hd_reg = AFE_VUL37_CON0,
+		.hd_mask = VUL37_HD_MODE_MASK,
+		.hd_shift = VUL37_HD_MODE_SFT,
+		.hd_align_reg = AFE_VUL37_CON0,
+		.hd_align_mshift = VUL37_HALIGN_SFT,
+		.minlen_reg = AFE_VUL37_CON0,
+		.minlen_mask = VUL37_MINLEN_MASK,
+		.minlen_shift = VUL37_MINLEN_SFT,
+		.maxlen_reg = AFE_VUL37_CON0,
+		.maxlen_mask = VUL37_MAXLEN_MASK,
+		.maxlen_shift = VUL37_MAXLEN_SFT,
+		.agent_disable_reg = -1,
+		.agent_disable_shift = -1,
+		.msb_reg = -1,
+		.msb_shift = -1,
+		.out_on_use_reg = AFE_VUL37_CON0,
+		.out_on_use_mask = OUT_ON_USE_VUL37_MASK,
+		.out_on_use_shift = OUT_ON_USE_VUL37_SFT,
+	},
+	[MT6881_MEMIF_VUL38] = {
+		.name = "VUL38",
+		.id = MT6881_MEMIF_VUL38,
+		.reg_ofs_base = AFE_VUL38_BASE,
+		.reg_ofs_cur = AFE_VUL38_CUR,
+		.reg_ofs_end = AFE_VUL38_END,
+		.reg_ofs_base_msb = AFE_VUL38_BASE_MSB,
+		.reg_ofs_cur_msb = AFE_VUL38_CUR_MSB,
+		.reg_ofs_end_msb = AFE_VUL38_END_MSB,
+		.fs_reg = AFE_VUL38_CON0,
+		.fs_shift = VUL38_SEL_FS_SFT,
+		.fs_maskbit = VUL38_SEL_FS_MASK,
+		.mono_reg = AFE_VUL38_CON0,
+		.mono_shift = VUL38_MONO_SFT,
+		.enable_reg = AFE_VUL38_CON0,
+		.enable_shift = VUL38_ON_SFT,
+		.hd_reg = AFE_VUL38_CON0,
+		.hd_mask = VUL38_HD_MODE_MASK,
+		.hd_shift = VUL38_HD_MODE_SFT,
+		.hd_align_reg = AFE_VUL38_CON0,
+		.hd_align_mshift = VUL38_HALIGN_SFT,
+		.minlen_reg = AFE_VUL38_CON0,
+		.minlen_mask = VUL38_MINLEN_MASK,
+		.minlen_shift = VUL38_MINLEN_SFT,
+		.maxlen_reg = AFE_VUL38_CON0,
+		.maxlen_mask = VUL38_MAXLEN_MASK,
+		.maxlen_shift = VUL38_MAXLEN_SFT,
+		.agent_disable_reg = -1,
+		.agent_disable_shift = -1,
+		.msb_reg = -1,
+		.msb_shift = -1,
+		.out_on_use_reg = AFE_VUL38_CON0,
+		.out_on_use_mask = OUT_ON_USE_VUL38_MASK,
+		.out_on_use_shift = OUT_ON_USE_VUL38_SFT,
+	},
+#else
 	[MT6881_MEMIF_VUL24] = {
 		.name = "VUL24",
 		.id = MT6881_MEMIF_VUL24,
@@ -5288,6 +5747,7 @@ static const struct mtk_base_memif_data memif_data[MT6881_MEMIF_NUM] = {
 		.out_on_use_mask = OUT_ON_USE_VUL38_MASK,
 		.out_on_use_shift = OUT_ON_USE_VUL38_SFT,
 	},
+#endif
 	[MT6881_MEMIF_VUL_CM0] = {
 		.name = "VUL_CM0",
 		.id = MT6881_MEMIF_VUL_CM0,
@@ -6022,9 +6482,9 @@ static const int memif_irq_usage[MT6881_MEMIF_NUM] = {
 	[MT6881_MEMIF_DL6] = MT6881_IRQ_3,
 	[MT6881_MEMIF_DL7] = MT6881_IRQ_7,
 	[MT6881_MEMIF_DL8] = MT6881_IRQ_8,
-	[MT6881_MEMIF_DL23] = MT6881_IRQ_9,
-	[MT6881_MEMIF_DL24] = MT6881_IRQ_10,
-	[MT6881_MEMIF_DL25] = MT6881_IRQ_11,
+	[MT6881_MEMIF_DL44] = MT6881_IRQ_9,
+	[MT6881_MEMIF_DL45] = MT6881_IRQ_10,
+	[MT6881_MEMIF_DL46] = MT6881_IRQ_11,
 	[MT6881_MEMIF_DL_24CH] = MT6881_IRQ_12,
 	[MT6881_MEMIF_DL_48CH] = MT6881_IRQ_9,
 	[MT6881_MEMIF_VUL0] = MT6881_IRQ_13,
@@ -6038,8 +6498,8 @@ static const int memif_irq_usage[MT6881_MEMIF_NUM] = {
 	[MT6881_MEMIF_VUL8] = MT6881_IRQ_21,
 	[MT6881_MEMIF_VUL9] = MT6881_IRQ_22,
 	[MT6881_MEMIF_VUL10] = MT6881_IRQ_23,
-	[MT6881_MEMIF_VUL24] = MT6881_IRQ_24,
-	[MT6881_MEMIF_VUL25] = MT6881_IRQ_25,
+	[MT6881_MEMIF_VUL37] = MT6881_IRQ_24,
+	[MT6881_MEMIF_VUL38] = MT6881_IRQ_25,
 	[MT6881_MEMIF_VUL_CM0] = MT6881_IRQ_26,
 	[MT6881_MEMIF_VUL_CM1] = MT6881_IRQ_0,
 	[MT6881_MEMIF_VUL_CM2] = MT6881_IRQ_0,

@@ -200,7 +200,11 @@ static const struct snd_kcontrol_new mtk_pcm_1_playback_ch2_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH2", AFE_CONN103_6,
 				    I_SRC_0_OUT_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH2", AFE_CONN103_4,
-				    I_I2SIN1_CH2, 1, 0),
+					I_I2SIN1_CH2, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH1", AFE_CONN103_4,
+					I_I2SIN2_CH1, 1, 0),
+#endif
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN2_CH2", AFE_CONN103_4,
 				    I_I2SIN2_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH2", AFE_CONN103_5,
@@ -210,6 +214,8 @@ static const struct snd_kcontrol_new mtk_pcm_1_playback_ch2_mix[] = {
 static const struct snd_kcontrol_new mtk_pcm_1_playback_ch3_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN104_0,
 				    I_ADDA_UL_CH3, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH3", AFE_CONN104_5,
+					I_I2SIN6_CH3, 1, 0),
 };
 
 static const struct snd_kcontrol_new mtk_pcm_1_playback_ch4_mix[] = {
@@ -219,6 +225,8 @@ static const struct snd_kcontrol_new mtk_pcm_1_playback_ch4_mix[] = {
 				    I_I2SIN1_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN1_CH2", AFE_CONN105_4,
 				    I_I2SIN1_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH4", AFE_CONN105_5,
+				    I_I2SIN6_CH4, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL0_CH1", AFE_CONN105_1,
 				    I_DL0_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("I2SIN6_CH1", AFE_CONN105_5,
@@ -229,8 +237,13 @@ static const struct snd_kcontrol_new mtk_pcm_1_playback_ch4_mix[] = {
 				    I_DL_24CH_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH1", AFE_CONN105_2,
 				    I_DL_48CH_CH1, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL45_CH1", AFE_CONN105_3,
+				    I_DL45_CH1, 1, 0),
+#else
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN105_3,
 				    I_DL45_CH1, 1, 0),
+#endif
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH1", AFE_CONN105_6,
 				    I_SRC_2_OUT_CH1, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_1_OUT_CH1", AFE_CONN105_6,
@@ -248,8 +261,13 @@ static const struct snd_kcontrol_new mtk_pcm_1_playback_ch5_mix[] = {
 				    I_DL_24CH_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH2", AFE_CONN106_2,
 				    I_DL_48CH_CH2, 1, 0),
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	SOC_DAPM_SINGLE_AUTODISABLE("DL45_CH2", AFE_CONN106_3,
+				    I_DL45_CH2, 1, 0),
+#else
 	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN106_3,
 				    I_DL45_CH2, 1, 0),
+#endif
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH2", AFE_CONN106_6,
 				    I_SRC_2_OUT_CH2, 1, 0),
 	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_1_OUT_CH2", AFE_CONN106_6,
@@ -341,7 +359,11 @@ static const struct snd_soc_dapm_route mtk_dai_pcm_routes[] = {
 	{"PCM_1_PB_CH4", "HW_SRC_1_OUT_CH1", "HW_SRC_1_Out"},
 	{"PCM_1_PB_CH5", "HW_SRC_1_OUT_CH2", "HW_SRC_1_Out"},
 	{"PCM_1_PB_CH4", "DL0_CH1", "DL0"},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	{"PCM_1_PB_CH4", "DL45_CH1", "DL45"},
+#else
 	{"PCM_1_PB_CH4", "DL24_CH1", "DL24"},
+#endif
 
 	{"PCM_0_PB_CH1", "DL_24CH_CH1", "DL_24CH"},
 	{"PCM_0_PB_CH2", "DL_24CH_CH2", "DL_24CH"},
@@ -363,15 +385,26 @@ static const struct snd_soc_dapm_route mtk_dai_pcm_routes[] = {
 	{"PCM_1_PB_CH4", "I2SIN6_CH1", "I2SIN6"},
 	{"PCM_1_PB_CH4", "HW_SRC_2_OUT_CH1", "HW_SRC_2_Out"},
 	{"PCM_1_PB_CH5", "DL0_CH2", "DL0"},
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUTO_AUDIO)
+	{"PCM_1_PB_CH5", "DL45_CH2", "DL45"},
+#else
 	{"PCM_1_PB_CH5", "DL24_CH2", "DL24"},
+#endif
 	{"PCM_1_PB_CH5", "DL_24CH_CH2", "DL_24CH"},
 	{"PCM_1_PB_CH5", "DL_48CH_CH2", "DL_48CH"},
 	{"PCM_1_PB_CH5", "I2SIN1_CH2", "I2SIN1"},
 	{"PCM_1_PB_CH5", "I2SIN6_CH2", "I2SIN6"},
 	{"PCM_1_PB_CH1", "I2SIN1_CH1", "I2SIN1"},
 	{"PCM_1_PB_CH2", "I2SIN1_CH2", "I2SIN1"},
+
+	{"PCM_1_PB_CH1", "I2SIN2_CH1", "I2SIN2"},
+	{"PCM_1_PB_CH2", "I2SIN2_CH2", "I2SIN2"},
 	{"PCM_1_PB_CH1", "I2SIN6_CH1", "I2SIN6"},
 	{"PCM_1_PB_CH2", "I2SIN6_CH2", "I2SIN6"},
+	{"PCM_1_PB_CH3", "I2SIN6_CH3", "I2SIN6"},
+	{"PCM_1_PB_CH4", "I2SIN6_CH4", "I2SIN6"},
+	// {"PCM_1_PB_CH1", "I2SIN4_CH1", "I2SIN4"},
+	// {"PCM_1_PB_CH2", "I2SIN4_CH2", "I2SIN4"},
 	{"PCM_1_PB_CH5", "HW_SRC_2_OUT_CH2", "HW_SRC_2_Out"},
 };
 
