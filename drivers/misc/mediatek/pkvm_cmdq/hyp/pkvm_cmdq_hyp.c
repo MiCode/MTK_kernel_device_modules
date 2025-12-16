@@ -2129,14 +2129,9 @@ static bool share_memory_to_hyp(uint64_t region_start, uint64_t region_size)
 	uint64_t share_idx, share_abort_idx, region_pfn = region_start >> PAGE_SHIFT,
 	  pfn_total = region_size >> PAGE_SHIFT;
 
-	CALL_FROM_OPS(puts, "info:");
-	CALL_FROM_OPS(putx64, region_size);
-	CALL_FROM_OPS(putx64, pfn_total);
 	for (share_idx = 0; share_idx < pfn_total; share_idx++) {
 		/* host_share_hyp's input parameter is pfn no matter kernel pa or hyp pa */
 		ret = pkvm_cmdq_ops->host_share_hyp(region_pfn + share_idx);
-		CALL_FROM_OPS(puts, __func__);
-		CALL_FROM_OPS(putx64, share_idx);
 
 		if (ret) {
 			pkvm_cmdq_ops->puts("share memory fail");
@@ -2294,6 +2289,8 @@ void cmdq_hyp_get_memory(struct user_pt_regs *regs)
 		reserved_mem_pa_base = mem_base_address;
 		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "reserved_mem_va:");
 		CALL_FROM_OPS(putx64, (u64)reserved_mem_va_base);
+		CALL_FROM_OPS(puts, PFX_CMDQ_MSG "reserved_mem_pa_base:");
+		CALL_FROM_OPS(putx64, (u64)reserved_mem_pa_base);
 	}
 
 	ret = pkvm_cmdq_ops->host_stage2_mod_prot(mem_base_address >> PAGE_SHIFT, 0,

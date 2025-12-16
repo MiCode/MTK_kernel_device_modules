@@ -234,9 +234,9 @@ u32 cmdq_util_hw_id(u32 pa)
 	case GCE_D_PA:
 		return 0;
 	case GCE_M_PA:
-		return 2;
+		return 1;
 	case GCE_M_2_PA:
-		return 3;
+		return 2;
 	default:
 		cmdq_err("unknown addr:%x", pa);
 		return -1;

@@ -14,7 +14,8 @@ package(
 
 PLATFORMS = [
     "6858",
-    "6993"
+    "6993",
+    "6881"
 ]
 
 [define_mgk_ddk_library(

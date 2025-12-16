@@ -2241,7 +2241,9 @@ static s32 cmdq_sec_late_init_wsm(void *data)
 	struct cmdq_sec_context *context = NULL;
 	s32 i = 0, err = 0;
 
-	msleep(10000);
+	if (!is_protected_kvm_enabled())
+		msleep(10000);
+
 	do {
 		if (!g_cmdq[i])
 			continue;
