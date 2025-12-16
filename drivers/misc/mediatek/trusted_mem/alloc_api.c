@@ -259,8 +259,9 @@ int trusted_mem_page_based_alloc(enum TRUSTED_MEM_REQ_TYPE req_mem_type,
 	if (is_tee_mmap_by_page_enabled() && (mem_type == TRUSTED_MEM_TEE_PAGE))
 		return tmem_ffa_page_alloc(MTEE_MCHUNKS_TEE, sg_tbl, handle);
 
-	/* we need the FF-A handle of PROT and SAPU page memory in normal world VM */
-	if ((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE))
+	/* we need the FF-A handle of EL2 SPM to do memory mapping at MTEE */
+	if (!is_pkvm_enabled() &&
+		((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE)))
 		return tmem_ffa_page_alloc(MTEE_MCHUNKS_PROT, sg_tbl, handle);
 
 	return 0;
@@ -278,8 +279,9 @@ int trusted_mem_page_based_free(enum TRUSTED_MEM_REQ_TYPE req_mem_type, u64 hand
 	if (is_tee_mmap_by_page_enabled() && (mem_type == TRUSTED_MEM_TEE_PAGE))
 		return tmem_ffa_page_free(MTEE_MCHUNKS_SVP, handle);
 
-	/* we need the FF-A handle of PROT and SAPU page memory in normal world VM */
-	if ((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE))
+	/* we need the FF-A handle of EL2 SPM to do memory mapping at MTEE */
+	if (!is_pkvm_enabled() &&
+		((mem_type == TRUSTED_MEM_PROT_PAGE) || (mem_type == TRUSTED_MEM_SAPU_PAGE)))
 		return tmem_ffa_page_free(MTEE_MCHUNKS_PROT, handle);
 
 	return 0;
