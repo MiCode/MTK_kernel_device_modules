@@ -18669,7 +18669,8 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	else if (plane_state_l->pending.width > left_bg)
 		plane_state_l->pending.width = left_bg;
 
-	if ((plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) &&
+	if (priv && priv->data && priv->data->mmsys_id != MMSYS_MT6895 &&
+		(plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) &&
 		crtc_state) {
 		plane_state_l->pending.dst_roi = crtc_state->rsz_param[0].out_len |
 						 crtc_state->rsz_dst_roi.height << 16;
@@ -18740,7 +18741,8 @@ void mtk_drm_layer_dispatch_to_dual_pipe(
 	else if (plane_state_r->pending.width > right_bg)
 		plane_state_r->pending.width = right_bg;
 
-	if ((plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) &&
+	if (priv && priv->data && priv->data->mmsys_id != MMSYS_MT6895 &&
+		(plane_state->comp_state.layer_caps & MTK_DISP_RSZ_LAYER) &&
 		crtc_state) {
 		plane_state_r->pending.dst_roi = crtc_state->rsz_param[1].out_len |
 						crtc_state->rsz_dst_roi.height << 16;
