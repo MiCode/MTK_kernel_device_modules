@@ -31,7 +31,7 @@
 #endif
 
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
-#include "cmdq.h"
+#include "host_cmdq.h"
 #endif
 
 #if IS_ENABLED(CONFIG_MTK_CMDQ_MBOX_EXT)
@@ -1538,7 +1538,7 @@ static void cmdq_pkt_destroy_work(struct work_struct *work_item)
 		virtio_cmdq_pkt_destroy(pkt);
 #elif IS_ENABLED(CONFIG_VHOST_CMDQ)
 	if (cl && cl->is_virtio)
-		virtio_cmdq_pkt_destroy(pkt);
+		vhost_cmdq_platform->vhost_cmdq_pkt_destroy(pkt);
 #endif
 
 	if (cl) {

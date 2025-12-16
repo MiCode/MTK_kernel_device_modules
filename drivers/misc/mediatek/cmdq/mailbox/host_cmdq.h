@@ -6,7 +6,7 @@
 #ifndef __MTK_VIRTIO_MTK_CMDQ_H__
 #define __MTK_VIRTIO_MTK_CMDQ_H__
 
-#include "proto.h"
+#include "host_proto.h"
 #include <linux/mailbox_controller.h>
 #include <linux/mailbox/mtk-cmdq-mailbox-ext.h>
 #include <linux/soc/mediatek/mtk-cmdq-ext.h>
@@ -18,8 +18,8 @@ struct vhost_virtqueue;
 void handle_cmdq_request(struct vhost_virtqueue *vq, struct cmdq_request *req,
 			 struct cmdq_response *resp, struct virtio_cmdq_mem_entry *ents);
 
-void cmdq_request_done(struct vhost_virtqueue *vq, uint64_t key, s32 result,
-		u64 exec_time, u16 event, bool wfe, size_t off);
+void cmdq_request_done(struct vhost_virtqueue *vq, uint64_t key, uint32_t hwid,
+	s32 result, u64 exec_time, u16 event, bool wfe, size_t off);
 
 void set_cmdq_client(void *client, uint32_t hwid);
 

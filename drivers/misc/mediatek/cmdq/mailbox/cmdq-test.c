@@ -20,7 +20,7 @@
 #include "cmdq-sec.h"
 #include "cmdq-sec-mailbox.h"
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
-#include "cmdq.h"
+#include "host_cmdq.h"
 #endif
 
 #define CMDQ_THR_SPR3(base, id)		((base) + (0x80 * (id)) + 0x16c)
@@ -1911,10 +1911,6 @@ static const struct file_operations cmdq_test_fops = {
 	.write = cmdq_test_write,
 };
 
-#if IS_ENABLED(CONFIG_VHOST_CMDQ)
-extern void set_cmdq_client(void *client, uint32_t hwid);
-#endif
-
 static int cmdq_test_probe(struct platform_device *pdev)
 {
 	struct cmdq_test	*test;
@@ -1977,7 +1973,7 @@ static int cmdq_test_probe(struct platform_device *pdev)
 			return -ENXIO;
 	}
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
-	set_cmdq_client((void *)(test->clt), 0);
+	vhost_cmdq_set_client((void *)(test->clt), 0);
 #endif
 
 	test->loop = cmdq_mbox_create(&pdev->dev, 1);
@@ -1989,7 +1985,7 @@ static int cmdq_test_probe(struct platform_device *pdev)
 	*/
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
 	if (test->loop)
-		set_cmdq_client((void *)(test->loop), 0);
+		vhost_cmdq_set_client((void *)(test->loop), 0);
 #endif
 
 	// clt2
@@ -2000,7 +1996,7 @@ static int cmdq_test_probe(struct platform_device *pdev)
 	}
 #if IS_ENABLED(CONFIG_VHOST_CMDQ)
 	if (test->clt2)
-		set_cmdq_client((void *)(test->clt2), 0);
+		vhost_cmdq_set_client((void *)(test->clt2), 0);
 #endif
 
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT

@@ -7,7 +7,7 @@
 
 #include "cmdq-util.h"
 #if IS_ENABLED(CONFIG_VIRTIO_CMDQ)
-#include "proto.h"
+#include "guest_proto.h"
 #endif
 #ifndef CMDQ_SKIP_BY_CMDQ_BUILT
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3)

@@ -89,6 +89,7 @@ struct cmdq_task_complete_event {
 	uint64_t key;
 	uint64_t exec_time;
 	int32_t result;
+	uint32_t hwid;
 	bool wfe;
 	uint16_t event;
 	size_t off;

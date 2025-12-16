@@ -36,7 +36,7 @@
 MODULE_IMPORT_NS(DMA_BUF);
 #endif
 
-#include "proto.h"
+#include "guest_proto.h"
 #include "cmdq-util.h"
 #include "virtio_ids.h"
 
