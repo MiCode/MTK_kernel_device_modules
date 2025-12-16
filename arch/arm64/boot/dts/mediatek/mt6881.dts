@@ -134,7 +134,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 							&system_vcore &s2idle>;
-			//capacity-dmips-mhz = <793>;
+			capacity-dmips-mhz = <793>;
 		};
 		cpu1: cpu@1 {
 			device_type = "cpu";
@@ -143,7 +143,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 							&system_vcore &s2idle>;
-			//capacity-dmips-mhz = <793>;
+			capacity-dmips-mhz = <793>;
 		};
 		cpu2: cpu@2 {
 			device_type = "cpu";
@@ -152,7 +152,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 							&system_vcore &s2idle>;
-			//capacity-dmips-mhz = <793>;
+			capacity-dmips-mhz = <793>;
 		};
 		cpu3: cpu@3 {
 			device_type = "cpu";
@@ -161,7 +161,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_l &clusteroff_l &mcusysoff_l
 							&system_vcore &s2idle>;
-			//capacity-dmips-mhz = <793>;
+			capacity-dmips-mhz = <793>;
 		};
 		cpu4: cpu@100 {
 			device_type = "cpu";
@@ -170,7 +170,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 							&system_vcore &s2idle>;
-			//capacity-dmips-mhz = <1024>;
+			capacity-dmips-mhz = <1024>;
 		};
 		cpu5: cpu@101 {
 			device_type = "cpu";
@@ -179,7 +179,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 							&system_vcore &s2idle>;
-			//capacity-dmips-mhz = <1024>;
+			capacity-dmips-mhz = <1024>;
 		};
 		cpu6: cpu@102 {
 			device_type = "cpu";
@@ -188,7 +188,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 							&system_vcore &s2idle>;
-			//capacity-dmips-mhz = <1024>;
+			capacity-dmips-mhz = <1024>;
 		};
 		cpu7: cpu@103 {
 			device_type = "cpu";
@@ -197,7 +197,7 @@
 			enable-method = "psci";
 			cpu-idle-states = <&cpuoff_b &clusteroff_b &mcusysoff_b
 							&system_vcore &s2idle>;
-			//capacity-dmips-mhz = <1024>;
+			capacity-dmips-mhz = <1024>;
 		};
 
 		cpu-map {
@@ -1026,9 +1026,9 @@
 		clk-div = <0xa2a0>, <0xa2a4>, <0xa2e0>;
 
 		/* regulator */
-		proc1-supply = <&mt6368_vbuck1>;  //L
-		proc2-supply = <&mt6319_6_vbuck1>; //B
-		proc3-supply = <&mt6368_vbuck1>;  //DSU
+		proc1-supply = <&mt6319_6_vbuck1>;  //L
+		proc2-supply = <&mt6368_vbuck2>; //B
+		proc3-supply = <&mt6319_6_vbuck1>;  //DSU
 
 		/* leakage info */
 		// nvmem-cells = <&lkginfo>;
