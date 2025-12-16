@@ -13,6 +13,47 @@ package(
 )
 
 define_mgk_ddk_library(
+    name = "hyp_6881",
+    srcs = [
+        "6881/secure_port.h",
+        "6881/seninf_auth.c",
+        "6881/seninf_drv_csi_info.c",
+        "6881/seninf_drv_csi_info.h",
+        "6881/seninf_sec_drv.c",
+        "6881/seninf_tee_reg.h",
+        "6881/seninf_util.h",
+        "pkvm_seninf_hyp.c",
+        "pkvm_seninf_hyp.h",
+        "seninf_auth.h",
+        "seninf_sec_drv.h",
+        "sensor_cfg_sec.c",
+        "sensor_cfg_sec.h",
+    ],
+    pkvm_el2 = True,
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf:export_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/arch/arm64/kvm/hyp/include/nvhe",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp8",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp8/hyp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp8/hyp/6881",
+    ],
+    local_defines = [
+        "IS_MULTI_SEC_PORT_SUPPORT",
+        "MULTI_SENSOR_INDIVIDUAL_SUPPORT",
+        "Single_Secure_csi_port_front=0",
+        "Multi_Secure_csi_port_front=0",
+        "Multi_Secure_csi_port_rear=3",
+    ],
+)
+
+define_mgk_ddk_library(
     name = "hyp_6993",
     srcs = [
         "6993/secure_port.h",

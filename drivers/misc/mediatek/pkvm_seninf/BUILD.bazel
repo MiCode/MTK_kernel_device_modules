@@ -28,6 +28,22 @@ ddk_headers(
 )
 
 define_mgk_ddk_ko(
+    name = "pkvm_seninf_6881",
+    srcs = [
+        "isp8/pkvm_seninf_host.c",
+        "isp8/pkvm_seninf_host.h",
+    ],
+    out = "pkvm_seninf_6881.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf/isp8/hyp:hyp_6881".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
     name = "pkvm_seninf_6993",
     srcs = [
         "isp8/pkvm_seninf_host.c",
