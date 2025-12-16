@@ -117,6 +117,10 @@
 			    nosoftlockup \
 			    androidboot.hardware=mt6881 \
 			    android_arch_task_struct_size=512 \
+			    cgroup.memory=nosocket,nokmem \
+			    disable_dma32=on \
+			    transparent_hugepage=never \
+			    arm64.nomops \
 			    vmalloc=400M swiotlb=noforce \
 			    firmware_class.path=/vendor/firmware \
 			    kvm-arm.protected_prefault=9 \
