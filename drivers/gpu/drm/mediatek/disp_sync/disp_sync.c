@@ -167,34 +167,34 @@ _get_session_sync_info(unsigned int session_id)
 			_mtk_fence_context[i].session_id = session_id;
 			session_info = &(_mtk_fence_context[i]);
 
-			sprintf(name, "%s%d_prepare",
+			snprintf(name, sizeof(name), "%s%d_prepare",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_frame_cfg",
+			snprintf(name, sizeof(name), "%s%d_frame_cfg",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_wait_fence",
+			snprintf(name, sizeof(name), "%s%d_wait_fence",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_setinput",
+			snprintf(name, sizeof(name), "%s%d_setinput",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_setoutput",
+			snprintf(name, sizeof(name), "%s%d_setoutput",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_trigger",
+			snprintf(name, sizeof(name), "%s%d_trigger",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_findidx",
+			snprintf(name, sizeof(name), "%s%d_findidx",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_release",
+			snprintf(name, sizeof(name), "%s%d_release",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_waitvsync",
+			snprintf(name, sizeof(name), "%s%d_waitvsync",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
-			sprintf(name, "%s%d_err",
+			snprintf(name, sizeof(name), "%s%d_err",
 				mtk_fence_session_mode_spy(session_id),
 				MTK_SESSION_DEV(session_id));
 
@@ -205,14 +205,14 @@ _get_session_sync_info(unsigned int session_id)
 
 				if (MTK_SESSION_TYPE(session_id) ==
 				    MTK_SESSION_V_PRIMARY)
-					sprintf(name, "-VP_%d_%d-",
+					snprintf(name, sizeof(name), "-VP_%d_%d-",
 						MTK_SESSION_DEV(session_id), j);
 				else if (MTK_SESSION_TYPE(session_id) ==
 				    MTK_SESSION_V_DYNAMIC_INTERNAL)
-					sprintf(name, "-VDI_%d_%d-",
+					snprintf(name, sizeof(name), "-VDI_%d_%d-",
 						MTK_SESSION_DEV(session_id), j);
 				else
-					sprintf(name, "-VNA_%d_%d-",
+					snprintf(name, sizeof(name), "-VNA_%d_%d-",
 						MTK_SESSION_DEV(session_id), j);
 
 				layer_info =
@@ -327,8 +327,11 @@ static struct mtk_fence_buf_info *mtk_fence_prepare_buf(struct drm_mtk_gem_submi
 	data.value = ++(layer_info->fence_idx);
 	mutex_unlock(&(layer_info->sync_lock));
 
-	snprintf(data.name, sizeof(data.name), "disp-S%x-L%d-%d", session_id,
+	int len = snprintf(data.name, sizeof(data.name), "disp-S%x-L%d-%d", session_id,
 		 timeline_id, data.value);
+	if (len < 0 || len >= sizeof(data.name))
+		pr_warn("snprintf failed or truncated: len=%d\n", len);
+
 	ret = mtk_sync_fence_create(layer_info->timeline, &data);
 	if (ret != 0) {
 		/* Does this really happened? */
