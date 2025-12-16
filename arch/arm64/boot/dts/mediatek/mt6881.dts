@@ -10856,7 +10856,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			interrupts = <GIC_SPI 800 IRQ_TYPE_LEVEL_HIGH 0>;
 			bus-range = <0x00 0xff>;
 			ranges = <0x82000000 0 0x30000000
-				  0x0 0x30000000 0 0x10000000>;
+				  0x0 0x30000000 0 0x8000000>;
 			status = "disabled";
 			linux,pci-domain = <0>;
 			mediatek,peri-reset-dis;
