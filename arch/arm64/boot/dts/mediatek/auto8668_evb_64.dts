@@ -322,6 +322,11 @@
 	etdmin6-clk-always-on = <0xf 0xbb80 0x80 0x20 0x10>;/* ao_level, lrck, mclk_ratio, bck_width, channels */
 };
 
+&mmc1 {
+	compatible = "mediatek,mt8668-mmc";
+	vmmc-supply = <&mt6373_vmch_eint_high>;
+	vqmmc-supply = <&mt6373_vmc>;
+};
 
 #include <auto8668p1_64/cust.dtsi>
 #include "mediatek/cust_mt6881_camera_v4l2.dtsi"
