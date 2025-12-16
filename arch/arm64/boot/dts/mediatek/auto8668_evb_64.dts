@@ -148,7 +148,7 @@
 &mt6363_vsram_modem {
 	regulator-always-on;
 };
-&i2c0 {
+&i2c9 {
 	clock-frequency = <400000>;
 	status = "okay";
 	ilitek@41 {
@@ -157,7 +157,7 @@
 		interrupt-parent = <&pio>;
 		interrupts = <1 0x0>;
 		ilitek,irq-gpio = <&pio 1 0x0>;
-		ilitek,reset-gpio = <&pio 63 0x0>;
+		ilitek,reset-gpio = <&pio 24 0x0>;
 		ilitek,vbus = "vcc_i2c";
 		ilitek,name = "ilitek_i2c";
 	};
@@ -220,7 +220,7 @@
 
 	ctp_pins_rst_output0: rstoutput0 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO63__FUNC_GPIO63>;
+			pinmux = <PINMUX_GPIO24__FUNC_GPIO24>;
 			slew-rate = <1>;
 			output-low;
 		};
@@ -228,7 +228,7 @@
 
 	ctp_pins_rst_output1: rstoutput1 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO63__FUNC_GPIO63>;
+			pinmux = <PINMUX_GPIO24__FUNC_GPIO24>;
 			slew-rate = <1>;
 			output-high;
 		};
