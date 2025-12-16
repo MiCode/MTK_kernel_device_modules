@@ -14801,6 +14801,7 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 	unsigned int skip_set_mmclk = 0;
 	bool adjust_pixclk_double = ((mtk_crtc->is_dual_pipe && dsc_params->enable) &&
 		(mtk_crtc->dli_relay_1tnp));
+	unsigned int floor_freg = dsi->driver_data->vdo_floor_freg;
 
 	if (!dsi->driver_data) {
 		pr_info("%s: error! dsi->driver_data=NULL! return!\n", __func__);
@@ -15156,6 +15157,10 @@ void mtk_dsi_set_mmclk_by_datarate_V2(struct mtk_dsi *dsi,
 			pixclk /= 1000;
 		}
 
+		if (!mtk_dsi_is_cmd_mode(&dsi->ddp_comp) && (pixclk < floor_freg)) {
+			DDPMSG("%s pixclk: %u < floor_freg: %u, set to floor\n", __func__, pixclk, floor_freg);
+			pixclk = floor_freg;
+		}
 		last_pixclk = mtk_drm_get_mmclk(&mtk_crtc->base, __func__) / 1000000;
 		DDPMSG("%s, %d, data_rate=%d, last_pixclk=%u, mmclk=%u pixclk_min=%d, dual=%u\n", __func__,
 				__LINE__, data_rate, last_pixclk, pixclk, pixclk_min, mtk_crtc->is_dual_pipe);
@@ -18716,6 +18721,7 @@ static const struct mtk_dsi_driver_data mt6993_dsi_driver_data = {
 	.reg_up_intsta = 0x14,
 	.esd_poll_microp = true,
 	.preurgent_line = 17,
+	.vdo_floor_freg = 363,		// adjust to 364MHz
 };
 
 static const struct mtk_dsi_driver_data mt6897_dsi_driver_data = {

@@ -132,6 +132,7 @@ struct mtk_dsi_driver_data {
 	bool esd_poll_microp;
 	enum UDR_AEE_MODE underrun_aee_mode;
 	u32 preurgent_line;
+	u32 vdo_floor_freg;
 };
 
 struct mtk_dsi {
