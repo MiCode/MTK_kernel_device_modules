@@ -11766,6 +11766,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			#cooling-cells = <2>;
 			ged-supply = <&ged>;
 			exception-mask = <0x5>;
+			reset-exception-mask = <0x0>;
 			gpu-frame-base-optimize = <1>;
 		};
 
