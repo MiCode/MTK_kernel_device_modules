@@ -165,7 +165,8 @@ static s32 prepare_tile(struct mml_task *task,
 			return -EINVAL;
 		}
 
-		mml_mmp(tile_prepare_tile, MMPROFILE_FLAG_PULSE, comp->id, 0);
+		mml_mmp(tile_prepare_tile[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_PULSE, comp->id, 0);
 
 		ret = call_tile_op(comp, prepare, task,
 				   &cache->cfg[path->tile_engines[i]],
@@ -249,9 +250,10 @@ struct tile_ctx {
 	struct func_description *tile_func;
 };
 
-static void destroy_tile_working(struct tile_ctx *ctx)
+static void destroy_tile_working(struct tile_ctx *ctx, u8 cfg_thread)
 {
-	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, 0, mmp_destroy_tile_working);
+	mml_mmp(tile_calc_frame[cfg_thread], MMPROFILE_FLAG_PULSE, 0,
+		mmp_destroy_tile_working);
 
 	/* free working but keep output */
 	kfree(ctx->tile_datas);
@@ -301,7 +303,7 @@ static void dump_tile_working(struct tile_ctx *ctx)
 }
 
 static s32 create_tile_ctx(struct tile_ctx *ctx, u32 eng_cnt, size_t tile_max,
-			   struct mml_tile_cache *tile_cache)
+			   struct mml_tile_cache *tile_cache, u8 cfg_thread)
 {
 	u32 i;
 
@@ -312,7 +314,8 @@ static s32 create_tile_ctx(struct tile_ctx *ctx, u32 eng_cnt, size_t tile_max,
 				__func__,
 				(u32)ARRAY_SIZE(tile_cache->func_list),
 				(u32)ARRAY_SIZE(ctx->tile_func->func_list));
-		mml_mmp(tile_alloc, MMPROFILE_FLAG_START, 0, sizeof(struct tile_func_block));
+		mml_mmp(tile_alloc[cfg_thread], MMPROFILE_FLAG_START, 0,
+			sizeof(struct tile_func_block));
 		for (i = 0; i < ARRAY_SIZE(tile_cache->func_list); i++) {
 			if (tile_cache->func_list[i])
 				continue;
@@ -321,14 +324,16 @@ static s32 create_tile_ctx(struct tile_ctx *ctx, u32 eng_cnt, size_t tile_max,
 			if (!tile_cache->func_list[i])
 				return -ENOMEM;
 		}
-		mml_mmp(tile_alloc, MMPROFILE_FLAG_END, 0, ARRAY_SIZE(tile_cache->func_list));
+		mml_mmp(tile_alloc[cfg_thread], MMPROFILE_FLAG_END, 0,
+			ARRAY_SIZE(tile_cache->func_list));
 
 		if (!tile_cache->tiles) {
-			mml_mmp(tile_alloc, MMPROFILE_FLAG_START, 1,
+			mml_mmp(tile_alloc[cfg_thread], MMPROFILE_FLAG_START, 1,
 				sizeof(*ctx->output->tiles));
 			tile_cache->tiles = vmalloc(
 				MAX_TILE_NUM * sizeof(*ctx->output->tiles));
-			mml_mmp(tile_alloc, MMPROFILE_FLAG_END, 1, MAX_TILE_NUM);
+			mml_mmp(tile_alloc[cfg_thread], MMPROFILE_FLAG_END, 1,
+				MAX_TILE_NUM);
 			if (!tile_cache->tiles)
 				return -ENOMEM;
 		}
@@ -366,7 +371,8 @@ static s32 calc_frame(struct mml_task *task, u32 pipe,
 	s32 ret;
 
 	/* frame calculate */
-	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_tile_convert_func);
+	mml_mmp(tile_calc_frame[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, mmp_tile_convert_func);
 	result = tile_convert_func(tile_reg_map, tile_func, path);
 	if (result != ISP_MESSAGE_TILE_OK)
 		goto err_tile;
@@ -376,22 +382,26 @@ static s32 calc_frame(struct mml_task *task, u32 pipe,
 	if (ret)
 		goto err_exit;
 
-	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_tile_init_config);
+	mml_mmp(tile_calc_frame[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, mmp_tile_init_config);
 	result = tile_init_config(tile_reg_map, tile_func);
 	if (result != ISP_MESSAGE_TILE_OK)
 		goto err_tile;
 
-	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_tile_frame_mode_init);
+	mml_mmp(tile_calc_frame[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, mmp_tile_frame_mode_init);
 	result = tile_frame_mode_init(tile_reg_map, tile_func);
 	if (result != ISP_MESSAGE_TILE_OK)
 		goto err_tile;
 
-	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_tile_proc_main_single);
+	mml_mmp(tile_calc_frame[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, mmp_tile_proc_main_single);
 	result = tile_proc_main_single(tile_reg_map, tile_func, 0, &stop);
 	if (result != ISP_MESSAGE_TILE_OK)
 		goto err_tile;
 
-	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_tile_frame_mode_close);
+	mml_mmp(tile_calc_frame[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, mmp_tile_frame_mode_close);
 	result = tile_frame_mode_close(tile_reg_map, tile_func);
 	if (result != ISP_MESSAGE_TILE_OK)
 		goto err_tile;
@@ -419,7 +429,8 @@ static s32 calc_tile_loop(struct mml_task *task,
 	bool stop;
 	s32 ret;
 
-	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_calc_tile_loop);
+	mml_mmp(tile_calc_frame[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, mmp_calc_tile_loop);
 
 	/* tile calculate */
 	result = tile_mode_init(tile_reg_map, tile_func);
@@ -442,7 +453,8 @@ static s32 calc_tile_loop(struct mml_task *task,
 		tile_cnt++;
 	}
 
-	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_tile_mode_close);
+	mml_mmp(tile_calc_frame[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, mmp_tile_mode_close);
 	result = tile_mode_close(tile_reg_map, tile_func);
 	if (result != ISP_MESSAGE_TILE_OK)
 		goto err_tile;
@@ -467,7 +479,8 @@ static s32 calc_frame_mode(struct mml_task *task,
 	struct mml_tile_config *tiles = output->tiles;
 	struct tile_func_block *func = ctx->tile_func->func_list[0];
 
-	mml_mmp(tile_calc_frame, MMPROFILE_FLAG_PULSE, pipe, mmp_calc_frame_mode);
+	mml_mmp(tile_calc_frame[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, mmp_calc_frame_mode);
 
 	/* tile result from param once */
 	set_tile_config(task, pipe, path, &tiles[0], 0, ctx->tile_func);
@@ -510,13 +523,15 @@ s32 calc_tile(struct mml_task *task, u32 pipe, struct mml_tile_cache *tile_cache
 		tile_max = MAX_DECOUPLE_TILE_NUM;
 	}
 
-	ret = create_tile_ctx(&ctx, eng_cnt, tile_max, tile_cache);
+	ret = create_tile_ctx(&ctx, eng_cnt, tile_max, tile_cache,
+		task->config->info.cfg_thread);
 	if (ret) {
 		mml_err("no memory to create tile context");
 		goto free_output;
 	}
 
-	mml_mmp(tile_calc, MMPROFILE_FLAG_PULSE, pipe, 0);
+	mml_mmp(tile_calc[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, 0);
 	ret = calc_frame(task, pipe, path, &ctx);
 	if (ret)
 		goto err_tile;
@@ -566,8 +581,9 @@ free_output:
 	mml_err("%s free output %d", __func__, ret);
 	destroy_frame_tile(ctx.output);
 free_working:
-	destroy_tile_working(&ctx);
-	mml_mmp(tile_calc, MMPROFILE_FLAG_PULSE, pipe, 1);
+	destroy_tile_working(&ctx, task->config->info.cfg_thread);
+	mml_mmp(tile_calc[task->config->info.cfg_thread],
+		MMPROFILE_FLAG_PULSE, pipe, 1);
 	return ret;
 }
 

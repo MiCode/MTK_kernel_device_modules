@@ -475,7 +475,8 @@ static s32 core_prepare(struct mml_task *task, u32 pipe)
 
 	for (i = 0; i < path->node_cnt; i++) {
 		comp = path->nodes[i].comp;
-		mml_mmp(comp_prepare, MMPROFILE_FLAG_PULSE, comp->id, 0);
+		mml_mmp(comp_prepare[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_PULSE, comp->id, 0);
 		ret = call_cfg_op(comp, prepare, task, &cache->cfg[i]);
 		if (ret >= PAGE_SIZE)
 			mml_log("[warn]prepare %u size %d", comp->id, ret);
@@ -805,7 +806,7 @@ static void dump_task(const struct mml_task *task)
 	u32 i, sz = 0;
 	s32 ret;
 
-	mml_mmp(dumpinfo, MMPROFILE_FLAG_START, task->job.jobid, 0);
+	mml_mmp(dumpinfo[cfg->info.cfg_thread], MMPROFILE_FLAG_START, task->job.jobid, 0);
 
 	if (path->desc[0])
 		mml_log("[topology]path:%u engines:%s%s%s%s",
@@ -884,7 +885,7 @@ static void dump_task(const struct mml_task *task)
 	if (sz)
 		mml_log("  dl%s", frame);
 
-	mml_mmp(dumpinfo, MMPROFILE_FLAG_END, task->job.jobid, 0);
+	mml_mmp(dumpinfo[cfg->info.cfg_thread], MMPROFILE_FLAG_END, task->job.jobid, 0);
 }
 
 static void core_comp_dump(struct mml_task *task, u32 pipe, int cnt)
@@ -2186,9 +2187,11 @@ static s32 core_command(struct mml_task *task, u32 pipe)
 
 	mml_trace_ex_begin("%s_%s_%u", __func__, "cmd", pipe);
 	if (pipe == 0)
-		mml_mmp(command0, MMPROFILE_FLAG_START, task->job.jobid, pipe);
+		mml_mmp(command0[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_START, task->job.jobid, pipe);
 	else
-		mml_mmp(command1, MMPROFILE_FLAG_START, task->job.jobid, pipe);
+		mml_mmp(command1[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_START, task->job.jobid, pipe);
 
 	if (task->state == MML_TASK_INITIAL) {
 		/* make commands into pkt for later flush */
@@ -2198,9 +2201,11 @@ static s32 core_command(struct mml_task *task, u32 pipe)
 	}
 
 	if (pipe == 0)
-		mml_mmp(command0, MMPROFILE_FLAG_END, task->job.jobid, pipe);
+		mml_mmp(command0[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_END, task->job.jobid, pipe);
 	else
-		mml_mmp(command1, MMPROFILE_FLAG_END, task->job.jobid, pipe);
+		mml_mmp(command1[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_END, task->job.jobid, pipe);
 	mml_trace_ex_end();
 	return ret;
 }
@@ -2220,7 +2225,8 @@ const char *mml_fence_name[] = {
 	[mml_fence_dest1] = "dest1",
 };
 
-static void wait_dma_fence(enum mml_fence_index name_idx, struct dma_fence *fence, u32 jobid)
+static void wait_dma_fence(enum mml_fence_index name_idx,
+	struct dma_fence *fence, u32 jobid, u8 cfg_thread)
 {
 	long ret;
 	const char *name = mml_fence_name[name_idx];
@@ -2229,7 +2235,7 @@ static void wait_dma_fence(enum mml_fence_index name_idx, struct dma_fence *fenc
 		return;
 
 	mml_trace_ex_begin("%s_%s", __func__, name);
-	mml_mmp(fence, MMPROFILE_FLAG_START, jobid,
+	mml_mmp(fence[cfg_thread], MMPROFILE_FLAG_START, jobid,
 		mmp_data2_fence(fence->context, fence->seqno));
 	ret = dma_fence_wait_timeout(fence, false, msecs_to_jiffies(200));
 	if (ret <= 0) {
@@ -2237,10 +2243,10 @@ static void wait_dma_fence(enum mml_fence_index name_idx, struct dma_fence *fenc
 			name, fence->ops->get_driver_name(fence),
 			fence->ops->get_timeline_name(fence),
 			fence->context, fence->seqno, fence, ret);
-		mml_mmp(fence_timeout, MMPROFILE_FLAG_PULSE, jobid,
+		mml_mmp(fence_timeout[cfg_thread], MMPROFILE_FLAG_PULSE, jobid,
 			mmp_data2_fence(fence->context, fence->seqno));
 	}
-	mml_mmp(fence, MMPROFILE_FLAG_END, jobid, name_idx);
+	mml_mmp(fence[cfg_thread], MMPROFILE_FLAG_END, jobid, name_idx);
 
 	mml_trace_ex_end();
 }
@@ -2390,12 +2396,14 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 
 	/* before flush, wait buffer fence being signaled */
 	task->wait_fence_time[pipe] = sched_clock();
-	wait_dma_fence(mml_fence_src, task->buf.src.fence, task->job.jobid);
+	wait_dma_fence(mml_fence_src, task->buf.src.fence, task->job.jobid,
+		cfg->info.cfg_thread);
 	if (cfg->info.dest[0].pq_config.en_region_pq)
-		wait_dma_fence(mml_fence_src1, task->buf.seg_map.fence, task->job.jobid);
+		wait_dma_fence(mml_fence_src1, task->buf.seg_map.fence,
+			task->job.jobid, cfg->info.cfg_thread);
 	for (i = 0; i < task->buf.dest_cnt; i++)
 		wait_dma_fence(i == 0 ? mml_fence_dest : mml_fence_dest1, task->buf.dest[i].fence,
-			       task->job.jobid);
+			       task->job.jobid, cfg->info.cfg_thread);
 
 	/* flush only once for both pipe */
 	mutex_lock(&cfg->pipe_mutex);
@@ -2456,7 +2464,8 @@ static s32 core_flush(struct mml_task *task, u32 pipe)
 
 		if (cfg->dual) {
 			/* for racing mode sync with other pipe */
-			mml_mmp(wait_ready, MMPROFILE_FLAG_PULSE, task->job.jobid, pipe);
+			mml_mmp(wait_ready[cfg->info.cfg_thread],
+				MMPROFILE_FLAG_PULSE, task->job.jobid, pipe);
 			complete(&task->pipe[pipe].ready);
 			wait_for_completion(&task->pipe[(pipe + 1) & 0x1].ready);
 		}
@@ -2550,11 +2559,19 @@ exit:
 	mml_trace_ex_end();
 }
 
-static void core_config_pipe1_work(struct kthread_work *work)
+static void core_config_thread0_pipe1_work(struct kthread_work *work)
 {
 	struct mml_task *task;
 
-	task = container_of(work, struct mml_task, work_config[1]);
+	task = container_of(work, struct mml_task, work_config[0][1]);
+	core_config_pipe(task, 1);
+}
+
+static void core_config_thread1_pipe1_work(struct kthread_work *work)
+{
+	struct mml_task *task;
+
+	task = container_of(work, struct mml_task, work_config[1][1]);
 	core_config_pipe(task, 1);
 }
 
@@ -2582,11 +2599,11 @@ static void core_config_task(struct mml_task *task)
 
 	mml_trace_begin("%s_%u_%u", __func__, jobid, disp_fid);
 	if (mode == MML_MODE_DDP_ADDON)
-		mml_mmp2(config_dle, MMPROFILE_FLAG_START,
+		mml_mmp2(config_dle[cfg->info.cfg_thread], MMPROFILE_FLAG_START,
 			cfg->info.src.width, cfg->info.src.height,
 			cfg->info.dest[0].data.width, cfg->info.dest[0].data.height);
 	else
-		mml_mmp2(config, MMPROFILE_FLAG_START,
+		mml_mmp2(config[cfg->info.cfg_thread], MMPROFILE_FLAG_START,
 			cfg->info.src.width, cfg->info.src.height,
 			cfg->info.dest[0].data.width, cfg->info.dest[0].data.height);
 
@@ -2648,7 +2665,7 @@ static void core_config_task(struct mml_task *task)
 	/* check single pipe or (dual) pipe 1 done then callback */
 	if (cfg->dual) {
 		if (cfg->task_ops->queue)
-			kthread_flush_work(&task->work_config[1]);
+			kthread_flush_work(&task->work_config[task->config->info.cfg_thread][1]);
 		else
 			core_config_pipe(task, 1);
 	}
@@ -2667,17 +2684,25 @@ static void core_config_task(struct mml_task *task)
 
 done:
 	if (mode == MML_MODE_DDP_ADDON)
-		mml_mmp(config_dle, MMPROFILE_FLAG_END, jobid, 0);
+		mml_mmp(config_dle[cfg->info.cfg_thread], MMPROFILE_FLAG_END, jobid, 0);
 	else
-		mml_mmp(config, MMPROFILE_FLAG_END, jobid, 0);
+		mml_mmp(config[cfg->info.cfg_thread], MMPROFILE_FLAG_END, jobid, 0);
 	mml_trace_end();
 }
 
-static void core_config_task_work(struct kthread_work *work)
+static void core_config_thread0_task_work(struct kthread_work *work)
 {
 	struct mml_task *task;
 
-	task = container_of(work, struct mml_task, work_config[0]);
+	task = container_of(work, struct mml_task, work_config[0][0]);
+	core_config_task(task);
+}
+
+static void core_config_thread1_task_work(struct kthread_work *work)
+{
+	struct mml_task *task;
+
+	task = container_of(work, struct mml_task, work_config[1][0]);
 	core_config_task(task);
 }
 
@@ -2725,8 +2750,10 @@ struct mml_task *mml_core_create_task(u32 jobid)
 	INIT_LIST_HEAD(&task->entry);
 	INIT_LIST_HEAD(&task->pipe[0].entry_clt);
 	INIT_LIST_HEAD(&task->pipe[1].entry_clt);
-	kthread_init_work(&task->work_config[0], core_config_task_work);
-	kthread_init_work(&task->work_config[1], core_config_pipe1_work);
+	kthread_init_work(&task->work_config[0][0], core_config_thread0_task_work);
+	kthread_init_work(&task->work_config[0][1], core_config_thread0_pipe1_work);
+	kthread_init_work(&task->work_config[1][0], core_config_thread1_task_work);
+	kthread_init_work(&task->work_config[1][1], core_config_thread1_pipe1_work);
 	kthread_init_work(&task->kt_work_hwdone, core_hardware_done);
 	kthread_init_work(&task->kt_work_taskdone, core_taskdone);
 

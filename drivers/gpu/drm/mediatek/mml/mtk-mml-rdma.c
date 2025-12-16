@@ -984,7 +984,8 @@ static s32 rdma_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 		unlikely(task->config->info.mode == MML_MODE_SRAM_READ)) {
 		struct mml_comp_rdma *rdma = comp_to_rdma(comp);
 
-		mml_mmp(buf_prepare, MMPROFILE_FLAG_START,
+		mml_mmp(buf_prepare[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 
 		mutex_lock(&rdma->sram_mutex);
@@ -993,7 +994,8 @@ static s32 rdma_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 		rdma->sram_cnt++;
 		mutex_unlock(&rdma->sram_mutex);
 
-		mml_mmp(buf_prepare, MMPROFILE_FLAG_END,
+		mml_mmp(buf_prepare[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_END,
 			((u64)task->job.jobid << 16) | comp->id, rdma->sram_pa);
 
 		mml_msg("%s comp %u sram pa %#llx",

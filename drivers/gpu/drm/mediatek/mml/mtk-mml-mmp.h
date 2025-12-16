@@ -17,6 +17,8 @@
 #include <mmprofile.h>
 #include <mmprofile_function.h>
 
+#include "mtk-mml-core.h"
+
 #define mmp_data2_fence(c, s)	((c & 0xff) << 24 | s & 0xffffff)
 
 #define mml_mmp(event, flag, v1, v2) \
@@ -44,7 +46,7 @@ struct mml_mmp_events_t {
 	mmp_event query_mode;
 	mmp_event query_layer;
 	mmp_event submit;
-	mmp_event config;
+	mmp_event config[MML_CFG_THREAD_MAX];
 	mmp_event flush;
 	mmp_event submit_cb;
 	mmp_event taskdone;
@@ -64,26 +66,26 @@ struct mml_mmp_events_t {
 	mmp_event buf_map;
 
 	/* events for config */
-	mmp_event config_dle;
-	mmp_event dumpinfo;
-	mmp_event comp_prepare;
-	mmp_event command;
-	mmp_event fence;
-	mmp_event fence_timeout;
-	mmp_event wait_ready;
+	mmp_event config_dle[MML_CFG_THREAD_MAX];
+	mmp_event dumpinfo[MML_CFG_THREAD_MAX];
+	mmp_event comp_prepare[MML_CFG_THREAD_MAX];
+	mmp_event command[MML_CFG_THREAD_MAX];
+	mmp_event fence[MML_CFG_THREAD_MAX];
+	mmp_event fence_timeout[MML_CFG_THREAD_MAX];
+	mmp_event wait_ready[MML_CFG_THREAD_MAX];
 
 	/* events for command (dle and pipes) */
-	mmp_event buf_prepare;
-	mmp_event command0;
-	mmp_event command1;
-	mmp_event tile_alloc;
-	mmp_event tile_calc;
-	mmp_event tile_calc_frame;
-	mmp_event tile_prepare_tile;
-	mmp_event mutex_mod;
-	mmp_event mutex_en;
-	mmp_event mutex_dis;
-	mmp_event mutex_rst;
+	mmp_event buf_prepare[MML_CFG_THREAD_MAX];
+	mmp_event command0[MML_CFG_THREAD_MAX];
+	mmp_event command1[MML_CFG_THREAD_MAX];
+	mmp_event tile_alloc[MML_CFG_THREAD_MAX];
+	mmp_event tile_calc[MML_CFG_THREAD_MAX];
+	mmp_event tile_calc_frame[MML_CFG_THREAD_MAX];
+	mmp_event tile_prepare_tile[MML_CFG_THREAD_MAX];
+	mmp_event mutex_mod[MML_CFG_THREAD_MAX];
+	mmp_event mutex_en[MML_CFG_THREAD_MAX];
+	mmp_event mutex_dis[MML_CFG_THREAD_MAX];
+	mmp_event mutex_rst[MML_CFG_THREAD_MAX];
 
 	/* events for taskdone */
 	mmp_event dlo;

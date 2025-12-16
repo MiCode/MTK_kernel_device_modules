@@ -19,7 +19,7 @@ struct mml_ctx {
 	const struct mml_config_ops *cfg_ops;
 	atomic_t job_serial;
 	atomic_t config_serial;
-	struct kthread_worker *kt_config[MML_PIPE_CNT];
+	struct kthread_worker *kt_config[MML_CFG_THREAD_MAX][MML_PIPE_CNT];
 	struct workqueue_struct *wq_destroy;
 	struct kthread_worker *kt_hwdone;
 	struct kthread_worker *kt_taskdone;
@@ -28,7 +28,7 @@ struct mml_ctx {
 	bool disp_vdo;
 	void (*submit_cb)(void *cb_param);
 	void (*config_cb)(struct mml_task *task, void *cb_param);
-	struct mml_tile_cache tile_cache[MML_PIPE_CNT];
+	struct mml_tile_cache tile_cache[MML_CFG_THREAD_MAX][MML_PIPE_CNT];
 };
 
 struct mml_frame_config *frame_config_find_reuse(struct mml_ctx *ctx,

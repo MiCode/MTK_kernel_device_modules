@@ -46,6 +46,7 @@ enum mml_mode {
 	/* belows are modes from driver internally */
 	MML_MODE_DDP_ADDON,
 	MML_MODE_SRAM_READ,
+	MML_MODE_MAX,
 };
 
 enum mml_orientation {
@@ -264,6 +265,7 @@ struct mml_frame_info {
 	uint32_t act_time;	/* ns time for mml frame */
 	uint8_t dest_cnt;	/* should be < MML_MAX_OUTPUTS */
 	int8_t mode;	/* one of mml_mode */
+	uint8_t cfg_thread;	/* mml_mode mapping path */
 	int8_t dl_pos;
 	uint16_t disp_done_event;
 	uint8_t ovlsys_id;

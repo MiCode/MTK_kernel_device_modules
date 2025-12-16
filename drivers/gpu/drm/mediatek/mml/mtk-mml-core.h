@@ -527,6 +527,7 @@ struct mml_topology_ops {
 				     u32 panel_width,
 				     u32 panel_height,
 				     struct mml_frame_info_cache *info_cache);
+	enum mml_cfg_thread (*query_cfg_thread)(struct mml_frame_info *info);
 	s32 (*init_cache)(struct mml_dev *mml,
 			  struct mml_topology_cache *cache,
 			  struct cmdq_client **clts,
@@ -568,6 +569,12 @@ struct mml_dvfs {
 	u32 current_volt[mml_tput_modes];	/* 0:AP 1:DPC */
 	u8 current_level[mml_tput_modes];	/* 0:AP 1:DPC */
 	struct mutex dvfs_mutex;
+};
+
+enum mml_cfg_thread {
+	MML_CFG_THREAD0,
+	MML_CFG_THREAD1,
+	MML_CFG_THREAD_MAX,
 };
 
 struct mml_topology_cache {
@@ -852,7 +859,7 @@ struct mml_task {
 	struct cmdq_reuse reuse_dpc[7];
 
 	/* config and done on thread */
-	struct kthread_work work_config[MML_PIPE_CNT];
+	struct kthread_work work_config[MML_CFG_THREAD_MAX][MML_PIPE_CNT];
 	struct kthread_work kt_work_hwdone;
 	struct kthread_work kt_work_taskdone;
 	atomic_t pipe_done;

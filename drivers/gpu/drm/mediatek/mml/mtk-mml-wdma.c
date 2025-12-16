@@ -802,7 +802,8 @@ static s32 wdma_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	if (task->config->info.mode == MML_MODE_RACING) {
 		/* assign sram pa directly */
-		mml_mmp(buf_prepare, MMPROFILE_FLAG_START,
+		mml_mmp(buf_prepare[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 		mutex_lock(&wdma->sram_mutex);
 		if (!wdma->sram_cnt)
@@ -813,7 +814,8 @@ static s32 wdma_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 		task->buf.dest[wdma_frm->out_idx].size[0] = wdma->sram_size;
 		mutex_unlock(&wdma->sram_mutex);
 		wdma_frm->iova[0] = wdma->sram_pa;
-		mml_mmp(buf_prepare, MMPROFILE_FLAG_END,
+		mml_mmp(buf_prepare[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_END,
 			((u64)task->job.jobid << 16) | comp->id, wdma_frm->iova[0]);
 	} else {
 		for (i = 0; i < dest_buf->cnt; i++)

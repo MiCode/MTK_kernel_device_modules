@@ -404,8 +404,8 @@ static struct mml_tile_cache *dle_task_get_tile_cache(struct mml_task *task, u32
 	struct mml_ctx *ctx = task->ctx;
 	struct mml_dle_frame_config *dle_cfg = frame_config_to_dle(task->config);
 
-	ctx->tile_cache[pipe].tiles = &dle_cfg->tile[pipe];
-	return &ctx->tile_cache[pipe];
+	ctx->tile_cache[task->config->info.cfg_thread][pipe].tiles = &dle_cfg->tile[pipe];
+	return &ctx->tile_cache[task->config->info.cfg_thread][pipe];
 }
 
 static const struct mml_task_ops dle_task_ops = {
@@ -430,7 +430,7 @@ struct mml_dle_ctx *mml_dle_ctx_create(struct mml_dev *mml)
 {
 	static const char * const threads[] = {
 		"mml_dle_done", "mml_dle_taskdone", "mml_destroy_dl",
-		NULL, NULL,
+		NULL, NULL, NULL, NULL,
 	};
 	struct mml_dle_ctx *ctx;
 	int ret;
@@ -477,7 +477,7 @@ static void dle_ctx_release(struct mml_dle_ctx *ctx)
 	mml_msg("[dle]%s on ctx %p", __func__, ctx);
 
 	mml_ctx_deinit(&ctx->ctx);
-	/* no need for ctx->tile_cache[i].tiles, since dle adaptor
+	/* no need for ctx->tile_cache[i][j].tiles, since dle adaptor
 	 * use tile struct in mml_dle_frame_config
 	 */
 

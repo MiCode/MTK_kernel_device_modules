@@ -60,6 +60,7 @@ struct mml_drm_ctx {
 	u16 panel_width;
 	u16 panel_height;
 	bool racing_begin;
+	bool couple_used;
 	void (*ddren_cb)(struct cmdq_pkt *pkt, bool enable, void *disp_crtc);
 	void *disp_crtc;
 	void (*dispen_cb)(bool enable, void *dispen_param);
@@ -547,7 +548,7 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 	u32 remain[mml_max_sys] = {0};
 	u32 mml_layer_cnt = 0;
 	u32 i;
-	bool couple_used = false;
+	bool couple_used = dctx->couple_used;
 	struct mml_dev *mml = dctx->ctx.mml;
 	s32 max_layer = mml_max_layers ? mml_max_layers : mml_max_layer(mml);
 	u32 reason = 0;
@@ -770,6 +771,9 @@ int mml_drm_query_multi_layer(struct mml_drm_ctx *dctx,
 			i << 16 | (atomic_read(&dctx->ctx.job_serial) & 0xffff), mode);
 		mml_layer_cnt++;
 	}
+
+	if (dctx->ctx.disp_vdo)
+		dctx->couple_used = couple_used;
 
 	return 0;
 }
@@ -1035,6 +1039,7 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	struct mml_frame_data *src = &submit->info.src;
 	struct mml_frame_config *cfg;
 	struct mml_task *task = NULL;
+	struct mml_topology_cache *tp = mml_topology_get_cache(dctx->ctx.mml);
 	u32 disp_fid = submit->disp_id;
 	s32 result = -EINVAL;
 	u32 i;
@@ -1067,14 +1072,19 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	if (submit->info.ovlsys_id != MML_DLO_OVLSYS0)
 		mml_err("[drm]%s submit ovlsys id %u", __func__, submit->info.ovlsys_id);
 
-	if (submit->info.mode == MML_MODE_DIRECT_LINK && !submit->info.act_time) {
-		static bool logonce;
+	if (submit->info.mode == MML_MODE_DIRECT_LINK) {
+		if (ctx->disp_vdo)
+			dctx->couple_used = false;
 
-		if (!logonce) {
-			mml_err("[drm]empty active time will result wrong bandwidth");
-			logonce = true;
+		if (!submit->info.act_time) {
+			static bool logonce;
+
+			if (!logonce) {
+				mml_err("[drm]empty active time will result wrong bandwidth");
+				logonce = true;
+			}
+			submit->info.act_time = 1000;
 		}
-		submit->info.act_time = 1000;
 	}
 
 	/* always fixup dest_cnt > MML_MAX_OUTPUTS */
@@ -1320,6 +1330,10 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	/* wake lock */
 	mml_lock_wake_lock(task->config->mml, true);
 
+	/* select mode path */
+	if (tp && tp->op->query_cfg_thread)
+		cfg->info.cfg_thread = tp->op->query_cfg_thread(&cfg->info);
+
 	/* submit to core */
 	mml_core_submit_task(cfg, task);
 
@@ -1485,7 +1499,7 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 					  struct mml_drm_param *disp)
 {
 	static const char * const threads[] = {
-		NULL, NULL, "mml_destroy", NULL, NULL,
+		NULL, NULL, "mml_destroy", NULL, NULL, NULL, NULL,
 	};
 	struct mml_drm_ctx *dctx;
 	int ret;
@@ -1498,8 +1512,14 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 
 	dctx->ctx.kt_hwdone = mml_dev_get_kt_worker(mml, mml_kt_hwdone);
 	dctx->ctx.kt_taskdone = mml_dev_get_kt_worker(mml, mml_kt_taskdone);
-	dctx->ctx.kt_config[0] = mml_dev_get_kt_worker(mml, mml_kt_config0);
-	dctx->ctx.kt_config[1] = mml_dev_get_kt_worker(mml, mml_kt_config1);
+	dctx->ctx.kt_config[0][0] = mml_dev_get_kt_worker(mml,
+		mml_kt_cfg_thread0_pipe0);
+	dctx->ctx.kt_config[0][1] = mml_dev_get_kt_worker(mml,
+		mml_kt_cfg_thread0_pipe1);
+	dctx->ctx.kt_config[1][0] = mml_dev_get_kt_worker(mml,
+		mml_kt_cfg_thread1_pipe0);
+	dctx->ctx.kt_config[1][1] = mml_dev_get_kt_worker(mml,
+		mml_kt_cfg_thread1_pipe1);
 
 	ret = mml_ctx_init(&dctx->ctx, mml, threads);
 	if (ret) {
@@ -1581,20 +1601,23 @@ EXPORT_SYMBOL_GPL(mml_drm_ctx_idle);
 static void drm_ctx_release(struct mml_drm_ctx *dctx)
 {
 	struct mml_ctx *ctx = &dctx->ctx;
-	u32 i;
+	u32 i, j;
 
 	mml_msg("[drm]%s on ctx %p", __func__, ctx);
 
 	/* clear kthread from mml driver to avoid deinit */
 	ctx->kt_hwdone = NULL;
 	ctx->kt_taskdone = NULL;
-	ctx->kt_config[0] = NULL;
-	ctx->kt_config[1] = NULL;
+	ctx->kt_config[0][0] = NULL;
+	ctx->kt_config[0][1] = NULL;
+	ctx->kt_config[1][0] = NULL;
+	ctx->kt_config[1][1] = NULL;
 
 	mml_ctx_deinit(ctx);
-	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++)
-		if (ctx->tile_cache[i].tiles)
-			vfree(ctx->tile_cache[i].tiles);
+	for (i = 0; i < MML_CFG_THREAD_MAX; i++)
+		for (j = 0; j < MML_PIPE_CNT; j++)
+			if (ctx->tile_cache[i][j].tiles)
+				vfree(ctx->tile_cache[i][j].tiles);
 
 #ifndef MML_FPGA
 	mtk_sync_timeline_destroy(dctx->timeline);

@@ -241,11 +241,13 @@ struct mml_dev {
 };
 
 static const char *mml_kt_name[mml_kt_total] = {
-	[mml_kt_hwdone]		= "mml_drm_done",
-	[mml_kt_taskdone]	= "mml_taskdone",
-	[mml_kt_m2m_taskdone]	= "mml_m2m_taskdone",
-	[mml_kt_config0]	= "mml_work0",
-	[mml_kt_config1]	= "mml_work1",
+	[mml_kt_hwdone]			= "mml_drm_done",
+	[mml_kt_taskdone]		= "mml_taskdone",
+	[mml_kt_m2m_taskdone]		= "mml_m2m_taskdone",
+	[mml_kt_cfg_thread0_pipe0]	= "mml_work0_p0",
+	[mml_kt_cfg_thread0_pipe1]	= "mml_work0_p1",
+	[mml_kt_cfg_thread1_pipe0]	= "mml_work1_p0",
+	[mml_kt_cfg_thread1_pipe1]	= "mml_work1_p1",
 };
 
 void dvfs_cache_sz_rsz(struct mml_pipe_cache *c, u32 np,

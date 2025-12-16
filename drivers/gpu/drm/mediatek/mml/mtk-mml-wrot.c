@@ -997,7 +997,8 @@ static s32 wrot_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 
 	if (task->config->info.mode == MML_MODE_RACING) {
 		/* assign sram pa directly */
-		mml_mmp(buf_prepare, MMPROFILE_FLAG_START,
+		mml_mmp(buf_prepare[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_START,
 			((u64)task->job.jobid << 16) | comp->id, 0);
 		mutex_lock(&wrot->sram_mutex);
 		if (!wrot->sram_cnt)
@@ -1008,7 +1009,8 @@ static s32 wrot_buf_prepare(struct mml_comp *comp, struct mml_task *task,
 		task->buf.dest[wrot_frm->out_idx].size[0] = wrot->sram_size;
 		mutex_unlock(&wrot->sram_mutex);
 		wrot_frm->iova[0] = wrot->sram_pa;
-		mml_mmp(buf_prepare, MMPROFILE_FLAG_END,
+		mml_mmp(buf_prepare[task->config->info.cfg_thread],
+			MMPROFILE_FLAG_END,
 			((u64)task->job.jobid << 16) | comp->id, wrot_frm->iova[0]);
 	} else {
 		for (i = 0; i < dest_buf->cnt; i++)

@@ -17,6 +17,7 @@ struct mml_mmp_events_t *mml_mmp_get_event(void)
 void mml_mmp_init(void)
 {
 	mmp_event parent;
+	int i;
 
 	if (mml_mmp_events.mml)
 		return;
@@ -27,7 +28,8 @@ void mml_mmp_init(void)
 	mml_mmp_events.query_mode = mmprofile_register_event(parent, "query_mode");
 	mml_mmp_events.query_layer = mmprofile_register_event(parent, "query_layer");
 	mml_mmp_events.submit = mmprofile_register_event(parent, "submit");
-	mml_mmp_events.config = mmprofile_register_event(parent, "config");
+	mml_mmp_events.config[0] = mmprofile_register_event(parent, "config0");
+	mml_mmp_events.config[1] = mmprofile_register_event(parent, "config1");
 	mml_mmp_events.flush = mmprofile_register_event(parent, "flush");
 	mml_mmp_events.submit_cb = mmprofile_register_event(parent, "submit_cb");
 	mml_mmp_events.taskdone = mmprofile_register_event(parent, "taskdone");
@@ -46,27 +48,47 @@ void mml_mmp_init(void)
 	mml_mmp_events.task_create = mmprofile_register_event(parent, "task_create");
 	mml_mmp_events.buf_map = mmprofile_register_event(parent, "buf_map");
 
-	parent = mml_mmp_events.config;
-	mml_mmp_events.config_dle = mmprofile_register_event(parent, "config_dle");
-	mml_mmp_events.dumpinfo = mmprofile_register_event(parent, "dumpinfo");
-	mml_mmp_events.comp_prepare = mmprofile_register_event(parent, "comp_prepare");
-	mml_mmp_events.command = mmprofile_register_event(parent, "command");
-	mml_mmp_events.fence = mmprofile_register_event(parent, "fence");
-	mml_mmp_events.fence_timeout = mmprofile_register_event(parent, "fence_timeout");
-	mml_mmp_events.wait_ready = mmprofile_register_event(parent, "wait_ready");
+	for (i = 0; i < MML_CFG_THREAD_MAX; i++) {
+		parent = mml_mmp_events.config[i];
+		mml_mmp_events.config_dle[i] = mmprofile_register_event(parent,
+			"config_dle");
+		mml_mmp_events.dumpinfo[i] = mmprofile_register_event(parent,
+			"dumpinfo");
+		mml_mmp_events.comp_prepare[i] = mmprofile_register_event(parent,
+			"comp_prepare");
+		mml_mmp_events.command[i] = mmprofile_register_event(parent,
+			"command");
+		mml_mmp_events.fence[i] = mmprofile_register_event(parent,
+			"fence");
+		mml_mmp_events.fence_timeout[i] = mmprofile_register_event(parent,
+			"fence_timeout");
+		mml_mmp_events.wait_ready[i] = mmprofile_register_event(parent,
+			"wait_ready");
 
-	parent = mml_mmp_events.command;
-	mml_mmp_events.buf_prepare = mmprofile_register_event(parent, "buf_prepare");
-	mml_mmp_events.command0 = mmprofile_register_event(parent, "command0");
-	mml_mmp_events.command1 = mmprofile_register_event(parent, "command1");
-	mml_mmp_events.tile_alloc = mmprofile_register_event(parent, "tile_alloc");
-	mml_mmp_events.tile_calc = mmprofile_register_event(parent, "tile_calc");
-	mml_mmp_events.tile_calc_frame = mmprofile_register_event(parent, "tile_calc_frame");
-	mml_mmp_events.tile_prepare_tile = mmprofile_register_event(parent, "tile_prepare_tile");
-	mml_mmp_events.mutex_mod = mmprofile_register_event(parent, "mutex_mod");
-	mml_mmp_events.mutex_en = mmprofile_register_event(parent, "mutex_enable");
-	mml_mmp_events.mutex_dis = mmprofile_register_event(parent, "mutex_disable");
-	mml_mmp_events.mutex_rst = mmprofile_register_event(parent, "mutex_reset");
+		parent = mml_mmp_events.command[i];
+		mml_mmp_events.buf_prepare[i] = mmprofile_register_event(parent,
+			"buf_prepare");
+		mml_mmp_events.command0[i] = mmprofile_register_event(parent,
+			"command0");
+		mml_mmp_events.command1[i] = mmprofile_register_event(parent,
+			"command1");
+		mml_mmp_events.tile_alloc[i] = mmprofile_register_event(parent,
+			"tile_alloc");
+		mml_mmp_events.tile_calc[i] = mmprofile_register_event(parent,
+			"tile_calc");
+		mml_mmp_events.tile_calc_frame[i] =
+			mmprofile_register_event(parent, "tile_calc_frame");
+		mml_mmp_events.tile_prepare_tile[i] =
+			mmprofile_register_event(parent, "tile_prepare_tile");
+		mml_mmp_events.mutex_mod[i] = mmprofile_register_event(parent,
+			"mutex_mod");
+		mml_mmp_events.mutex_en[i] = mmprofile_register_event(parent,
+			"mutex_enable");
+		mml_mmp_events.mutex_dis[i] = mmprofile_register_event(parent,
+			"mutex_disable");
+		mml_mmp_events.mutex_rst[i] = mmprofile_register_event(parent,
+			"mutex_reset");
+	}
 
 	parent = mml_mmp_events.taskdone;
 	mml_mmp_events.dlo = mmprofile_register_event(parent, "dlo");

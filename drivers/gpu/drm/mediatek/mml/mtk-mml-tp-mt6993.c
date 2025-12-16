@@ -111,6 +111,9 @@ module_param(mml_shadow, int, 0644);
 int mml_perf_pry;
 module_param(mml_perf_pry, int, 0644);
 
+int mml_cfg_threading = 1;
+module_param(mml_cfg_threading, int, 0644);
+
 struct path_node {
 	u8 eng;
 	u8 next0;
@@ -629,6 +632,12 @@ static u8 mt6993_larb_sys_map[MML_MAX_LARB] = {
 	[MML_LARB56_IDX] = mml_sys_dma,
 	[MML_LARB57_IDX] = mml_sys_dma,
 	[MML_LARB58_IDX] = mml_sys_dma,
+};
+
+static u8 mt6993_mode_cfg_thread_map[MML_MODE_MAX] = {
+	[MML_MODE_DIRECT_LINK] = MML_CFG_THREAD0,
+	[MML_MODE_MML_DECOUPLE] = MML_CFG_THREAD0,
+	[MML_MODE_MML_DECOUPLE2] = MML_CFG_THREAD1,
 };
 
 static inline bool engine_input(u32 id)
@@ -1456,6 +1465,14 @@ static s32 tp_select(struct mml_topology_cache *cache,
 	return 0;
 }
 
+static enum mml_cfg_thread tp_query_cfg_thread(struct mml_frame_info *info)
+{
+	if (mml_cfg_threading && info->mode >= 0 && info->mode < MML_MODE_MAX)
+		return mt6993_mode_cfg_thread_map[info->mode];
+	else
+		return 0;
+}
+
 static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info *info,
 	u32 *reason, u32 panel_width, u32 panel_height, struct mml_frame_info_cache *info_cache)
 {
@@ -1869,6 +1886,7 @@ static enum mml_hw_caps support_hw_caps(void)
 static const struct mml_topology_ops tp_ops_mt6993 = {
 	.query_mode3 = tp_query_mode,
 	.cache_mode_caps = tp_pre_query_mode,
+	.query_cfg_thread = tp_query_cfg_thread,
 	.init_cache = tp_init_cache,
 	.select = tp_select,
 	.get_racing_clt = get_racing_clt,

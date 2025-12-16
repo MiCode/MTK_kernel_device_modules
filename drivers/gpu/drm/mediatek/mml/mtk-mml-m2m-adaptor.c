@@ -1484,7 +1484,7 @@ static struct mml_m2m_ctx *m2m_ctx_create(struct mml_dev *mml)
 {
 	static const char * const threads[] = {
 		"mml_m2m_done", NULL, "mml_destroy_m2m",
-		NULL, NULL,
+		NULL, NULL, NULL, NULL,
 	};
 	struct mml_m2m_ctx *ctx;
 	struct mml_m2m_frame *frame;
@@ -1630,7 +1630,7 @@ static void m2m_ctx_destroy(struct mml_m2m_ctx *mctx)
 {
 	struct mml_ctx *ctx = &mctx->ctx;
 	struct mml_m2m_param *param, *tmp;
-	u32 i;
+	u32 i, j;
 
 	mml_msg("[m2m]%s on ctx %p", __func__, mctx);
 	v4l2_ctrl_handler_free(&mctx->ctrl_handler);
@@ -1645,9 +1645,10 @@ static void m2m_ctx_destroy(struct mml_m2m_ctx *mctx)
 
 	ctx->kt_taskdone = NULL;
 	mml_ctx_deinit(ctx);
-	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++)
-		if (ctx->tile_cache[i].tiles)
-			vfree(ctx->tile_cache[i].tiles);
+	for (i = 0; i < MML_CFG_THREAD_MAX; i++)
+		for (j = 0; j < MML_PIPE_CNT; j++)
+			if (ctx->tile_cache[i][j].tiles)
+				vfree(ctx->tile_cache[i][j].tiles);
 	kfree(mctx);
 }
 
@@ -1730,6 +1731,7 @@ static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 	struct mml_m2m_param *param;
 	struct mml_frame_dest *dest = &submit->info.dest[0];
 	int ret;
+	struct mml_topology_cache *tp = mml_topology_get_cache(mctx->ctx.mml);
 
 	mutex_lock(&mctx->param_mutex);
 	if (list_empty(&mctx->params)) {
@@ -1775,6 +1777,8 @@ static s32 m2m_set_submit(struct mml_m2m_ctx *mctx, struct mml_submit *submit)
 	dst_vq->dev = mmu_dev;
 	submit->info.dest_cnt = 1;
 	submit->info.mode = MML_MODE_MML_DECOUPLE2;
+	if (tp && tp->op->query_cfg_thread)
+		submit->info.cfg_thread = tp->op->query_cfg_thread(&submit->info);
 
 	submit->buffer.dest_cnt = 1;
 	submit->pq_param[0] = &param->pq_submit.pq_param;
