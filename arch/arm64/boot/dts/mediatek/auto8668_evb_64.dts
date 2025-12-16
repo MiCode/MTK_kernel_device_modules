@@ -145,6 +145,52 @@
 &mt6363_vsram_modem {
 	regulator-always-on;
 };
+
+&i2c10{
+	gt9xx@14{
+		compatible = "goodix,gt9xx";
+		reg = <0x14>;
+		status = "okay";
+		touch-id = <2>;
+		touch-identity = "gt9xx_DSI-1";
+
+		interrupt-parent = <&pio>;
+		interrupts = <1 0x2800>;
+		irq-gpios = <&pio 1 0x2800>;
+		irq-flags = <2>;
+
+		touchscreen-max-id = <11>;
+		touchscreen-size-x = <1920>;
+		touchscreen-size-y = <1080>;
+		touchscreen-max-w = <512>;
+		touchscreen-max-p = <512>;
+		touchscreen-key-map = <172>, <158>; /*KEY_HOMEPAGE=172, KEY_BACK=158,KEY_MENU=139*/
+
+		goodix,slide-wakeup = <0>;
+		goodix,type-a-report = <0>;
+		goodix,driver-send-cfg = <1>;
+		goodix,resume-in-workqueue = <0>;
+		goodix,int-sync = <1>;
+		goodix,swap-x2y = <0>;
+		goodix,esd-protect = <1>;
+		goodix,auto-update-cfg = <1>;
+		goodix,power-off-sleep = <0>;
+		goodix,cfg-group0 = [
+			48 80 07 38 04 0A 0D 00 01 08 28 05 50 32 03 05 00 00
+			00 00 00 00 00 00 00 00 00 95 35 FF 17 15 31 0D 00 00
+			00 9A 03 2D 00 00 00 00 00 00 00 00 00 00 00 0F 23 94
+			C5 02 07 00 00 04 A0 10 00 8B 13 00 7C 16 00 6B 1B 00
+			60 20 00 60 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+			00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+			00 00 00 00 00 01 02 03 04 05 06 07 08 09 0A 0B 0C 0D
+			0E 0F 10 11 12 13 14 15 16 17 18 19 1A 1B 1C 1D 00 01
+			02 03 04 05 06 07 08 09 0A 0B 0C 0D 0E 0F 10 11 12 13
+			14 15 16 17 18 19 1B 1C 1D 1E 1F 20 21 22 23 24 25 26
+			27 28 29 2A 23 01
+		];
+	};
+};
+
 &i2c9 {
 	clock-frequency = <400000>;
 	status = "okay";
