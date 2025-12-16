@@ -5111,6 +5111,28 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			<125000 2522>;
 	};
 
+	tracker: tracker {
+		compatible = "mediatek,tracker";
+		timer-sep = <0>;
+		no-w-valid-chk = <1>;
+		subsys {
+			tracker1 {
+				sys-name = "AP";
+				sys-base = <0x10208000>;
+				entry-num = <64>;
+				interrupts = <GIC_SPI 362 IRQ_TYPE_LEVEL_HIGH 0>;
+				irq-name = "ap_tracker_irq";
+			};
+			tracker2 {
+				sys-name = "INFRA";
+				sys-base = <0x10314000>;
+				entry-num = <32>;
+				interrupts = <GIC_SPI 256 IRQ_TYPE_LEVEL_HIGH 0>;
+				irq-name = "infra_tracker_irq";
+			};
+		};
+	};
+
 	therm_intf: therm-intf@11a400 {
 		compatible = "mediatek,therm_intf";
 		reg = <0 0x0011a400 0 0x400>,
