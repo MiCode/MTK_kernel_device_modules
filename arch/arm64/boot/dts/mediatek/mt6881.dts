@@ -6757,7 +6757,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 
 		dfd_mcu: dfd-mcu {
 			compatible = "mediatek,dfd_mcu";
-			enabled = <0>;
+			enabled = <1>;
 			hw-version = <35>;
 			sw-version = <1>;
 			dfd-timeout = <0x2710>;
