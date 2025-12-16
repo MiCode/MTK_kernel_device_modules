@@ -9806,7 +9806,7 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 				// "disp_token_esd_eof1",
 				// "disp_token_esd_eof3",
 				// "disp_rdma0_eof0",
-				"disp_wdma0_eof0",
+				"disp_wdma1_eof0",
 				"disp_token_stream_block0",
 				// "disp_token_stream_block1",
 				// "disp_token_stream_block3",
