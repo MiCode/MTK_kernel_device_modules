@@ -30,4 +30,12 @@
 #define MIDR_CORTEX_BLACKHAWK	(0x410FD850)
 #endif
 
+#ifndef MIDR_CORTEX_GELAS
+#define MIDR_CORTEX_GELAS	(0x410FD8B0)
+#endif
+
+#ifndef MIDR_CORTEX_NEVIS
+#define MIDR_CORTEX_NEVIS	(0x410FD8A0)
+#endif
+
 #endif
