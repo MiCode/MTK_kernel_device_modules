@@ -198,7 +198,7 @@ enum {
 	DAI_I2S_NUM,//= DAI_I2SOUT_NUM,
 };
 
-#define MT6881_DAI_I2S_MAX_NUM 13 //depends each platform's max i2s num
+#define MT6881_DAI_I2S_MAX_NUM DAI_I2S_NUM //depends each platform's max i2s num
 #define MT6881_RECORD_MEMIF MT6881_MEMIF_VUL9
 #define MT6881_ECHO_REF_MEMIF MT6881_MEMIF_VUL8
 #define MT6881_PRIMARY_MEMIF MT6881_MEMIF_DL0

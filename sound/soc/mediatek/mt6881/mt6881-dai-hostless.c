@@ -198,6 +198,7 @@ static const struct snd_soc_dapm_route mtk_dai_hostless_routes[] = {
 	{"HW_SRC_0_IN_CH2", "I2SIN1_CH2", "Hostless_SRC_Bargein_DL"},
 	{"HW_SRC_0_IN_CH1", "I2SIN6_CH1", "Hostless_SRC_Bargein_DL"},
 	{"HW_SRC_0_IN_CH2", "I2SIN6_CH2", "Hostless_SRC_Bargein_DL"},
+	{"Hostless_SRC_Bargein_UL", NULL, "I2SOUT1"},
 	{"Hostless_SRC_Bargein_UL", NULL, "I2SOUT6"},
 
 	/* Hostless AAudio */

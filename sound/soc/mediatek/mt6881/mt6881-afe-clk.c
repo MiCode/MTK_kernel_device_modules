@@ -53,6 +53,7 @@ static const char *aud_clks[CLK_NUM] = {
 	[CLK_AFE_UL0_ADC_HIRES_AUDIO] = "afe_ul0_adc_hires_audio",
 	[CLK_AFE_UL1_ADC_AUDIO] = "afe_ul1_adc_audio",
 	[CLK_AFE_UL1_ADC_HIRES_AUDIO] = "afe_ul1_adc_hires_audio",
+	[CLK_AFE_CQDMA_BUS_AUDIO] = "afe_cqdma_bus_audio",
 	[CLK_CKSYS_REG_AUD_1_SEL] = "clk_top_aud_1_sel",
 	[CLK_CKSYS_REG_AUD_2_SEL] = "clk_top_aud_2_sel",
 	[CLK_CKSYS_REG_AUD_ENGEN1_SEL] = "clk_top_aud_engen1_sel",
@@ -531,6 +532,13 @@ int mt6881_afe_enable_clock(struct mtk_base_afe *afe)
 
 	ret = mt6881_set_audio_h_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
 
+
+	ret = clk_prepare_enable(afe_priv->clk[CLK_AFE_CQDMA_BUS_AUDIO]);
+	if (ret) {
+		dev_info(afe->dev, "%s clk_prepare_enable %s fail %d\n",
+			 __func__, aud_clks[CLK_AFE_CQDMA_BUS_AUDIO], ret);
+		goto CLK_AFE_CQDMA_BUS_AUDIO_ERR;
+	}
 #if !defined(SKIP_SB_SMCC)
 	/* use arm_smccc_smc to notify SPM */
 	arm_smccc_smc(MTK_SIP_AUDIO_CONTROL,
@@ -548,6 +556,8 @@ CLK_MUX_AUDIO_H_PARENT_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUDIO_H_SEL]);
 CLK_MUX_AUDIO_INTBUS_ERR:
 	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_INTBUS_SEL]);
+CLK_AFE_CQDMA_BUS_AUDIO_ERR:
+	clk_disable_unprepare(afe_priv->clk[CLK_AFE_CQDMA_BUS_AUDIO]);
 
 	return ret;
 }
@@ -555,6 +565,8 @@ CLK_MUX_AUDIO_INTBUS_ERR:
 void mt6881_afe_disable_clock(struct mtk_base_afe *afe)
 {
 	struct mt6881_afe_private *afe_priv = afe->platform_priv;
+
+	clk_disable_unprepare(afe_priv->clk[CLK_AFE_CQDMA_BUS_AUDIO]);
 
 	mt6881_set_audio_int_bus_parent(afe, CLK_CKSYS_REG_TCK_26M_MX9);
 	clk_disable_unprepare(afe_priv->clk[CLK_CKSYS_REG_AUD_INTBUS_SEL]);

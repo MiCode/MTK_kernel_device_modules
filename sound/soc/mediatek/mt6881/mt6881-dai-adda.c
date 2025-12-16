@@ -292,6 +292,88 @@ static const struct snd_kcontrol_new mtk_adda_dl_ch2_mix[] = {
 				    I_SRC_2_OUT_CH2, 1, 0),
 };
 
+static const struct snd_kcontrol_new mtk_adda_dl_ch3_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL0_CH1", AFE_CONN016_1, I_DL0_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL1_CH1", AFE_CONN016_1, I_DL1_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH1", AFE_CONN016_1, I_DL2_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL3_CH1", AFE_CONN016_1, I_DL3_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH1", AFE_CONN016_1, I_DL4_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL5_CH1", AFE_CONN016_1, I_DL5_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH1", AFE_CONN016_1, I_DL6_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH1", AFE_CONN016_1, I_DL7_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL8_CH1", AFE_CONN016_1, I_DL8_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_4CH_CH1", AFE_CONN016_1, I_DL_4CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH1", AFE_CONN016_1, I_DL_24CH_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH3", AFE_CONN016_1, I_DL_24CH_CH3, 1, 0),
+
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH3", AFE_CONN016_2, I_DL_48CH_CH3, 1, 0),
+
+	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH1", AFE_CONN016_3, I_DL44_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH1", AFE_CONN016_3, I_DL45_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL25_CH1", AFE_CONN016_3, I_DL46_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN016_0,
+				    I_ADDA_UL_CH3, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN016_0,
+				    I_ADDA_UL_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN016_0,
+				    I_ADDA_UL_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN0_OUT_CH1", AFE_CONN016_0,
+				    I_GAIN0_OUT_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH1", AFE_CONN016_4,
+				    I_PCM_0_CAP_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN016_4,
+				    I_PCM_1_CAP_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH1", AFE_CONN016_6,
+				    I_SRC_0_OUT_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_1_OUT_CH1", AFE_CONN016_6,
+				    I_SRC_1_OUT_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH1", AFE_CONN016_6,
+				    I_SRC_2_OUT_CH1, 1, 0),
+};
+
+static const struct snd_kcontrol_new mtk_adda_dl_ch4_mix[] = {
+	SOC_DAPM_SINGLE_AUTODISABLE("DL0_CH2", AFE_CONN017_1, I_DL0_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL1_CH2", AFE_CONN017_1, I_DL1_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL2_CH2", AFE_CONN017_1, I_DL2_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL3_CH2", AFE_CONN017_1, I_DL3_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL4_CH2", AFE_CONN017_1, I_DL4_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL5_CH2", AFE_CONN017_1, I_DL5_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL6_CH2", AFE_CONN017_1, I_DL6_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL7_CH2", AFE_CONN017_1, I_DL7_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL8_CH2", AFE_CONN017_1, I_DL8_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_4CH_CH2", AFE_CONN017_1, I_DL_4CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH2", AFE_CONN017_1, I_DL_24CH_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_24CH_CH4", AFE_CONN017_1, I_DL_24CH_CH4, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL_48CH_CH4", AFE_CONN017_2, I_DL_48CH_CH4, 1, 0),
+
+	SOC_DAPM_SINGLE_AUTODISABLE("DL23_CH2", AFE_CONN017_3, I_DL44_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL24_CH2", AFE_CONN017_3, I_DL45_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("DL25_CH2", AFE_CONN017_3, I_DL46_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH3", AFE_CONN017_0,
+				    I_ADDA_UL_CH3, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH2", AFE_CONN017_0,
+				    I_ADDA_UL_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN017_0,
+				    I_ADDA_UL_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_GAIN0_OUT_CH2", AFE_CONN017_0,
+				    I_GAIN0_OUT_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH1", AFE_CONN017_4,
+				    I_PCM_0_CAP_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH1", AFE_CONN017_4,
+				    I_PCM_1_CAP_CH1, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_0_CAP_CH2", AFE_CONN017_4,
+				    I_PCM_0_CAP_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("PCM_1_CAP_CH2", AFE_CONN017_4,
+				    I_PCM_1_CAP_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_0_OUT_CH2", AFE_CONN017_6,
+				    I_SRC_0_OUT_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_1_OUT_CH2", AFE_CONN017_6,
+				    I_SRC_1_OUT_CH2, 1, 0),
+	SOC_DAPM_SINGLE_AUTODISABLE("HW_SRC_2_OUT_CH2", AFE_CONN017_6,
+				    I_SRC_2_OUT_CH2, 1, 0),
+};
+
+
 static const struct snd_kcontrol_new mtk_stf_ch1_mix[] = {
 	SOC_DAPM_SINGLE_AUTODISABLE("ADDA_UL_CH1", AFE_CONN012_0,
 				    I_ADDA_UL_CH1, 1, 0),
@@ -469,12 +551,12 @@ static int mtk_adda_ch34_ul_event(struct snd_soc_dapm_widget *w,
 		 * RG_ADDA6_MTKAIF_RX_SYNC_WORD2_DISABLE_SFT need to be set or
 		 * data cannot be received.
 		 */
-		if (mtkaif_adda6_only) {
+		//if (mtkaif_adda6_only) {
 			regmap_update_bits(afe->regmap,
 					   AFE_MTKAIF1_RX_CFG2,
 					   RG_MTKAIF1_RXIF_SYNC_WORD1_DISABLE_MASK_SFT,
-					   0x1);
-		}
+					   0x1 << RG_MTKAIF1_RXIF_SYNC_WORD1_DISABLE_SFT);
+//		}
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
@@ -484,12 +566,12 @@ static int mtk_adda_ch34_ul_event(struct snd_soc_dapm_widget *w,
 		/* reset dmic */
 		afe_priv->mtkaif_dmic_ch34 = 0;
 
-		if (mtkaif_adda6_only) {
+		//if (mtkaif_adda6_only) {
 			regmap_update_bits(afe->regmap,
 					   AFE_MTKAIF1_RX_CFG2,
 					   RG_MTKAIF1_RXIF_SYNC_WORD1_DISABLE_MASK_SFT,
-					   0x0);
-		}
+					   0x0 << RG_MTKAIF1_RXIF_SYNC_WORD1_DISABLE_SFT);
+		//}
 		break;
 	default:
 		break;
@@ -734,6 +816,32 @@ static int mtk_adda_dl_event(struct snd_soc_dapm_widget *w,
 		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
 		udelay(125);
 		mt6881_afe_gpio_request(afe, false, MT6881_DAI_ADDA, 0);
+		break;
+	default:
+		break;
+	}
+
+	return 0;
+}
+
+static int mtk_adda_ch34_dl_event(struct snd_soc_dapm_widget *w,
+				  struct snd_kcontrol *kcontrol,
+				  int event)
+{
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+
+	dev_info(afe->dev, "%s(), name %s, event 0x%x\n",
+		 __func__, w->name, event);
+
+	switch (event) {
+	case SND_SOC_DAPM_PRE_PMU:
+		mt6881_afe_gpio_request(afe, true, MT6881_DAI_ADDA_CH34, 0);
+		break;
+	case SND_SOC_DAPM_POST_PMD:
+		/* should delayed 1/fs(smallest is 8k) = 125us before afe off */
+		udelay(125);
+		mt6881_afe_gpio_request(afe, false, MT6881_DAI_ADDA_CH34, 0);
 		break;
 	default:
 		break;
@@ -1019,6 +1127,8 @@ static const struct snd_kcontrol_new mtk_adda_controls[] = {
 		   SIDE_TONE_GAIN_SFT, SIDE_TONE_GAIN_MASK, 0),
 	SOC_SINGLE_EXT("Sidetone_Positive_Gain_dB", SND_SOC_NOPM, 0, 100, 0,
 		       stf_positive_gain_get, stf_positive_gain_set),
+	SOC_SINGLE("ADDA_DL_GAIN", AFE_ADDA_DL_SRC_CON1,
+		   AFE_DL_GAIN1_CTL_PRE_SFT, AFE_DL_GAIN1_CTL_PRE_MASK, 0),
 	SOC_ENUM_EXT("MTKAIF_DMIC", mt6881_adda_enum[0],
 		     mt6881_adda_dmic_get, mt6881_adda_dmic_set),
 	SOC_ENUM_EXT("MTKAIF_ADDA6_ONLY", mt6881_adda_enum[0],
@@ -1214,6 +1324,13 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			   mtk_adda_dl_ch2_mix,
 			   ARRAY_SIZE(mtk_adda_dl_ch2_mix)),
 
+	SND_SOC_DAPM_MIXER("ADDA_DL_CH3", SND_SOC_NOPM, 0, 0,
+			   mtk_adda_dl_ch3_mix,
+			   ARRAY_SIZE(mtk_adda_dl_ch3_mix)),
+	SND_SOC_DAPM_MIXER("ADDA_DL_CH4", SND_SOC_NOPM, 0, 0,
+			   mtk_adda_dl_ch4_mix,
+			   ARRAY_SIZE(mtk_adda_dl_ch4_mix)),
+
 	SND_SOC_DAPM_SUPPLY_S("ADDA Enable", SUPPLY_SEQ_ADDA_AFE_ON,
 			      AUDIO_ENGEN_CON0, AUDIO_F3P25M_EN_ON_SFT, 0,
 			      NULL, 0),
@@ -1222,6 +1339,12 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			      AFE_ADDA_DL_SRC_CON0,
 			      AFE_DL_SRC_ON_TMP_CTL_PRE_SFT, 0,
 			      mtk_adda_dl_event,
+			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
+	SND_SOC_DAPM_SUPPLY_S("ADDA CH34 Playback Enable",
+			      SUPPLY_SEQ_ADDA_DL_ON,
+			      AFE_ADDA_2ND_DL_SRC_CON0,
+				  AFE_2ND_DL_SRC_ON_TMP_CTL_PRE_SFT, 0,
+			      mtk_adda_ch34_dl_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
 	SND_SOC_DAPM_SUPPLY_S("ADDA Capture Enable", SUPPLY_SEQ_ADDA_UL_ON,
@@ -1245,10 +1368,6 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 			      mtk_adda_mtkaif_cfg_event,
 			      SND_SOC_DAPM_PRE_PMU),
 	SND_SOC_DAPM_SUPPLY_S("ADDA6_MTKAIF_CFG", SUPPLY_SEQ_ADDA6_MTKAIF_CFG,
-			      SND_SOC_NOPM, 0, 0,
-			      mtk_adda_mtkaif_cfg_event,
-			      SND_SOC_DAPM_PRE_PMU),
-	SND_SOC_DAPM_SUPPLY_S("ADDA7_MTKAIF_CFG", SUPPLY_SEQ_ADDA6_MTKAIF_CFG,
 			      SND_SOC_NOPM, 0, 0,
 			      mtk_adda_mtkaif_cfg_event,
 			      SND_SOC_DAPM_PRE_PMU),
@@ -1329,6 +1448,23 @@ static const struct snd_soc_dapm_widget mtk_dai_adda_widgets[] = {
 
 #define HIRES_THRESHOLD 48000
 #if !defined(IS_FPGA_EARLY_PORTING)
+static int mtk_afe_dac_hires_connect(struct snd_soc_dapm_widget *source,
+				     struct snd_soc_dapm_widget *sink)
+{
+	struct snd_soc_dapm_widget *w = source;
+	struct snd_soc_component *cmpnt = snd_soc_dapm_to_component(w->dapm);
+	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+	struct mtk_afe_adda_priv *adda_priv;
+
+	adda_priv = get_adda_priv_by_name(afe, w->name);
+
+	if (!adda_priv) {
+		AUDIO_AEE("adda_priv == NULL");
+		return 0;
+	}
+
+	return (adda_priv->dl_rate > HIRES_THRESHOLD) ? 1 : 0;
+}
 
 static int mtk_afe_adc_hires_connect(struct snd_soc_dapm_widget *source,
 				     struct snd_soc_dapm_widget *sink)
@@ -1408,6 +1544,46 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA Playback", NULL, "AUD_PAD_TOP"},
 	{"ADDA Playback", NULL, "VS1_VOTER_DL"},
 
+	{"ADDA_DL_CH3", "DL0_CH1", "DL0"},
+	{"ADDA_DL_CH4", "DL0_CH2", "DL0"},
+
+	{"ADDA_DL_CH3", "DL1_CH1", "DL1"},
+	{"ADDA_DL_CH4", "DL1_CH2", "DL1"},
+
+	{"ADDA_DL_CH3", "DL2_CH1", "DL2"},
+	{"ADDA_DL_CH4", "DL2_CH2", "DL2"},
+
+	{"ADDA_DL_CH3", "DL3_CH1", "DL3"},
+	{"ADDA_DL_CH4", "DL3_CH2", "DL3"},
+
+	{"ADDA_DL_CH3", "DL4_CH1", "DL4"},
+	{"ADDA_DL_CH4", "DL4_CH2", "DL4"},
+
+	{"ADDA_DL_CH3", "DL5_CH1", "DL5"},
+	{"ADDA_DL_CH4", "DL5_CH2", "DL5"},
+
+	{"ADDA_DL_CH3", "DL6_CH1", "DL6"},
+	{"ADDA_DL_CH4", "DL6_CH2", "DL6"},
+
+	{"ADDA_DL_CH3", "DL7_CH1", "DL7"},
+	{"ADDA_DL_CH4", "DL7_CH2", "DL7"},
+
+	{"ADDA_DL_CH3", "DL8_CH1", "DL8"},
+	{"ADDA_DL_CH4", "DL8_CH2", "DL8"},
+
+	{"ADDA_DL_CH3", "DL_24CH_CH1", "DL_24CH"},
+	{"ADDA_DL_CH4", "DL_24CH_CH2", "DL_24CH"},
+	{"ADDA_DL_CH3", "DL_24CH_CH3", "DL_24CH"},
+	{"ADDA_DL_CH4", "DL_24CH_CH4", "DL_24CH"},
+
+	{"ADDA CH34 Playback", NULL, "ADDA_DL_CH3"},
+	{"ADDA CH34 Playback", NULL, "ADDA_DL_CH4"},
+
+	{"ADDA CH34 Playback", NULL, "ADDA Enable"},
+	{"ADDA CH34 Playback", NULL, "ADDA CH34 Playback Enable"},
+	{"ADDA CH34 Playback", NULL, "AUD_PAD_TOP"},
+	{"ADDA CH34 Playback", NULL, "VS1_VOTER_DL"},
+
 	/* capture */
 	{"ADDA_UL_Mux", "MTKAIF", "ADDA Capture"},
 	{"ADDA_UL_Mux", "AP_DMIC", "AP DMIC Capture"},
@@ -1445,6 +1621,7 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 
 	{"STF_OUTPUT", NULL, "Sidetone Filter"},
 	{"ADDA Playback", NULL, "Sidetone Filter"},
+	{"ADDA CH34 Playback", NULL, "Sidetone Filter"},
 
 	/* allow i2s on without codec on */
 	{"ADDA Capture", NULL, "ADDA_In_Mux"},
@@ -1454,6 +1631,14 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 #if !defined(IS_FPGA_EARLY_PORTING)
 
 	/* clk */
+	{"ADDA Playback", NULL, "afe_dl0_dac_audio"},
+	{"ADDA Playback", NULL, "afe_dl0_dac_predis_audio"},
+	{"ADDA Playback", NULL, "afe_dl0_dac_hires_audio",
+	 mtk_afe_dac_hires_connect},
+	{"ADDA CH34 Playback", NULL, "afe_dl1_dac_audio"},
+	{"ADDA CH34 Playback", NULL, "afe_dl1_dac_predis_audio"},
+	{"ADDA CH34 Playback", NULL, "afe_dl1_dac_hires_audio",
+	 mtk_afe_dac_hires_connect},
 	{"ADDA Capture Enable", NULL, "afe_ul0_adc_audio"},
 	{"ADDA Capture Enable", NULL, "afe_ul0_adc_hires_audio",
 	 mtk_afe_adc_hires_connect},
@@ -1461,6 +1646,10 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA CH34 Capture Enable", NULL, "afe_ul1_adc_hires_audio",
 	 mtk_afe_adc_hires_connect},
 
+	/* hires source from apll1 */
+	{"clk_top_audio_h_sel", NULL, APLL2_W_NAME},
+	{"afe_dl0_dac_hires_audio", NULL, "clk_top_audio_h_sel"},
+	{"afe_dl1_dac_hires_audio", NULL, "clk_top_audio_h_sel"},
 	{"afe_ul0_adc_hires_audio", NULL, "clk_top_audio_h_sel"},
 	{"afe_ul1_adc_hires_audio", NULL, "clk_top_audio_h_sel"},
 #endif
@@ -1934,6 +2123,13 @@ static struct snd_soc_dai_driver mtk_dai_adda_driver[] = {
 	{
 		.name = "ADDA_CH34",
 		.id = MT6881_DAI_ADDA_CH34,
+		.playback = {
+			.stream_name = "ADDA CH34 Playback",
+			.channels_min = 1,
+			.channels_max = 2,
+			.rates = MTK_ADDA_PLAYBACK_RATES,
+			.formats = MTK_ADDA_FORMATS,
+		},
 		.capture = {
 			.stream_name = "ADDA CH34 Capture",
 			.channels_min = 1,
