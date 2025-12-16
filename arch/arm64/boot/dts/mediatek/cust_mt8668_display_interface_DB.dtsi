@@ -72,14 +72,14 @@
 	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	panel1 {
+	panel2 {
 		compatible = "boe,jd9365da";
 		reg = <0>;
 		power-gpios = <&pio 195 0>;
 		reset-gpios = <&pio 60 0>;
 		pinctrl-names = "default";
 		port {
-			panel1_in: endpoint {
+			panel2_in: endpoint {
 				remote-endpoint = <&dsi_out>;
 			};
 		};
@@ -99,14 +99,14 @@
 	status = "disabled";
 	#address-cells = <1>;
 	#size-cells = <0>;
-	panel2 {
+	panel22 {
 		compatible = "boe,jd9365da";
 		reg = <1>;
 		power-gpios = <&pio 69 0>;
 		reset-gpios = <&pio 9 0>;
 		pinctrl-names = "default";
 		port {
-			panel2_in: endpoint {
+			panel22_in: endpoint {
 				remote-endpoint = <&dsi1_out>;
 			};
 		};
