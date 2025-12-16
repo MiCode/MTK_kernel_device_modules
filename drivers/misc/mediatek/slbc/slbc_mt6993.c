@@ -1484,8 +1484,10 @@ static int dbg_slbc_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "slbc_force 0x%x\n", slbc_force);
 	seq_printf(m, "buffer_ref %x\n", buffer_ref);
 	seq_printf(m, "slbc_ref %x\n", slbc_ref);
+	mutex_lock(&slbc_ref_lock);
 	seq_printf(m, "venc_count %x\n", venc_count);
 	seq_printf(m, "dcc_count %x\n", venc_count);
+	mutex_unlock(&slbc_ref_lock);
 	seq_printf(m, "debug_level %x\n", debug_level);
 	seq_printf(m, "slbc_sta %x\n", slbc_sta);
 	seq_printf(m, "slbc_ack_c %x\n", slbc_ack_c);
