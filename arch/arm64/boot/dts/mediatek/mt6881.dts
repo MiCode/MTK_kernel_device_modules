@@ -4548,22 +4548,20 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"mraw_larb25_smi",
 			"camsys_mraw_pda0",
 			"camsys_mraw_pda1";
-#if 0
-		mediatek,cam-bwr = <&cam_bwr>;
 		mmqos-supply = <&mmqos>;
 		interconnects =
 			<&mmqos MASTER_LARB_PORT(M4U_L25_P3_PDA_0_RDMA0)
-					&mmqos SLAVE_COMMON(1)>,
+					&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L25_P4_PDA_0_RDMA1)
-					&mmqos SLAVE_COMMON(1)>,
+					&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L25_P5_PDA_0_RDMA2)
-					&mmqos SLAVE_COMMON(1)>,
+					&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L25_P6_PDA_0_RDMA3)
-					&mmqos SLAVE_COMMON(1)>,
+					&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L25_P7_PDA_0_RDMA4)
-					&mmqos SLAVE_COMMON(1)>,
+					&mmqos SLAVE_COMMON(0)>,
 			<&mmqos MASTER_LARB_PORT(M4U_L25_P9_PDA_0_WDMA)
-					&mmqos SLAVE_COMMON(1)>;
+					&mmqos SLAVE_COMMON(0)>;
 		interconnect-names =
 			"l25_pdai_a0",
 			"l25_pdai_a1",
@@ -4571,7 +4569,6 @@ sw_info,frame_id,custom,pipeline_stage,RPID,UID";
 			"l25_pdai_a3",
 			"l25_pdai_a4",
 			"l25_pdao_a";
-#endif
 	};
 
 	tboard_thermistor1: thermal-ntc1@1c013128 {
