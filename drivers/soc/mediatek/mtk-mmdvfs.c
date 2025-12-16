@@ -73,6 +73,7 @@ struct mmdvfs_drv_data {
 	bool ccf_enable_boot;
 	struct mutex ccf_enable_mutex;
 	bool mmdvfs_v3_vcp_cb_ready;
+	bool vcore_ena;
 };
 
 static struct regulator *vcore_reg_id;
@@ -323,6 +324,9 @@ static int regulator_event_notify(struct notifier_block *nb,
 	struct pre_voltage_change_data *pvc_data;
 
 	drv_data = container_of(nb, struct mmdvfs_drv_data, nb);
+
+	if (!drv_data->vcore_ena)
+		return 0;
 
 	MMDVFS_SYSTRACE_BEGIN("%s event:0x%lx\n", __func__, event);
 	if (event == REGULATOR_EVENT_PRE_VOLTAGE_CHANGE) {
@@ -751,7 +755,8 @@ static int mmdvfs_probe(struct platform_device *pdev)
 	unsigned long freq;
 	struct dev_pm_opp *opp;
 	struct clk *clk;
-	struct device_node *mmdvfs_clk_node;
+	struct device_node *mmdvfs_clk_node, *dvfsrc_node;
+	u32 vcore_is_bringup = 0;
 
 #if IS_ENABLED(CONFIG_MMPROFILE)
 	mmprofile_enable(1);
@@ -898,6 +903,17 @@ static int mmdvfs_probe(struct platform_device *pdev)
 		if (of_property_read_bool(mmdvfs_clk_node, "mmdvfs-ap-ccf-support"))
 			drv_data->ccf_ena_support = true;
 	pr_notice("%s: ccf_ena_support:%d\n", __func__, drv_data->ccf_ena_support);
+
+	//get vcore_ena
+	dvfsrc_node = of_parse_phandle(dev->of_node, "mediatek,dvfsrc", 0);
+	if (!dvfsrc_node)
+		pr_notice("%s: find dvfsrc node failed\n", __func__);
+	else {
+		of_property_read_u32(dvfsrc_node, "dvfsrc-bringup", &vcore_is_bringup);
+		if (!vcore_is_bringup) //vcore_is_bringup = 0 represent vcore is enable
+			drv_data->vcore_ena = true;
+	}
+	pr_notice("%s: vcore_ena:%d\n", __func__, drv_data->vcore_ena);
 
 	mmdvfs_dbg->nb.notifier_call = mmdvfs_dbg_log_cb;
 	mtk_smi_dbg_register_notifier(&mmdvfs_dbg->nb);
