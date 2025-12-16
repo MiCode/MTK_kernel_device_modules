@@ -298,8 +298,14 @@ static u32 ammu_page_len_remap(u32 page_len)
 {
 	u32 ret_page_len;
 
-	if (page_len <= eAPUMMU_PAGE_LEN_1MB)
-		ret_page_len = page_len;
+	if (page_len <= eAPUMMU_PAGE_LEN_128KB)
+		ret_page_len = eAPUMMU_6881_PAGE_LEN_128KB;
+	else if (page_len <= eAPUMMU_PAGE_LEN_256KB)
+		ret_page_len = eAPUMMU_6881_PAGE_LEN_256KB;
+	else if (page_len <= eAPUMMU_PAGE_LEN_512KB)
+		ret_page_len = eAPUMMU_6881_PAGE_LEN_512KB;
+	else if (page_len <= eAPUMMU_PAGE_LEN_1MB)
+		ret_page_len = eAPUMMU_6881_PAGE_LEN_1MB;
 	else if (page_len <= eAPUMMU_PAGE_LEN_128MB)
 		ret_page_len = eAPUMMU_6881_PAGE_LEN_128MB;
 	else if (page_len <= eAPUMMU_PAGE_LEN_256MB)
