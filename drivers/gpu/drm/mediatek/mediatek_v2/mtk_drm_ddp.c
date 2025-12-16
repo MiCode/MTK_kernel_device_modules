@@ -31471,38 +31471,38 @@ void mtk_disp_dbg_cmdq_use_mutex(struct mtk_drm_crtc *mtk_crtc,
 	val |= (0x1 << (unsigned int)mutex_id);
 	val |= (0x1 << (unsigned int)(mutex_id + ddp->data->disp_mutex_total));
 
-	cmdq_pkt_write(handle, cmdq_base,
-		ddp->regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
-	cmdq_pkt_write(handle, cmdq_base,
-		ddp->regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
-	cmdq_pkt_write(handle, cmdq_base,
-		ddp->regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
-	cmdq_pkt_write(handle, cmdq_base,
-		ddp->regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
-	cmdq_pkt_write(handle, cmdq_base,
-		ddp->regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
-	cmdq_pkt_write(handle, cmdq_base,
-		ddp->regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	// cmdq_pkt_write(handle, cmdq_base,
+	//	ddp->regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
+	// cmdq_pkt_write(handle, cmdq_base,
+	//	ddp->regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
+	// cmdq_pkt_write(handle, cmdq_base,
+	//	ddp->regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
+	// cmdq_pkt_write(handle, cmdq_base,
+	//	ddp->regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
+	// cmdq_pkt_write(handle, cmdq_base,
+	//	ddp->regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
+	// cmdq_pkt_write(handle, cmdq_base,
+	//	ddp->regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 
-	if (ddp->ovlsys0_regs_pa) {
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
-	}
+	// if (ddp->ovlsys0_regs_pa) {
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys0_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	// }
 
 	if (!(ddp->data->dispsys_map && ddp->side_regs_pa))
 		return;
 
-	//real irq
+	//real irq, disp1a
 	cmdq_pkt_write(handle, cmdq_base,
 		ddp->side_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
 	cmdq_pkt_write(handle, cmdq_base,
@@ -31516,65 +31516,65 @@ void mtk_disp_dbg_cmdq_use_mutex(struct mtk_drm_crtc *mtk_crtc,
 	cmdq_pkt_write(handle, cmdq_base,
 		ddp->side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
 
-	if (ddp->ovlsys1_regs_pa) {
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
-	}
+	// if (ddp->ovlsys1_regs_pa) {
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys1_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	// }
 
-	if (ddp->ovlsys2_regs_pa) {
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
-	}
+	// if (ddp->ovlsys2_regs_pa) {
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->ovlsys2_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	// }
 
-	if (ddp->sys_b_regs_pa) {
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
-	}
+	// if (ddp->sys_b_regs_pa) {
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	// }
 
-	if (ddp->sys_b_side_regs_pa) {
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
-		cmdq_pkt_write(handle, cmdq_base,
-			ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
-	}
+	// if (ddp->sys_b_side_regs_pa) {
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_SOF(ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_MOD(0, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_MOD(1, ddp->data, mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 0, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_EN(mutex_id), 1, ~0);
+	//	cmdq_pkt_write(handle, cmdq_base,
+	//		ddp->sys_b_side_regs_pa + DISP_REG_MUTEX_INTEN, val, val);
+	// }
 }
 void mtk_crtc_bif_sodi_config_MT6993(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool en)
 {
