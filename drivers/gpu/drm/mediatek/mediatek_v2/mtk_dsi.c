@@ -15856,14 +15856,8 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 					mtk_mipi_tx_pll_rate_khz_set_adpt(dsi->slave_dsi->phy,
 						dsi->ext->params->data_rate_khz);
 			}
-			if (dsi->data_rate) {
-				mtk_dsi_phy_timconfig(dsi, handle);
-				if (dsi->slave_dsi)
-					mtk_dsi_phy_timconfig(dsi->slave_dsi, handle);
-			}
-		} else {
-			if (dsi->data_rate == 0)
-				mtk_dsi_set_data_rate(dsi);
+		}
+		if (dsi->data_rate) {
 			mtk_dsi_phy_timconfig(dsi, handle);
 			if (dsi->slave_dsi)
 				mtk_dsi_phy_timconfig(dsi->slave_dsi, handle);

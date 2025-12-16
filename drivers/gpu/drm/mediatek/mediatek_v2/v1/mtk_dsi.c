@@ -8334,7 +8334,7 @@ int mtk_dsi_porch_setting(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		mtk_ddp_write_relaxed(comp, value, DSI_VACT_NL(dsi->driver_data), handle);
 		break;
 	case DSI_HFP:
-		mtk_ddp_write_relaxed(comp, value, DSI_HFP_WC(dsi->driver_data), handle);
+		mtk_ddp_write_mask(comp, value, DSI_HFP_WC(dsi->driver_data), HFP_WC_MASK, handle);
 		break;
 	case DSI_HSA:
 		mtk_ddp_write_relaxed(comp, value, DSI_HSA_WC(dsi->driver_data), handle);
@@ -14448,9 +14448,9 @@ static void mtk_dsi_vdo_timing_change(struct mtk_dsi *dsi,
 		if (dsi->data_rate == 0) {
 			dsi->data_rate = mtk_dsi_default_rate(dsi);
 			mtk_mipi_tx_pll_rate_set_adpt(dsi->phy, dsi->data_rate);
-			if (dsi->data_rate)
-				mtk_dsi_phy_timconfig(dsi, NULL);
 		}
+		if (dsi->data_rate)
+			mtk_dsi_phy_timconfig(dsi, NULL);
 		if (dsi->mipi_hopping_sta) {
 			DDPINFO("%s,mipi_clk_change_sta\n", __func__);
 			hfp = dsi->ext->params->dyn.hfp;

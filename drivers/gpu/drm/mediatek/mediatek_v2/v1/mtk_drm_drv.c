@@ -12802,11 +12802,6 @@ SKIP_OVLSYS_CONFIG:
 
 	platform_set_drvdata(pdev, private);
 
-	ret = component_master_add_with_match(dev, &mtk_drm_ops, match);
-	DDPINFO("%s- ret:%d\n", __func__, ret);
-	if (ret)
-		goto err_pm;
-
 	private->boot_mode = mtk_drm_get_boot_mode_from_dts();
 
 	for (i = 0 ; i < MAX_CRTC ; ++i) {
@@ -12830,6 +12825,18 @@ SKIP_OVLSYS_CONFIG:
 		DDPINFO("CRTC %d available BW:%x OVL usage:%x\n", i,
 				private->pre_defined_bw[i], private->ovl_usage[i]);
 	}
+
+	disp_dts_gpio_init(dev, private);
+
+	/* After this api, comp will start to bind and mtk_crtc will start to create */
+	/* Need to check the value of mtk_crtc or any flow need to */
+	/* before mtk_crtc creation flow */
+
+	ret = component_master_add_with_match(dev, &mtk_drm_ops, match);
+	DDPINFO("%s- ret:%d\n", __func__, ret);
+	if (ret)
+		goto err_pm;
+
 	ret = of_property_read_u32(dev->of_node, "no_hwc_layers", &private->no_hwc_layers);
 	ret = of_property_read_u32(dev->of_node, "no_hwc_overlap", &private->no_hwc_overlap);
 	DDPINFO("no_hwc_layers %d,no_hwc_overlap %d\n", private->no_hwc_layers,
@@ -12838,8 +12845,6 @@ SKIP_OVLSYS_CONFIG:
 	mtk_fence_init();
 
 	DDPINFO("%s-\n", __func__);
-
-	disp_dts_gpio_init(dev, private);
 
 	memcpy(&mydev, pdev, sizeof(mydev));
 
