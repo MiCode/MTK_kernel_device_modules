@@ -855,6 +855,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-alpha-jdi-nt36672e-vdo-120hz-threshold".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-alpha-jdi-nt36672e-vdo-144hz-hfp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-alpha-jdi-nt36672e-vdo-60hz".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-alpha-jdi-nt36672e-vdo-60hz-frameratev5".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-boe-hx83102j-vdo".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37801-cmd-120hz".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37801-cmd-fhd".format(kernel_version),
