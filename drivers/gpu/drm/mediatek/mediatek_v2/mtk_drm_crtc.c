@@ -802,7 +802,7 @@ unsigned int mtk_drm_crtc_check_ovl_status(struct drm_crtc *crtc, struct mtk_cmd
 		time_0 = cmdq_mbox_get_tpr_from_dram(cb_data->cmdq_handle, 4);
 		time_1 = cmdq_mbox_get_tpr_from_dram(cb_data->cmdq_handle, 5);
 		exec_time = (time_0 - time_1) / 26;
-
+		CRTC_MMP_MARK(id, ovl_status_err, time_0, time_1);
 		CRTC_MMP_MARK(id, ovl_status_err, exec_time, cb_data->cmdq_handle->cmd_buf_size);
 #endif
 		if (ovl_status & 1) {
@@ -810,6 +810,7 @@ unsigned int mtk_drm_crtc_check_ovl_status(struct drm_crtc *crtc, struct mtk_cmd
 			DDPPR_ERR("%s CRTC%d ovl status error:0x%x\n", __func__, id, ovl_status);
 #if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 			DDPMSG("time:%d,size:%d\n", exec_time, cb_data->cmdq_handle->cmd_buf_size);
+			cmdq_dump_pkt(cb_data->cmdq_handle, 0, true);
 			DDPAEE("[IRQ] ovl status error\n");
 #endif
 			mtk_dprec_snapshot();
@@ -19846,6 +19847,7 @@ struct cmdq_pkt *mtk_crtc_gce_commit_begin(struct drm_crtc *crtc,
 		mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
 #if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 		cmdq_pkt_save_tpr_to_dram(cmdq_handle, 5);
+		mtk_disp_dbg_cmdq_use_mutex(mtk_crtc, cmdq_handle, 5);
 #endif
 		mtk_crtc_partial_update_wait_cabc(crtc, cmdq_handle);
 	}
