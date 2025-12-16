@@ -15,6 +15,15 @@
 	bootargs_ext = "";
 };
 
+&extcon_usb{
+	status = "disabled";
+};
+
+&ssusb {
+	vusb33-supply = <&mt6373_vusb>;
+	role-switch-default-mode = "peripheral";
+};
+
 &cpu0 {
 	cpu-idle-states = <&s2idle>;
 };

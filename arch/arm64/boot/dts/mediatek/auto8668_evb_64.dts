@@ -20,8 +20,8 @@
 };
 
 &ssusb {
-	/delete-property/ vusb33-supply;
-	/delete-node/ port;
+	vusb33-supply = <&mt6373_vusb>;
+	role-switch-default-mode = "peripheral";
 };
 
 
