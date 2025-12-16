@@ -119,6 +119,50 @@ define_mgk_ddk_ko(
     hdrs = glob(["**/*.h"]),
 )
 
+define_mgk_ddk_ko(
+    name = "clk-chk-mt6881-aiot-ext",
+    srcs = [
+        "clkchk-mt6881-aiot-ext.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+    ],
+    includes = ["."],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/",
+            "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        ],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pd-chk-mt6881-aiot-ext",
+    srcs = [
+        "mtk-pd-chk-mt6881-aiot-ext.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:soc_mediatek_headers".format(kernel_version),
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-chk-mt6881-aiot-ext".format(kernel_version),
+    ],
+)
+
 define_v1_platform_clkmgr_ko("mt6897", None)
 define_v1_platform_clkmgr_ko("mt6897", "adsp")
 define_v1_platform_clkmgr_ko("mt6897", "cam")
