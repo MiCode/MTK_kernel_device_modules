@@ -105,6 +105,7 @@ static int create_virtual_input_device(void)
 	__set_bit(KEY_VOLUMEDOWN, my_virtual_dev->keybit);
 	__set_bit(KEY_VOLUMEUP, my_virtual_dev->keybit);
 	__set_bit(KEY_POWER, my_virtual_dev->keybit);
+	__set_bit(KEY_F11, my_virtual_dev->keybit);
 
 	// 设置坐标范围
 	input_set_abs_params(my_virtual_dev, ABS_MT_SLOT, 0, MAX_SLOTS-1, 0, 0);
@@ -143,13 +144,8 @@ static void keys_input_event(struct input_handle *handle, unsigned int type, uns
 	} else if (type == EV_KEY) {
 		switch (code) {
 		case KEY_VOLUMEUP:
-			send_touch_event(KEYS_ACTION, code, value, 0, 0, 0, TYPE_KEY);
-			pr_info("%s: call ACTION send_touch_event, code %d, value %d\n", __func__, code, value);
-			break;
 		case KEY_VOLUMEDOWN:
-			send_touch_event(KEYS_ACTION, code, value, 0, 0, 0, TYPE_KEY);
-			pr_info("%s: call ACTION send_touch_event, code %d, value %d\n", __func__, code, value);
-			break;
+		case KEY_F11:
 		case KEY_POWER:
 			send_touch_event(KEYS_ACTION, code, value, 0, 0, 0, TYPE_KEY);
 			pr_info("%s: call ACTION send_touch_event, code %d, value %d\n", __func__, code, value);
