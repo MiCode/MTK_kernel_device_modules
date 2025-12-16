@@ -173,6 +173,7 @@ struct memory_group_manager_device kbase_native_mgm_dev = {
 		 .mgm_pte_to_original_pte = kbase_native_mgm_pte_to_original_pte,
 #if IS_ENABLED(CONFIG_MALI_MTK_MGMM)
 		 .mgm_mtk_cache_pool_size = NULL,
+		 .mgm_mtk_config_large_page = NULL,
 #endif /* CONFIG_MALI_MTK_MGMM */
 		 .mgm_get_import_memory_cached_access_permitted =
 			 kbase_native_mgm_get_import_memory_cached_access_permitted },

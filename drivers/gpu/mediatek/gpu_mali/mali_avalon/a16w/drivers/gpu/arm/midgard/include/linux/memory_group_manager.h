@@ -229,6 +229,7 @@ struct memory_group_manager_ops {
 
 #if IS_ENABLED(CONFIG_MALI_MTK_MGMM)
 	size_t (*mgm_mtk_cache_pool_size)(struct memory_group_manager_device *mgm_dev);
+	void (*mgm_mtk_config_large_page)(struct memory_group_manager_device *mgm_dev, bool is_lp_enabled);
 #endif /* CONFIG_MALI_MTK_MGMM */
 };
 

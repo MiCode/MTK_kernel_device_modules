@@ -296,6 +296,11 @@ int kbase_mem_init(struct kbase_device *kbdev)
 	}
 #endif
 
+#if IS_ENABLED(CONFIG_MALI_MTK_MGMM)
+	if (kbdev->mgm_dev && kbdev->mgm_dev->ops.mgm_mtk_config_large_page)
+		kbdev->mgm_dev->ops.mgm_mtk_config_large_page(kbdev->mgm_dev, kbase_is_large_pages_enabled());
+#endif /* CONFIG_MALI_MTK_MGMM */
+
 	err = kbase_mem_pool_init_no_reclaim(&kbdev->pgd_mem_pool, BASE_PGD_MEM_POOL_MAX_SIZE_KBDEV,
 					     KBASE_MEM_POOL_SMALL_PAGE_TABLE_ORDER, 0, kbdev);
 

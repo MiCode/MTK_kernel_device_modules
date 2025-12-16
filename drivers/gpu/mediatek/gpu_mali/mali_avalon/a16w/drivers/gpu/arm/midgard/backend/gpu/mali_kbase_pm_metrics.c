@@ -136,6 +136,7 @@ int kbasep_pm_metrics_init(struct kbase_device *kbdev)
 		frag_idx = ITER_FRAG_ACTIVE_IDX;
 		break;
 	case GPU_ID_PRODUCT_TKRX:
+	case GPU_ID_PRODUCT_LKRX:
 	case GPU_ID_PRODUCT_IDRX:
 	case GPU_ID_PRODUCT_TDRX:
 	case GPU_ID_PRODUCT_LDRX:

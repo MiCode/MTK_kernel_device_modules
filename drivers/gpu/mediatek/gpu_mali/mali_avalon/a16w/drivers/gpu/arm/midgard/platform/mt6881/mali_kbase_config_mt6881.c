@@ -41,8 +41,8 @@
     IS_ENABLED(CONFIG_MALI_MTK_GPU_DVFS_HINT_26M_LOADING)
 #include <platform/mtk_platform_common/mtk_platform_dvfs_hint_26m_perf_cnting.h>
 #include "platform/mtk_platform_common/mtk_platform_dvfs_hint_26m_perf_cnting_ex.h"
-#define TOP_BASE        (0x13FBF000)
-#define DVFS_TOP_BASE       (0x13FBB000)
+#define TOP_BASE        (0x3A500000)
+#define DVFS_TOP_BASE       (0x3A530000)
 #endif /* CONFIG_MALI_MIDGARD_DVFS && CONFIG_MALI_MTK_DVFS_POLICY && CONFIG_MALI_MTK_GPU_DVFS_HINT_26M_LOADING*/
 
 /* KBASE_PLATFORM_DEBUG_ENABLE, 1 for debug log enable, 0 for disable */
@@ -181,6 +181,13 @@ dev_dbg(kbdev->dev, "%s\n", __func__);
 	mtk_common_pm_mfg_idle();
 
 	gpu_dvfs_status_footprint(GPU_DVFS_STATUS_STEP_8);
+
+#if IS_ENABLED(CONFIG_MALI_MIDGARD_DVFS) && \
+		IS_ENABLED(CONFIG_MALI_MTK_DVFS_POLICY) && \
+		IS_ENABLED(CONFIG_MALI_MTK_GPU_DVFS_HINT_26M_LOADING)
+		g_before_power_off_counter += mtk_dvfs_hint_26m_prfcnt_query(SELECT_UNION_ITER_MCU);
+		gpu_power_status = false;
+#endif
 
 	/* suspend frequency */
 	g_curFreqID = mtk_common_ged_dvfs_get_last_commit_idx();
@@ -490,6 +497,12 @@ int mtk_platform_pm_init(struct kbase_device *kbdev)
         dev_info(kbdev->dev, "Sleep mode: No dts property setting, default disabled");
 
     gpu_dvfs_status_reset_footprint();
+
+#if IS_ENABLED(CONFIG_MALI_MIDGARD_DVFS) && \
+		IS_ENABLED(CONFIG_MALI_MTK_DVFS_POLICY) && \
+		IS_ENABLED(CONFIG_MALI_MTK_GPU_DVFS_HINT_26M_LOADING)
+		mtk_dvfs_hint_26m_init(kbdev,TOP_BASE,DVFS_TOP_BASE);
+#endif /* CONFIG_MALI_MTK_GPU_DVFS_HINT_26M_LOADING */
 
     dev_info(kbdev->dev, "GPU PM Callback - Initialize Done");
 
