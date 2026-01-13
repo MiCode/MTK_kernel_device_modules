@@ -1,0 +1,5 @@
+
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/nfc/p16/nxp-ese/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/nfc/p16/nxp-nfc/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/nfc/p16/tmsdrv/Kconfig"
+

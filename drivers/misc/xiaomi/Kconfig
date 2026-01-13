@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Misc memory devices
+#
+
+menu "Xiaomi Misc devices"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/xiaomi/miev/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/xiaomi/bootmonitor/Kconfig"
+endmenu

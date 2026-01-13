@@ -1,0 +1,7 @@
+$(info   CONFIG_NXP_ESE_P73 = $(CONFIG_NXP_ESE_P73))
+$(info   CONFIG_NXP_NFC_I2C = $(CONFIG_NXP_NFC_I2C))
+$(info   CONFIG_TMS_NFC_DEVICE = $(CONFIG_TMS_NFC_DEVICE))
+
+obj-$(CONFIG_NXP_ESE_P73)		+= nxp-ese/
+obj-$(CONFIG_NXP_NFC_I2C)		+= nxp-nfc/
+obj-$(CONFIG_TMS_NFC_DEVICE)		+= tmsdrv/

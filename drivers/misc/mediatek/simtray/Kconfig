@@ -1,0 +1,9 @@
+#
+# P16/P16P code for HQFEAT-89765 by p-yinjieru at 2025/02/26
+#
+config SIMTRAY_STATUS
+	tristate "Xiaomi SIM tray status"
+	default n
+	help
+	  Say 'y' here to support SIM tray GPIO detection
+

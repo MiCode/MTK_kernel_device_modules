@@ -1,0 +1,1 @@
+obj-$(CONFIG_HQ_AUDIO_SUPPORT) += hq_audio_cid.o

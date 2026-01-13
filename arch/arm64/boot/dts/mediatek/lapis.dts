@@ -1,0 +1,854 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 MediaTek Inc.
+ */
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/pinctrl/mt6878-pinfunc.h>
+#include <dt-bindings/thermal/thermal.h>
+
+#if 0
+#include <dt-bindings/pinctrl/mt6897-pinfunc.h>
+#endif
+
+&chosen {
+bootargs_ext = "";
+};
+
+&odm {
+	thermal_message: thermal-message {
+		board-sensor = "VIRTUAL-SENSOR";
+	};
+};
+
+&pdc {
+	pd-vbus-upper-bound = <9000000>;
+};
+
+#if 0
+
+&connfem {
+/* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
+#if 0
+	epa-elna {
+		parts = <&wlan7207h &wlan7207c>;
+		wifi {
+			flags-0 {
+				open-loop;
+			};
+		};
+		bt {
+			flags-0 {
+				/* choose one of: epa-elna/epa/elna/bypass */
+				epa-elna;
+			};
+		};
+	};
+#endif
+};
+
+/* GPS GPIO standardization start */
+&pio {
+	gps_pins_default: gps-default {
+	};
+	gps_l1_lna_pins_ol: gps-l1-lna0 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO33__FUNC_GPIO33>;
+			output-low;
+		};
+	};
+	gps_l1_lna_pins_dsp_ctrl: gps-l1-lna1 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO33__FUNC_GPS_L1_ELNA_EN>;
+		};
+	};
+	gps_l1_lna_pins_oh: gps-l1-lna2 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO33__FUNC_GPIO33>;
+			output-high;
+		};
+	};
+
+};
+&gps {
+	pinctrl-names = "default",
+		"gps_l1_lna_disable",
+		"gps_l1_lna_dsp_ctrl",
+		"gps_l1_lna_enable",
+	pinctrl-0 = <&gps_pins_default>;
+	pinctrl-1 = <&gps_l1_lna_pins_ol>;
+	pinctrl-2 = <&gps_l1_lna_pins_dsp_ctrl>;
+	pinctrl-3 = <&gps_l1_lna_pins_oh>;
+	status = "okay";
+};
+/* GPS GPIO standardization end */
+
+#endif
+
+&i2c6 {
+	clock-frequency = <400000>;
+
+	spk: speaker-amp@5c {
+		compatible = "richtek,rt5512";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#sound-dai-cells = <0>;
+		reg = <0x5c>;
+		status = "okay";
+		sound-name-prefix = "Left";
+	};
+
+	/*receiver*/
+	sipa_i2c_L: sipa_i2c_L@6c{
+		compatible = "si,sia91xx-i2c";
+		#sound-dai-cells = <0>;
+		reg = <0x6c>;
+		si,sipa-dev = <&si_pa_L>;
+		sound-name-prefix = "SpkrLeft";
+		status = "okay";
+	};
+
+	/*speaker*/
+	sipa_i2c_R: sipa_i2c_R@6f{
+		compatible = "si,sia91xx-i2c";
+		#sound-dai-cells = <0>;
+		reg = <0x6f>;
+		si,sipa-dev = <&si_pa_R>;
+		sound-name-prefix = "SpkrRight";
+		status = "okay";
+	};
+
+	typecswitch: typecswitch@42 {
+		status = "ok";
+		compatible = "mediatek,typec-audioswitch";
+		reg = <0x42>;
+	};
+
+	/*receiver*/
+	tfa98xx_1: tfa98xx@34 {
+		compatible = "tfa,tfa98xx";
+		#sound-dai-cells = <0>;
+		reg = <0x34>;
+		reset-gpio= <&pio 188 0x0>;
+		irq-gpio = <&pio 31 0x0>;
+		reset-polarity=<0>;
+		status = "okay";
+	};
+
+	/*speaker*/
+	tfa98xx_0: tfa98xx@37 {
+		compatible = "tfa,tfa98xx";
+		#sound-dai-cells = <0>;
+		reg = <0x37>;
+		reset-gpio= <&pio 189 0x0>;
+		irq-gpio = <&pio 41 0x0>;
+		reset-polarity=<0>;
+		status = "okay";
+	};
+};
+/* P16 code for HQFEAT-102402 by p-dongfeiju1 at 2025/04/10 start */
+&i2c9 {
+	status = "ok";
+	BOB63810@75 {
+		compatible = "BOB63810";
+		reg = <0x75>;
+	};
+};
+/* P16 code for HQFEAT-102402 by p-dongfeiju1 at 2025/04/10 end */
+/* P16 code for HQFEAT-93923 by p-dongfeiju1 at 2025/03/13 start */
+/***************************awinic start******************************/
+&i2c2 {
+	clock-frequency = <400000>;
+	status = "ok";
+	haptic_hv@5A {
+		compatible = "awinic,awinic_haptic";
+		reg = <0x5A>;
+		irq-gpio = <&pio 10 0>;
+		reset-gpio = <&pio 116 0>;
+		pinctrl-names = "awinic_reset_reset","awinic_reset_active","awinic_interrupt_active";
+		pinctrl-0 = <&awinic_reset_low>;
+		pinctrl-1 = <&awinic_reset_high>;
+		pinctrl-2 = <&awinic_interrupt>;
+		status = "okay";
+/*----------------------aw8692x----------------------*/
+		aw86927_vib_mode = < 0 >; /* mode: RAM mode->0; CONT mode->1 */
+		aw86927_vib_f0_pre = < 1700 >;
+		aw86927_comp_gain_temp = < 182 >;
+		aw86927_vib_f0_cali_percen = < 7 >;
+		aw86927_vib_cont_drv1_lvl = < 0x7F >;
+		aw86927_vib_cont_drv2_lvl = < 0x36 >;
+		aw86927_vib_cont_drv1_time = < 0x04 >;
+		aw86927_vib_cont_drv2_time = < 0x06 >;
+		aw86927_vib_cont_drv_width = < 0x6A >;
+		aw86927_vib_cont_wait_num = < 0x06 >;
+		aw86927_vib_cont_brk_time = < 0x08 >;
+		aw86927_vib_cont_track_margin = < 0x0C >;
+		aw86927_vib_brk_bst_md = < 0 >;
+		aw86927_vib_cont_tset = < 0x06 >;
+		aw86927_vib_cont_bemf_set = < 0x02 >;
+		aw86927_vib_cont_bst_brk_gain = < 0x05 >;
+		aw86927_vib_cont_brk_gain = < 0x08 >;
+		aw86927_vib_d2s_gain = < 0x04 >;
+		aw86927_vib_trig_config = < 1 0 1 1 1 2 0 0
+					    1 0 0 1 0 2 0 0
+					    1 0 0 1 0 2 0 0 >;
+		aw86927_vib_bst_vol_default = < 0x57 >;
+		aw86927_vib_bst_vol_ram = < 0x57 >;
+		aw86927_vib_bst_vol_rtp = < 0x57 >;
+		/*--------------------common--------------------*/
+		vib_effect_id_boundary = < 10 >;
+		vib_effect_max = < 197 >; /*vib_effect_max must bigger than vib_effect_id*/
+		vib_rtp_time = < 20 20 20 20 20 20 20 20 20000 15000
+				15000 20000 25000 15000 30000 25000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 20000 20000 20000 20000 20000
+				20000 20000 20000 20000 20000 >;
+		wf_0 {
+			/*CLICK*/
+			mtk,effect-id = <0>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_1 {
+			/*DOUBLE CLICK*/
+			mtk,effect-id = <1>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [7e 3e];
+			mtk,wf-brake-pattern = [03 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_2 {
+			/*TICK*/
+			mtk,effect-id = <2>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [7e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_3 {
+			/*THUD*/
+			mtk,effect-id = <3>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_4 {
+			/*POP*/
+			mtk,effect-id = <4>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <28000>;
+		};
+		wf_5 {
+			/*HEAVY CLICK*/
+			mtk,effect-id = <5>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [7e 7e 7e];
+			mtk,wf-brake-pattern = [03 03 01 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_6 {
+			/*id 6*/
+			mtk,effect-id = <6>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_7 {
+			/*id 7*/
+			mtk,effect-id = <7>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_8 {
+			/*id 8*/
+			mtk,effect-id = <8>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+		wf_9 {
+			/*id 9*/
+			mtk,effect-id = <9>;
+			mtk,wf-vmax-mv = <3600>;
+			mtk,wf-pattern = [3e 3e];
+			mtk,wf-brake-pattern = [02 01 00 00];
+			mtk,wf-play-rate-us = <20000>;
+		};
+	};
+/* SI Haptic */
+        haptic_i2c:haptic_i2c@6B{
+			compatible = "silicon,sih_haptic_688X";
+			reg = <0x6B>;
+			reset-gpio = <&pio 116 0>;
+			irq-gpio = <&pio 10 0>;
+			interrupt-parent=<&pio>;
+			interrupts=<10 1>;
+			pinctrl-names = "sih_reset_reset","sih_reset_active","sih_interrupt_active";
+			pinctrl-0 = <&sih_reset_low>;
+			pinctrl-1 = <&sih_reset_high>;
+			pinctrl-2 = <&sih_interrupt>;
+			lra_name = "0809";
+			vib_effect_id_boundary = < 10 >;
+			vib_effect_max = < 197 >;
+			vib_f0_pre = < 1700 >;
+			vib_bst_vol_default = < 95 >;
+    };
+/* SI Haptic */
+};
+
+/* Awinic Haptic start */
+&pio {
+	awinic_reset_low: awinic_reset_reset {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO116__FUNC_GPIO116>;
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+	awinic_reset_high: awinic_reset_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO116__FUNC_GPIO116>;
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+	awinic_interrupt: awinic_interrupt_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO10__FUNC_GPIO10>;
+			drive-strength = <2>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+};
+
+/* SI Haptic */
+&pio {
+		sih_reset_low: sih_reset_reset {
+			pins_cmd_dat {
+				pinmux = <PINMUX_GPIO116__FUNC_GPIO116>;
+				drive-strength = <2>;
+				bias-disable;
+				output-low;
+			};
+		};
+		sih_reset_high: sih_reset_active {
+			pins_cmd_dat {
+				pinmux = <PINMUX_GPIO116__FUNC_GPIO116>;
+				drive-strength = <2>;
+				bias-disable;
+				output-high;
+			};
+		};
+		sih_interrupt: sih_interrupt_active {
+			pins_cmd_dat {
+				pinmux = <PINMUX_GPIO10__FUNC_GPIO10>;
+				drive-strength = <2>;
+				bias-pull-up;
+				input-enable;
+			};
+		};
+};
+/* SI Haptic */
+/* P16 code for HQFEAT-93923 by p-dongfeiju1 at 2025/03/13 end */
+
+//NFCC for Mediateckstart
+&i2c3 {
+	status = "okay";
+	clock-frequency = <400000>;
+	nxp@28 {
+		/* 双驱动兼容配置 */
+		compatible = "nxp,nq-nci";
+		reg = <0x28>;
+
+		/* 合并GPIO配置 */
+		// NXP标准定义
+		nxp,sn-irq = <&pio 2 0x00>;
+		nxp,sn-ven-rstn = <&pio 40 0x0>;
+		// TMS兼容定义
+		tms,irq-gpio = <&pio 2 0x00>;
+		tms,ven-gpio = <&pio 40 0x0>;
+		tms,download-gpio = <&pio 39 0x0>;
+
+
+		interrupt-parent    = <&pio>;
+		interrupts          = <2 IRQ_TYPE_LEVEL_HIGH 2 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names   = "default", "nfc_active", "nfc_suspend";
+		pinctrl-0 = <&nfc_default>;
+		pinctrl-1 = <&nfc_int_active &nfc_enable_active
+			&nfc_firmwaredownload_active &nfc_clk_req_active>;
+		pinctrl-2 = <&nfc_int_suspend &nfc_enable_suspend
+			&nfc_firmwaredownload_suspend &nfc_clk_req_suspend>;
+	};
+};
+&pio {
+    nfc_default: nfc_default {
+    };
+    nfc_int_active: nfc_int_active {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO2__FUNC_GPIO2>;
+            slew-rate = <0>;
+            drive-strength = <MTK_DRIVE_2mA>;
+            bias-pull-up;
+        };
+    };
+    nfc_int_suspend: nfc_int_suspend {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO2__FUNC_GPIO2>;
+            slew-rate = <0>;
+            drive-strength = <MTK_DRIVE_2mA>;
+            bias-pull-up;
+        };
+    };
+    nfc_enable_active: nfc_enable_active {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO40__FUNC_GPIO40>;
+            slew-rate = <1>;
+            output-high;
+            drive-strength = <MTK_DRIVE_2mA>;
+            bias-pull-up=<MTK_PUPD_SET_R1R0_11>;
+        };
+    };
+    nfc_enable_suspend: nfc_enable_suspend {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO40__FUNC_GPIO40>;
+            slew-rate = <1>;
+            drive-strength = <MTK_DRIVE_2mA>;
+            bias-disable;
+        };
+    };
+     nfc_firmwaredownload_active: nfc_firmwaredownload_active {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO39__FUNC_GPIO39>;
+            slew-rate = <1>;
+            drive-strength = <MTK_DRIVE_2mA>;
+            bias-pull-up;
+        };
+    };
+    nfc_firmwaredownload_suspend: nfc_firmwaredownload_suspend {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO39__FUNC_GPIO39>;
+            slew-rate = <1>;
+            drive-strength = <MTK_DRIVE_2mA>;
+            bias-disable;
+        };
+    };
+    nfc_clk_req_active: nfc_clk_req_active {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO151__FUNC_SRCLKENAI0>;
+            slew-rate = <0>;
+            input-enable;
+            drive-strength = <MTK_DRIVE_2mA>;
+            bias-pull-up;
+        };
+    };
+    nfc_clk_req_suspend: nfc_clk_req_suspend {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO151__FUNC_SRCLKENAI0>;
+            slew-rate = <0>;
+            input-enable;
+            drive-strength = <MTK_DRIVE_2mA>;
+            bias-pull-down;
+        };
+    };
+};
+
+//NFCC end
+/* eSE SPI configuration */
+&spi5 {
+	#address-cells = <1>;
+	#size-cells = <0>;
+	p61@31 {
+		compatible = "nxp,p61";
+		reg = <0>;
+		nxp,nfcc = "3-0028";
+		spi-max-frequency = <8000000>;
+		status = "okay";
+		pinctrl-names = "nxp_ese_spi_mode";
+		pinctrl-0 = <&nxp_ese_spi_mode>;
+	};
+};
+&pio {
+    nxp_ese_spi_mode: nxp_ese_spi_mode {
+        pins_cmd_dat {
+            pinmux = <PINMUX_GPIO75__FUNC_SPI5_MI>,
+                    <PINMUX_GPIO74__FUNC_SPI5_MO>,
+                    <PINMUX_GPIO72__FUNC_SPI5_CLK>,
+                    <PINMUX_GPIO73__FUNC_SPI5_CSB>;
+            drive-strength = <6>;
+        };
+    };
+};
+/* eSE SPI configuration -- end */
+
+&sound {
+	mediatek,spk-i2s = <25 24>;
+	mediatek,speaker-codec {
+		sound-dai = <&tfa98xx_0>,<&tfa98xx_1>;
+	};
+	mediatek,speaker-codec-sia {
+		sound-dai = <&sipa_i2c_L>,<&sipa_i2c_R>;
+	};
+};
+
+&odm {
+	si_pa_L: si_pa_L{
+		compatible = "si,sia91xx";
+		si,si_pa_type = "sia9197x";
+		si,si_pa_reset = <&pio 188 0>;
+		si,si_pa_irq = <&pio 31 0>;
+		pinctrl-names = "si_pa_gpio","si_pa_irq";
+		pinctrl-0 = <&sia91xx_gpio_L>;
+		pinctrl-1 = <&sia91xx_irq_L>;
+		si,si_pa_disable_pin = <0>;
+		en_irq_func = <0>;
+		en_compatible_type_func = <0>;
+		channel_num = <0>;
+	};
+
+	si_pa_R: si_pa_R{
+		compatible = "si,sia91xx";
+		si,si_pa_type = "sia9197x";
+		si,si_pa_reset = <&pio 189 0>;
+		si,si_pa_irq = <&pio 41 0>;
+		pinctrl-names = "si_pa_gpio","si_pa_irq";
+		pinctrl-0 = <&sia91xx_gpio_R>;
+		pinctrl-1 = <&sia91xx_irq_R>;
+		si,si_pa_disable_pin = <0>;
+		en_irq_func = <0>;
+		en_compatible_type_func = <0>;
+		channel_num = <1>;
+	};
+};
+
+&pio {
+	sia91xx_gpio_L: sia91xx_gpio_L {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO188__FUNC_GPIO188>;
+			
+			slew-rate = <1>;
+			bias-disable;
+		};
+	};
+	
+	sia91xx_irq_L: sia91xx_irq_L {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO31__FUNC_GPIO31>;
+
+			slew-rate = <1>;
+			bias-disable;
+		};
+	};	
+
+	sia91xx_gpio_R: sia91xx_gpio_R {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO189__FUNC_GPIO189>;
+			
+			slew-rate = <1>;
+			bias-disable;
+		};
+	};
+
+	sia91xx_irq_R: sia91xx_irq_R {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO41__FUNC_GPIO41>;
+
+			slew-rate = <1>;
+			bias-disable;
+		};
+	};
+};
+
+&mtkfb {
+	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
+		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio";
+	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
+	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
+	pinctrl-3 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-4 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-7 = <&mtkfb_pins_lcm_led_en1>;
+	pinctrl-8 = <&mtkfb_pins_lcm_led_en0>;
+
+	status = "okay";
+};
+
+&pio {
+	mtkfb_pins_lcd_bias_enp1: lcd-bias-enp1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn1: lcd-bias-enn1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out1_gpio: lcm-rst-out1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO90__FUNC_GPIO90>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm-rst-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO90__FUNC_GPIO90>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_dsi_te: lcm-dsi-te {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO89__FUNC_DSI_TE>;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en1: lcm-led-en1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+&dispsys_config {
+	pinctrl-names = "mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+/* P16 code for HQFEAT-89778 by p-zhangyundan at 2025/3/26 start */
+&pio {
+	spi_cs_low:spi_cs_low@gpio69 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO69__FUNC_GPIO69>;
+			output-enable;
+			output-low;
+		};
+	};
+	spi_cs_high:spi_cs_high@gpio69 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO69__FUNC_SPI3_CSB>;
+			output-enable;
+			output-high;
+		};
+	};
+};
+/* P16 code for HQFEAT-89778 by p-zhangyundan at 2025/3/26 end */
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	switch-fps = <120>;
+	panel1@0 {
+		compatible = "p16_42_02_0a_dsc_vdo,lcm";
+		reg = <0>;
+		reset-gpios = <&pio 90 0>;
+		vddi-gpios = <&pio 149 0>;
+		amoled-vci-supply = <&mt6369_vtp>;
+		amoled-dvdd-supply = <&mt6363_vcn13>;
+		/* P16 code for HQFEAT-89531 by p-zhangyundan at 2025/3/31 start */
+		mi,esd-err-irq-gpio = <&pio 12 0x2002>;
+		/* P16 code for HQFEAT-89531 by p-zhangyundan at 2025/3/31 end */
+		res-switch = <2>;
+		rc-enable = <1>;
+/* P16 code for HQFEAT-89778 by p-zhangyundan at 2025/3/26 start */
+		pinctrl-names = "default", "spi_cs_low";
+		pinctrl-0 = <&spi_cs_high>;
+		pinctrl-1 = <&spi_cs_low>;
+/* P16 code for HQFEAT-89778 by p-zhangyundan at 2025/3/26 end */
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	panel2@1 {
+		compatible = "p16_36_02_0b_dsc_vdo,lcm";
+		reg = <1>;
+		reset-gpios = <&pio 90 0>;
+		vddi-gpios = <&pio 149 0>;
+		amoled-vci-supply = <&mt6369_vtp>;
+		amoled-dvdd-supply = <&mt6363_vcn13>;
+		mi,esd-err-irq-gpio = <&pio 12 0x2002>;
+		res-switch = <2>;
+		rc-enable = <1>;
+		pinctrl-names = "default", "spi_cs_low";
+		pinctrl-0 = <&spi_cs_high>;
+		pinctrl-1 = <&spi_cs_low>;
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out2>;
+			};
+		};
+	};
+	panel3@2 {
+		compatible = "p16_41_02_0c_dsc_vdo,lcm";
+		reg = <2>;
+		reset-gpios = <&pio 90 0>;
+		vddi-gpios = <&pio 149 0>;
+		amoled-vci-supply = <&mt6369_vtp>;
+		amoled-dvdd-supply = <&mt6363_vcn13>;
+		mi,esd-err-irq-gpio = <&pio 12 0x2002>;
+		res-switch = <2>;
+		rc-enable = <1>;
+		pinctrl-names = "default", "spi_cs_low";
+		pinctrl-0 = <&spi_cs_high>;
+		pinctrl-1 = <&spi_cs_low>;
+		port {
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out3>;
+			};
+		};
+	};
+	ports {
+		port {
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in1>;
+			};
+			dsi_out2: endpoint2 {
+				remote-endpoint = <&panel_in2>;
+			};
+			dsi_out3: endpoint3 {
+				remote-endpoint = <&panel_in3>;
+			};
+		};
+	};
+};
+/* P16 code for HQFEAT-95343 by p-dongfeiju1 at 2025/03/17 start */
+/* GPIO IRTX start */
+&irtx_pwm {
+	pwm_ch = <1>;
+	pinctrl-names = "irtx_gpio_led_default", "irtx_gpio_led_set";
+	pinctrl-0 = <&irtx_gpio_led_default>;
+	pinctrl-1 = <&irtx_gpio_led_set>;
+	status = "okay";
+};
+&pio {
+	/* IRTX GPIO Settings -Start */
+	/* default: GPIO0, output, high */
+	irtx_gpio_led_default:irtx_gpio_led_def@gpio20 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO20__FUNC_GPIO20>;
+			slew-rate = <1>;
+			bias-disable;
+			output-low;
+			input-schmitt-enable = <0>;
+		};
+	};
+	irtx_gpio_led_set:irtx_gpio_led_set@gpio20 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO20__FUNC_PWM_1>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+};
+/* GPIO IRTX end */
+/* P16 code for HQFEAT-95343 by p-dongfeiju1 at 2025/03/17 end */
+
+&audio_sram {
+	reg = <0 0x11059000 0 0xc000>;
+	mode-size = <0xc000 0x11300>;
+};
+
+&audio_xhci_sram {
+	reg = <0 0x11065000 0 0x3900>;
+	mode-size = <0x3900>;
+	afe-reserved;
+};
+
+&mtee_svp {
+	mtee: MTEE {
+		compatible = "mediatek,mtk_svp_on_mtee_support";
+	};
+	svp: SecureVideoPath {
+		compatible = "mediatek,mtk_sec_video_path_support";
+	};
+};
+&mtkheap_page_svp {
+	status = "ok";
+};
+&mtkheap_page_wfd {
+	status = "ok";
+};
+&mtkheap_region_svp {
+	status = "ok";
+};
+&mtkheap_region_wfd {
+	status = "ok";
+};
+
+#include "mediatek/lapis_mt6878_touch_1280x2772.dtsi"
+#include <lapis/cust.dtsi>
+#include "mediatek/cust_mt6878_touch_1080x2400.dtsi"
+#include "mediatek/lapis_mt6878_camera_v4l2.dtsi"
+#include "mediatek/cust_k6878_connfem.dtsi"
+#include "mediatek/p16_charger.dtsi"
+#include "mediatek/xiaomi_lapis_mt6878_mitee.dtsi"
+#include "mediatek/cust_mt6878_fingerprint.dtsi"
+/*End of this file, DO NOT ADD ANYTHING HERE*/

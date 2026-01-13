@@ -1,0 +1,3 @@
+config CPQ_IOSCHED
+	tristate "cpq iosched"
+	default n

@@ -1,0 +1,9 @@
+#
+# P16/P16P code for HQFEAT-89663 by p-yinjieru at 2025/03/10
+#
+
+config CPUMAXFREQ_SUPPORT
+	tristate "xiaomi get cpumaxfreq"
+	default n
+	help
+	  Say 'm' here to support cpumaxfreq node
