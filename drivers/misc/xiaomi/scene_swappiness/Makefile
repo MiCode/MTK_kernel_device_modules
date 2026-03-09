@@ -1,0 +1,1 @@
+obj-$(CONFIG_SCENE_SWAPPINESS) += scene_swappiness.o

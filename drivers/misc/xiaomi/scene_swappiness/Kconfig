@@ -1,0 +1,5 @@
+config SCENE_SWAPPINESS
+    tristate "SCENE_SWAPPINESS adjusts swappiness according to different scenarios"
+	default n
+    help
+      UX task alloc page frist.

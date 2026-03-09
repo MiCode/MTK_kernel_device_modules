@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# CAM_INTENTAWARE_FSYS info
+#
+config CAM_INTENTAWARE_FSYS
+	tristate "CAM INTENTAWARE FSYS"
+	default n
+	help
+	 Driver for CAM INTENTAWARE FSYS

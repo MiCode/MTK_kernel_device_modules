@@ -1,0 +1,153 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2021 MediaTek Inc.
+ * Author: Owen Chen <owen.chen@mediatek.com>
+ */
+
+&disable_unused {
+	status = "okay";
+
+		disable-unused-clk-mmsys {
+		compatible = "mediatek,clk-disable-unused";
+		clocks =
+				<&mmsys_config CLK_MM_DISP_OVL0>,
+				<&mmsys_config CLK_MM_DISP_MUTEX0>,
+				<&mmsys_config CLK_MM_DISP_26M>,
+				<&mmsys_config CLK_MM_DISP_OVL0_2L>,
+				<&mmsys_config CLK_MM_DISP_RDMA0>,
+				<&mmsys_config CLK_MM_DISP_RSZ0>,
+				<&mmsys_config CLK_MM_DISP_CCORR0>,
+				<&mmsys_config CLK_MM_DISP_AAL0>,
+				<&mmsys_config CLK_MM_DISP_GAMMA0>,
+				<&mmsys_config CLK_MM_DISP_POSTMASK0>,
+				<&mmsys_config CLK_MM_DISP_DITHER0>,
+				<&mmsys_config CLK_MM_DISP_DSC_WRAP>,
+				<&mmsys_config CLK_MM_DSI0>,
+				<&mmsys_config CLK_MM_DSI0_DSI_CK_DOMAIN>,
+				<&mmsys_config CLK_MM_DISP_WDMA0>;
+	};
+
+	disable-unused-clk-infracfg_ao {
+		compatible = "mediatek,clk-disable-unused";
+		clocks =
+			<&infracfg_ao INFRACFG_AO_DEVICE_APC_CG>,
+			<&infracfg_ao INFRACFG_AO_CQ_DMA_CG>,
+			<&infracfg_ao INFRACFG_AO_GCE_CG>,
+			<&infracfg_ao INFRACFG_AO_GCE_26M_CG>,
+			<&infracfg_ao INFRACFG_AO_GCE_CG>,
+			<&infracfg_ao INFRACFG_AO_FADSP_26M_CG>,
+			<&infracfg_ao INFRACFG_AO_FADSP_32K_CG>,
+			<&infracfg_ao INFRACFG_AO_FADSP_CG>,
+			<&infracfg_ao INFRACFG_AO_AUXADC_CG>,
+			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>,
+			<&infracfg_ao INFRACFG_AO_UART0_CG>,
+			<&infracfg_ao INFRACFG_AO_UART1_CG>,
+			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>,
+			<&infracfg_ao INFRACFG_AO_PWM1_CG>,
+			<&infracfg_ao INFRACFG_AO_PWM2_CG>,
+			<&infracfg_ao INFRACFG_AO_PWM3_CG>,
+			<&infracfg_ao INFRACFG_AO_PWM_HCLK_CG>,
+			<&infracfg_ao INFRACFG_AO_PWM_CG>,
+			<&infracfg_ao INFRACFG_AO_SPI0_CG>,
+			<&infracfg_ao INFRACFG_AO_THERM_CG>,
+			<&infracfg_ao INFRACFG_AO_BTIF_CG>,
+			<&infracfg_ao INFRACFG_AO_AP_DMA_CG>,
+			<&infracfg_ao INFRACFG_AO_SPI1_CG>,
+			<&infracfg_ao INFRACFG_AO_SPI2_CG>,
+			<&infracfg_ao INFRACFG_AO_SPI3_CG>,
+			<&infracfg_ao INFRACFG_AO_SPI4_CG>,
+			<&infracfg_ao INFRACFG_AO_SPI5_CG>,
+			<&infracfg_ao INFRACFG_AO_AUDIO_CG>,
+			<&infracfg_ao INFRACFG_AO_AUDIO_26M_BCLK_CK>,
+			<&infracfg_ao INFRACFG_AO_MSDC0_CG>,
+			<&infracfg_ao INFRACFG_AO_MSDC0_SCK_CG>,
+			<&infracfg_ao INFRACFG_AO_MSDCFDE_CG>,
+			<&infracfg_ao INFRACFG_AO_MSDC1_CG>,
+			<&infracfg_ao INFRACFG_AO_MSDC1_SCK_CG>,
+			<&infracfg_ao INFRACFG_AO_UFS_CG>,
+			<&infracfg_ao INFRACFG_AO_UNIPRO_SCK_CG>,
+			<&infracfg_ao INFRACFG_AO_UFS_MP_SAP_BCLK_CG>,
+			<&infracfg_ao INFRACFG_AO_AES_UFS_CG>,
+			<&infracfg_ao INFRACFG_AO_ICUSB_CG>,
+			<&infracfg_ao INFRACFG_AO_DISP_PWM_CG>,
+			<&infracfg_ao INFRACFG_AO_CCIF4_AP_CG>;
+	};
+
+	disable-unused-clk-topckgen {
+		compatible = "mediatek,clk-disable-unused";
+		clocks =
+				<&topckgen TOP_MAINPLL_D2_D4>,
+				<&topckgen TOP_MAINPLL_D5>,
+				<&topckgen TOP_MAINPLL_D2_D2>,
+				<&topckgen TOP_MAINPLL_D3>,
+				<&topckgen TOP_UNIVPLL_D3>,
+				<&topckgen TOP_MUX_SENINF>,
+				<&topckgen TOP_MUX_SENINF1>,
+				<&topckgen TOP_MUX_SENINF2>,
+				<&topckgen TOP_MUX_SENINF3>,
+				<&topckgen TOP_MUX_CAMTG>,
+				<&topckgen TOP_MUX_CAMTG1>,
+				<&topckgen TOP_MUX_CAMTG2>,
+				<&topckgen TOP_MUX_CAMTG3>,
+				<&topckgen TOP_MUX_CAMTG4>,
+				<&topckgen TOP_MUX_CAMTG5>,
+				<&topckgen TOP_MUX_CAMTG6>,
+				<&topckgen TOP_UNIVP_192M_D32>,
+				<&topckgen TOP_UNIVP_192M_D16>,
+				<&topckgen TOP_UNIVPLL_D3_D32>,
+				<&topckgen TOP_UNIVP_192M_D8>,
+				<&topckgen TOP_UNIVP_192M_D4>,
+				<&topckgen TOP_UNIVPLL_D3_D8>,
+				<&topckgen TOP_MUX_CAMTM>,
+				<&topckgen TOP_MUX_ADSP>,
+				<&topckgen TOP_ADSPPLL_CK>,
+				<&topckgen TOP_MAINPLL_D5>,
+				<&topckgen TOP_MUX_SPI>,
+				<&topckgen TOP_MUX_AUDIO>,
+				<&topckgen TOP_MUX_AUD_INTBUS>,
+				<&topckgen TOP_MAINPLL_D2_D4>,
+				<&topckgen TOP_MUX_AUD_1>,
+				<&topckgen TOP_APLL1_CK>,
+				<&topckgen TOP_MUX_AUD_2>,
+				<&topckgen TOP_APLL2_CK>,
+				<&topckgen TOP_MUX_AUD_ENG1>,
+				<&topckgen TOP_APLL1_D8>,
+				<&topckgen TOP_MUX_AUD_ENG2>,
+				<&topckgen TOP_APLL2_D8>,
+				<&topckgen TOP_I2S0_M_SEL>,
+				<&topckgen TOP_I2S1_M_SEL>,
+				<&topckgen TOP_I2S2_M_SEL>,
+				<&topckgen TOP_I2S3_M_SEL>,
+				<&topckgen TOP_I2S4_M_SEL>,
+				<&topckgen TOP_I2S5_M_SEL>,
+				<&topckgen TOP_APLL12_DIV0>,
+				<&topckgen TOP_APLL12_DIV1>,
+				<&topckgen TOP_APLL12_DIV2>,
+				<&topckgen TOP_APLL12_DIV3>,
+				<&topckgen TOP_APLL12_DIV4>,
+				<&topckgen TOP_APLL12_DIVB>,
+				<&topckgen TOP_APLL12_DIV5>,
+				<&topckgen TOP_MUX_AUDIO_H>,
+				<&topckgen TOP_MUX_MSDC50_0_HCLK>,
+				<&topckgen TOP_MUX_MSDC30_1>,
+				<&topckgen TOP_MUX_USB_TOP>,
+				<&topckgen TOP_UNIVPLL_D5_D2>,
+				<&topckgen TOP_MUX_MFG>,
+				<&topckgen TOP_MFGPLL_CK>,
+				<&topckgen TOP_MAINPLL_D5>,
+				<&topckgen TOP_MUX_DISP_PWM>,
+				<&topckgen TOP_OSC_D8>,
+				<&topckgen TOP_MUX_DISP>,	/* 0 */
+				<&topckgen TOP_MUX_CAM>,	/* 1 */
+				<&topckgen TOP_MUX_IMG1>,	/* 2 */
+				<&topckgen TOP_MUX_IPE>,	/* 3 */
+				<&topckgen TOP_MUX_VENC>,	/* 4 */
+				<&topckgen TOP_MUX_VDEC>,	/* 5 */
+				<&topckgen TOP_MUX_MDP>,	/* 6 */
+				<&topckgen TOP_MMPLL_CK>,	/* 7 */
+				<&topckgen TOP_MAINPLL_D2>,	/* 8 */
+				<&topckgen TOP_UNIVPLL_D3>,	/* 9 */
+				<&topckgen TOP_UNIVPLL_D2_D2>;	/* 10 */
+	};
+
+};

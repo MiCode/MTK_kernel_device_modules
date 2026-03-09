@@ -1,0 +1,13 @@
+# MI-TEE Trusted Execution Environment Configuration
+config MITEE_SUPPORT
+	tristate "Enable MITEE Support"
+	help
+	  This implements the MI-TEE Trusted Execution Environment (TEE)
+	  feature.
+
+# MITEE TUI Configuration
+config MITEE_TUI_SUPPORT
+	tristate "Enable MITEE TUI Support"
+	depends on MITEE_SUPPORT
+	help
+	  this is used to support mitee tui driver

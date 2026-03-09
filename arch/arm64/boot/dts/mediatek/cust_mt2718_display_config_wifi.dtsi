@@ -1,0 +1,28 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 MediaTek Inc.
+ */
+
+&max96789_1 {
+	status = "disabled";
+};
+
+&dsi1 {
+	panel1-1@0 {
+		ser = <&max96789_4>;
+	};
+};
+
+&i2c5 {
+	status = "okay";
+	max96789_4: max96789-4@40 {
+		compatible = "maxiam,max96789";
+		status = "okay";
+		reg = <0x40>;
+		reset-gpios = <&pio 38 0>;
+		pinctrl-names = "default";
+		setting = <&setting_compatible>;
+	};
+};
+
+

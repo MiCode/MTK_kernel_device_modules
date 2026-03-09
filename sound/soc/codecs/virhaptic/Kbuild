@@ -1,0 +1,8 @@
+# add -Wall to try to catch everything we can.
+EXTRA_CFLAGS += -Wall
+LOCAL_DIR := $(TOP)/$(subst ../,,$(src))
+
+virhaptic-objs := vir_haptic.o aw_wrapper.o
+obj-$(CONFIG_SND_SOC_VIRTUAL_HAPTIC) += virhaptic.o
+
+ccflags-y := -I $(LOCAL_DIR)/../../../../include

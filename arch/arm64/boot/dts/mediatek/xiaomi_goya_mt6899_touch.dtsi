@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2020 MediaTek Inc.
+ */
+
+/* TOUCH start */
+&odm {
+	xiaomi_touch: xiaomi_touch {
+		compatible = "xiaomi-touch";
+		status = "ok";
+		touch,name = "xiaomi-touch";
+		panel = <&goya_36_02_0a_dsc_vdo>;
+	};
+};
+
+&pio {
+	mi_ts_spi_active: mi_ts_spi_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO50__FUNC_SPI1_CLK>,
+					 <PINMUX_GPIO51__FUNC_SPI1_CSB>,
+					 <PINMUX_GPIO53__FUNC_SPI1_MO>,
+					 <PINMUX_GPIO52__FUNC_SPI1_MI>;
+			drive-strength = <2>;
+		};
+	};
+	mi_ts_spi_suspend: mi_ts_spi_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO51__FUNC_GPIO51>;
+			bias-pull-down;
+		};
+	};
+	ts_int_active: ts_int_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
+			input-enable;
+			bias-disable;
+		};
+	};
+	ts_int_suspend: ts_int_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
+			bias-pull-down;
+		};
+	};
+};
+
+&spi1 {
+	status = "ok";
+
+	/* Novatek device tree node */
+	novatek@0 {
+		compatible = "novatek,NVT-ts-spi";
+		reg = <0x0>;
+		status = "ok";
+		interrupt-parent = <&pio>;
+		interrupts = <9 0x2008>;
+		spi-max-frequency = <19200000>;	//4800000,9600000,15000000,19200000
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&mi_ts_spi_active &ts_int_active>;
+		pinctrl-1 = <&mi_ts_spi_suspend &ts_int_suspend>;
+
+		/* novatek dtsi start */
+		novatek,irq-gpio = <&pio 9 0x2008>;
+		novatek,lcd_id-gpio1 = <&pio 127 0x00>;
+		novatek,lcd_id-gpio2 = <&pio 128 0x00>;
+		spi-cs-setup-delay-ns = <300>;
+		spi-cs-hold-delay-ns = <300>;
+
+		/* novatek dtsi end */
+	};
+};
+
+/* TOUCH end */

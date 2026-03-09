@@ -1,0 +1,10 @@
+menu "Device Drivers"
+
+config SILEAD_FP
+	tristate "Silead Fingerprint driver support"
+	help
+	  This supports Silead Fingerprint drivers.
+
+source "$(KCONFIG_EXT_PREFIX)drivers/input/fingerprint/silead/Kconfig"
+
+endmenu
