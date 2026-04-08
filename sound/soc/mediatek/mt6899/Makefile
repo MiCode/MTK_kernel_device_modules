@@ -17,6 +17,9 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MT
 # pbm include path
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pbm
 
+# throttle include path
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling
+
 # common include path
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common
 

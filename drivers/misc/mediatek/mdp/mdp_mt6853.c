@@ -141,8 +141,6 @@ struct CmdqMdpModuleClock {
 	struct clk *clk_MDP_MUTEX0;
 	struct clk *clk_IMG_DL_ASYNC0;
 	struct clk *clk_IMG_DL_ASYNC1;
-	struct clk *clk_IMG0_IMG_DL_ASYNC0;
-	struct clk *clk_IMG0_IMG_DL_ASYNC1;
 	struct clk *clk_IMG0_IMG_DL_RELAY0_ASYNC0;
 	struct clk *clk_IMG0_IMG_DL_RELAY1_ASYNC1;
 	struct clk *clk_MDP_RDMA0;
@@ -176,8 +174,6 @@ IMP_ENABLE_MDP_HW_CLOCK(APB, APB);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_MUTEX0, MDP_MUTEX0);
 IMP_ENABLE_MDP_HW_CLOCK(IMG_DL_ASYNC0, IMG_DL_ASYNC0);
 IMP_ENABLE_MDP_HW_CLOCK(IMG_DL_ASYNC1, IMG_DL_ASYNC1);
-IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_ASYNC0, IMG0_IMG_DL_ASYNC0);
-IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_ASYNC1, IMG0_IMG_DL_ASYNC1);
 IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_RELAY0_ASYNC0, IMG0_IMG_DL_RELAY0_ASYNC0);
 IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_RELAY1_ASYNC1, IMG0_IMG_DL_RELAY1_ASYNC1);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_RDMA0, MDP_RDMA0);
@@ -196,8 +192,6 @@ IMP_MDP_HW_CLOCK_IS_ENABLE(APB, APB);
 IMP_MDP_HW_CLOCK_IS_ENABLE(MDP_MUTEX0, MDP_MUTEX0);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG_DL_ASYNC0, IMG_DL_ASYNC0);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG_DL_ASYNC1, IMG_DL_ASYNC1);
-IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_ASYNC0, IMG0_IMG_DL_ASYNC0);
-IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_ASYNC1, IMG0_IMG_DL_ASYNC1);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_RELAY0_ASYNC0,
 	IMG0_IMG_DL_RELAY0_ASYNC0);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_RELAY1_ASYNC1,
@@ -715,11 +709,9 @@ bool cmdq_mdp_clock_is_on(u32 engine)
 	switch (engine) {
 	case CMDQ_ENG_MDP_CAMIN:
 		return cmdq_mdp_clock_is_enable_IMG_DL_ASYNC0() &&
-			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_ASYNC0() &&
 			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_RELAY0_ASYNC0();
 	case CMDQ_ENG_MDP_CAMIN2:
 		return cmdq_mdp_clock_is_enable_IMG_DL_ASYNC1() &&
-			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_ASYNC1() &&
 			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_RELAY1_ASYNC1();
 	case CMDQ_ENG_MDP_RDMA0:
 		return cmdq_mdp_clock_is_enable_MDP_RDMA0();
@@ -1777,7 +1769,7 @@ static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 	if (engine_flag & MDP_ENG_LARB2)
 		return mdp_enable_larb(enable, larb2);
 
-	CMDQ_ERR("%s engine_flag not include MDP_ENG_LARB\n", __func__);
+	CMDQ_ERR("%s engine_flag:%llx not included in MDP_ENG_LARB\n", __func__, engine_flag);
 	return TASK_STATE_ERROR;
 }
 
@@ -2177,6 +2169,63 @@ void cmdq_mdp_compose_readback(struct cmdqRecStruct *handle,
 	}
 }
 
+static s32 mdp_get_hdr_hist_data(void)
+{
+	return MDP_HDR_HIST_DATA_LEGACY;
+}
+
+static s32 mdp_get_rdma_idx(u32 eng_base)
+{
+	s32 rdma_idx = -1;
+
+	switch (eng_base) {
+	case ENGBASE_MDP_RDMA0:
+		rdma_idx = 0;
+		break;
+	default:
+		CMDQ_ERR("%s engine not support:%d\n", __func__, eng_base);
+		break;
+	}
+
+	return rdma_idx;
+}
+
+static u32 mdp_get_poll_gpr(u16 engine, u32 reg_addr)
+{
+	u32 gpr;
+
+	switch (engine) {
+	case ENGBASE_MDP_RDMA0:
+	case ENGBASE_MDP_AAL0:
+	case ENGBASE_MDP_RSZ0:
+	case ENGBASE_MDP_HDR0:
+	case ENGBASE_MDP_TDSHP0:
+	case ENGBASE_MDP_COLOR0:
+	case ENGBASE_MDP_WROT0:
+		gpr = CMDQ_GPR_R08;
+		break;
+	case ENGBASE_MDP_RDMA1:
+	case ENGBASE_MDP_AAL1:
+	case ENGBASE_MDP_RSZ1:
+	case ENGBASE_MDP_TDSHP1:
+	case ENGBASE_MDP_WROT1:
+		gpr = CMDQ_GPR_R10;
+		break;
+	default:
+		CMDQ_ERR("%s engine not support:%hu reg_addr:%#x\n",
+			__func__, engine, reg_addr);
+		gpr = CMDQ_GPR_R08;
+		break;
+	}
+
+	return gpr;
+}
+
+bool mdp_eng_support_readback(u16 engine)
+{
+	return ((1ll << engine) & CMDQ_ENG_SUPPORT_READBACK_GROUP_BITS);
+}
+
 void cmdq_mdp_platform_function_setting(void)
 {
 	struct cmdqMDPFuncStruct *pFunc = cmdq_mdp_get_func();
@@ -2197,6 +2246,8 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->mdpClockOff = cmdqMdpClockOff;
 	pFunc->mdpIsModuleSuspend = mdp_is_mod_suspend;
 	pFunc->mdpDumpEngineUsage = mdp_dump_engine_usage;
+	pFunc->mdpIsEngineSupportReadback = mdp_eng_support_readback;
+	pFunc->mdpGetPollGpr = mdp_get_poll_gpr;
 
 	pFunc->mdpIsMtee = mdp_is_mtee;
 	pFunc->mdpIsIspImg = mdp_is_isp_img;
@@ -2228,9 +2279,10 @@ void cmdq_mdp_platform_function_setting(void)
 	pFunc->getGroupWpe = mdp_get_group_wpe_plat;
 	pFunc->getEngineBase = mdp_engine_base_get;
 	pFunc->getEngineBaseCount = mdp_engine_base_count;
+	pFunc->getHdrHistData = mdp_get_hdr_hist_data;
 	pFunc->getEngineGroupName = mdp_get_engine_group_name;
 	pFunc->mdpComposeReadback = cmdq_mdp_compose_readback;
+	pFunc->getRDMAIndex = mdp_get_rdma_idx;
 }
 EXPORT_SYMBOL(cmdq_mdp_platform_function_setting);
 MODULE_LICENSE("GPL");
-

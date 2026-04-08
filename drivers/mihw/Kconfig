@@ -1,0 +1,6 @@
+config MI_KSCENE
+	tristate "mi kscene"
+	depends on MTK_SCHED_VIP_TASK && MI_THERMAL_INTERFACE && BINDER_PRIO
+	default n
+	help
+	  Mi kernel scene

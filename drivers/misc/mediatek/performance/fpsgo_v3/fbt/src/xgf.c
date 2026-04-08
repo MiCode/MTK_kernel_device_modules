@@ -1601,7 +1601,7 @@ void fpsgo_comp2xgf_qudeq_notify(int pid, unsigned long long bufID,
 	if (!iter)
 		goto out;
 
-	if (fpsgo_com_get_mfrc_is_on()) {
+	if (fpsgo_com_get_mfrc_is_active(iter->tgid)) {
 		iter->last_check_logical_ts = iter->cur_queue_end_ts;
 		logic_ret = xgf_get_logical_tid(iter->pid, iter->tgid, &tmp_heavy_logical_pid,
 			iter->prev_check_logical_ts, iter->last_check_logical_ts);

@@ -24,12 +24,15 @@
 #include <linux/reboot.h>	/*kernel_power_off*/
 #include <linux/suspend.h>
 #include <net/sock.h>
+#include <linux/thermal.h>
 
 #include "mtk_battery.h"
 #include "mtk_gauge.h"
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 #include <mt-plat/aee.h>
 #endif
+#include "mtk_charger.h"
+#include "bq28z610.h"
 
 //#define BM_NO_SLEEP
 //#define BM_USE_ALARM_TIMER
@@ -139,8 +142,7 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 			tmp_duraction = ktime_to_timespec64(duraction);
 			polling++;
 			if (is_single && tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
-				pr_err("soc zero shutdown\n");
-				kernel_power_off();
+				pr_debug("soc zero notify zero percent after %d\n", (int)tmp_duraction.tv_sec);
 				return next_waketime(polling);
 			}
 		} else if (current_soc > 0) {
@@ -162,8 +164,7 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 
 			tmp_duraction = ktime_to_timespec64(duraction);
 			if (is_single && tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
-				pr_err("uisoc one percent shutdown\n");
-				kernel_power_off();
+				pr_debug("uisoc one notify zero percent after %d\n", (int)tmp_duraction.tv_sec);
 				return next_waketime(polling);
 			}
 		} else if (now_current > 0 && current_soc > 0) {
@@ -260,9 +261,8 @@ static int shutdown_event_handler(struct mtk_battery *gm)
 
 				tmp_duraction  = ktime_to_timespec64(duraction);
 				if (is_single && tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
-					pr_err("low bat shutdown, over %d second\n",
+					pr_debug("low bat zero percent, over %d second\n",
 						SHUTDOWN_TIME);
-					kernel_power_off();
 					return next_waketime(polling);
 				}
 			}
@@ -342,8 +342,7 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 			tmp_duraction = ktime_to_timespec64(duraction);
 			polling++;
 			if (tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
-				pr_err("soc zero shutdown\n");
-				kernel_power_off();
+				pr_debug("soc zero notify zero percent after %d\n", (int)tmp_duraction.tv_sec);
 				return polling;
 			}
 		} else if (current_gm1_soc > 0 && current_gm2_soc > 0) {
@@ -374,8 +373,7 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 			polling++;
 			tmp_duraction = ktime_to_timespec64(duraction);
 			if (tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
-				pr_err("uisoc one percent shutdown\n");
-				kernel_power_off();
+				pr_debug("uisoc one notify zero percent after %d\n", (int)tmp_duraction.tv_sec);
 				return polling;
 			}
 		} else if (now_current1 > 0 && now_current2 > 0 &&
@@ -478,9 +476,8 @@ static int bm_shutdown_event_handler(struct mtk_battery_manager *bm)
 				tmp_duraction  = ktime_to_timespec64(duraction);
 				polling++;
 				if (tmp_duraction.tv_sec >= SHUTDOWN_TIME) {
-					pr_err("low bat shutdown, over %d second\n",
+					pr_debug("low bat notify zero percent, over %d second\n",
 						SHUTDOWN_TIME);
-					kernel_power_off();
 					return polling;
 				}
 			}
@@ -1016,7 +1013,10 @@ static enum power_supply_property battery_props[] = {
 	POWER_SUPPLY_PROP_CAPACITY_LEVEL,
 	POWER_SUPPLY_PROP_TIME_TO_FULL_NOW,
 	POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN,
+	POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT,
 	POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE,
+	POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT,
+	POWER_SUPPLY_PROP_MODEL_NAME,
 };
 
 static int bm_update_psy_property(struct mtk_battery *gm, enum bm_psy_prop prop)
@@ -1071,10 +1071,7 @@ static int bm_update_psy_property(struct mtk_battery *gm, enum bm_psy_prop prop)
 		ret_val = battery_get_int_property(gm, BAT_PROP_TEMPERATURE);
 		break;
 	case QMAX_DESIGN:
-		if (gm->battery_id < 0 || gm->battery_id >= TOTAL_BATTERY_NUMBER)
-			ret_val = gm->fg_table_cust_data.fg_profile[0].q_max * 10;
-		else
-			ret_val = gm->fg_table_cust_data.fg_profile[gm->battery_id].q_max * 10;
+		ret_val = gm->fg_table_cust_data.fg_profile[0].q_max * 10;
 		break;
 	case QMAX:
 		ret_val = gm->daemon_data.qmxa_t_0ma;
@@ -1085,24 +1082,50 @@ static int bm_update_psy_property(struct mtk_battery *gm, enum bm_psy_prop prop)
 	return ret_val;
 }
 
+static int battery_is_writeable(struct power_supply *psy, enum power_supply_property prop)
+{
+	int rc = 0;
+
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
+		rc = 1;
+		break;
+	default:
+		rc = 0;
+		break;
+	}
+
+	return rc;
+}
+
 static int bs_psy_get_property(struct power_supply *psy,
 	enum power_supply_property psp,
 	union power_supply_propval *val)
 {
-	int ret = 0, qmax = 0, cycle = 0;
-	int curr_now = 0;
+	int ret = 0, qmax = 0;
 	int curr_avg = 0;
 	int remain_ui = 0, remain_mah = 0;
 	int time_to_full = 0;
-	int q_max_uah = 0;
-	int volt_now = 0;
-	int count = 0;
-	int temp = 0;
+	int tbat = 0;
 	struct mtk_battery_manager *bm;
 	struct battery_data *bs_data;
+	struct mtk_battery *gm;
 
 	bm = (struct mtk_battery_manager *)power_supply_get_drvdata(psy);
 	bs_data = &bm->bs_data;
+
+	gm = bm->gm1;
+	if (!gm->ti_bms_psy) {
+		if(gm->project_no == TURNER_CN)
+			gm->ti_bms_psy = power_supply_get_by_name("bms_strategy");
+		else
+			gm->ti_bms_psy = power_supply_get_by_name("bms");
+		if (!gm->ti_bms_psy) {
+			bm_info(gm, "ti bms_psy not ready, can't get battery psy props!\n");
+			return -ENODATA;
+		}
+	}
 
 	/* gauge_get_property should check return value */
 	/* to avoid i2c suspend but query by other module */
@@ -1111,6 +1134,20 @@ static int bs_psy_get_property(struct power_supply *psy,
 		val->intval = bs_data->bat_status;
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
+		power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_TEMP, val);
+		tbat = val->intval;
+		if (tbat <= -100)
+			bs_data->bat_health = POWER_SUPPLY_HEALTH_COLD;
+		else if (tbat <= 150)
+			bs_data->bat_health = POWER_SUPPLY_HEALTH_COOL;
+		else if (tbat <= 480)
+			bs_data->bat_health = POWER_SUPPLY_HEALTH_GOOD;
+		else if (tbat <= 520)
+			bs_data->bat_health = POWER_SUPPLY_HEALTH_WARM;
+		else if (tbat < 600)
+			bs_data->bat_health = POWER_SUPPLY_HEALTH_HOT;
+		else
+			bs_data->bat_health = POWER_SUPPLY_HEALTH_OVERHEAT;
 		val->intval = bs_data->bat_health;
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -1120,20 +1157,7 @@ static int bs_psy_get_property(struct power_supply *psy,
 		val->intval = bs_data->bat_technology;
 		break;
 	case POWER_SUPPLY_PROP_CYCLE_COUNT: //sum(cycle * qmax) / sum(qmax)
-		if (bm->gm1 != NULL)
-			if(!bm->gm1->bat_plug_out) {
-				cycle += (bm->gm1->bat_cycle + 1) *
-					bm_update_psy_property(bm->gm1, QMAX_DESIGN);
-				qmax += bm_update_psy_property(bm->gm1, QMAX_DESIGN);
-			}
-		if (bm->gm2 != NULL)
-			if(!bm->gm2->bat_plug_out) {
-				cycle += (bm->gm2->bat_cycle + 1) *
-					bm_update_psy_property(bm->gm2, QMAX_DESIGN);
-				qmax += bm_update_psy_property(bm->gm2, QMAX_DESIGN);
-			}
-		if (qmax != 0)
-			val->intval = cycle / qmax;
+		power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_CYCLE_COUNT, val);
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY: //sum(uisoc)
 		/* 1 = META_BOOT, 4 = FACTORY_BOOT 5=ADVMETA_BOOT */
@@ -1144,22 +1168,16 @@ static int bs_psy_get_property(struct power_supply *psy,
 			break;
 		}
 
-		if (bm->gm1->fixed_uisoc != 0xffff)
+		if (bm->gm1->fixed_uisoc != 0xffff) {
 			val->intval = bm->gm1->fixed_uisoc;
-		else
-			val->intval = bs_data->bat_capacity;
+		} else {
+			power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_CAPACITY, val);
+		}
+		bs_data->bat_capacity = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_NOW:
-
-		if (bm->gm1 != NULL)
-			if(!bm->gm1->bat_plug_out)
-				curr_now += bm_update_psy_property(bm->gm1, CURRENT_NOW);
-		if (bm->gm2 != NULL)
-			if(!bm->gm2->bat_plug_out)
-				curr_now += bm_update_psy_property(bm->gm2, CURRENT_NOW);
-
-		val->intval = curr_now * 100;
-		ret = 0;
+		power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_CURRENT_NOW, val);
+		bs_data->bat_current = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_AVG:
 
@@ -1174,16 +1192,7 @@ static int bs_psy_get_property(struct power_supply *psy,
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
-
-		if (bm->gm1 != NULL)
-			if(!bm->gm1->bat_plug_out)
-				qmax += bm_update_psy_property(bm->gm1, QMAX_DESIGN);
-		if (bm->gm2 != NULL)
-			if(!bm->gm2->bat_plug_out)
-				qmax += bm_update_psy_property(bm->gm2, QMAX_DESIGN);
-
-		val->intval = qmax * 100;
-		ret = 0;
+		power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_CHARGE_FULL, val);
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_COUNTER:
 
@@ -1195,40 +1204,15 @@ static int bs_psy_get_property(struct power_supply *psy,
 				qmax += bm_update_psy_property(bm->gm2, QMAX_DESIGN);
 
 		val->intval = bs_data->bat_capacity * qmax;
+		power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_CHARGE_COUNTER, val);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
-
-		count = 0;
-		if (bm->gm1 != NULL)
-			if(!bm->gm1->bat_plug_out) {
-				volt_now += bm_update_psy_property(bm->gm1, VOLTAGE_NOW);
-				count += 1;
-			}
-		if (bm->gm2 != NULL)
-			if(!bm->gm2->bat_plug_out) {
-				volt_now += bm_update_psy_property(bm->gm2, VOLTAGE_NOW);
-				count += 1;
-			}
-		if (count != 0)
-			val->intval = volt_now / count * 1000;
-		ret = 0;
+		power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_VOLTAGE_NOW, val);
 		break;
 	case POWER_SUPPLY_PROP_TEMP:
-
-		count = 0;
-		if (bm->gm1 != NULL)
-			if(!bm->gm1->bat_plug_out) {
-				temp += bm_update_psy_property(bm->gm1, TEMP);
-				count += 1;
-			}
-		if (bm->gm2 != NULL)
-			if(!bm->gm2->bat_plug_out) {
-				temp += bm_update_psy_property(bm->gm2, TEMP);
-				count += 1;
-			}
-		if (count != 0)
-			val->intval = temp / count * 10;
-		ret = 0;
+		power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_TEMP, val);
+		bm->batt_temp = val->intval;
+		gm->ext_gauge_temp = val->intval;
 		break;
 	case POWER_SUPPLY_PROP_CAPACITY_LEVEL:
 		val->intval = check_cap_level(bs_data->bat_capacity);
@@ -1262,27 +1246,10 @@ static int bs_psy_get_property(struct power_supply *psy,
 		ret = 0;
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
-		if (check_cap_level(bs_data->bat_capacity) ==
-			POWER_SUPPLY_CAPACITY_LEVEL_UNKNOWN) {
-			val->intval = 0;
-			break;
-		}
-
-		if (bm->gm1 != NULL)
-			if(!bm->gm1->bat_plug_out)
-				qmax += bm_update_psy_property(bm->gm1, QMAX_DESIGN);
-		if (bm->gm2 != NULL)
-			if(!bm->gm2->bat_plug_out)
-				qmax += bm_update_psy_property(bm->gm2, QMAX_DESIGN);
-
-		q_max_uah = qmax * 100;
-		if (q_max_uah <= 100000) {
-			pr_debug("%s gm_no:%d, q_max:%d q_max_uah:%d\n",
-				__func__, bm->gm_no, qmax, q_max_uah);
-			q_max_uah = 100001;
-		}
-		val->intval = q_max_uah;
-
+		power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN, val);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
+		val->intval = gm->thermal_level;
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
 		if (IS_ERR_OR_NULL(bs_data->chg_psy)) {
@@ -1302,8 +1269,12 @@ static int bs_psy_get_property(struct power_supply *psy,
 			}
 		}
 		break;
-
-
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
+		val->intval = charger_manager_get_sic_current();
+		break;
+	case POWER_SUPPLY_PROP_MODEL_NAME:
+		val->strval = "P10_7560mah_100w";
+		break;
 	default:
 		ret = -EINVAL;
 		break;
@@ -1320,12 +1291,21 @@ static int bs_psy_set_property(struct power_supply *psy,
 {
 	int ret = 0;
 	struct mtk_battery_manager *bm;
+	struct mtk_battery *gm;
 
 	bm = (struct mtk_battery_manager *)power_supply_get_drvdata(psy);
+	gm = bm->gm1;
 	switch (psp) {
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_VOLTAGE:
 		if (val->intval > 0)
 			bm_send_cmd(bm, MANAGER_DYNAMIC_CV, val->intval);
+		break;
+	case POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT:
+		gm->thermal_level = val->intval;
+		pr_err("set battery thermal level = %d\n", gm->thermal_level);
+		break;
+	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT:
+		charger_manager_set_sic_current(val->intval / 1000);
 		break;
 	default:
 		ret = -EINVAL;
@@ -1342,13 +1322,17 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 {
 	struct mtk_battery_manager *bm;
 	struct battery_data *bs_data;
-	union power_supply_propval online = {0}, status = {0}, vbat0 = {0};
+	union power_supply_propval online = {0}, status = {0}, pd_status = {0}, vbat0 = {0};
 	union power_supply_propval prop_type = {0};
 	int cur_chr_type = 0, old_vbat0 = 0;
+	bool charge_full = false;
+	bool warm_term = false;
 
 	struct power_supply *chg_psy = NULL;
 	struct power_supply *dv2_chg_psy = NULL;
-	int ret = 0;
+	struct power_supply *usb_psy = NULL;
+	struct power_supply *wls_psy = NULL;
+	int ret = 0, temp = 0, wls_online = 0;
 
 	bm = psy->drv_data;
 	bs_data = &bm->bs_data;
@@ -1358,6 +1342,29 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 		pr_err("[%s] gm_no:%d battery probe is not rdy:%d\n",
 			__func__, bm->gm_no, bm->gm1->is_probe_done);
 		return;
+	}
+
+	usb_psy = power_supply_get_by_name("usb");
+	if (!IS_ERR_OR_NULL(usb_psy)) {
+		ret = usb_get_property(USB_PROP_CHARGE_FULL, &temp);
+		if (ret)
+			charge_full = false;
+		else
+			charge_full = temp;
+		ret = usb_get_property(USB_PROP_WARM_TERM, &temp);
+		if (ret)
+			warm_term = false;
+		else
+			warm_term = temp;
+	}
+
+	wls_psy = power_supply_get_by_name("wireless");
+	if (!IS_ERR_OR_NULL(wls_psy)) {
+		ret = wls_get_property(WLS_PROP_PG_ONLINE, &temp);
+		if (ret)
+			wls_online = 0;
+		else
+			wls_online = temp;
 	}
 
 	if (bm->gm_no==2) {
@@ -1385,13 +1392,15 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 
 		if (ret < 0)
 			pr_debug("%s ret: %d\n", __func__, ret);
+		pr_err("%s status.intval=%d online.intval=%d", __func__, status.intval, online.intval);
 
-		if (!online.intval) {
+		if (!online.intval && !wls_online) {
 			bs_data->bat_status = POWER_SUPPLY_STATUS_DISCHARGING;
+			pr_err("%s enter set bat_status discharging", __func__);
 		} else {
 			if (status.intval == POWER_SUPPLY_STATUS_NOT_CHARGING) {
-				bs_data->bat_status =
-					POWER_SUPPLY_STATUS_NOT_CHARGING;
+				if (bs_data->bat_current > 0)
+					bs_data->bat_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
 
 				dv2_chg_psy = power_supply_get_by_name("mtk-mst-div-chg");
 				if (!IS_ERR_OR_NULL(dv2_chg_psy)) {
@@ -1405,6 +1414,20 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 					}
 					power_supply_put(dv2_chg_psy);
 				}
+				if (!IS_ERR_OR_NULL(usb_psy)) {
+					ret = power_supply_get_property(usb_psy,
+						POWER_SUPPLY_PROP_STATUS, &pd_status);
+					pr_err("get battery status = %d\n", pd_status.intval);
+					if (pd_status.intval == POWER_SUPPLY_STATUS_CHARGING) {
+						bs_data->bat_status = POWER_SUPPLY_STATUS_CHARGING;
+						status.intval = POWER_SUPPLY_STATUS_CHARGING;
+					}
+				}
+				if (wls_online) {
+					pr_err("wls online, set status to charging\n");
+					bs_data->bat_status = POWER_SUPPLY_STATUS_CHARGING;
+					status.intval = POWER_SUPPLY_STATUS_CHARGING;
+				}
 			} else {
 				bs_data->bat_status =
 					POWER_SUPPLY_STATUS_CHARGING;
@@ -1412,8 +1435,13 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 			bm_send_cmd(bm, MANAGER_SW_BAT_CYCLE_ACCU, 0);
 		}
 
-		if (status.intval == POWER_SUPPLY_STATUS_FULL
-			&& bm->b_EOC != true) {
+		if (charge_full) {
+			pr_err("POWER_SUPPLY_STATUS_FULL, EOC\n");
+			if (bs_data->bat_health == POWER_SUPPLY_HEALTH_WARM || bs_data->bat_health == POWER_SUPPLY_HEALTH_HOT || warm_term) {
+				bs_data->bat_status = POWER_SUPPLY_STATUS_CHARGING;
+			} else {
+				bs_data->bat_status = POWER_SUPPLY_STATUS_FULL;
+			}
 			pr_err("POWER_SUPPLY_STATUS_FULL, EOC\n");
 			gauge_get_int_property(bm->gm1, GAUGE_PROP_BAT_EOC);
 			bm_send_cmd(bm, MANAGER_NOTIFY_CHR_FULL, 0);
@@ -1458,17 +1486,147 @@ static void mtk_battery_external_power_changed(struct power_supply *psy)
 	bm->chr_type = cur_chr_type;
 }
 
+/* thermal cooling device callbacks */
+static int ps_get_max_charge_cntl_limit(struct thermal_cooling_device *tcd,
+					unsigned long *state)
+{
+	struct power_supply *psy;
+	//union power_supply_propval val;
+	int ret = 0;
+
+	psy = tcd->devdata;
+#if 0
+	ret = power_supply_get_property(psy,
+			POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT_MAX, &val);
+	if (ret)
+		return ret;
+#endif
+
+	*state = 500;
+
+	dev_err(&psy->dev, "%s: ret=%d, state=%ld\n", __func__, ret, *state);
+
+	return ret;
+}
+
+static int ps_get_cur_charge_cntl_limit(struct thermal_cooling_device *tcd,
+					unsigned long *state)
+{
+	struct power_supply *psy;
+	union power_supply_propval val;
+	int ret;
+
+	psy = tcd->devdata;
+	ret = power_supply_get_property(psy,
+			POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+	if (ret)
+		return ret;
+
+	*state = val.intval;
+	dev_err(&psy->dev, "[%s] ret=%d, state=%d\n", __func__, ret, val.intval);
+
+	return ret;
+}
+
+static int ps_set_cur_charge_cntl_limit(struct thermal_cooling_device *tcd,
+					unsigned long state)
+{
+	struct power_supply *psy;
+	union power_supply_propval val;
+	int ret;
+
+	psy = tcd->devdata;
+	val.intval = state;
+	ret = psy->desc->set_property(psy,
+		POWER_SUPPLY_PROP_CHARGE_CONTROL_LIMIT, &val);
+
+	dev_err(&psy->dev, "[%s] ret=%d, state=%ld\n", __func__, ret, state);
+
+	return ret;
+}
+
+static const struct thermal_cooling_device_ops psy_tcd_ops = {
+	.get_max_state = ps_get_max_charge_cntl_limit,
+	.get_cur_state = ps_get_cur_charge_cntl_limit,
+	.set_cur_state = ps_set_cur_charge_cntl_limit,
+};
+
+static int psy_register_cooler(struct power_supply *psy)
+{
+
+	if (psy->dev.parent) {
+		psy->tcd = thermal_of_cooling_device_register(
+				dev_of_node(psy->dev.parent),
+				(char *)psy->desc->name,
+				psy, &psy_tcd_ops);
+		dev_err(&psy->dev, "%s: battery_cooler_register register with of \n", __func__);
+	} else {
+		psy->tcd = thermal_cooling_device_register(
+				(char *)psy->desc->name,
+				psy, &psy_tcd_ops);
+		dev_err(&psy->dev, "%s: battery_cooler_register register without of \n", __func__);
+	}
+
+	return 0;
+}
+
+static int power_supply_read_temp(struct thermal_zone_device *tzd,
+		int *temp)
+{
+	int batt_temp;
+	union power_supply_propval val;
+	struct power_supply *psy;
+	struct mtk_battery_manager *bm;
+	struct mtk_battery *gm;
+
+	psy = tzd->devdata;
+	bm = (struct mtk_battery_manager *)power_supply_get_drvdata(psy);
+	gm = bm->gm1;
+	if (!gm->ti_bms_psy) {
+		if(gm->project_no == TURNER_CN)
+			gm->ti_bms_psy = power_supply_get_by_name("bms_strategy");
+		else
+			gm->ti_bms_psy = power_supply_get_by_name("bms");
+		if (!gm->ti_bms_psy) {
+			bm_info(gm, "ti bms_psy not ready, can't get battery psy props!\n");
+			return -ENODATA;
+		}
+	}
+
+	if (gm->project_no == DALI_CN || gm->project_no == KLIMT_GL || gm->project_no == GOYA_GL ||
+			gm->project_no == KLEE_CN || gm->project_no == KLEE_GL || gm->project_no == DASH_CN) {
+		bms_get_property(BMS_PROP_REAL_TEMP, &batt_temp);
+		pr_err("batt_thermal real_temp:%d\n", batt_temp);
+	} else {
+		power_supply_get_property(gm->ti_bms_psy, POWER_SUPPLY_PROP_TEMP, &val);
+		batt_temp = val.intval;
+		pr_err("batt_thermal temp:%d\n", batt_temp);
+	}
+
+	*temp = batt_temp * 100;
+	//pr_err("batt_thermal temp:%d\n", batt_temp);
+
+	return 0;
+}
+
+static struct thermal_zone_device_ops psy_tzd_ops = {
+	.get_temp = power_supply_read_temp,
+};
+
 void bm_battery_service_init(struct mtk_battery_manager *bm)
 {
 	struct battery_data *bs_data;
+	struct power_supply *psy;
 
 	bs_data = &bm->bs_data;
 	bs_data->psd.name = "battery";
 	bs_data->psd.type = POWER_SUPPLY_TYPE_BATTERY;
+	bs_data->psd.no_thermal = true;
 	bs_data->psd.properties = battery_props;
 	bs_data->psd.num_properties = ARRAY_SIZE(battery_props);
 	bs_data->psd.get_property = bs_psy_get_property;
 	bs_data->psd.set_property = bs_psy_set_property;
+	bs_data->psd.property_is_writeable = battery_is_writeable;
 	bs_data->psd.external_power_changed =
 		mtk_battery_external_power_changed;
 	bs_data->psy_cfg.drv_data = bm;
@@ -1476,7 +1634,7 @@ void bm_battery_service_init(struct mtk_battery_manager *bm)
 	bs_data->bat_status = POWER_SUPPLY_STATUS_DISCHARGING,
 	bs_data->bat_health = POWER_SUPPLY_HEALTH_GOOD,
 	bs_data->bat_present = 1,
-	bs_data->bat_technology = POWER_SUPPLY_TECHNOLOGY_LION,
+	bs_data->bat_technology = POWER_SUPPLY_TECHNOLOGY_LIPO,
 	bs_data->bat_capacity = -1,
 	bs_data->bat_batt_vol = 0,
 	bs_data->bat_batt_temp = 0,
@@ -1487,11 +1645,22 @@ void bm_battery_service_init(struct mtk_battery_manager *bm)
 	if (IS_ERR(bm->bs_data.psy))
 		pr_err("[BAT_probe] power_supply_register Battery Fail !!\n");
 
+	psy = bm->bs_data.psy;
+	psy->tzd = thermal_tripless_zone_device_register(psy->desc->name,
+		psy, &psy_tzd_ops, NULL);
+
 	bm->gm1->fixed_uisoc = 0xffff;
+	bm->batt_temp = 0;
 	if (bm->gm_no == 2)
 		bm->gm2->fixed_uisoc = 0xffff;
 
+	if (bm->gm1->create_sysfs != NULL)
+		bm->gm1->create_sysfs(bm->gm1);
+
 	mtk_battery_external_power_changed(bm->bs_data.psy);
+
+	/* regisger battery thermal cooler */
+	psy_register_cooler(bm->bs_data.psy);
 }
 
 void mtk_bm_send_to_user(struct mtk_battery_manager *bm, u32 pid,

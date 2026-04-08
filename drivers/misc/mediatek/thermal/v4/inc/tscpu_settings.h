@@ -59,7 +59,7 @@
 #define TEMP_DIS_UART							(85000)
 #define TEMP_TOLERANCE							(0)
 
-#define ENALBE_SW_FILTER						(0)
+#define ENALBE_SW_FILTER						(1)
 #define ATM_USES_PPM							(1)
 
 #define THERMAL_GET_AHB_BUS_CLOCK				(0)
@@ -435,7 +435,7 @@ extern void thermal_disable_all_periodoc_temp_sensing(void);
  *In drivers/misc/mediatek/gpu/hal/mtk_gpu_utility.c
  *It's not our api, ask them to provide header file
  */
-extern bool mtk_get_gpu_loading(unsigned int *pLoading);
+extern bool mtk_get_gpu_loading_avg(unsigned int *pLoading);
 /*
  *In drivers/misc/mediatek/auxadc/mt_auxadc.c
  *It's not our api, ask them to provide header file

@@ -107,10 +107,6 @@ static const struct scp_domain_data scp_domain_mt6991_spm_data[] = {
 		.ctl_offs = 0xE1C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.bp_table = {
-			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
-				MT6991_SPM_PROT_EN_BUS_SSUSB_P0),
-		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_SSUSB_P1] = {
@@ -308,10 +304,6 @@ static const struct scp_domain_data scp_domain_mt6991_spm_hwv_data[] = {
 		.ctl_offs = 0xE1C,
 		.sram_pdn_bits = GENMASK(8, 8),
 		.sram_pdn_ack_bits = GENMASK(12, 12),
-		.bp_table = {
-			BUS_PROT_IGN(SPM_TYPE, 0xDC, 0xE0, 0xD8, 0x208,
-				MT6991_SPM_PROT_EN_BUS_SSUSB_P0),
-		},
 		.caps = MTK_SCPD_IS_PWR_CON_ON | MTK_SCPD_NON_CPU_RTFF | default_cap,
 	},
 	[MT6991_POWER_DOMAIN_SSUSB_P1] = {

@@ -25,10 +25,17 @@
 #include <linux/cpumask.h>
 #include <linux/mutex.h>
 #include "fpsgo_frame_info.h"
+#include "eas/eas_plus.h"
+#include "pelt_hint.h"
 
 #define max_cpus 8
 #define MAX_MAGT_TARGET_FPS_NUM  10
 #define MAGT_DEP_LIST_NUM  10
+#define MAX_MAGT_BIND_CPU_NUM 64
+#define MAX_MAGT_THREAD_NAME_LENGTH 64
+#define MAX_MAGT_TA_NUM 200
+#define MAX_MAGT_TA_NAME_NUM 10
+
 #define MAGT_GET_CPU_LOADING              _IOR('r', 0, struct cpu_info)
 #define MAGT_GET_PERF_INDEX               _IOR('r', 1, struct cpu_info)
 #define MAGT_SET_TARGET_FPS               _IOW('g', 2, struct target_fps_info)
@@ -41,6 +48,16 @@
 #define MAGT_GET_FPSGO_RENDER_PERFIDX     _IOWR('g', 9, struct fpsgo_render_perf)
 #define MAGT_NOTIFY_THREAD_STATUS         _IOW('g', 10, struct thread_status_info)
 #define MAGT_SET_DEP_LIST_V3              _IOW('g', 11, struct dep_list_info_V3)
+#define MAGT_PELT_HINT_BOOST              _IOW('g', 14, struct pelt_hint_boost)
+#define MAGT_BIND_THREAD_TO_CPU           _IOW('g', 15, struct thread_binding_info)
+#define MAGT_GET_PID_BIND_BOOST           _IOWR('g', 16, struct ta_binding_info)
+
+struct pelt_hint_boost {
+	int32_t pid;
+	int32_t pid_mode;
+	int32_t enable;
+	int32_t ratio;
+};
 
 struct thread_param {
 	int32_t tid;
@@ -108,11 +125,26 @@ struct fpsgo_render_perf {
 	int32_t pid;
 	int32_t perf_idx;
 };
+
 struct thread_status_info {
 	__u32 frameid;
 	__u32 type;
 	__u32 status;
 	__u64 tv_ts;
+};
+
+struct thread_binding_info {
+	int32_t pid_num;
+	int32_t pid[MAX_MAGT_BIND_CPU_NUM];
+	int32_t core[MAX_MAGT_BIND_CPU_NUM];
+};
+
+struct ta_binding_info {
+	int32_t thread_num;
+	int32_t ta_num;
+	int32_t ta_tasks[MAX_MAGT_TA_NUM];
+	int32_t cpu_mask[MAX_MAGT_BIND_CPU_NUM];
+	char thread_name[MAX_MAGT_TA_NAME_NUM][MAX_MAGT_THREAD_NAME_LENGTH];
 };
 
 extern int get_cpu_loading(struct cpu_info *_ci);

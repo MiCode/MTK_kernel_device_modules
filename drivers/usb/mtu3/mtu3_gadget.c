@@ -44,6 +44,10 @@ static void mtu3_set_u2_lpm(struct mtu3 *mtu, enum mtu3_u2_lpm_mode mode)
 		mtu3_setbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_HRWE);
 		break;
 	case MTU3_U2_LPM_ACCEPT:
+		mtu3_clrbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_MODE_REJECT);
+		mtu3_setbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_HRWE);
+		break;
+	case MTU3_U2_LPM_ACCEPT_ONCE:
 		mtu3_clrbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_HRWE);
 		mtu3_clrbits(mtu->mac_base, U3D_POWER_MANAGEMENT, LPM_MODE_REJECT);
 		mtu3_setbits(mtu->mac_base, U3D_USB20_MISC_CONTROL, LPM_U3_ACK_EN);
@@ -62,33 +66,76 @@ static void mtu3_u2_lpm_timer_func(struct timer_list *t)
 	unsigned long flags;
 	int i;
 
-	spin_lock_irqsave(&mtu->lock, flags);
+	spin_lock_irqsave(&mtu->lpm_lock, flags);
 
-	if (!mtu->is_active)
+	if (!mtu->is_active || !mtu->lpm_timer_active)
 		goto done;
 
-	/* check tx request status */
-	for (i = 1; i < mtu->num_eps; i++) {
-		mep = mtu->in_eps + i;
-		if (!list_empty(&mep->req_list)) {
-			mtu3_gadget_u2_lpm_lock(mtu, U2_LPM_LOCK_TIMEOUT);
-			goto done;
+	if (mtu->u2_lpm_quirks & MTU3_U2_LPM_SW_MODE) {
+		/* check tx request status */
+		for (i = 1; i < mtu->num_eps; i++) {
+			mep = mtu->in_eps + i;
+			if (!list_empty(&mep->req_list)) {
+				mod_timer(&mtu->lpm_timer, jiffies + msecs_to_jiffies(MTU3_U2_LPM_REJECT));
+				goto done;
+			}
 		}
-	}
 
-	/* bus idle now */
-	mtu3_set_u2_lpm(mtu, MTU3_U2_LPM_ACCEPT);
+		/* bus idle now */
+		mtu3_set_u2_lpm(mtu, MTU3_U2_LPM_ACCEPT_ONCE);
+	} else
+		mtu3_set_u2_lpm(mtu, MTU3_U2_LPM_ACCEPT);
 done:
-	spin_unlock_irqrestore(&mtu->lock, flags);
+	spin_unlock_irqrestore(&mtu->lpm_lock, flags);
 }
 
 void mtu3_gadget_u2_lpm_lock(struct mtu3 *mtu, unsigned int timeout_ms)
 {
-	if (!of_device_is_compatible(mtu->dev->of_node, "mediatek,mt6991-mtu3"))
+	unsigned long flags;
+
+	if (!mtu->u2_lpm_quirks)
 		return;
+
+	spin_lock_irqsave(&mtu->lpm_lock, flags);
 
 	mtu3_set_u2_lpm(mtu, MTU3_U2_LPM_REJECT);
 	mod_timer(&mtu->lpm_timer, jiffies + msecs_to_jiffies(timeout_ms));
+
+	spin_unlock_irqrestore(&mtu->lpm_lock, flags);
+}
+
+void mtu3_gadget_u2_lpm_lock_init(struct mtu3 *mtu)
+{
+	unsigned long flags;
+
+	if (!mtu->u2_lpm_quirks)
+		return;
+
+	spin_lock_irqsave(&mtu->lpm_lock, flags);
+
+	mtu->lpm_timer_active = true;
+
+	if (mtu->u2_lpm_quirks & MTU3_U2_LPM_DELAY) {
+		mtu3_set_u2_lpm(mtu, MTU3_U2_LPM_REJECT);
+		mod_timer(&mtu->lpm_timer, jiffies + msecs_to_jiffies(U2_LPM_LOCK_INIT_TIMEOUT));
+	}
+
+	spin_unlock_irqrestore(&mtu->lpm_lock, flags);
+}
+
+void mtu3_gadget_u2_lpm_lock_deinit(struct mtu3 *mtu)
+{
+	unsigned long flags;
+
+	if (!mtu->u2_lpm_quirks)
+		return;
+
+	spin_lock_irqsave(&mtu->lpm_lock, flags);
+
+	mtu->lpm_timer_active = false;
+	mtu3_set_u2_lpm(mtu, MTU3_U2_LPM_ACCEPT);
+
+	spin_unlock_irqrestore(&mtu->lpm_lock, flags);
 }
 
 static struct usb_function *mtu3_ep_to_func(struct mtu3_ep *mep)
@@ -431,6 +478,8 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 	struct mtu3 *mtu = mep->mtu;
 	unsigned long flags;
 	int ret = 0;
+	struct list_head *new = NULL;
+	struct list_head *head = NULL;
 
 	if (!req->buf)
 		return -ENODATA;
@@ -477,12 +526,22 @@ static int mtu3_gadget_queue(struct usb_ep *ep,
 	}
 
 	if (mtu->g.lpm_capable && mtu->g.speed <= USB_SPEED_HIGH) {
-		if (mtu->u2_lpm_reject == MTU3_U2_LPM_ACCEPT)
-			dev_info(mtu->dev, "%s may need to remote wakeup\n", __func__);
-		mtu3_gadget_u2_lpm_lock(mtu, U2_LPM_LOCK_TIMEOUT);
+		if (mtu->u2_lpm_quirks & MTU3_U2_LPM_SW_MODE) {
+			if (mtu->u2_lpm_reject == MTU3_U2_LPM_ACCEPT_ONCE)
+				dev_info(mtu->dev, "%s may need to remote wakeup\n", __func__);
+			mtu3_gadget_u2_lpm_lock(mtu, U2_LPM_LOCK_TIMEOUT);
+		}
 	}
-
 	trace_mtu3_gadget_queue(mreq);
+	new = &mreq->list;
+	head = &mep->req_list;
+	if(new == head->prev) {
+		dev_info(mtu->dev, "req double add error,%s %s EP%d(%s), req=%p, maxp=%d, len#%d\n",
+			__func__, mep->is_in ? "TX" : "RX", mreq->epnum, ep->name,
+			mreq, ep->maxpacket, mreq->request.length);
+		ret = -EINVAL;
+		goto error;
+	}
 	list_add_tail(&mreq->list, &mep->req_list);
 	mtu3_insert_gpd(mep, mreq);
 	mtu3_qmu_resume(mep);
@@ -858,6 +917,10 @@ static void mtu3_state_reset(struct mtu3 *mtu)
 	mtu->delayed_status = false;
 	mtu->test_mode = false;
 	mtu->u2_lpm_reject = MTU3_U2_LPM_DEFAULT;
+#if defined(CONFIG_PDTEST_MODE)
+	mtu->usb_pd = false;
+	mtu->gadget_suspend = false;
+#endif
 }
 
 static void init_hw_ep(struct mtu3 *mtu, struct mtu3_ep *mep,
@@ -934,6 +997,7 @@ int mtu3_gadget_setup(struct mtu3 *mtu)
 	mtu->u2_lpm_reject = MTU3_U2_LPM_DEFAULT;
 
 	timer_setup(&mtu->lpm_timer, mtu3_u2_lpm_timer_func, 0);
+	spin_lock_init(&mtu->lpm_lock);
 
 	mtu3_gadget_init_eps(mtu);
 
@@ -948,6 +1012,9 @@ void mtu3_gadget_cleanup(struct mtu3 *mtu)
 void mtu3_gadget_resume(struct mtu3 *mtu)
 {
 	dev_info(mtu->dev, "gadget RESUME\n");
+#if defined(CONFIG_PDTEST_MODE)
+	mtu->gadget_suspend = false;
+#endif
 	if (mtu->async_callbacks && mtu->gadget_driver &&
 			mtu->gadget_driver->resume) {
 		spin_unlock(&mtu->lock);
@@ -960,6 +1027,9 @@ void mtu3_gadget_resume(struct mtu3 *mtu)
 void mtu3_gadget_suspend(struct mtu3 *mtu)
 {
 	dev_info(mtu->dev, "gadget SUSPEND\n");
+#if defined(CONFIG_PDTEST_MODE)
+	mtu->gadget_suspend = true;
+#endif
 	if (mtu->async_callbacks && mtu->gadget_driver &&
 			mtu->gadget_driver->suspend) {
 		spin_unlock(&mtu->lock);

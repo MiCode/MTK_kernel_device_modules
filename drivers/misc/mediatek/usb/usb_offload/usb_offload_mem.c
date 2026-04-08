@@ -90,6 +90,12 @@ bool mtk_offload_is_advlowpwr(struct usb_offload_dev *udev)
 	if (udev->adv_lowpwr_dl_only && udev->rx_streaming)
 		return false;
 
+	/* At this stage, the scenario of tx + rx + hid is not supported
+	 * to enter low power mode.
+	 */
+	if (udev->rx_streaming && udev->tx_streaming)
+		return false;
+
 	/* if list is empty, it means no structure falls to dram,
 	 * so it's in advanced mode, in an other hands, it's basic
 	 */

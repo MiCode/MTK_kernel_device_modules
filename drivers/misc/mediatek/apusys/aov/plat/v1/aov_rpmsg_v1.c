@@ -76,7 +76,7 @@ static int scp_mdw_handler(struct npu_scp_ipi_param *recv_msg)
 
 	switch (recv_msg->act) {
 	case NPU_SCP_NP_MDW_ACK:
-		pr_debug_ratelimited("%s Get Ack\n", __func__);
+		// pr_debug_ratelimited("%s Get Ack\n", __func__);
 		break;
 	case NPU_SCP_NP_MDW_TO_APMCU:
 		ret = aov_rpmsg_send(APU_IPI_SCP_MIDDLEWARE);

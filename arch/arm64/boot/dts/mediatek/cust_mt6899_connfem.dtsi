@@ -6,13 +6,16 @@
 &connfem {
 	/* PINCTRL States*/
 	pinctrl-names = "wlan7207h-wlan7207c",		/* pinctrl-0 */
-			"qm42195-qm45197";		/* pinctrl-1 */
+			"qm42195-qm45197",		/* pinctrl-1 */
+			"vc536411-nofem";		/* pinctrl-2 */
 
 	pinctrl-0 = <&wlan7207h_wf0>, <&wlan7207h_wf1>,
 		<&wlan7207c_wf0>, <&wlan7207c_wf1>;
 
 	pinctrl-1 = <&qm42195_wf0>, <&qm42195_wf1>,
 		<&qm45197_wf0>, <&qm45197_wf1>;
+
+	pinctrl-2 = <&vc536411_wf0>, <&vc536411_wf1>;
 
 	/* FEM ID */
 	nofem: nofem {
@@ -34,6 +37,10 @@
 	qm45197: qm45197 {
 		vid = <3>;
 		pid = <2>;
+	};
+	vc536411: vc536411 {
+		vid = <5>;
+		pid = <1>;
 	};
 };
 
@@ -132,6 +139,32 @@
 			mapping = <11 0xca 0>,	/* ANTSEL 11 <-> PIN #10: PAEN */
 				<21 0xcb 0>,	/* ANTSEL 21 <-> PIN #11: LNAEN */
 				<12 0xcc 0>;	/* ANTSEL 12 <-> PIN #12: SEL3 */
+		};
+	};
+
+	vc536411_wf0: vc536411-wf0 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO173__FUNC_ANT_SEL0>,
+				<PINMUX_GPIO174__FUNC_ANT_SEL1>,
+				<PINMUX_GPIO175__FUNC_ANT_SEL2>,
+				<PINMUX_GPIO176__FUNC_ANT_SEL3>;
+			mapping = <0 3 0>,	/* ANTSEL 0 <-> PIN #3: PAEN */
+				<1 2 0>,	/* ANTSEL 1 <-> PIN #2: LNAEN */
+				<2 4 0>,	/* ANTSEL 2 <-> PIN #4: BTEN */
+				<3 14 0>;	/* ANTSEL 3 <-> PIN #14: SEL4 */
+		};
+	};
+
+	vc536411_wf1: vc536411-wf1 {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO181__FUNC_ANT_SEL8>,
+				<PINMUX_GPIO182__FUNC_ANT_SEL9>,
+				<PINMUX_GPIO183__FUNC_ANT_SEL10>,
+				<PINMUX_GPIO186__FUNC_ANT_SEL13>;
+			mapping = <8 0x83 0>,	/* ANTSEL 8 <-> PIN #3: PAEN */
+				<9 0x82 0>,	/* ANTSEL 9 <-> PIN #2: LNAEN */
+				<10 0x84 0>,	/* ANTSEL 10 <-> PIN #4: BTEN */
+				<13 0x8e 0>;	/* ANTSEL 13 <-> PIN #14: SEL4 */
 		};
 	};
 };

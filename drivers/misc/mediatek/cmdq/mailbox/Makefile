@@ -28,6 +28,10 @@ ifneq ($(filter y m,$(CONFIG_MICROTRUST_TEE_SUPPORT)),)
 include $(DEVICE_MODULES_PATH)/drivers/tee/teei/Makefile.include
 endif
 
+ifneq ($(filter mt6771,$(CONFIG_MTK_LEGACY_PLATFORM)),)
+ccflags-y += -DMT8788_GCE
+endif
+
 ifneq ($(filter y m,$(CONFIG_TRUSTONIC_TEE_SUPPORT)),)
 include $(DEVICE_MODULES_PATH)/drivers/tee/gud/Makefile.include
 endif
@@ -117,5 +121,8 @@ obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6781.o
 endif
 ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6899.c),)
 obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6899.o
+endif
+ifneq ($(wildcard $(srctree)/$(src)/cmdq-platform-mt6771.c),)
+obj-$(CONFIG_MTK_CMDQ_MBOX_EXT) += cmdq-platform-mt6771.o
 endif
 endif

@@ -9,7 +9,7 @@
 #include "cmdq_helper_ext.h"
 #if IS_ENABLED(CONFIG_MMPROFILE)
 #include "mmprofile.h"
-#endif
+
 
 struct MDP_MMP_events_t {
 	mmp_event CMDQ;
@@ -37,8 +37,11 @@ struct MDP_MMP_events_t {
 	mmp_event timeout;
 	mmp_event read_reg;
 };
+#endif
 
 void mdp_mmp_init(void);
+#if IS_ENABLED(CONFIG_MMPROFILE)
 struct MDP_MMP_events_t *mdp_mmp_get_event(void);
+#endif
 
 #endif				/* __CMDQ_MMP_H__ */

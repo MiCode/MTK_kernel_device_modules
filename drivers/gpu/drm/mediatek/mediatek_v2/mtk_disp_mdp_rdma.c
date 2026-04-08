@@ -37,6 +37,7 @@
 
 #define DISP_REG_MDP_RDMA_CON 0x020
 #define OUTPUT_10B BIT(5)	/* output yuv 10bit */
+#define DDREN_REQ_DISABLE	BIT(15)
 
 #define DISP_REG_MDP_RDMA_GMCIF_CON 0x028
 #define PRE_ULTRA_EN (0x2 << 16)
@@ -84,6 +85,7 @@
 struct mtk_disp_mdp_rdma_data {
 	void (*sodi_config)(struct drm_device *drm, enum mtk_ddp_comp_id id,
 			struct cmdq_pkt *handle, void *data);
+	bool skip_irq;
 };
 
 struct mtk_disp_mdp_rdma {
@@ -113,6 +115,9 @@ static irqreturn_t mtk_disp_mdp_rdma_irq_handler(int irq, void *dev_id)
 	mdp_rdma = &priv->ddp_comp;
 	if (IS_ERR_OR_NULL(mdp_rdma))
 		return IRQ_NONE;
+
+	if (priv->data->skip_irq)
+		return IRQ_HANDLED;
 
 	if (mtk_drm_top_clk_isr_get(mdp_rdma) == false) {
 		DDPIRQ("%s, top clk off\n", __func__);
@@ -222,13 +227,20 @@ static void mtk_mdp_rdma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 		mtk_ddp_write_mask(comp, COMMAND_DIV,
 			DISP_REG_MDP_RDMA_GMCIF_CON, COMMAND_DIV, handle);
 
-	mtk_ddp_write_mask(comp, OUTPUT_10B,
-		DISP_REG_MDP_RDMA_CON, OUTPUT_10B, handle);
 	mtk_ddp_write_mask(comp, ROT_ENABLE,
 		DISP_REG_MDP_RDMA_EN, ROT_ENABLE, handle);
-	val = FRAME_COMPLETE_INT | UNDERRUN_INT;
-	mtk_ddp_write_mask(comp, val,
-		DISP_REG_MDP_RDMA_INT_ENABLE, val, handle);
+
+	if (data && !data->skip_irq) {
+		val = FRAME_COMPLETE_INT | UNDERRUN_INT;
+		mtk_ddp_write_mask(comp, val,
+			DISP_REG_MDP_RDMA_INT_ENABLE, val, handle);
+	}
+
+	if (bif_enabled(&mtk_crtc->base) && mtk_crtc->bif_info->read_comp)
+		mtk_ddp_write_mask(comp, OUTPUT_10B | DDREN_REQ_DISABLE,
+			DISP_REG_MDP_RDMA_CON, OUTPUT_10B | DDREN_REQ_DISABLE, handle);
+	else
+		mtk_ddp_write_mask(comp, OUTPUT_10B, DISP_REG_MDP_RDMA_CON, OUTPUT_10B, handle);
 }
 
 static void mtk_mdp_rdma_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -343,6 +355,8 @@ static void mtk_mdp_rdma_pattern_config(struct mtk_ddp_comp *comp,
 		mode.pitches[0] = mode.width * Bpp;
 		mtk_gem = mtk_drm_gem_create(
 			crtc->dev, mode.pitches[0] * mode.height, true);
+		if (IS_ERR_OR_NULL(mtk_gem))
+			return;
 #ifdef RDMA_PAT_DEBUG
 		for (i = 0; i < mode.height; i++)
 			for (j = 0; j < mode.width; j++) {
@@ -469,7 +483,48 @@ static void mtk_mdp_rdma_config(struct mtk_ddp_comp *comp,
 	mtk_mdp_rdma_pattern_config(comp, handle, cfg->h, 0);
 	mdp_rdma->cfg_h = 0;
 }
+static void mtk_mdp_rdma_bif_read_config(struct mtk_ddp_comp *comp,
+			    struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct mtk_drm_private *priv = mtk_crtc->base.dev->dev_private;
+	struct mtk_bif_info *bif_info = mtk_crtc->bif_info;
+	dma_addr_t addr = bif_info->sram_pa;
+	int width = bif_info->src_roi.width;
+	int height = bif_info->src_roi.height;
+	unsigned int fmt = DRM_FORMAT_RGB888;
+	unsigned int hact = 0, vtotal = 0, vact = 0, vrefresh, bpp = 0, pitch = 0, con = 0;
+	unsigned long long bw_base = 0;
 
+	/* bw setting*/
+	bpp = mtk_get_format_bpp(fmt);
+	hact = mtk_crtc->base.state->adjusted_mode.hdisplay;
+	vtotal = mtk_crtc->base.state->adjusted_mode.vtotal;
+	vact = mtk_crtc->base.state->adjusted_mode.vdisplay;
+	vrefresh = drm_mode_vrefresh(&mtk_crtc->base.state->adjusted_mode);
+	bw_base = div_u64((unsigned long long)vact * hact * vrefresh * bpp, 1000);
+	bw_base = div_u64(bw_base, 1000) * 2;
+	mtk_ddp_comp_io_cmd(comp, NULL, PMQOS_SET_HRT_BW, &bw_base);
+
+	//cmdq_pkt_write(handle, comp->cmdq_base,
+		//comp->larb_cons[0], GENMASK(19, 16), GENMASK(19, 16));
+
+	con = mdp_rdma_fmt_convert(fmt);
+	con |= UNIFORM_CONFIG;
+	pitch = width * bpp;
+
+	mtk_ddp_write_mask(comp, (addr >> 32), DISP_REG_MDP_RDMA_SRC_BASE_0_MSB, 0xf,  handle);
+	mtk_ddp_write_relaxed(comp, addr, DISP_REG_MDP_RDMA_SRC_BASE_0, handle);
+	mtk_ddp_write_relaxed(comp, con, DISP_REG_MDP_RDMA_SRC_CON, handle);
+	mtk_ddp_write_relaxed(comp, pitch, DISP_REG_MDP_RDMA_MF_BKGD_SIZE_IN_BYTE, handle);
+	mtk_ddp_write_relaxed(comp, (width | height << 16), DISP_REG_MDP_RDMA_MF_SRC_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, (width | height << 16), DISP_REG_MDP_RDMA_MF_CLIP_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, 0, DISP_REG_MDP_RDMA_TRANSFORM_0, handle);
+
+	DDPINFO("%s,addr:0x%lx,cfg(%d,%d),roi(%u,%u),pitches:%u,larb_cons:0x%pa\n", __func__,
+			(unsigned long)addr, cfg->w, cfg->h, width, height, pitch, comp->larb_cons);
+
+}
 static bool mtk_mdp_rdma_format_check(struct mtk_plane_pending_state *pending)
 {
 	unsigned int con = 0;
@@ -680,6 +735,7 @@ static const struct mtk_ddp_comp_funcs mtk_disp_mdp_rdma_funcs = {
 	.prepare = mtk_mdp_rdma_prepare,
 	.unprepare = mtk_mdp_rdma_unprepare,
 	.config = mtk_mdp_rdma_config,
+	.bif_read_config = mtk_mdp_rdma_bif_read_config,
 	.discrete_config = mtk_mdp_rdma_discrete_config,
 	.io_cmd = mtk_mdp_rdma_io_cmd,
 };
@@ -764,21 +820,25 @@ static int mtk_disp_mdp_rdma_probe(struct platform_device *pdev)
 
 	/* Disable and clear pending interrupts */
 	writel(0x0, priv->ddp_comp.regs + DISP_REG_MDP_RDMA_INT_STATUS);
+	dsb(sy);
 	writel(0x0, priv->ddp_comp.regs + DISP_REG_MDP_RDMA_INT_ENABLE);
-
-	ret = devm_request_irq(dev, irq, mtk_disp_mdp_rdma_irq_handler,
-			       IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
-			       priv);
-	if (ret < 0) {
-		DDPAEE("%s:%d, failed to request irq:%d ret:%d comp_id:%d\n",
-				__func__, __LINE__,
-				irq, ret, comp_id);
-		return ret;
-	}
+	dsb(sy);
 
 	priv->data = of_device_get_match_data(dev);
 	if (priv->data == NULL)
 		dev_err(dev, "priv->data is NULL\n");
+
+	if (!priv->data->skip_irq) {
+		ret = devm_request_irq(dev, irq, mtk_disp_mdp_rdma_irq_handler,
+					   IRQF_TRIGGER_NONE | IRQF_SHARED, dev_name(dev),
+					   priv);
+		if (ret < 0) {
+			DDPAEE("%s:%d, failed to request irq:%d ret:%d comp_id:%d\n",
+					__func__, __LINE__,
+					irq, ret, comp_id);
+			return ret;
+		}
+	}
 
 	platform_set_drvdata(pdev, priv);
 
@@ -807,6 +867,7 @@ static int mtk_disp_mdp_rdma_remove(struct platform_device *pdev)
 
 static const struct mtk_disp_mdp_rdma_data mt6991_mdp_rdma_driver_data = {
 	.sodi_config = mt6991_mtk_sodi_config,
+	.skip_irq = true,
 };
 
 static const struct of_device_id mtk_disp_mdp_rdma_driver_dt_match[] = {

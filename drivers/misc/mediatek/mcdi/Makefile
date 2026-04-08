@@ -17,7 +17,12 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/include/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/include/mcdi_v1/
 
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/cpuidle/
+ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT8788_MCDI)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/spm_v4/
+else
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/spm/
+endif
+
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_SUPPORT)$(CONFIG_MTK_TINYSYS_SSPM_PLT_SUPPORT)),)
 ifneq ($(strip $(CONFIG_MTK_TINYSYS_SSPM_V0)),)
 ccflags-y += -DUSE_TINYSYS_SSPM
@@ -49,6 +54,11 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/plat_k68/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm/common_v1/
 mcdi-y += plat_k68/mtk_mcdi_plat.o
 mcdi-y += plat_k68/mtk_mcdi_state.o
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT8788_MCDI)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/plat_aiot8788/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm_v4/
+mcdi-y += plat_aiot8788/mtk_mcdi_plat.o
+mcdi-y += plat_aiot8788/mtk_mcdi_state.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6761)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mcdi/platform/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/spm/common_v0/

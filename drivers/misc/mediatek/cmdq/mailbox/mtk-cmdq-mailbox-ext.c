@@ -2556,6 +2556,7 @@ EXPORT_SYMBOL(cmdq_dump_core);
 
 void cmdq_thread_dump_spr(struct cmdq_thread *thread)
 {
+#ifndef MT8788_GCE
 	struct cmdq *cmdq = container_of(thread->chan->mbox, struct cmdq, mbox);
 	u32 i, spr[4] = {0}, dbg[2] = {0}, gpr[16] = {0};
 
@@ -2576,6 +2577,7 @@ void cmdq_thread_dump_spr(struct cmdq_thread *thread)
 		&cmdq->base_pa, gpr[0], gpr[1], gpr[2], gpr[3], gpr[4], gpr[5],
 		gpr[6], gpr[7], gpr[8], gpr[9], gpr[10], gpr[11], gpr[12],
 		gpr[13], gpr[14], gpr[15]);
+#endif
 }
 EXPORT_SYMBOL(cmdq_thread_dump_spr);
 
@@ -2702,6 +2704,7 @@ EXPORT_SYMBOL(cmdq_thread_dump);
 
 void cmdq_mbox_dump_dbg(void *mbox_cmdq, void *chan, const bool lock)
 {
+#ifndef MT8788_GCE
 	struct cmdq *cmdq = mbox_cmdq;
 	u32 id;
 	unsigned long flags;
@@ -2779,6 +2782,7 @@ void cmdq_mbox_dump_dbg(void *mbox_cmdq, void *chan, const bool lock)
 				dbg0[0], dbg0[1], dbg0[2],
 				dbg2[0], dbg2[1], dbg2[2], dbg2[3], dbg2[4], dbg2[5],
 				dbg3);
+#endif
 }
 EXPORT_SYMBOL(cmdq_mbox_dump_dbg);
 
@@ -3465,7 +3469,7 @@ static void cmdq_shutdown(struct platform_device *pdev)
 			cmdq_msg(
 				"%s hwid:%hu usage:%d idx:%d still has tasks",
 				__func__, cmdq->hwid, usage, i);
-			cmdq_mbox_thread_stop(cmdq->thread);
+			cmdq_mbox_thread_stop(&cmdq->thread[i]);
 		}
 }
 
@@ -3507,6 +3511,7 @@ static int cmdq_probe(struct platform_device *pdev)
 #endif
 	u32 dram_pwr_pa, mminfra_ao_pa, iommu_mask_pa;
 	u32 wla_north_ddr_ack_pa, wla_south_ddr_ack_pa, spm_gce_req_pa;
+	u32 irq_cpu = 0;
 
 	plat_data = (struct gce_plat *)of_device_get_match_data(dev);
 	if (!plat_data) {
@@ -3585,6 +3590,13 @@ static int cmdq_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR)
 	irq_mon_aee_callback_register(cmdq->irq, cmdq_burst_irq_callback);
 #endif
+
+	of_property_read_u32(dev->of_node, "irq-cpu", &irq_cpu);
+	if (irq_cpu) {
+		cmdq_msg("hwid:%u irq_handler_cpu:%u", hwid, irq_cpu);
+		irq_force_affinity(cmdq->irq, cpumask_of(irq_cpu));
+	}
+
 	err = devm_request_irq(dev, cmdq->irq, cmdq_irq_handler, IRQF_SHARED,
 			       "mtk_cmdq", cmdq);
 	if (err < 0) {
@@ -5190,7 +5202,7 @@ s32 cmdq_pkt_set_capability(struct cmdq_pkt *pkt)
 	} else if (pkt->dev) {
 		cmdq = dev_get_drvdata(pkt->dev);
 	} else {
-		cmdq_err("cl/dev is null");
+		cmdq_log("cl/dev is null");
 		return -EINVAL;
 	}
 

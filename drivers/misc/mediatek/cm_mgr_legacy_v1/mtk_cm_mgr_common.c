@@ -165,7 +165,11 @@ int cpu_power_bcpu_weight_min = 100;
 #endif
 int cpu_power_bbcpu_weight_max = 100;
 int cpu_power_bbcpu_weight_min = 100;
+#if IS_ENABLED(CONFIG_MTK_CM_MGR_MT6833) || IS_ENABLED(CONFIG_MTK_CM_MGR_MT6853)
+int cm_mgr_cpu_map_dram_enable = 1;
+#else
 int cm_mgr_cpu_map_dram_enable;
+#endif
 int cm_mgr_cpu_map_emi_opp = 1;
 int cm_mgr_cpu_map_skip_cpu_opp = 2;
 unsigned int cm_work_flag;

@@ -70,6 +70,11 @@
 #include "mtk_disp_vidle.h"
 #include "mtk_vdisp_common.h"
 
+#if defined(CONFIG_VIS_DISPLAY_DALI)
+//Novatek ASIC
+#include "vis_display.h"
+#endif
+
 #if IS_ENABLED(CONFIG_MTK_DISP_MMDVFS_INIT_SEQUENCE)
 #include <soc/mediatek/mmdvfs_v3.h>
 #endif
@@ -91,6 +96,10 @@
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
 #include "mtk_drm_edp/mtk_drm_edp_api.h"
 #endif
+#ifdef CONFIG_MI_DISP
+#include "mi_disp/mi_disp_feature.h"
+#include "mi_disp/mi_disp_log.h"
+#endif
 //#include "swpm_me.h"
 //#include "include/pmic_api_buck.h"
 #include <../drivers/gpu/drm/mediatek/mml/mtk-mml.h>
@@ -106,6 +115,10 @@
 #include <linux/nvmem-consumer.h>
 #endif
 
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+#include "vcp_status.h"
+#endif
+
 #include "mtk-mminfra-debug.h"
 #include "mtk_disp_bdg.h"
 
@@ -113,6 +126,10 @@
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 #include "mtk_drm_auto/mtk_drm_crtc_auto.h"
+#endif
+
+#ifdef CONFIG_MI_DISP_DFS_EVENT
+#include "mi_disp/mi_disp_event.h"
 #endif
 
 #define CLKBUF_COMMON_H
@@ -144,6 +161,7 @@ long long mutex_time_period;
 const char *mutex_locker;
 
 int aod_scp_flag;
+unsigned int g_disp_aod_mode;
 unsigned long long mutex_nested_time_start;
 unsigned long long mutex_nested_time_end;
 long long mutex_nested_time_period;
@@ -171,6 +189,7 @@ struct mtk_se_dma_map {
 };
 
 static struct mtk_se_dma_map dma_map_list;
+bool dma_map_list_initialized;
 
 #ifdef DRM_OVL_SELF_PATTERN
 struct drm_crtc *test_crtc;
@@ -983,6 +1002,7 @@ static void mtk_atomic_aod_scp_ipi(struct drm_crtc *crtc, bool prepare)
 	}
 
 	if (!crtc->state->active && prepare) {
+		mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
 		if (mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
 			ulps_wakeup_prd = mtk_drm_aod_scp_get_dsi_ulps_wakeup_prd(crtc);
 			aod_scp_ipi.module_backup(crtc, ulps_wakeup_prd);
@@ -1040,6 +1060,7 @@ static void pq_bypass_cmdq_cb(struct cmdq_cb_data data)
 	cmdq_pkt_destroy(cb_data->cmdq_handle);
 	kfree(cb_data);
 }
+
 static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage, bool old_state)
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
@@ -1057,18 +1078,45 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 		crtc->state->active, old_state, stage);
 	mtk_state = to_mtk_crtc_state(crtc->state);
 
+
 	if (!crtc->state->active) {
 		if (mtk_state->doze_changed &&
 			!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
-			DDPINFO("%s: doze switch to suspend, need enable pq first\n", __func__);
+			DDPINFO("%s: doze switch to suspend, need enable pq before suspend\n", __func__);
+			mtk_crtc->doze_into_suspend = true;
+			return;
 		} else {
 			DDPINFO("%s: crtc is not active\n", __func__);
 			return;
 		}
 	}
 
+#ifdef CONFIG_MI_DISP
+	if (mtk_crtc->aod_change){
+		if (!crtc->state->active && stage == 1)
+				return;
+		else if (crtc->state->active && stage == 0)
+				return;
+		if(mtk_crtc->has_aod){
+			mtk_crtc->aod_change = 0;
+			bypass=1;
+			DDPINFO("%s: bypass=1\n", __func__);
+		} else if(!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			mtk_crtc->aod_change = 0;
+			bypass=0;
+			DDPINFO("%s: bypass=0\n", __func__);
+		} else {
+			return;
+		}
+		goto mi_bypass;
+	}
+#endif
 	if (mtk_state->doze_changed) {
+#ifdef CONFIG_MI_DISP
+		if ((!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) && (!mtk_crtc->has_aod)) {
+#else
 		if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+#endif
 			if (!crtc->state->active && stage == 1)
 				return;
 			else if (crtc->state->active && stage == 0)
@@ -1086,11 +1134,15 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 		return;
 	}
 
+#ifdef CONFIG_MI_DISP
+mi_bypass:
+#endif
 	cb_data = kmalloc(sizeof(*cb_data), GFP_KERNEL);
 	if (!cb_data) {
 		DDPPR_ERR("cb data creation failed\n");
 		return;
 	}
+	mtk_drm_idlemgr_kick(__func__, crtc, false);
 
 #ifndef DRM_CMDQ_DISABLE
 	if (bypass)
@@ -1122,13 +1174,13 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 	}
 
 	if (cmdq_pkt_flush_threaded(cmdq_handle, pq_bypass_cmdq_cb, cb_data) < 0)
-		DDPPR_ERR("failed to flush user_cmd\n");
+        DDPPR_ERR("failed to flush user_cmd\n");
 
 #ifndef DRM_CMDQ_DISABLE
-	if (bypass) {
-		cmdq_mbox_stop(client); /* Before power off need stop first */
-		cmdq_mbox_disable(client->chan); /* GCE clk refcnt - 1 */
-	}
+    if (bypass) {
+        //cmdq_mbox_stop(client); /* Before power off need stop first */
+        cmdq_mbox_disable(client->chan); /* GCE clk refcnt - 1 */
+    }
 #endif
 }
 
@@ -1173,16 +1225,14 @@ static void mtk_atomic_doze_finish(struct drm_device *dev,
 					 struct drm_atomic_state *old_state)
 {
 	struct drm_crtc *crtc;
-	struct drm_connector *connector;
-	struct drm_connector_state *old_conn_state;
+	struct drm_crtc_state  *old_crtc_state;
 	int i;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 
-	for_each_new_connector_in_state(old_state, connector,
-		old_conn_state, i) {
+	for_each_new_crtc_in_state(old_state, crtc,
+		old_crtc_state, i) {
 
-		crtc = connector->state->crtc;
 		if (!crtc) {
 			DDPPR_ERR("%s connector has no crtc\n", __func__);
 			continue;
@@ -1192,12 +1242,19 @@ static void mtk_atomic_doze_finish(struct drm_device *dev,
 
 		mtk_crtc = to_mtk_crtc(crtc);
 		comp = mtk_ddp_comp_request_output(mtk_crtc);
-
+#ifdef CONFIG_MI_DISP
+		if (comp && comp->id == DDP_COMPONENT_DSI0 && (old_state->crtcs[0].old_state || mtk_crtc->aod_change==1))
+#else
 		if (comp && comp->id == DDP_COMPONENT_DSI0 && old_state->crtcs[0].old_state)
+#endif
 			mtk_atomic_doze_update_pq(crtc, 1,
 				old_state->crtcs[0].old_state->active);
 
+#ifdef CONFIG_MI_DISP
+		if (comp && comp->id == DDP_COMPONENT_DSI1 && (old_state->crtcs[3].old_state || mtk_crtc->aod_change==1))
+#else
 		if (comp && comp->id == DDP_COMPONENT_DSI1 && old_state->crtcs[3].old_state)
+#endif
 			mtk_atomic_doze_update_pq(crtc, 1,
 				old_state->crtcs[3].old_state->active);
 	}
@@ -1344,7 +1401,17 @@ static struct mml_submit *mtk_alloc_mml_submit(void)
 	unsigned int i = 0;
 
 	temp = kzalloc(sizeof(struct mml_submit), GFP_KERNEL);
+	if (!temp) {
+		DDPPR_ERR("%s,%d,kzalloc error\n", __func__, __LINE__);
+		return temp;
+	}
+
 	temp->job = kzalloc(sizeof(struct mml_job), GFP_KERNEL);
+	if (!temp->job) {
+		kfree(temp);
+		DDPPR_ERR("%s,%d,kzalloc error\n", __func__, __LINE__);
+		return temp;
+	}
 	for (i = 0; i < MML_MAX_OUTPUTS; ++i)
 		temp->pq_param[i] =	kzalloc(sizeof(struct mml_pq_param), GFP_KERNEL);
 
@@ -1359,9 +1426,9 @@ void mtk_free_mml_submit(struct mml_submit *temp)
 		return;
 
 	for (i = 0; i < MML_MAX_PLANES && i < temp->buffer.src.cnt; ++i) {
-		if (temp->buffer.src.use_dma &&	temp->buffer.src.dmabuf[i]) {
+		if (temp->buffer.src.use_dma && temp->buffer.src.dmabuf[i]) {
 			DDPINFO("%s dmabuf:0x%lx\n", __func__,
-					(unsigned long)temp->buffer.src.dmabuf[i]);
+				(unsigned long)temp->buffer.src.dmabuf[i]);
 			dma_buf_put(temp->buffer.src.dmabuf[i]);
 		}
 	}
@@ -1458,7 +1525,7 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	struct drm_crtc *crtc = NULL;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_crtc_state *crtc_state = NULL;
-	int i = 0, src_fd_0 = 0;
+	int i = 0, j = 0, src_fd_0 = 0;
 	int ret = 0;
 	unsigned int fps = 0;
 	unsigned int vtotal = 0;
@@ -1468,8 +1535,10 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	struct mtk_ddp_comp *comp = NULL;
 	struct mtk_ddp_comp *output_comp = NULL;
 
-	if (!mtk_plane_state->prop_val[PLANE_PROP_IS_MML])
+	if (!mtk_plane_state->prop_val[PLANE_PROP_IS_MML]) {
+		CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 0x11);
 		return MML_MODE_UNKNOWN;
+	}
 
 	crtc = mtk_plane_state->crtc;
 	mtk_crtc = to_mtk_crtc(crtc);
@@ -1479,46 +1548,58 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	priv = dev->dev_private;
 
 	mml_ctx = mtk_drm_get_mml_drm_ctx(dev, crtc);
-	if (unlikely(!mml_ctx))
+	if (unlikely(!mml_ctx)) {
+		CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 0x12);
 		return MML_MODE_UNKNOWN;
+	}
 
 	submit_pq = mtk_alloc_mml_submit();
 	if (unlikely(!submit_pq)) {
-		DDPMSG("%s:err_alloc_submit_pq\n", __func__);
+		DDPPR_ERR("%s:err_alloc_submit_pq\n", __func__);
+		CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 0x13);
 		goto err_alloc_submit_pq;
 	}
 
 	submit_kernel = mtk_alloc_mml_submit();
 	if (unlikely(!submit_kernel)) {
-		DDPMSG("%s:err_alloc_submit_kernel\n", __func__);
+		DDPPR_ERR("%s:err_alloc_submit_kernel\n", __func__);
+		CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 0x14);
 		goto err_alloc_submit_kernel;
 	}
 
 	ret = copy_mml_submit_from_user(
 	    (struct mml_submit *)(mtk_plane_state->prop_val[PLANE_PROP_MML_SUBMIT]), submit_kernel);
 	if (unlikely(ret < 0)) {
-		DDPMSG("%s:err_copy_submit\n", __func__);
+		DDPPR_ERR("%s:err_copy_submit\n", __func__);
+		CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 0x15);
 		goto err_copy_submit;
 	}
 
 	if (submit_kernel->info.mode == MML_MODE_RACING && (!kref_read(&mtk_crtc->mml_ir_sram.ref)))
 		mtk_crtc_alloc_sram(mtk_crtc, crtc_state->prop_val[CRTC_PROP_LYE_IDX]);
 
-	for (i = 0; i < MML_MAX_PLANES; ++i) {
-		submit_kernel->buffer.dest[0].fd[i] = -1;
-		submit_kernel->buffer.dest[0].size[i] = 0;
-	}
+	memset(&submit_kernel->buffer.dest, 0, sizeof(submit_kernel->buffer.dest));
+	for (i = 0; i < MML_MAX_OUTPUTS; ++i)
+		for (j = 0; j < MML_MAX_PLANES; ++j)
+			submit_kernel->buffer.dest[i].fd[j] = -1;
+
+	submit_kernel->buffer.seg_map.use_dma = false;
+	memset(&submit_kernel->buffer.src.dmabuf, 0, sizeof(submit_kernel->buffer.src.dmabuf));
 
 	src_fd_0 = submit_kernel->buffer.src.fd[0];
 	if (src_fd_0 > 0) {
 		submit_kernel->buffer.src.use_dma = true;
 		submit_kernel->buffer.src.dmabuf[0] = fd_to_dma_buf(src_fd_0);
+		submit_kernel->buffer.src.cnt = max(min(submit_kernel->buffer.src.cnt,
+							MML_MAX_PLANES), 1);
 		if (submit_kernel->buffer.src.dmabuf[0] == NULL) {
-			DDPMSG("%s:err_fd_to_dma\n", __func__);
+			CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 0x16);
+			DDPPR_ERR("%s:err_fd_to_dma\n", __func__);
 			goto err_fd_to_dma;
 		}
 	} else {
-		DDPMSG("%s:err_src_fd\n", __func__);
+		DDPPR_ERR("%s:err_src_fd\n", __func__);
+		CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 0x17);
 		goto err_src_fd;
 	}
 
@@ -1534,16 +1615,23 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 			DDPMSG("%s, %d GET_OVL_SYS_NUM fail\n", __func__, __LINE__);
 	}
 
-	ret = mtk_crtc->gce_obj.event[EVENT_MML_DISP_DONE_EVENT];
+	if ((submit_kernel->info.mode == MML_MODE_DIRECT_LINK) &&
+		(mtk_crtc_is_frame_trigger_mode(crtc)))
+		ret = mtk_crtc->gce_obj.event[EVENT_MML_DISP_DONE_EVENT];
+	else
+		ret = mtk_crtc->gce_obj.event[EVENT_OVLSYS0_EXDMA0_EOF];
 	if (ret)
 		submit_kernel->info.disp_done_event = ret;
 
+	submit_kernel->disp_vdo = !mtk_crtc_is_frame_trigger_mode(crtc);
 	mml_drm_split_info(submit_kernel, submit_pq);
 
 	mtk_drm_idlemgr_kick(__func__, crtc, false); /* power on dsi */
 	output_comp = mtk_ddp_comp_request_output(mtk_crtc);
-	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI))
-		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS, &line_time);
+	if (output_comp && (mtk_ddp_comp_get_type(output_comp->id) == MTK_DSI)) {
+		line_time = crtc_state->prop_val[CRTC_PROP_DISP_MODE_IDX];
+		mtk_ddp_comp_io_cmd(output_comp, NULL, DSI_GET_LINE_TIME_NS_BY_MODE, &line_time);
+	}
 	submit_kernel->info.act_time = line_time * submit_pq->info.dest[0].compose.height;
 
 #define _ATOMIC_MML_FMT \
@@ -1602,8 +1690,14 @@ static enum mml_mode _mtk_atomic_mml_plane(struct drm_device *dev,
 	}
 
 	ret = mml_drm_submit(mml_ctx, submit_kernel, &(mtk_crtc->mml_cb));
-	if (ret)
+	if (ret) {
+		DDPPR_ERR("%s:err_submit\n", __func__);
+		CRTC_MMP_MARK(0, mml_job_status, 0xFFF0, ret);
 		goto err_submit;
+	}
+
+	if (submit_kernel->info.mode == MML_MODE_DIRECT_LINK)
+		mtk_crtc->is_mml_dl_submit = true;
 
 	atomic_set(&(mtk_crtc->wait_mml_last_job_is_flushed), 0);
 
@@ -1629,6 +1723,8 @@ err_src_fd:
 	mtk_free_mml_submit(submit_kernel);
 err_alloc_submit_pq:
 	mtk_free_mml_submit(submit_pq);
+
+	mtk_crtc->is_mml_dl_submit = false;
 	return MML_MODE_UNKNOWN;
 }
 
@@ -1652,25 +1748,34 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	for_each_oldnew_crtc_in_state(state, crtc, old_cs, new_cs, i) {
 		if (drm_crtc_index(crtc)== 0)
 			break;
-		else
+		else {
+			CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 0);
 			return;
+		}
 	}
+
 
 	if (new_cs && old_cs) {
 		mtk_crtc_state = to_mtk_crtc_state(new_cs);
 		old_mtk_state = to_mtk_crtc_state(old_cs);
-	} else
+	} else {
+		CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 1);
 		return;
+	}
 
 	mtk_crtc = to_mtk_crtc(crtc);
+	mtk_crtc->is_mml_dl_submit = false;
 
 	for_each_old_plane_in_state(state, plane, old_plane_state, i) {
 		plane_state = plane->state;
 		if (plane_state && plane_state->crtc && drm_crtc_index(plane_state->crtc) == 0) {
-			need_update_plane = true;
+			if (priv->data->mmsys_id != MMSYS_MT6899)
+				need_update_plane = true;
 			mtk_plane_state = to_mtk_plane_state(plane_state);
 			mtk_plane_state->mml_mode = _mtk_atomic_mml_plane(dev, mtk_plane_state);
 			if (mtk_plane_state->mml_mode > MML_MODE_UNKNOWN) {
+				if (priv->data->mmsys_id == MMSYS_MT6899)
+					need_update_plane = true;
 				new_mode = mtk_plane_state->mml_mode;
 				mtk_plane_state->mml_cfg = mtk_crtc->mml_cfg_pq;
 			}
@@ -1681,7 +1786,11 @@ static void mtk_atomic_mml(struct drm_device *dev,
 	/* which imply mml_dl_lye does not change in this atomic_commit */
 	if (!need_update_plane && (mtk_crtc_state->lye_state.mml_ir_lye ||
 			mtk_crtc_state->lye_state.mml_dl_lye)) {
-		DDPINFO("no plane_update with mml lye, skip %s\n", __func__);
+		if (priv->data->mmsys_id == MMSYS_MT6899)
+			mtk_crtc->mml_link_state = MML_IR_IDLE;
+		DDPINFO("no plane_update with mml lye, skip %s, mml_link_state = %d\n",
+			__func__, mtk_crtc->mml_link_state);
+		CRTC_MMP_MARK(0, mml_job_status, 0xFFFF, 2);
 		return;
 	}
 
@@ -1852,8 +1961,10 @@ static int mtk_atomic_check(struct drm_device *dev,
 		old_state = to_mtk_crtc_state(crtc->state);
 		new_state = to_mtk_crtc_state(crtc_state);
 
+#if !IS_ENABLED(CONFIG_MTK_DP_AS_CRTC0)
 		if (drm_crtc_index(crtc) == 0)
 			mtk_drm_crtc_mode_check(crtc, crtc->state, crtc_state);
+#endif
 
 		if (new_state->prop_val[CRTC_PROP_LYE_IDX]) {
 			struct mtk_drm_lyeblob_ids *ids, *next;
@@ -1918,6 +2029,14 @@ static int mtk_atomic_check(struct drm_device *dev,
 			new_state->bl_sync_gamma_gain[GAMMA_GAIN_RANGE] =
 				old_state->bl_sync_gamma_gain[GAMMA_GAIN_RANGE];
 		}
+
+		if (new_state->prop_val[CRTC_PROP_DOZE_ACTIVE] == 1) {
+			DDPINFO("[CRTC:%d:%s] doze active = 1\n",
+				crtc->base.id, crtc->name);
+			g_disp_aod_mode = 1;
+		} else
+			g_disp_aod_mode = 0;
+
 
 		if (old_state->prop_val[CRTC_PROP_DOZE_ACTIVE] ==
 		    new_state->prop_val[CRTC_PROP_DOZE_ACTIVE])
@@ -2129,6 +2248,8 @@ static void mtk_atomic_check_res_switch(struct mtk_drm_private *private,
 
 			/*store total overhead data*/
 			mtk_crtc_store_total_overhead(mtk_crtc, cfg.tile_overhead);
+
+			mtk_crtc_update_bif_roi(mtk_crtc);
 		}
 	}
 }
@@ -2329,6 +2450,21 @@ static const enum mtk_ddp_comp_id mt2712_mtk_ddp_ext[] = {
 	DDP_COMPONENT_OVL1,  DDP_COMPONENT_COLOR1, DDP_COMPONENT_AAL1,
 	DDP_COMPONENT_OD1,   DDP_COMPONENT_RDMA1,  DDP_COMPONENT_DPI1,
 	DDP_COMPONENT_WDMA1, DDP_COMPONENT_PWM1,
+};
+
+static const enum mtk_ddp_comp_id mt6771_mtk_ddp_main[] = {
+	DDP_COMPONENT_OVL0,  DDP_COMPONENT_RDMA0, DDP_COMPONENT_RDMA0_VIRTUAL0,
+	DDP_COMPONENT_COLOR0, DDP_COMPONENT_CCORR0, DDP_COMPONENT_AAL0,
+	DDP_COMPONENT_GAMMA0, DDP_COMPONENT_DITHER0, DDP_COMPONENT_DSI0,
+};
+
+static const enum mtk_ddp_comp_id mt6771_mtk_ddp_ext[] = {
+	DDP_COMPONENT_OVL1_2L, DDP_COMPONENT_RDMA1,
+	DDP_COMPONENT_RDMA1_VIRTUAL0,DDP_COMPONENT_DPI0,
+};
+static const enum mtk_ddp_comp_id mt6771_mtk_ddp_third[] = {
+	DDP_COMPONENT_OVL0_2L, DDP_COMPONENT_WDMA_VIRTUAL0,
+	DDP_COMPONENT_WDMA0,
 };
 
 static enum mtk_ddp_comp_id mt8173_mtk_ddp_main[] = {
@@ -2561,6 +2697,28 @@ static const enum mtk_ddp_comp_id mt6768_mtk_ddp_main_wb_path[] = {
 	DDP_COMPONENT_OVL0, DDP_COMPONENT_WDMA0,
 };
 #endif
+
+static const struct mtk_addon_scenario_data mt6771_addon_main[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+};
+
+static const struct mtk_addon_scenario_data mt6771_addon_ext[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL0,
+	},
+};
 
 static const struct mtk_addon_scenario_data mt6768_addon_sec_main[ADDON_SCN_NR] = {
 		[NONE] = {
@@ -3431,9 +3589,9 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
 	DDP_COMPONENT_OVL0_BLENDER2,
 	DDP_COMPONENT_OVL_EXDMA5,
 	DDP_COMPONENT_OVL0_BLENDER3,
-	DDP_COMPONENT_OVL_EXDMA6,
-	DDP_COMPONENT_OVL0_BLENDER4,
 	DDP_COMPONENT_OVL_EXDMA7,
+	DDP_COMPONENT_OVL0_BLENDER4,
+	DDP_COMPONENT_OVL_EXDMA6,
 	DDP_COMPONENT_OVL0_BLENDER5,
 	DDP_COMPONENT_OVL_EXDMA8,
 	DDP_COMPONENT_OVL0_BLENDER6,
@@ -3455,13 +3613,13 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_SPLITTER0_OUT_CB9,
 #else
 	DDP_COMPONENT_MDP_RSZ0,		DDP_COMPONENT_TDSHP0,
-	DDP_COMPONENT_CCORR0,		DDP_COMPONENT_COLOR0,
+	DDP_COMPONENT_DMDP_AAL0,	DDP_COMPONENT_AAL0,
+	DDP_COMPONENT_COLOR0,		DDP_COMPONENT_CCORR0,
 	DDP_COMPONENT_C3D0,		DDP_COMPONENT_CCORR1,
-	DDP_COMPONENT_C3D1,		DDP_COMPONENT_DMDP_AAL0,
-	DDP_COMPONENT_AAL0,		DDP_COMPONENT_GAMMA0,
+	DDP_COMPONENT_C3D1,		DDP_COMPONENT_GAMMA0,
 	DDP_COMPONENT_POSTMASK0,	DDP_COMPONENT_DITHER0,
 	DDP_COMPONENT_PQ0_OUT_CB0,
-#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT) || IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB1,
 	DDP_COMPONENT_DLO_ASYNC1, DDP_COMPONENT_DLI_ASYNC21,
 	DDP_COMPONENT_SPLITTER0_IN_CB1,
@@ -3475,7 +3633,12 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_SPLITTER0_OUT_CB9,
 #endif
 #endif
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	DDP_COMPONENT_DSC0,
+	DDP_COMPONENT_COMP0_OUT_CB1,
+#else
 	DDP_COMPONENT_COMP0_OUT_CB6,
+#endif
 	DDP_COMPONENT_MERGE0_OUT_CB0,
 	DDP_COMPONENT_DSI0,
 	DDP_COMPONENT_VDISP_AO,
@@ -3484,6 +3647,110 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bringup[] = {
 #endif
 };
 
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bypass_pc_bringup[] = {
+	DDP_COMPONENT_DLI_ASYNC0,
+	DDP_COMPONENT_PQ0_IN_CB0,
+#ifdef DRM_BYPASS_PQ
+	DDP_COMPONENT_PQ0_OUT_CB6,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB1,
+	DDP_COMPONENT_DLO_ASYNC1, DDP_COMPONENT_DLI_ASYNC21,
+	DDP_COMPONENT_SPLITTER0_IN_CB1,
+	DDP_COMPONENT_SPLITTER0_OUT_CB9,
+#else
+	DDP_COMPONENT_MDP_RSZ0, DDP_COMPONENT_TDSHP0,
+	DDP_COMPONENT_DMDP_AAL0, DDP_COMPONENT_AAL0,
+	DDP_COMPONENT_COLOR0, DDP_COMPONENT_CCORR0,
+	DDP_COMPONENT_C3D0, DDP_COMPONENT_CCORR1,
+	DDP_COMPONENT_C3D1, DDP_COMPONENT_GAMMA0,
+	DDP_COMPONENT_POSTMASK0, DDP_COMPONENT_DITHER0,
+	DDP_COMPONENT_PQ0_OUT_CB0,
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT) || IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB1,
+	DDP_COMPONENT_DLO_ASYNC1, DDP_COMPONENT_DLI_ASYNC21,
+	DDP_COMPONENT_SPLITTER0_IN_CB1,
+	DDP_COMPONENT_SPLITTER0_OUT_CB9,
+#else
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB1,
+	DDP_COMPONENT_DLO_ASYNC1, DDP_COMPONENT_DLI_ASYNC21,
+	DDP_COMPONENT_SPLITTER0_IN_CB1,
+	DDP_COMPONENT_SPLITTER0_OUT_CB9,
+
+#endif
+#endif
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	DDP_COMPONENT_DSC0,
+	DDP_COMPONENT_COMP0_OUT_CB1,
+#else
+	DDP_COMPONENT_COMP0_OUT_CB6,
+#endif
+	DDP_COMPONENT_MERGE0_OUT_CB0,
+	DDP_COMPONENT_DSI0,
+	DDP_COMPONENT_VDISP_AO,
+#ifndef DRM_BYPASS_PQ
+	DDP_COMPONENT_CHIST0,	DDP_COMPONENT_CHIST1,
+#endif
+};
+
+
+static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_dual_main_bringup[] = {
+	DDP_COMPONENT_OVL1_EXDMA3,
+	DDP_COMPONENT_OVL1_BLENDER1,
+	DDP_COMPONENT_OVL1_EXDMA4,
+	DDP_COMPONENT_OVL1_BLENDER2,
+	DDP_COMPONENT_OVL1_EXDMA5,
+	DDP_COMPONENT_OVL1_BLENDER3,
+	DDP_COMPONENT_OVL1_EXDMA6,
+	DDP_COMPONENT_OVL1_BLENDER4,
+	DDP_COMPONENT_OVL1_EXDMA7,
+	DDP_COMPONENT_OVL1_BLENDER5,
+	DDP_COMPONENT_OVL1_EXDMA8,
+	DDP_COMPONENT_OVL1_BLENDER6,
+	DDP_COMPONENT_OVL1_OUTPROC0,
+	//DDP_COMPONENT_OVL0_OUTPROC_OUT_CB6,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC5,
+	DDP_COMPONENT_OVL_EXDMA0,
+};
+
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_dual_main_bringup[] = {
+	DDP_COMPONENT_DLI_ASYNC8,
+	DDP_COMPONENT_PQ0_IN_CB8,
+#ifdef DRM_BYPASS_PQ
+	DDP_COMPONENT_PQ0_OUT_CB7,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB2,
+	DDP_COMPONENT_DLO_ASYNC2, DDP_COMPONENT_DLI_ASYNC22,
+	DDP_COMPONENT_SPLITTER0_IN_CB2,
+	DDP_COMPONENT_SPLITTER0_OUT_CB10,
+#else
+	DDP_COMPONENT_MDP_RSZ1,		DDP_COMPONENT_TDSHP1,
+	DDP_COMPONENT_DMDP_AAL1,	DDP_COMPONENT_AAL1,
+	DDP_COMPONENT_COLOR1,		DDP_COMPONENT_CCORR2,
+	DDP_COMPONENT_C3D2,		DDP_COMPONENT_CCORR3,
+	DDP_COMPONENT_C3D3,		DDP_COMPONENT_GAMMA1,
+	DDP_COMPONENT_POSTMASK1,	DDP_COMPONENT_DITHER1,
+	DDP_COMPONENT_PQ0_OUT_CB3,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB2,
+	DDP_COMPONENT_DLO_ASYNC2, DDP_COMPONENT_DLI_ASYNC22,
+	DDP_COMPONENT_SPLITTER0_IN_CB2,
+	DDP_COMPONENT_SPLITTER0_OUT_CB10,
+#endif
+	DDP_COMPONENT_DSC1,
+	DDP_COMPONENT_COMP0_OUT_CB2,
+	DDP_COMPONENT_MERGE0_OUT_CB1,
+};
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bif_write_path[] = {
+	DDP_COMPONENT_SPLITTER0,
+	DDP_COMPONENT_DSC1,
+	DDP_COMPONENT_MERGE0,
+	DDP_COMPONENT_WDMA1,
+	DDP_COMPONENT_SPLITTER0_OUT_CB1, // for 2 splitter
+	DDP_COMPONENT_COMP0_OUT_CB7,
+	DDP_COMPONENT_MERGE0_OUT_CB12,
+};
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_main_bif_read_path[] = {
+	DDP_COMPONENT_MDP_RDMA1,
+	DDP_COMPONENT_SPLITTER1,
+	DDP_COMPONENT_COMP0_OUT_CB8,
+};
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_mem_dp_wo_tdshp[] = {
 	DDP_COMPONENT_OVL1_EXDMA6,
 	DDP_COMPONENT_OVL1_BLENDER5,
@@ -3497,6 +3764,40 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_mem_dp_wo_tdshp[] = {
 	DDP_COMPONENT_OVLSYS_WDMA2,
 };
 
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
+	DDP_COMPONENT_OVL_EXDMA9,
+	DDP_COMPONENT_OVL0_BLENDER9,
+	DDP_COMPONENT_OVL0_OUTPROC3,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC10,
+	DDP_COMPONENT_DLI_ASYNC5,
+	DDP_COMPONENT_PQ0_IN_CB5,
+	DDP_COMPONENT_PQ0_OUT_CB8,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB3,
+	DDP_COMPONENT_DLO_ASYNC3, DDP_COMPONENT_DLI_ASYNC23,
+	DDP_COMPONENT_SPLITTER0_IN_CB3,
+	DDP_COMPONENT_SPLITTER0_OUT_CB11,
+	DDP_COMPONENT_COMP0_OUT_CB8,
+	DDP_COMPONENT_MERGE0,
+	DDP_COMPONENT_DP_INTF0,
+};
+
+static const enum mtk_ddp_comp_id mt6991_mtk_ddp_dual_ext_dp[] = {
+	DDP_COMPONENT_OVL1_EXDMA9,
+	DDP_COMPONENT_OVL1_BLENDER9,
+	DDP_COMPONENT_OVL1_OUTPROC3,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC10,
+	DDP_COMPONENT_DLI_ASYNC13,
+	DDP_COMPONENT_PQ0_IN_CB13,
+	DDP_COMPONENT_PQ0_OUT_CB9,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB4,
+	DDP_COMPONENT_DLO_ASYNC4, DDP_COMPONENT_DLI_ASYNC24,
+	DDP_COMPONENT_SPLITTER0_IN_CB4,
+	DDP_COMPONENT_SPLITTER0_OUT_CB12,
+	DDP_COMPONENT_COMP0_OUT_CB9,
+	DDP_COMPONENT_MERGE0_OUT_CB12,
+};
+#else
 /* CRTC1 */
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
 	DDP_COMPONENT_OVL1_EXDMA6,
@@ -3520,6 +3821,7 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
 	DDP_COMPONENT_MERGE0_OUT_CB7,
 	DDP_COMPONENT_DP_INTF0,
 };
+#endif
 
 /* CRTC3 */
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_secondary[] = {
@@ -3562,10 +3864,12 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_discrete_chip[] = {
 };
 #else
 static const enum mtk_ddp_comp_id mt6991_mtk_ovlsys_main_bringup[] = {
+#ifndef CONFIG_MTK_DISP_NO_LK
 	DDP_COMPONENT_OVL_EXDMA3,
 	DDP_COMPONENT_OVL0_BLENDER1,
 	DDP_COMPONENT_OVL_EXDMA4,
 	DDP_COMPONENT_OVL0_BLENDER2,
+#endif
 	DDP_COMPONENT_OVL_EXDMA5,
 	DDP_COMPONENT_OVL0_BLENDER3,
 	DDP_COMPONENT_OVL_EXDMA6,
@@ -3620,10 +3924,12 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_mem_dp_wo_tdshp[] = {
 
 /* CRTC1 */
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
+#if !IS_ENABLED(CONFIG_MTK_DP_AS_CRTC0)
 	DDP_COMPONENT_OVL1_EXDMA3,
 	DDP_COMPONENT_OVL1_BLENDER1,
 	DDP_COMPONENT_OVL1_EXDMA4,
 	DDP_COMPONENT_OVL1_BLENDER2,
+#endif
 	DDP_COMPONENT_OVL1_EXDMA5,
 	DDP_COMPONENT_OVL1_BLENDER3,
 	DDP_COMPONENT_OVL1_EXDMA6,
@@ -3654,12 +3960,15 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_ext_dp[] = {
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_secondary[] = {
-	DDP_COMPONENT_OVL_EXDMA9,
-	DDP_COMPONENT_OVL0_BLENDER7,
-	DDP_COMPONENT_OVL0_OUTPROC2,
-	DDP_COMPONENT_OVLSYS_DLO_ASYNC7,
-	DDP_COMPONENT_DLI_ASYNC2,
-	DDP_COMPONENT_PQ0_IN_CB2,
+	DDP_COMPONENT_OVL1_EXDMA7,
+	DDP_COMPONENT_OVL1_BLENDER5,
+	DDP_COMPONENT_OVL1_EXDMA8,
+	DDP_COMPONENT_OVL1_BLENDER6,
+	DDP_COMPONENT_OVL1_OUTPROC1,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC6,
+	DDP_COMPONENT_DLI_ASYNC9,
+
+	DDP_COMPONENT_PQ0_IN_CB9,
 	DDP_COMPONENT_PQ0_OUT_CB8,
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB3,
 	DDP_COMPONENT_DLO_ASYNC3,
@@ -3676,34 +3985,38 @@ static const enum mtk_ddp_comp_id mt6991_mtk_ddp_discrete_chip[] = {
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_fifth_path[] = {
-	DDP_COMPONENT_OVL1_EXDMA8,
-	DDP_COMPONENT_OVL1_BLENDER6,
-	DDP_COMPONENT_OVL1_OUTPROC1,
-	DDP_COMPONENT_OVLSYS1_DLO_ASYNC6,
-	DDP_COMPONENT_DLI_ASYNC9,
-	DDP_COMPONENT_PQ0_IN_CB9,
-	DDP_COMPONENT_PQ0_OUT_CB9,
-	DDP_COMPONENT_PANEL0_COMP_OUT_CB4,
-	DDP_COMPONENT_DLO_ASYNC4,
-	DDP_COMPONENT_DLI_ASYNC24,
-	DDP_COMPONENT_SPLITTER0_IN_CB4,
-	DDP_COMPONENT_SPLITTER0_OUT_CB12,
+	DDP_COMPONENT_OVL1_EXDMA9,
+	DDP_COMPONENT_OVL1_BLENDER7,
+
+	DDP_COMPONENT_OVL1_OUTPROC2,
+	DDP_COMPONENT_OVLSYS1_DLO_ASYNC7,
+	DDP_COMPONENT_DLI_ASYNC10,
+
+	DDP_COMPONENT_PQ0_IN_CB10,
+	DDP_COMPONENT_PQ0_OUT_CB11,
+	DDP_COMPONENT_PANEL0_COMP_OUT_CB6,
+	DDP_COMPONENT_DLO_ASYNC6,
+	DDP_COMPONENT_DLI_ASYNC26,
+	DDP_COMPONENT_SPLITTER0_IN_CB6,
+	DDP_COMPONENT_SPLITTER0_OUT_CB14,
 #ifdef MTK_DSI1_SUPPORT_DSC1
 	DDP_COMPONENT_DSC1,
 #else
-	DDP_COMPONENT_COMP0_OUT_CB9,
+	DDP_COMPONENT_COMP0_OUT_CB11,
 #endif
-	DDP_COMPONENT_MERGE0_OUT_CB3,
+	DDP_COMPONENT_MERGE0_OUT_CB5,
 	DDP_COMPONENT_DSI1,
 };
 
 static const enum mtk_ddp_comp_id mt6991_mtk_ddp_sixth_path[] = {
-	DDP_COMPONENT_OVL1_EXDMA9,
-	DDP_COMPONENT_OVL1_BLENDER7,
-	DDP_COMPONENT_OVL1_OUTPROC2,
-	DDP_COMPONENT_OVLSYS1_DLO_ASYNC7,
-	DDP_COMPONENT_DLI_ASYNC10,
-	DDP_COMPONENT_PQ0_IN_CB10,
+	DDP_COMPONENT_OVL_EXDMA9,
+	DDP_COMPONENT_OVL0_BLENDER7,
+
+	DDP_COMPONENT_OVL0_OUTPROC2,
+	DDP_COMPONENT_OVLSYS_DLO_ASYNC7,
+	DDP_COMPONENT_DLI_ASYNC2,
+	DDP_COMPONENT_PQ0_IN_CB2,
+
 	DDP_COMPONENT_PQ0_OUT_CB10,
 	DDP_COMPONENT_PANEL0_COMP_OUT_CB5,
 	DDP_COMPONENT_DLO_ASYNC5,
@@ -3945,8 +4258,20 @@ static const struct mtk_addon_module_data mt6991_addon_wdma0_data[] = {
 	{DISP_WDMA0_v6, ADDON_AFTER, DDP_COMPONENT_SPLITTER0_OUT_CB9},
 };
 
+static const struct mtk_addon_module_data mt6991_addon_wdma1_data[] = {
+	/* Liber CWB */
+	{DISP_WDMA0_v7, ADDON_AFTER, DDP_COMPONENT_SPLITTER0_OUT_CB10},
+};
+
 static const struct mtk_addon_module_data mt6991_addon_mid_wdma_data[] = {
 	{DISP_WDMA_MID, ADDON_AFTER, DDP_COMPONENT_PQ0_OUT_CB0},
+};
+static const struct mtk_addon_module_data mt6991_addon_mid_dual_wdma_data[] = {
+	{DISP_WDMA_MID_DUAL, ADDON_AFTER, DDP_COMPONENT_PQ0_OUT_CB1},
+};
+
+static const struct mtk_addon_module_data mt6899_addon_mid_wdma_data[] = {
+	{DISP_WDMA_MID_v2, ADDON_AFTER, DDP_COMPONENT_PQ0_OUT_CB0},
 };
 
 static const struct mtk_addon_module_data mt6989_addon_ovl_ufbc_wdma0_data[] = {
@@ -3966,8 +4291,16 @@ static const struct mtk_addon_module_data mt6989_addon_ovlsys_wdma0_data[] = {
 	{DISP_OVLSYS_WDMA0_v2, ADDON_AFTER, DDP_COMPONENT_OVL2_2L},
 };
 
+static const struct mtk_addon_module_data mt6991_addon_ovlsys_wdma0_dl_data[] = {
+	{DISP_OVLSYS_WDMA0_DL, ADDON_AFTER, DDP_COMPONENT_OVL_EXDMA0},
+};
+
 static const struct mtk_addon_module_data mt6991_addon_ovlsys_wdma0_data[] = {
 	{DISP_OVLSYS_WDMA0_v3, ADDON_AFTER, DDP_COMPONENT_OVL0_OUTPROC0},
+};
+
+static const struct mtk_addon_module_data mt6991_addon_ovlsys1_wdma0_data[] = {
+	{DISP_OVLSYS_WDMA0_v4, ADDON_AFTER, DDP_COMPONENT_OVL1_OUTPROC0},
 };
 
 static const struct mtk_addon_module_data mt6985_addon_ovlsys_wdma2_data[] = {
@@ -4097,11 +4430,6 @@ static const struct mtk_addon_scenario_data mt6885_addon_main[ADDON_SCN_NR] = {
 				.module_data = addon_rsz_data_v2,
 				.hrt_type = HRT_TB_TYPE_GENERAL1,
 			},
-		[WDMA_WRITE_BACK] = {
-				.module_num = ARRAY_SIZE(addon_wdma0_data),
-				.module_data = addon_wdma0_data,
-				.hrt_type = HRT_TB_TYPE_GENERAL1,
-			},
 };
 
 static const struct mtk_addon_scenario_data mt6885_addon_main_dual[ADDON_SCN_NR] = {
@@ -4117,11 +4445,6 @@ static const struct mtk_addon_scenario_data mt6885_addon_main_dual[ADDON_SCN_NR]
 		[TWO_SCALING] = {
 				.module_num = ARRAY_SIZE(addon_rsz_data_v3),
 				.module_data = addon_rsz_data_v3,
-				.hrt_type = HRT_TB_TYPE_GENERAL1,
-			},
-		[WDMA_WRITE_BACK] = {
-				.module_num = ARRAY_SIZE(addon_wdma1_data),
-				.module_data = addon_wdma1_data,
 				.hrt_type = HRT_TB_TYPE_GENERAL1,
 			},
 };
@@ -4379,6 +4702,62 @@ static const struct mtk_addon_scenario_data mt6989_addon_main[ADDON_SCN_NR] = {
 	},
 };
 
+static const struct mtk_addon_scenario_data mt6899_addon_main[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6989_addon_wdma0_data),
+		.module_data = mt6989_addon_wdma0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK_MID] = {
+		.module_num = ARRAY_SIZE(mt6899_addon_mid_wdma_data),
+		.module_data = mt6899_addon_mid_wdma_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK_OVL] = {
+		.module_num = ARRAY_SIZE(mt6989_addon_ovlsys_wdma0_data),
+		.module_data = mt6989_addon_ovlsys_wdma0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[ONE_SCALING] = {
+		.module_num = ARRAY_SIZE(addon_ovl_rsz_data),
+		.module_data = addon_ovl_rsz_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[MML_RSZ] = {
+		.module_num = ARRAY_SIZE(mt6985_addon_mml_rsz_data),
+		.module_data = mt6985_addon_mml_rsz_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[MML_SRAM_ONLY] = {
+		.module_num = ARRAY_SIZE(addon_mml_sram_only_data),
+		.module_data = addon_mml_sram_only_data,
+		.hrt_type = HRT_TB_TYPE_RPO_L0,
+	},
+	[MML_DL] = {
+		.module_num = ARRAY_SIZE(mt6985_addon_mml_dl_data),
+		.module_data = mt6985_addon_mml_dl_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[DSC_COMP] = {
+		.module_num = ARRAY_SIZE(addon_dsc0_data),
+		.module_data = addon_dsc0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[IDLE_WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6989_addon_ovl_ufbc_wdma0_data),
+		.module_data = mt6989_addon_ovl_ufbc_wdma0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+};
+
 static const struct mtk_addon_scenario_data mt6989_addon_ext[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
@@ -4401,6 +4780,19 @@ static const struct mtk_addon_scenario_data mt6991_addon_ext[ADDON_SCN_NR] = {
 		.hrt_type = HRT_TB_TYPE_GENERAL0,
 	},
 };
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+static const struct mtk_addon_scenario_data mt6991_addon_single[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_SINGLE_LAYER,
+	},
+	[TRIPLE_DISP] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_SINGLE_LAYER,
+	},
+};
+#endif
 
 static const struct mtk_addon_scenario_data mt6989_addon_main_dual[ADDON_SCN_NR] = {
 	[NONE] = {
@@ -4445,6 +4837,11 @@ static const struct mtk_addon_module_data mt6991_addon_ovl_rsz_data[] = {
 	//{OVL_RSZ_3, ADDON_BEFORE, DDP_COMPONENT_OVL1_BLENDER9},
 };
 
+static const struct mtk_addon_module_data mt6991_addon_ovl_rsz1_data[] = {
+	//{OVL_RSZ_2, ADDON_BEFORE, DDP_COMPONENT_OVL0_BLENDER1},
+	{OVL_RSZ_3, ADDON_BEFORE, DDP_COMPONENT_OVL1_BLENDER1},
+};
+
 static const struct mtk_addon_scenario_data mt6991_addon_main[ADDON_SCN_NR] = {
 	[NONE] = {
 		.module_num = 0,
@@ -4474,10 +4871,46 @@ static const struct mtk_addon_scenario_data mt6991_addon_main[ADDON_SCN_NR] = {
 		.module_data = mt6991_addon_ovlsys_wdma0_data,
 		.hrt_type = HRT_TB_TYPE_GENERAL1,
 	},
+	[WDMA_WRITE_BACK_EXDMA_DL] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_ovlsys_wdma0_dl_data),
+		.module_data = mt6991_addon_ovlsys_wdma0_dl_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+
+};
+
+static const struct mtk_addon_scenario_data mt6991_addon_main_dual[ADDON_SCN_NR] = {
+	[NONE] = {
+		.module_num = 0,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[ONE_SCALING] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_ovl_rsz1_data),
+		.module_data = mt6991_addon_ovl_rsz1_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_wdma1_data),
+		.module_data = mt6991_addon_wdma1_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
+	[WDMA_WRITE_BACK_MID] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_mid_dual_wdma_data),
+		.module_data = mt6991_addon_mid_dual_wdma_data,
+	},
+	[WDMA_WRITE_BACK_OVL] = {
+		.module_num = ARRAY_SIZE(mt6991_addon_ovlsys1_wdma0_data),
+		.module_data = mt6991_addon_ovlsys1_wdma0_data,
+		.hrt_type = HRT_TB_TYPE_GENERAL1,
+	},
 };
 
 static const enum mtk_ddp_comp_id mt6991_scaling_main[] = {
 	DDP_COMPONENT_MDP_RSZ0,
+};
+
+static const enum mtk_ddp_comp_id mt6991_scaling_main_dual[] = {
+	DDP_COMPONENT_MDP_RSZ1,
 };
 
 static const struct mtk_addon_scenario_data mt6897_addon_main[ADDON_SCN_NR] = {
@@ -5186,6 +5619,26 @@ static const struct mtk_crtc_path_data mt6779_mtk_main_path_data = {
 	.addon_data = mt6779_addon_main,
 };
 
+static const struct mtk_crtc_path_data mt6771_mtk_main_path_data = {
+	.path[DDP_MAJOR][0] = mt6771_mtk_ddp_main,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6771_mtk_ddp_main),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+	.addon_data = mt6771_addon_main,
+};
+
+static const struct mtk_crtc_path_data mt6771_mtk_ext_path_data = {
+	.path[DDP_MAJOR][0] = mt6771_mtk_ddp_ext,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6771_mtk_ddp_ext),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+	.addon_data = mt6771_addon_ext,
+};
+
+static const struct mtk_crtc_path_data mt6771_mtk_third_path_data = {
+	.path[DDP_MAJOR][0] = mt6771_mtk_ddp_third,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6771_mtk_ddp_third),
+	.addon_data = mt6771_addon_ext,
+};
+
 static const struct mtk_crtc_path_data mt6779_mtk_ext_path_data = {
 	.path[DDP_MAJOR][0] = mt6779_mtk_ddp_ext,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6779_mtk_ddp_ext),
@@ -5529,7 +5982,7 @@ static const struct mtk_crtc_path_data mt6899_mtk_main_path_data = {
 //	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_main_bringup),
 //	.wb_path[DDP_MAJOR] = mt6983_mtk_ddp_main_wb_path,
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
-	.addon_data = mt6989_addon_main,
+	.addon_data = mt6899_addon_main,
 //	.addon_data_dual = mt6989_addon_main_dual,
 	.scaling_data = mt6989_scaling_main,
 //	.scaling_data_dual = mt6989_scaling_main_dual,
@@ -5551,7 +6004,7 @@ static const struct mtk_crtc_path_data mt6899_mtk_main_bypass_pc_path_data = {
 //	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_main_bringup),
 //	.wb_path[DDP_MAJOR] = mt6983_mtk_ddp_main_wb_path,
 //	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
-	.addon_data = mt6989_addon_main,
+	.addon_data = mt6899_addon_main,
 //	.addon_data_dual = mt6989_addon_main_dual,
 	.scaling_data = mt6989_scaling_main,
 //	.scaling_data_dual = mt6989_scaling_main_dual,
@@ -5575,21 +6028,54 @@ static const struct mtk_crtc_path_data mt6991_mtk_main_path_data = {
 //	.path[DDP_MINOR][0] = mt6991_mtk_ddp_main_bringup_minor,
 //	.path_len[DDP_MINOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_main_bringup_minor),
 //	.path_req_hrt[DDP_MINOR][0] = true,
-//	.dual_ovl_path[0] = mt6989_mtk_ovlsys_dual_main_bringup,
-//	.dual_ovl_path_len[0] = ARRAY_SIZE(mt6989_mtk_ovlsys_dual_main_bringup),
-//	.dual_path[0] = mt6989_mtk_ddp_dual_main_bringup,
-//	.dual_path_len[0] = ARRAY_SIZE(mt6989_mtk_ddp_dual_main_bringup),
-//	.wb_path[DDP_MAJOR] = mt6983_mtk_ddp_main_wb_path,
-//	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6983_mtk_ddp_main_wb_path),
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	.dual_ovl_path[0] = mt6991_mtk_ovlsys_dual_main_bringup,
+	.dual_ovl_path_len[0] = ARRAY_SIZE(mt6991_mtk_ovlsys_dual_main_bringup),
+	.dual_path[0] = mt6991_mtk_ddp_dual_main_bringup,
+	.dual_path_len[0] = ARRAY_SIZE(mt6991_mtk_ddp_dual_main_bringup),
+#endif
+	.wb_path[DDP_MAJOR] = mt6991_mtk_ddp_main_bif_write_path,
+	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6991_mtk_ddp_main_bif_write_path),
+	.bif_read_path[DDP_MAJOR] = mt6991_mtk_ddp_main_bif_read_path,
+	.bif_read_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6991_mtk_ddp_main_bif_read_path),
 	.addon_data = mt6991_addon_main,
-//	.addon_data_dual = mt6989_addon_main_dual,
+	.addon_data_dual = mt6991_addon_main_dual,
 	.scaling_data = mt6991_scaling_main,
-//	.scaling_data_dual = mt6989_scaling_main_dual,
-#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+	.scaling_data_dual = mt6991_scaling_main_dual,
 #if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
 	.is_exdma_dual_layer = true,
 #endif
+};
+
+static const struct mtk_crtc_path_data mt6991_mtk_main_bypass_pc_path_data = {
+	.ovl_path[DDP_MAJOR][0] = mt6991_mtk_ovlsys_main_bringup,
+	.ovl_path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ovlsys_main_bringup),
+	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_main_bypass_pc_bringup,
+	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_main_bypass_pc_bringup),
+	.path_req_hrt[DDP_MAJOR][0] = true,
+//	.ovl_path[DDP_MINOR][0] = mt6991_mtk_ovlsys_main_bringup,
+//	.ovl_path_len[DDP_MINOR][0] = ARRAY_SIZE(mt6991_mtk_ovlsys_main_bringup),
+//	.path[DDP_MINOR][0] = mt6991_mtk_ddp_main_bringup_minor,
+//	.path_len[DDP_MINOR][0] = ARRAY_SIZE(mt6989_mtk_ddp_main_bringup_minor),
+//	.path_req_hrt[DDP_MINOR][0] = true,
+#if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	.dual_ovl_path[0] = mt6991_mtk_ovlsys_dual_main_bringup,
+	.dual_ovl_path_len[0] = ARRAY_SIZE(mt6991_mtk_ovlsys_dual_main_bringup),
+	.dual_path[0] = mt6991_mtk_ddp_dual_main_bringup,
+	.dual_path_len[0] = ARRAY_SIZE(mt6991_mtk_ddp_dual_main_bringup),
 #endif
+	.wb_path[DDP_MAJOR] = mt6991_mtk_ddp_main_bif_write_path,
+	.wb_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6991_mtk_ddp_main_bif_write_path),
+	.bif_read_path[DDP_MAJOR] = mt6991_mtk_ddp_main_bif_read_path,
+	.bif_read_path_len[DDP_MAJOR] = ARRAY_SIZE(mt6991_mtk_ddp_main_bif_read_path),
+	.addon_data = mt6991_addon_main,
+	.addon_data_dual = mt6991_addon_main_dual,
+	.scaling_data = mt6991_scaling_main,
+	.scaling_data_dual = mt6991_scaling_main_dual,
+#if IS_ENABLED(CONFIG_MTK_LCM_DUAL_PORT_SUPPORT)
+	.is_exdma_dual_layer = true,
+#endif
+	.is_bypass_pc_path = true,
 };
 
 static const struct mtk_crtc_path_data mt6991_mtk_main_full_set_data = {
@@ -5608,9 +6094,15 @@ static const struct mtk_crtc_path_data mt6991_mtk_ext_path_data = {
 	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_ext_dp,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_ext_dp),
 	.path_req_hrt[DDP_MAJOR][0] = true,
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	.dual_path[0] = mt6991_mtk_ddp_dual_ext_dp,
+	.dual_path_len[0] = ARRAY_SIZE(mt6991_mtk_ddp_dual_ext_dp),
+#endif
 	.addon_data = mt6991_addon_ext,
 #if !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+#if !IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 	.is_exdma_dual_layer = true,
+#endif
 #endif
 };
 
@@ -5653,18 +6145,21 @@ static const struct mtk_crtc_path_data mt6991_mtk_fifth_path_data = {
 	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_fifth_path,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_fifth_path),
 	.path_req_hrt[DDP_MAJOR][0] = true,
+	.addon_data = mt6991_addon_single,
 };
 
 static const struct mtk_crtc_path_data mt6991_mtk_sixth_path_data = {
 	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_sixth_path,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_sixth_path),
 	.path_req_hrt[DDP_MAJOR][0] = true,
+	.addon_data = mt6991_addon_single,
 };
 
 static const struct mtk_crtc_path_data mt6991_mtk_seventh_path_data = {
 	.path[DDP_MAJOR][0] = mt6991_mtk_ddp_seventh_path,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6991_mtk_ddp_seventh_path),
 	.path_req_hrt[DDP_MAJOR][0] = true,
+	.addon_data = mt6991_addon_single,
 };
 #endif
 
@@ -5949,6 +6444,13 @@ static const struct mtk_crtc_path_data mt6855_mtk_third_path_data = {
 	.path[DDP_MAJOR][0] = mt6855_mtk_ddp_third,
 	.path_len[DDP_MAJOR][0] = ARRAY_SIZE(mt6855_mtk_ddp_third),
 	.addon_data = mt6855_addon_ext,
+};
+
+const struct mtk_session_mode_tb mt6771_mode_tb[MTK_DRM_SESSION_NUM] = {
+		[MTK_DRM_SESSION_DL] = {
+				.en = 1,
+				.ddp_mode = {DDP_MAJOR, DDP_MAJOR, DDP_MAJOR},
+			},
 };
 
 const struct mtk_session_mode_tb mt6779_mode_tb[MTK_DRM_SESSION_NUM] = {
@@ -6542,6 +7044,18 @@ static const struct mtk_mmsys_driver_data mt2701_mmsys_driver_data = {
 	.can_compress_rgb565 = false,
 };
 
+static const struct mtk_mmsys_driver_data mt6771_mmsys_driver_data = {
+	.main_path_data = &mt6771_mtk_main_path_data,
+	.ext_path_data = &mt6771_mtk_ext_path_data,
+	.third_path_data = &mt6771_mtk_third_path_data,
+	.mmsys_id = MMSYS_MT6771,
+	.sodi_config = mt6771_mtk_sodi_config,
+	.mode_tb = mt6771_mode_tb,
+	.has_smi_limitation = false,
+	.doze_ctrl_pmic = false,
+	.can_compress_rgb565 = false,
+};
+
 static const struct mtk_mmsys_driver_data mt2712_mmsys_driver_data = {
 	.main_path_data = &mt2712_mtk_main_path_data,
 	.ext_path_data = &mt2712_mtk_ext_path_data,
@@ -6718,6 +7232,7 @@ static const struct mtk_mmsys_driver_data mt6899_mmsys_driver_data = {
 
 static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.main_path_data = &mt6991_mtk_main_path_data,
+	.main_bypass_pc_path_data = &mt6991_mtk_main_bypass_pc_path_data,
 	.ext_alter_path_data = &mt6991_mtk_main_full_set_data,//temporary solution for OVL full set
 	.ext_path_data = &mt6991_mtk_ext_path_data,
 	.third_path_data = &mt6991_mtk_dp_w_tdshp_path_data,
@@ -6749,7 +7264,18 @@ static const struct mtk_mmsys_driver_data mt6991_mmsys_driver_data = {
 	.real_srt_ostdl = true,
 	.skip_trans = true,
 	.update_channel_hrt = mtk_disp_update_channel_hrt_MT6991,
+	.update_channel_hrt_write = mtk_disp_update_channel_hrt_write_MT6991,
 	.get_channel_idx = mtk_disp_get_channel_idx_MT6991,
+	.support_bif = true,
+	.bif_wdma_limit = 16,
+	.bif_diff_thr = 16,
+	.bif_racing_config = mtk_disp_bif_racing_config_MT6991,
+	.bif_read_path_mutex = mtk_disp_bif_keep_read_mutex_MT6991,
+	.bif_path_insert = mtk_ddp_insert_bif_racing_MT6991,
+	.bif_path_remove = mtk_ddp_remove_bif_racing_MT6991,
+	.bif_path_insert_for_all_scn = mtk_ddp_insert_bif_for_all_scn_MT6991,
+	.bif_path_remove_for_all_scn = mtk_ddp_remove_bif_for_all_scn_MT6991,
+	.bif_path_addon_for_all_scn = mtk_ddp_insert_addon_bif_for_all_scn_MT6991,
 };
 
 static const struct mtk_mmsys_driver_data mt6897_mmsys_driver_data = {
@@ -6957,11 +7483,18 @@ void drm_trigger_repaint(enum DRM_REPAINT_TYPE type, struct drm_device *drm_dev)
 			repaint_job =
 				list_first_entry(&pvd->repaint_data.job_pool,
 						 struct repaint_job_t, link);
+
+			if (repaint_job == NULL) {
+				DDPPR_ERR("error, repaint_job is NULL\n");
+				spin_unlock(&pvd->repaint_data.wq.lock);
+				return;
+			}
+
 			list_del_init(&repaint_job->link);
 		} else { /* create repaint_job_t if pool is empty */
 			repaint_job = kzalloc(sizeof(struct repaint_job_t),
 					      GFP_ATOMIC);
-			if (IS_ERR_OR_NULL(repaint_job)) {
+			if (repaint_job == NULL) {
 				DDPPR_ERR("allocate repaint_job_t fail\n");
 				spin_unlock(&pvd->repaint_data.wq.lock);
 				return;
@@ -7139,10 +7672,15 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 #endif
 		/* mminfra power request */
 		if (priv->dpc_dev) {
-			ret = pm_runtime_resume_and_get(priv->dpc_dev);
-			if (unlikely(ret)) {
-				DDPMSG("request mminfra power failed\n");
-				return ret;
+			if (unlikely(priv->kernel_pm.skip_mminfra_ctrl)) {
+				DDPMSG("%s mminfra is on, skip mminfra get\n", __func__);
+				priv->kernel_pm.skip_mminfra_ctrl = false;
+			} else {
+				ret = pm_runtime_resume_and_get(priv->dpc_dev);
+				if (unlikely(ret)) {
+					DDPMSG("request mminfra power failed\n");
+					return ret;
+				}
 			}
 		}
 
@@ -7189,11 +7727,8 @@ int mtk_drm_pm_ctrl(struct mtk_drm_private *priv, enum disp_pm_action action)
 
 		pm_runtime_put_sync(priv->mmsys_dev);
 
-		if (priv->dpc_dev) {
-			if (vdisp_func.poll_power_cnt)
-				vdisp_func.poll_power_cnt(0);
+		if (priv->dpc_dev)
 			pm_runtime_put_sync(priv->dpc_dev);
-		}
 
 		if (priv->dsi_phy0_dev)
 			pm_runtime_put_sync(priv->dsi_phy0_dev);
@@ -7355,8 +7890,6 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 	bool en = 1;
 	int ret;
 	unsigned long flags = 0;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
-	int crtc_idx = drm_crtc_index(crtc);
 
 	if (priv->top_clk_num <= 0)
 		return;
@@ -7376,39 +7909,29 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 
 	spin_lock_irqsave(&top_clk_lock, flags);
 	atomic_inc(&top_clk_ref);
+	if (atomic_read(&top_clk_ref) == 1) {
+		DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
+		priv->power_state = true;
+	}
 
-	if (mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 		if (atomic_read(&top_clk_ref) == 1) {
-			DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
-			priv->power_state = true;
-
 			mtk_vidle_enable(true, priv);
-			/* turn on ff only when crtc0 exsit */
-			if (crtc_idx == 0) {
-				CRTC_MMP_MARK(crtc_idx, enter_vidle,
-					(0xc10c | 0x10000000), atomic_read(&top_clk_ref));
-				mtk_vidle_config_ff(true);
-			} else {
-				CRTC_MMP_MARK(crtc_idx, leave_vidle,
-					(0xc10c | 0x20000000), atomic_read(&top_clk_ref));
-				mtk_vidle_config_ff(false);
-			}
-		} else if (atomic_read(&top_clk_ref) > 1) {
-			CRTC_MMP_MARK(crtc_idx, leave_vidle,
-				(0xc10c | 0x30000000), atomic_read(&top_clk_ref));
-			mtk_vidle_config_ff(false);
+			mtk_vidle_hint_update(VIDLE_HINT_MTCMOS_ON);
+		} else {
+			/* disable ff for multi crtc */
+			mtk_vidle_hint_update(VIDLE_HINT_MULTI_CRTC_ON);
+			DDPINFO("%s crtc%d vidle_hint(%#x)\n", __func__, drm_crtc_index(crtc),
+				mtk_vidle_hint_update(VIDLE_HINT_GET));
 		}
-
+		mtk_vidle_config_ff(false);
 	} else {
-		if (atomic_read(&top_clk_ref) == 1)  {
-			DDPFENCE("%s:%d power_state = true\n", __func__, __LINE__);
-			priv->power_state = true;
+		struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
 
-			mtk_crtc = to_mtk_crtc(priv->crtc[0]);
-			if (mtk_crtc &&
+		if (atomic_read(&top_clk_ref) == 1)  {
+			if (mtk_crtc0 &&
 				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
-				mtk_crtc->is_mml_dc = false;
+				mtk_crtc0->is_mml_dc = false;
 		}
 	}
 
@@ -7423,12 +7946,11 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 		priv->data->disable_merge_irq(crtc->dev);
 }
 
-void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
+void mtk_drm_top_clk_disable_unprepare(struct drm_crtc *crtc)
 {
-	struct mtk_drm_private *priv = drm->dev_private;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	int i = 0, cnt = 0;
 	unsigned long flags = 0;
-	struct mtk_drm_crtc *mtk_crtc = NULL;
 
 	if (priv->top_clk_num <= 0)
 		return;
@@ -7447,21 +7969,25 @@ void mtk_drm_top_clk_disable_unprepare(struct drm_device *drm)
 		}
 		priv->power_state = false;
 
-		if (mtk_drm_helper_get_opt(priv->helper_opt,
-				MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
-			CRTC_MMP_MARK(0, leave_vidle,
-				(0xc10c0ff | 0x10000000), atomic_read(&top_clk_ref));
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
 		} else {
+			struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
+
 			CRTC_MMP_MARK(0, leave_vidle,
 				(0xc10c0ff | 0x20000000), atomic_read(&top_clk_ref));
-			mtk_crtc = to_mtk_crtc(priv->crtc[0]);
-			if (mtk_crtc &&
+			if (mtk_crtc0 &&
 				mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_DECOUPLE_MODE))
-				mtk_crtc->is_mml_dc = false;
+				mtk_crtc0->is_mml_dc = false;
 			mtk_vidle_config_ff(false);
 			mtk_vidle_enable(false, priv);
+		}
+	} else {
+		if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
+			mtk_vidle_hint_update(VIDLE_HINT_MULTI_CRTC_OFF);
+			DDPINFO("%s crtc%d vidle_hint(%#x)\n", __func__, drm_crtc_index(crtc),
+				mtk_vidle_hint_update(VIDLE_HINT_GET));
 		}
 	}
 	spin_unlock_irqrestore(&top_clk_lock, flags);
@@ -7553,6 +8079,7 @@ void mtk_vidle_multi_crtc_stop(unsigned int crtc_id)
 	}
 }
 
+#ifndef CONFIG_MTK_DISP_NO_LK
 static void mtk_drm_first_enable(struct drm_device *drm)
 {
 	struct drm_crtc *crtc;
@@ -7565,6 +8092,17 @@ static void mtk_drm_first_enable(struct drm_device *drm)
 		lcm_fps_ctx_init(crtc);
 	}
 }
+#else
+static void mtk_drm_first_enable(struct drm_device *drm)
+{
+	struct drm_crtc *crtc;
+
+	drm_for_each_crtc(crtc, drm) {
+		mtk_drm_crtc_init_para(crtc);
+		lcm_fps_ctx_init(crtc);
+	}
+}
+#endif
 
 bool mtk_drm_session_mode_is_decouple_mode(struct drm_device *dev)
 {
@@ -7624,8 +8162,8 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 	int ret = 0;
 	struct mtk_drm_private *private = dev->dev_private;
 	struct mtk_drm_disp_caps_info *caps_info = data;
-	struct mtk_panel_params *params =
-		mtk_drm_get_lcm_ext_params(private->crtc[0]);
+	struct mtk_panel_params *params = (private->crtc[0] ?
+		mtk_drm_get_lcm_ext_params(private->crtc[0]) : NULL);
 
 	memset(caps_info, 0, sizeof(*caps_info));
 
@@ -7639,6 +8177,8 @@ int mtk_drm_get_display_caps_ioctl(struct drm_device *dev, void *data,
 		caps_info->disp_feature_flag |= DRM_DISP_FEATURE_RPO;
 		caps_info->rsz_in_max[0] = private->rsz_in_max[0];
 		caps_info->rsz_in_max[1] = private->rsz_in_max[1];
+		if (params && mtk_crtc_is_dual_pipe(private->crtc[0]))
+			caps_info->rsz_in_max[0] *= 2;
 	}
 	caps_info->disp_feature_flag |= DRM_DISP_FEATURE_FBDC;
 
@@ -8219,6 +8759,7 @@ found:
 
 unsigned int mtk_disp_num_from_atag(void)
 {
+#ifndef CONFIG_MTK_DISP_NO_LK
 	struct device_node *chosen_node;
 
 	chosen_node = of_find_node_by_path("/chosen");
@@ -8237,7 +8778,7 @@ unsigned int mtk_disp_num_from_atag(void)
 	} else {
 		DDPINFO("[DT][videolfb] of_chosen not found\n");
 	}
-
+#endif
 	return 0;
 }
 
@@ -8325,6 +8866,8 @@ bool mtk_drm_se_crtc_need_enable(struct mtk_drm_crtc *mtk_crtc)
 	}
 
 	if (comp->id == DDP_COMPONENT_DSI0 ||
+	    comp->id == DDP_COMPONENT_DSI1 ||
+	    comp->id == DDP_COMPONENT_DSI2 ||
 	    comp->id == DDP_COMPONENT_DISP_DVO ||
 	    comp->id == DDP_COMPONENT_DP_INTF0 ||
 	    comp->id == DDP_COMPONENT_DP_INTF1) {
@@ -8511,7 +9054,7 @@ int mtk_drm_get_info_ioctl(struct drm_device *dev, void *data,
 				DDPINFO("%s crtc_id:%d output_comp:%d alias_id:%d\n",
 					__func__, crtc_id, output_comp->id, alias_id);
 			} else {
-				DDPINFO("%d get alias fail\n", __func__);
+				DDPINFO("%s get alias fail\n", __func__);
 				return -EINVAL;
 			}
 		} else
@@ -9211,21 +9754,47 @@ static int mtk_drm_init_emi_eff_table(struct drm_device *drm_dev)
 static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
 	struct mtk_drm_kernel_pm *kernel_pm = container_of(notifier, typeof(*kernel_pm), nb);
+	struct mtk_drm_private *priv = container_of(kernel_pm, struct mtk_drm_private, kernel_pm);
 
 	switch (pm_event) {
 	case PM_SUSPEND_PREPARE:
-		DDPMSG("Disabling CRTC wakelock\n");
+		if (atomic_read(&priv->kernel_pm.wakelock_cnt) != 0) {
+			DDPMSG("%s PM_SUSPEND_PREPARE but wakelock is held, interrupt the suspend flow\n", __func__);
+			return NOTIFY_BAD;
+		}
+		DDPMSG("%s PM_SUSPEND_PREPARE, Disabling CRTC wakelock\n", __func__);
 		atomic_set(&kernel_pm->status, KERNEL_PM_SUSPEND);
 		wake_up_interruptible(&kernel_pm->wq);
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
 		wake_up_interruptible(&kernel_pm->wq);
-		DDPINFO("%s status(%d)\n", __func__, atomic_read(&kernel_pm->status));
+		DDPMSG("%s PM_POST_SUSPEND status(%d)\n", __func__, atomic_read(&kernel_pm->status));
+#endif
 		return NOTIFY_OK;
 	}
 	return NOTIFY_DONE;
 }
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+static int mtk_drm_vcp_notifier(struct notifier_block *vcp_nb, unsigned long vcp_event, void *unused)
+{
+	struct mtk_drm_kernel_pm *kernel_pm = container_of(vcp_nb, typeof(*kernel_pm), vcp_nb);
+
+	switch (vcp_event) {
+	case VCP_EVENT_READY:
+	case VCP_EVENT_STOP:
+	case VCP_EVENT_SUSPEND:
+		break;
+	case VCP_EVENT_RESUME:
+		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
+		wake_up_interruptible(&kernel_pm->wq);
+		DDPMSG("%s VCP_EVENT_RESUME status(%d)\n", __func__, atomic_read(&kernel_pm->status));
+		break;
+	}
+	return NOTIFY_DONE;
+}
+#endif
 #else
 static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm_event, void *unused)
 {
@@ -9282,7 +9851,7 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	 * Here we only decrease ref count, the power will hold on.
 	 */
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL)
-		mtk_drm_top_clk_disable_unprepare(drm);
+		mtk_drm_top_clk_disable_unprepare(private->crtc[0]);
 
 	/*
 	 * When kernel init, SMI larb will get once for keeping
@@ -9292,8 +9861,10 @@ static void mtk_drm_kms_lateinit(struct kthread_work *work)
 	 */
 	mtk_smi_init_power_off();
 	DDPFUNC("mtk_smi_init_power_off\n");
-	mtk_mminfra_off_gipc();
-	mtk_dump_mminfra_ck(private);
+	if (private->data->mmsys_id != MMSYS_MT6771) {
+		mtk_mminfra_off_gipc();
+		mtk_dump_mminfra_ck(private);
+	}
 
 #ifndef DRM_OVL_SELF_PATTERN
 	mtk_drm_assert_init(drm);
@@ -9364,21 +9935,37 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 	 */
 	/* TODO: temprorary solution for MT6989 enable full OVL path,*/
 	/* remove it after MT6989 MML DLO switch ready */
+#if !IS_ENABLED(CONFIG_MTK_DP_AS_CRTC0)
 	if (of_property_read_bool(private->mmsys_dev->of_node, "enable-main-full-ovl-path"))
 		ret = mtk_drm_crtc_create(drm, private->data->ext_alter_path_data);
 	else if (of_property_read_bool(private->mmsys_dev->of_node, "bypass-pc-path"))
 		ret = mtk_drm_crtc_create(drm, private->data->main_bypass_pc_path_data);
 	else
 		ret = mtk_drm_crtc_create(drm, private->data->main_path_data);
+#else
+	if (of_property_read_bool(private->mmsys_dev->of_node, "enable_ext_alter_path"))
+		ret = mtk_drm_crtc_create(drm, private->data->ext_alter_path_data);
+	else
+		ret = mtk_drm_crtc_create(drm, private->data->ext_path_data);
+#endif
 	if (ret < 0)
 		goto err_component_unbind;
 
 	if (disp_helper_get_stage() == DISP_HELPER_STAGE_NORMAL) {
+#if !IS_ENABLED(CONFIG_MTK_DP_AS_CRTC0)
 		/* ... and OVL1 -> COLOR1 -> GAMMA -> RDMA1 -> DPI0. */
 		if (of_property_read_bool(private->mmsys_dev->of_node, "enable_ext_alter_path"))
 			ret = mtk_drm_crtc_create(drm, private->data->ext_alter_path_data);
 		else
 			ret = mtk_drm_crtc_create(drm, private->data->ext_path_data);
+#else
+		if (of_property_read_bool(private->mmsys_dev->of_node, "enable-main-full-ovl-path"))
+			ret = mtk_drm_crtc_create(drm, private->data->ext_alter_path_data);
+		else if (of_property_read_bool(private->mmsys_dev->of_node, "bypass-pc-path"))
+			ret = mtk_drm_crtc_create(drm, private->data->main_bypass_pc_path_data);
+		else
+			ret = mtk_drm_crtc_create(drm, private->data->main_path_data);
+#endif
 		if (ret < 0)
 			goto err_component_unbind;
 
@@ -9469,6 +10056,10 @@ static int mtk_drm_kms_init(struct drm_device *drm)
 			np = private->comp_node[private->data->ext_path_data
 						->path[DDP_MAJOR][0][0]];
 	}
+
+#ifdef CONFIG_MTK_DISP_NO_LK
+	np = private->comp_node[DDP_COMPONENT_OVL_EXDMA3];
+#endif
 	pdev = of_find_device_by_node(np);
 	if (!pdev) {
 		ret = -ENODEV;
@@ -9597,6 +10188,8 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 	cb_data->cmdq_handle = cmdq_handle;
 	cb_data->crtc = &mtk_crtc->base;
 
+	mtk_crtc_wait_frame_done(mtk_crtc, cmdq_handle, DDP_FIRST_PATH, 0);
+
 	//disable panel layers
 	if (mtk_crtc->se_state == DISP_SE_START) {
 		if (mtk_crtc->se_panel & (1 << MTK_PANEL_DP0)) {
@@ -9674,6 +10267,7 @@ static int mtk_drm_se_plane_config(struct mtk_drm_crtc *mtk_crtc)
 	ret = cmdq_pkt_flush_threaded(cmdq_handle, mtk_drm_se_cmdq_cb, cb_data);
 	if (ret < 0) {
 		DDPMSG("%s[%d] cmdq_pkt_flush_threaded failed!\n", __func__, __LINE__);
+		kfree(cb_data);
 		return -EINVAL;
 	}
 
@@ -9764,6 +10358,12 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	if (layer_info->layer_en)
 		mtk_crtc->se_panel |= 1 << layer_info->panel_id;
 
+	if (layer_id >= MTK_FB_SE_NUM) {
+		DDPMSG("%s invalid layer id:%d\n", __func__, layer_id);
+		DDP_MUTEX_UNLOCK_NESTED(&mtk_crtc->sol_lock, index, __func__, __LINE__);
+		return -EINVAL;
+	}
+
 	se_plane = &mtk_crtc->se_plane[layer_id];
 	se_plane->panel_id = layer_info->panel_id;
 	state = &se_plane->state;
@@ -9803,7 +10403,7 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 	}
 
 	state->comp_state.comp_id = comp->id;
-	state->comp_state.lye_id = to_crtc_plane_index(layer_info->layer_id);
+	state->comp_state.lye_id = 0;
 
 #ifdef CONFIG_MTK_ULTRARVC_SUPPORT
 		/*{ultrarvc +*/
@@ -9854,6 +10454,8 @@ static int mtk_drm_set_ovl_layer(struct drm_device *dev, void *data,
 		(enable_cnt))  {
 		DDPMSG("crtc%d se first start\n", index);
 		mtk_crtc->se_state = DISP_SE_START;
+
+		__mtk_disp_set_module_hrt(comp->hrt_qos_req, comp->id, 10000, true);
 	}
 
 	if (!enable_cnt) {
@@ -9875,11 +10477,39 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 	struct mtk_drm_private *private = dev->dev_private;
 	struct mtk_se_dma_map *map_list;
 	dma_addr_t mva;
+#ifdef CONFIG_MI_DISP_DFS_EVENT
+	struct mi_event_info mi_event = {0};
+#endif
+	struct mtk_se_dma_map *m, *n = NULL;
+	struct dma_buf *temp_dmabuf;
 
 	dma_map->mva = 0;
-
 	if (dma_map->fd <= 0)
 		return -1;
+
+	if (!dma_map_list_initialized) {
+		INIT_LIST_HEAD(&dma_map_list.list);
+		dma_map_list_initialized = true;
+	}
+
+	temp_dmabuf = dma_buf_get(dma_map->fd);
+
+	if (IS_ERR(temp_dmabuf)) {
+		DDPMSG("%s:%d error! hnd:0x%p, fd:%d\n",
+				__func__, __LINE__, temp_dmabuf, dma_map->fd);
+		return -1;
+	}
+
+	//check if repeat map dma
+	list_for_each_entry_safe(m, n, &dma_map_list.list, list) {
+		if (temp_dmabuf->file == m->dmabuf->file) {
+			dma_map->mva = sg_dma_address(m->sgt->sgl);
+			DDPINFO("ignore map dma buffer: tmp_dma=0x%p dma=0x%p mva=0x%llx",
+					temp_dmabuf->file, m->dmabuf->file, dma_map->mva);
+			dma_buf_put(temp_dmabuf);
+			return 0;
+		}
+	}
 
 	map_list = kmalloc(sizeof(struct mtk_se_dma_map), GFP_KERNEL);
 	if (!map_list) {
@@ -9888,14 +10518,9 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 	}
 
 	map_list->fd = dma_map->fd;
-
-	map_list->dmabuf = dma_buf_get(dma_map->fd);
-	if (IS_ERR(map_list->dmabuf)) {
-		DDPMSG("%s:%d error! hnd:0x%p, fd:%d\n",
-				__func__, __LINE__, map_list->dmabuf, dma_map->fd);
-		goto release;
-	}
+	map_list->dmabuf = temp_dmabuf;
 	map_list->attach = dma_buf_attach(map_list->dmabuf, private->dma_dev);
+
 	if (IS_ERR(map_list->attach)) {
 		DDPMSG("%s:%d error! attach:0x%p, fd:%d\n",
 				__func__, __LINE__, map_list->attach, dma_map->fd);
@@ -9903,6 +10528,7 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 	}
 
 	map_list->sgt = dma_buf_map_attachment(map_list->attach, DMA_BIDIRECTIONAL);
+
 	if (IS_ERR(map_list->sgt))
 		goto fail_detach;
 
@@ -9912,6 +10538,8 @@ static int mtk_drm_map_dma_buf(struct drm_device *dev, void *data,
 
 	DDPINFO("dma fd is %d mva 0x%lx\n", dma_map->fd, dma_map->mva);
 
+	INIT_LIST_HEAD(&map_list->list);
+
 	list_add_tail(&map_list->list, &dma_map_list.list);
 
 	return 0;
@@ -9920,9 +10548,13 @@ fail_detach:
 	dma_buf_detach(map_list->dmabuf, map_list->attach);
 fail_get:
 	dma_buf_put(map_list->dmabuf);
-release:
+
 	kfree(map_list);
 	map_list = NULL;
+#ifdef CONFIG_MI_DISP_DFS_EVENT
+	mi_event.event_type = MI_EVENT_DMA_BUF_ALLOCATE_FAILED;
+	mi_disp_mievent_int(MI_DISP_PRIMARY, &mi_event);
+#endif
 	return -1;
 }
 
@@ -9934,8 +10566,9 @@ static int mtk_drm_unmap_dma_buf(struct drm_device *dev, void *data,
 	int *fd = (int *)data;
 
 	list_for_each_entry_safe(map_list, n, &dma_map_list.list, list) {
+		DDPMSG("%s %d map_list->fd:%d", __func__, __LINE__, map_list->fd);
 		if (*fd == map_list->fd) {
-			DDPINFO("dma fd is %d\n", *fd);
+			DDPMSG("dma fd is %d\n", *fd);
 			list_del_init(&map_list->list);
 			dma_buf_unmap_attachment(map_list->attach, map_list->sgt,
 				DMA_BIDIRECTIONAL);
@@ -10040,6 +10673,7 @@ static int mtk_drm_mml_ctrl_caps(struct mtk_drm_mml_caps_info *mml_caps, struct 
 		priv->data->mmsys_id == MMSYS_MT6765 ||
 		priv->data->mmsys_id == MMSYS_MT6761 ||
 		priv->data->mmsys_id == MMSYS_MT6781 ||
+		priv->data->mmsys_id == MMSYS_MT6771 ||
 		priv->data->mmsys_id == MMSYS_MT6853 ||
 		priv->data->mmsys_id == MMSYS_MT6885 ||
 		priv->data->mmsys_id == MMSYS_MT6833 ||
@@ -10109,6 +10743,68 @@ int mtk_drm_ioctl_mml_ctrl(struct drm_device *dev, void *data, struct drm_file *
 
 	return ret;
 }
+
+#if IS_ENABLED(CONFIG_COMPAT)
+struct mtk_drm_mml_query_hw_support_32 {
+	compat_uptr_t info;
+	bool support;
+};
+
+struct mtk_drm_mml_ctrl_32 {
+	uint32_t func;
+	union {
+		struct mtk_drm_mml_caps_info caps;
+		struct mtk_drm_mml_query_hw_support_32 query;
+	};
+};
+
+int mtk_drm_ioctl_mml_ctrl_compat(struct file *file, unsigned int cmd,
+			      unsigned long arg)
+{
+	struct mtk_drm_mml_ctrl data;
+	struct mtk_drm_mml_ctrl_32 data32;
+	struct drm_file *file_priv = file->private_data;
+	struct drm_device *dev = file_priv->minor->dev;
+	struct mtk_drm_mml_ctrl_32 __user *argp = (void __user *)arg;
+	int ret = 0;
+
+	if (copy_from_user(&data32, argp, sizeof(data32)))
+		return -EFAULT;
+	memset(&data, 0, sizeof(data));
+	data.func = data32.func;
+	switch (data.func) {
+	case mtk_drm_mml_func_get_caps:
+		data.caps.mode_caps = data32.caps.mode_caps;
+		data.caps.hw_caps = data32.caps.hw_caps;
+		ret = mtk_drm_mml_ctrl_caps(&data.caps, dev);
+		if (ret)
+			return ret;
+
+		data32.caps.mode_caps = data.caps.mode_caps;
+		data32.caps.hw_caps = data.caps.hw_caps;
+		break;
+	case mtk_drm_mml_func_query_hw_support:
+		data.query.info = compat_ptr(data32.query.info);
+		data.query.support = data32.query.support;
+		ret = mtk_drm_mml_ctrl_query_hw_support(&data.query);
+		if (ret)
+			return ret;
+
+		data32.query.info = ptr_to_compat(data.query.info);
+		data32.query.support = data.query.support;
+		break;
+	default:
+		DDPMSG("%s wrong func %u\n", __func__, data.func);
+		ret = -EINVAL;
+		break;
+	};
+
+	if (copy_to_user(argp, &data32, sizeof(data32)))
+		return -EFAULT;
+
+	return ret;
+}
+#endif
 
 static const struct drm_ioctl_desc mtk_ioctls[] = {
 	DRM_IOCTL_DEF_DRV(MTK_GEM_CREATE, mtk_gem_create_ioctl,
@@ -10256,13 +10952,13 @@ static const struct drm_ioctl32_desc mtk_compat_ioctls[] = {
 	DRM_IOCTL32_DEF_DRV(MTK_ODDMR_LOAD_PARAM, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_ODDMR_CTL, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_KICK_IDLE, NULL),
-	DRM_IOCTL32_DEF_DRV(MTK_PQ_FRAME_CONFIG, NULL),
+	DRM_IOCTL32_DEF_DRV(MTK_PQ_FRAME_CONFIG, mtk_drm_ioctl_pq_frame_config_compat),
 	DRM_IOCTL32_DEF_DRV(MTK_GET_MODE_EXT_INFO, NULL),
-	DRM_IOCTL32_DEF_DRV(MTK_PQ_PROXY_IOCTL, NULL),
+	DRM_IOCTL32_DEF_DRV(MTK_PQ_PROXY_IOCTL, mtk_drm_ioctl_pq_proxy_compat),
 	DRM_IOCTL32_DEF_DRV(MTK_HWVSYNC_ON, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_DUMMY_CMD_ON, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_ESD_STAT_CHK, NULL),
-	DRM_IOCTL32_DEF_DRV(MTK_MML_CTRL, NULL),
+	DRM_IOCTL32_DEF_DRV(MTK_MML_CTRL, mtk_drm_ioctl_mml_ctrl_compat),
 	DRM_IOCTL32_DEF_DRV(MTK_DEBUG_LOG, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_SEC_HND_TO_GEM_HND, NULL),
 	DRM_IOCTL32_DEF_DRV(MTK_SET_OVL_LAYER, NULL),
@@ -10402,6 +11098,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_OVL},
 	{.compatible = "mediatek,mt6779-disp-ovl",
 	 .data = (void *)MTK_DISP_OVL},
+	{.compatible = "mediatek,mt6771-disp-ovl",
+	 .data = (void *)MTK_DISP_OVL},
 	{.compatible = "mediatek,mt6761-disp-ovl",
 	 .data = (void *)MTK_DISP_OVL},
 	{.compatible = "mediatek,mt6765-disp-ovl",
@@ -10449,6 +11147,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	{.compatible = "mediatek,mt6761-disp-rdma",
 	 .data = (void *)MTK_DISP_RDMA},
 	{.compatible = "mediatek,mt6765-disp-rdma",
+	 .data = (void *)MTK_DISP_RDMA},
+	{.compatible = "mediatek,mt6771-disp-rdma",
 	 .data = (void *)MTK_DISP_RDMA},
 	{.compatible = "mediatek,mt6768-disp-rdma",
 	 .data = (void *)MTK_DISP_RDMA},
@@ -10498,6 +11198,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_WDMA},
 	{.compatible = "mediatek,mt6768-disp-wdma",
 	 .data = (void *)MTK_DISP_WDMA},
+	{.compatible = "mediatek,mt6771-disp-wdma",
+	 .data = (void *)MTK_DISP_WDMA},
 	{.compatible = "mediatek,mt6885-disp-wdma",
 	 .data = (void *)MTK_DISP_WDMA},
 	{.compatible = "mediatek,mt6873-disp-wdma",
@@ -10539,6 +11241,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	{.compatible = "mediatek,mt6765-disp-ccorr",
 	 .data = (void *)MTK_DISP_CCORR},
 	{.compatible = "mediatek,mt6768-disp-ccorr",
+	 .data = (void *)MTK_DISP_CCORR},
+	{.compatible = "mediatek,mt6771-disp-ccorr",
 	 .data = (void *)MTK_DISP_CCORR},
 	{.compatible = "mediatek,mt6885-disp-ccorr",
 	 .data = (void *)MTK_DISP_CCORR},
@@ -10638,6 +11342,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_COLOR},
 	{.compatible = "mediatek,mt6768-disp-color",
 	 .data = (void *)MTK_DISP_COLOR},
+	{.compatible = "mediatek,mt6771-disp-color",
+	 .data = (void *)MTK_DISP_COLOR},
 	{.compatible = "mediatek,mt6873-disp-color",
 	 .data = (void *)MTK_DISP_COLOR},
 	{.compatible = "mediatek,mt6853-disp-color",
@@ -10681,6 +11387,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	{.compatible = "mediatek,mt6765-disp-aal",
 	 .data = (void *)MTK_DISP_AAL},
 	{.compatible = "mediatek,mt6768-disp-aal",
+	 .data = (void *)MTK_DISP_AAL},
+	{.compatible = "mediatek,mt6771-disp-aal",
 	 .data = (void *)MTK_DISP_AAL},
 	{.compatible = "mediatek,mt6873-disp-aal",
 	 .data = (void *)MTK_DISP_AAL},
@@ -10726,6 +11434,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_GAMMA},
 	{.compatible = "mediatek,mt6768-disp-gamma",
 	 .data = (void *)MTK_DISP_GAMMA},
+	{.compatible = "mediatek,mt6771-disp-gamma",
+	 .data = (void *)MTK_DISP_GAMMA},
 	{.compatible = "mediatek,mt8173-disp-gamma",
 	 .data = (void *)MTK_DISP_GAMMA},
 	{.compatible = "mediatek,mt6885-disp-gamma",
@@ -10770,6 +11480,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_DITHER},
 	{.compatible = "mediatek,mt6768-disp-dither",
 	 .data = (void *)MTK_DISP_DITHER},
+	{.compatible = "mediatek,mt6771-disp-dither",
+	 .data = (void *)MTK_DISP_DITHER},
 	{.compatible = "mediatek,mt6885-disp-dither",
 	 .data = (void *)MTK_DISP_DITHER},
 	{.compatible = "mediatek,mt6983-disp-dither",
@@ -10809,6 +11521,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	{.compatible = "mediatek,mt2701-dsi",
 	 .data = (void *)MTK_DSI},
 	{.compatible = "mediatek,mt6779-dsi",
+	 .data = (void *)MTK_DSI},
+	{.compatible = "mediatek,mt6771-dsi",
 	 .data = (void *)MTK_DSI},
 	{.compatible = "mediatek,mt6761-dsi",
 	 .data = (void *)MTK_DSI},
@@ -10874,6 +11588,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DPI},
 	{.compatible = "mediatek,mt6779-dpi",
 	 .data = (void *)MTK_DPI},
+	{.compatible = "mediatek,mt6771-dpi",
+	 .data = (void *)MTK_DPI},
 	{.compatible = "mediatek,mt8173-dpi",
 	 .data = (void *)MTK_DPI},
 	{.compatible = "mediatek,mt2701-disp-mutex",
@@ -10891,6 +11607,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	{.compatible = "mediatek,mt8173-disp-mutex",
 	 .data = (void *)MTK_DISP_MUTEX},
 	{.compatible = "mediatek,mt6885-disp-mutex",
+	 .data = (void *)MTK_DISP_MUTEX},
+	{.compatible = "mediatek,mt6771-disp-mutex",
 	 .data = (void *)MTK_DISP_MUTEX},
 	{.compatible = "mediatek,mt6983-disp-mutex",
 	 .data = (void *)MTK_DISP_MUTEX},
@@ -11319,6 +12037,8 @@ static const struct of_device_id mtk_ddp_comp_dt_ids[] = {
 	 .data = (void *)MTK_DISP_POSTALIGN},
 	{.compatible = "mediatek,mt6991-disp-splitter",
 	 .data = (void *)MTK_DISP_SPLITTER},
+	{.compatible = "mediatek,mt6899-disp-splitter",
+	 .data = (void *)MTK_DISP_SPLITTER},
 	{} };
 
 static struct disp_iommu_device disp_iommu;
@@ -11473,11 +12193,36 @@ void _mtk_sent_aod_scp_sema(void __iomem *_SPM_SEMA_AP)
 }
 EXPORT_SYMBOL_GPL(_mtk_sent_aod_scp_sema);
 
+void mtk_set_aod_scp_semaphore(int lock)
+{
+	if (aod_scp_flag == 0)
+		return;
+
+	if (vdisp_func.set_aod_scp_semaphore)
+		vdisp_func.set_aod_scp_semaphore(lock);
+}
+
+unsigned int mtk_aod_scp_vdisp_sema_check(void)
+{
+	/* check vdisp aod scp sema status
+	 * if (vdisp_func.poll_power_cnt(0) < 0) ==> vdisp power on
+	 * vdisp power on ==> vdisp hold the aod scp sema ==> return 1
+	 */
+	if (vdisp_func.poll_power_cnt) {
+		if (vdisp_func.poll_power_cnt(0) < 0)
+			return 1;
+		else
+			return 0;
+	}
+
+	return 1; //default: vdisp power on
+}
+
 static bool init_secure_static_path_switch(struct device *dev, struct mtk_drm_private *priv)
 {
 	struct device_node *dt_node;
 
-	dt_node = of_find_node_by_name(dev->of_node, "SecureVideoPath");
+	dt_node = of_find_node_by_name(dev->of_node, "SecureHDCPPath");
 	if (!dt_node) {
 		priv->secure_static_path_switch = false;
 		return false;
@@ -11574,6 +12319,10 @@ static int mtk_drm_probe(struct platform_device *pdev)
 		private->is_tablet = true;
 		DDPFUNC("is tablet!\n");
 	}
+
+	if (!of_property_read_u32(dev->of_node, "bif-enable", &private->enable_bif))
+		DDPFUNC("enable_bif: %d\n", private->enable_bif);
+
 	init_secure_static_path_switch(dev, private);
 	if (private->secure_static_path_switch == true)
 		mtk_drm_helper_set_opt_by_name(private->helper_opt, "MTK_DRM_OPT_RPO", 0);
@@ -11754,13 +12503,20 @@ SKIP_OVLSYS_CONFIG:
 		of_node_put(infra_node);
 	}
 
-	atomic_set(&private->kernel_pm.wakelock_cnt, 0);
+	atomic_set(&private->kernel_pm.wakelock_cnt, -1);
 	atomic_set(&private->kernel_pm.status, KERNEL_PM_RESUME);
 	init_waitqueue_head(&private->kernel_pm.wq);
+	/* The priority must be higher than VCP to have the opportunity to interrupt its suspend flow */
+	private->kernel_pm.nb.priority = 1;
 	private->kernel_pm.nb.notifier_call = mtk_drm_pm_notifier;
 	ret = register_pm_notifier(&private->kernel_pm.nb);
 	if (ret)
 		DDPMSG("register_pm_notifier failed %d", ret);
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT) && !IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	private->kernel_pm.vcp_nb.notifier_call = mtk_drm_vcp_notifier;
+	vcp_A_register_notify_ex(VDISP_FEATURE_ID, &private->kernel_pm.vcp_nb);
+#endif
 
 	private->dsi_phy0_dev = mtk_drm_get_pd_device(dev, "dsi_phy0");
 	private->dsi_phy1_dev = mtk_drm_get_pd_device(dev, "dsi_phy1");
@@ -12030,19 +12786,28 @@ static void mtk_drm_shutdown(struct platform_device *pdev)
 	struct drm_device *drm = private->drm;
 	int ret = 0;
 
-	if (drm) {
-		/* skip all next atomic commit */
-		atomic_set(&private->kernel_pm.status, KERNEL_SHUTDOWN);
-		DDPMSG("%s status(%d)\n", __func__, atomic_read(&private->kernel_pm.status));
-		mtk_drm_pm_ctrl(private, DISP_PM_GET);
-		ret = mtk_vidle_force_power_ctrl_by_cpu(true);
-		drm_atomic_helper_shutdown(drm);
-		if (!ret)
-			ret = mtk_vidle_force_power_ctrl_by_cpu(false);
-		else if (ret < 0)
-			DDPMSG("%s ret[%d]", __func__, ret);
-		mtk_drm_pm_ctrl(private, DISP_PM_PUT);
+	if (!drm)
+		return;
+
+	/* skip all next atomic commit */
+	atomic_set(&private->kernel_pm.status, KERNEL_SHUTDOWN);
+	DDPMSG("%s status(%d)\n", __func__, atomic_read(&private->kernel_pm.status));
+
+	/* skip shutdown flow if already suspended */
+	if (atomic_read(&private->kernel_pm.wakelock_cnt) == 0) {
+		DDPMSG("%s skipped, disp wakelock already released\n", __func__);
+		return;
 	}
+
+	ret = mtk_vidle_force_power_ctrl_by_cpu(true);
+	if (ret < 0) {
+		DDPMSG("%s skipped, power keep ret(%d)\n", __func__, ret);
+		return;
+	}
+	mtk_drm_pm_ctrl(private, DISP_PM_GET);
+	drm_atomic_helper_shutdown(drm);
+	mtk_drm_pm_ctrl(private, DISP_PM_PUT);
+	mtk_vidle_force_power_ctrl_by_cpu(false);
 }
 
 static int mtk_drm_remove(struct platform_device *pdev)
@@ -12141,6 +12906,8 @@ static const struct of_device_id mtk_drm_of_ids[] = {
 	 .data = &mt2712_mmsys_driver_data},
 	{.compatible = "mediatek,mt6779-mmsys",
 	 .data = &mt6779_mmsys_driver_data},
+	{.compatible = "mediatek,mt6771-mmsys",
+	 .data = &mt6771_mmsys_driver_data},
 	{.compatible = "mediatek,mt6761-mmsys",
 	 .data = &mt6761_mmsys_driver_data},
 	{.compatible = "mediatek,mt6765-mmsys",
@@ -12260,6 +13027,10 @@ static int __init mtk_drm_init(void)
 	int i;
 
 	DDPINFO("%s+\n", __func__);
+#ifdef CONFIG_MI_DISP
+	mi_disp_feature_init();
+#endif
+
 	for (i = 0; i < ARRAY_SIZE(mtk_drm_drivers); i++) {
 		DDPINFO("%s register %s driver\n",
 			__func__, mtk_drm_drivers[i]->driver.name);
@@ -12270,6 +13041,12 @@ static int __init mtk_drm_init(void)
 			goto err;
 		}
 	}
+#if defined(CONFIG_VIS_DISPLAY_DALI)
+	if (is_mi_dev_support_nova()) {
+		vis_display_ops_set_idlemgr_notify(nvt_set_idlemgr);
+		vis_display_ops_set_pq_trigger_notify(nvt_set_pq_trigger);
+	}
+#endif
 	DDPINFO("%s-\n", __func__);
 
 	return 0;
@@ -12287,6 +13064,12 @@ static void __exit mtk_drm_exit(void)
 
 	for (i = ARRAY_SIZE(mtk_drm_drivers) - 1; i >= 0; i--)
 		platform_driver_unregister(mtk_drm_drivers[i]);
+#if defined(CONFIG_VIS_DISPLAY_DALI)
+	if (is_mi_dev_support_nova()) {
+		vis_display_ops_set_idlemgr_notify(NULL);
+		vis_display_ops_set_pq_trigger_notify(NULL);
+	}
+#endif
 }
 module_init(mtk_drm_init);
 module_exit(mtk_drm_exit);

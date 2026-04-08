@@ -249,6 +249,92 @@ static struct match mt6765_match = {
 };
 /* 6765 end */
 
+/* 6771 begin */
+#define SIZE_6771_TOP (sizeof(mt6771_top_data)\
+	/sizeof(struct fh_pll_data))
+#define DATA_6771_TOP(_name) {				\
+		.name = _name,				\
+		.dds_mask = GENMASK(21, 0), /*DONE*/		\
+		.postdiv_mask = GENMASK(26, 24), /*DONE*/	\
+		.postdiv_offset = 24, /*DONE*/			\
+		.slope0_value = 0x6003c97, /*DONE*/		\
+		.slope1_value = 0x6003c97, /*DONE*/		\
+		.sfstrx_en = BIT(2), /*DONE*/			\
+		.frddsx_en = BIT(1), /*DONE*/			\
+		.fhctlx_en = BIT(0), /*DONE*/			\
+		.tgl_org = BIT(31), /*DONE*/			\
+		.dvfs_tri = BIT(31), /*DONE*/			\
+		.pcwchg = BIT(31), /*DONE*/			\
+		.dt_val = 0x0,	/*DONE*/			\
+		.df_val = 0x9,	/*DONE*/			\
+		.updnlmt_shft = 16, /*DONE*/			\
+		.msk_frddsx_dys = GENMASK(23, 20), /*DONE*/	\
+		.msk_frddsx_dts = GENMASK(19, 16), /*DONE*/	\
+	}
+#define OFFSET_6771_TOP(_fhctl, _con_pcw) {		\
+		/*base:_fhctl*/ \
+		.offset_fhctl = _fhctl,			\
+		.offset_con_pcw = _con_pcw,		\
+		.offset_con_postdiv = _con_pcw,		\
+		.offset_hp_en = 0x0, /*DONE*/			\
+		.offset_clk_con = 0x4, /*DONE*/			\
+		.offset_rst_con = 0x8, /*DONE*/			\
+		.offset_slope0 = 0xc, /*DONE*/			\
+		.offset_slope1 = 0x10, /*DONE*/			\
+		.offset_cfg = 0x0, /*DONE*/			\
+		.offset_updnlmt = 0x4, /*DONE*/		\
+		.offset_dds = 0x8, /*DONE*/			\
+		.offset_dvfs = 0xc, /*DONE*/			\
+		.offset_mon = 0x10, /*DONE*/			\
+	}
+static struct fh_pll_data mt6771_top_data[] = {
+	DATA_6771_TOP("armpll1"),
+	DATA_6771_TOP("armpll2"),
+	DATA_6771_TOP("armpll3"), /* ARMPLL3 cannot do hoppping from EM due to DDS CON1 doesn't exists */
+	DATA_6771_TOP("ccipll"),
+	DATA_6771_TOP("gpupll"),
+	DATA_6771_TOP("mpll"),
+	DATA_6771_TOP("mempll"), /* MEMPLL cannot do hoppping from EM due to DDS CON1 doesn't exists */
+	DATA_6771_TOP("mainpll"),
+	DATA_6771_TOP("msdcll"),
+	DATA_6771_TOP("mmpll"),
+	DATA_6771_TOP("vdecpll"), /* VDECPLL cannot do hoppping from EM due to DDS CON1 doesn't exists */
+	DATA_6771_TOP("tvdpll"),
+	{}
+};
+static struct fh_pll_offset mt6771_top_offset[SIZE_6771_TOP] = {
+	OFFSET_6771_TOP(0x0038, 0x0204),	// REG_FHCTL0_CFG
+	OFFSET_6771_TOP(0x004C, 0x0214),	// REG_FHCTL1_CFG
+	OFFSET_6771_TOP(0x0060, 0xffff),	// REG_FHCTL2_CFG /* not support in 63 */
+	OFFSET_6771_TOP(0x0074, 0x0294),	// REG_FHCTL3_CFG
+	OFFSET_6771_TOP(0x0088, 0x0244),	// REG_FHCTL4_CFG
+	OFFSET_6771_TOP(0x009C, 0x0284),	// REG_FHCTL5_CFG
+	OFFSET_6771_TOP(0x00B0, 0xffff),	// REG_FHCTL6_CFG /* dram use MPLL */
+	OFFSET_6771_TOP(0x00C4, 0x0224),	// REG_FHCTL7_CFG
+	OFFSET_6771_TOP(0x00D8, 0x0254),	// REG_FHCTL8_CFG
+	OFFSET_6771_TOP(0x00EC, 0x0274),	// REG_FHCTL9_CFG
+	OFFSET_6771_TOP(0x0100, 0xffff),	// REG_FHCTL10_CFG /* not support in 63 */
+	OFFSET_6771_TOP(0x0114, 0x0264),	// REG_FHCTL11_CFG
+	{}
+};
+static struct fh_pll_regs mt6771_top_regs[SIZE_6771_TOP];
+static struct fh_pll_domain mt6771_top = {
+	.name = "top",
+	.data = (struct fh_pll_data *)&mt6771_top_data,
+	.offset = (struct fh_pll_offset *)&mt6771_top_offset,
+	.regs = (struct fh_pll_regs *)&mt6771_top_regs,
+	.init = &init_v1,
+};
+static struct fh_pll_domain *mt6771_domain[] = {
+	&mt6771_top,
+	NULL
+};
+static struct match mt6771_match = {
+	.compatible = "mediatek,mt6771-fhctl",
+	.domain_list = (struct fh_pll_domain **)mt6771_domain,
+};
+/* 6771 end */
+
 /* platform data begin */
 /* 6768 begin */
 #define SIZE_6768_TOP (sizeof(mt6768_top_data)\
@@ -2020,6 +2106,7 @@ static struct match mt6991_match = {
 /* 6991 end */
 
 static const struct match *matches[] = {
+	&mt6771_match,
 	&mt6761_match,
 	&mt6765_match,
 	&mt6768_match,

@@ -25,16 +25,52 @@
 #endif
 
 #include "sched_avg.h"
-#include <sched_sys_common.h>
-#include <thermal_interface.h>
-#include <eas/eas_plus.h>
 #include "core_ctl.h"
+#include "common.h"
+#include <sched_sys_common.h>
+#include <eas/eas_plus.h>
 #include <mtk_cpu_power_throttling.h>
+#include <mt-plat/mtk_irq_mon.h>
+
+#if IS_ENABLED(CONFIG_MTK_THERMAL_INTERFACE)
+#include <thermal_interface.h>
+#endif
 
 #if IS_ENABLED(CONFIG_MTK_PLAT_POWER_6893)
 extern int get_immediate_tslvts1_1_wrap(void);
 #endif
-#define TAG "core_ctl"
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+#include "eas/grp_awr.h"
+#endif
+
+#define TAG	"core_ctl"
+#define L_CLUSTER_ID	0
+#define M_CLUSTER_ID	1
+#define B_CLUSTER_ID	2
+#define MAX_CLUSTERS	3
+#define MAX_CPUS_PER_CLUSTER	6
+#define MAX_BTASK_THRESH	100
+#define BIG_TASK_AVG_THRESHOLD	25
+#define WIN_SIZE	10
+#define NORMAL_TEMP	35
+#define THERMAL_TEMP	65
+
+#define for_each_cluster(cluster, idx) \
+	for ((cluster) = &cluster_state[idx]; (idx) < num_clusters;\
+		(idx)++, (cluster) = &cluster_state[idx])
+
+#define core_ctl_debug(x...)		\
+	do {				\
+		if (debug_enable >= DEBUG_DETAIL)	\
+			pr_info(x);	\
+	} while (0)
+
+struct request_data {
+	unsigned int have_demand;
+	unsigned int min_cpus;
+	unsigned int max_cpus;
+};
 
 struct ppm_table {
 	unsigned long power;
@@ -76,6 +112,9 @@ struct cluster_data {
 	unsigned int nr_paused_cpus;
 	unsigned int cpu_busy_up_thres;
 	unsigned int cpu_busy_down_thres;
+	unsigned int nr_task_thres;
+	unsigned int rt_nr_task_thres;
+	unsigned int active_loading_thres;
 	cpumask_t cpu_mask;
 	bool pending;
 	spinlock_t pending_lock;
@@ -83,7 +122,13 @@ struct cluster_data {
 	struct kobject kobj;
 	s64 offline_throttle_ms;
 	s64 next_offline_time;
+	struct request_data demand_list[CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER];
 	struct cluster_ppm_data ppm_data;
+	unsigned int cap_turn_point;
+	unsigned long freq_thres;
+	bool boost_by_freq;
+	bool boost_by_wlan;
+	unsigned int deiso_reason;
 };
 
 struct cpu_data {
@@ -91,60 +136,65 @@ struct cpu_data {
 	bool paused_by_cc;
 	bool force_paused;
 	unsigned int cpu;
-	unsigned int cpu_util_pct;
+	unsigned int cpu_util_pct[WIN_SIZE];
 	unsigned int is_busy;
 	struct cluster_data *cluster;
+	unsigned int force_pause_req;
+	unsigned int win_idx;
+	unsigned int cpu_active_loading[WIN_SIZE];
+	u64 last_wall_time;
+	u64 last_idle_time;
+	int max_nr_state;
+	int max_rt_nr_state;
+	int max_vip_nr_state;
 };
 
-#define ENABLE		1
-#define DISABLE		0
-#define L_CLUSTER_ID	0
-#define BL_CLUSTER_ID	1
-#define AB_CLUSTER_ID	2
-#define CORE_OFF	true
-#define CORE_ON		false
-#define MAX_CLUSTERS		3
-#define MAX_CPUS_PER_CLUSTER	6
-#define MAX_NR_DOWN_THRESHOLD	4
-#define MAX_BTASK_THRESH	100
-#define MAX_CPU_TJ_DEGREE	100000
-#define BIG_TASK_AVG_THRESHOLD	25
-
-#define for_each_cluster(cluster, idx) \
-	for ((cluster) = &cluster_state[idx]; (idx) < num_clusters;\
-		(idx)++, (cluster) = &cluster_state[idx])
-
-#define core_ctl_debug(x...)		\
-	do {				\
-		if (debug_enable)	\
-			pr_info(x);	\
-	} while (0)
-
+static unsigned int enable_policy;
 static DEFINE_PER_CPU(struct cpu_data, cpu_state);
 static struct cluster_data cluster_state[MAX_CLUSTERS];
 static unsigned int num_clusters;
 static DEFINE_SPINLOCK(core_ctl_state_lock);
 static DEFINE_SPINLOCK(core_ctl_window_check_lock);
 static DEFINE_SPINLOCK(core_ctl_pause_lock);
-static DEFINE_RWLOCK(core_ctl_policy_lock);
 static bool initialized;
-static unsigned int default_min_cpus[MAX_CLUSTERS] = {4, 2, 0};
 ATOMIC_NOTIFIER_HEAD(core_ctl_notifier);
-static bool debug_enable;
-module_param_named(debug_enable, debug_enable, bool, 0600);
+static unsigned int default_min_cpus[MAX_CLUSTERS] = {4, 0, 0};
+static unsigned int busy_up_thres[MAX_CLUSTERS] = {70, 70, 60};
+static unsigned int busy_down_thres[MAX_CLUSTERS] = {40, 40, 30};
+static unsigned int nr_task_thres[MAX_CLUSTERS] = {4, 4, 4};
+static unsigned int rt_nr_task_thres[MAX_CLUSTERS] = {2, 2, 2};
+static unsigned int active_loading_thres[MAX_CLUSTERS] = {80, 80, 80};
+static unsigned long freq_thres[MAX_CLUSTERS] = {5000000, 5000000, 5000000};
+struct cpumask cpu_force_pause_mask;
 
-static void periodic_debug_handler(struct work_struct *work);
-static int periodic_debug_enable;
-static int periodic_debug_delay = 50;
-module_param_named(periodic_debug_delay, periodic_debug_delay, int, 0600);
-static DECLARE_DELAYED_WORK(periodic_debug, periodic_debug_handler);
+enum {
+	DEISO_NONE	= 0,
+	DEISO_BUSY_NR_TASK	= 1,
+	DEISO_BUSY_ACT_LOAD	= 2,
+	DEISO_BUSY_RT_NR_TASK	= 4,
+	DEISO_HEAVY_TASK	= 8,
+	DEISO_NORMAL_TASK	= 16,
+	DEISO_OVER_FREQ_THRES	= 32,
+	DEISO_WLAN_REQ	= 64
+};
+
+/* ==================== module parameter ======================== */
 
 enum {
 	DISABLE_DEBUG = 0,
-	DEBUG_STD,
+	DEBUG_PERIODIC,
 	DEBUG_DETAIL,
 	DEBUG_CNT
 };
+
+static int debug_enable = DEBUG_PERIODIC;
+module_param_named(debug_enable, debug_enable, int, 0600);
+
+static void periodic_debug_handler(struct work_struct *work);
+static int periodic_debug_enable = 1;
+static int periodic_debug_delay = 2000;
+module_param_named(periodic_debug_delay, periodic_debug_delay, int, 0600);
+static DECLARE_DELAYED_WORK(periodic_debug, periodic_debug_handler);
 
 static int set_core_ctl_debug_level(const char *buf,
 			       const struct kernel_param *kp)
@@ -177,7 +227,43 @@ param_check_uint(periodic_debug_enable, &periodic_debug_enable);
 module_param_cb(periodic_debug_enable, &set_core_ctl_debug_param_ops, &periodic_debug_enable, 0600);
 MODULE_PARM_DESC(periodic_debug_enable, "echo periodic debug trace if needed");
 
-static unsigned int enable_policy;
+static void periodic_debug_handler(struct work_struct *work)
+{
+	struct cluster_data *cluster;
+	unsigned int index = 0;
+	unsigned int max_cpus[MAX_CLUSTERS];
+	unsigned int min_cpus[MAX_CLUSTERS];
+	unsigned int boost[MAX_CLUSTERS];
+	unsigned int need_cpus[MAX_CLUSTERS];
+	int gas_enable = 0;
+
+	mod_delayed_work(system_power_efficient_wq,
+			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
+
+	if (periodic_debug_enable == DISABLE_DEBUG)
+		return;
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+	gas_enable = get_top_grp_aware();
+#endif
+
+	for_each_cluster(cluster, index) {
+		max_cpus[index] = cluster->max_cpus;
+		min_cpus[index] = cluster->min_cpus;
+		boost[index] = cluster->boost || cluster->boost_by_freq || cluster->boost_by_wlan;
+		need_cpus[index] = cluster->need_cpus;
+	}
+
+	pr_info("%s: en=%u max=%u|%u|%u min=%u|%u|%u need=%u|%u|%u bst=%u|%u|%u gas=%d act=%lx iso=%lx f_iso=%lx",
+			TAG, enable_policy,
+			max_cpus[0], max_cpus[1], max_cpus[2],
+			min_cpus[0], min_cpus[1], min_cpus[2],
+			need_cpus[0], need_cpus[1], need_cpus[2],
+			boost[0], boost[1], boost[2],
+			gas_enable, cpumask_bits(cpu_online_mask)[0],
+			cpumask_bits(cpu_pause_mask)[0], cpumask_bits(&cpu_force_pause_mask)[0]);
+}
+
 /*
  *  core_ctl_enable_policy - enable policy of core control
  *  @enable: true if set, false if unset.
@@ -185,16 +271,18 @@ static unsigned int enable_policy;
 int core_ctl_enable_policy(unsigned int policy)
 {
 	unsigned int old_val;
-	unsigned long flags;
 	bool success = false;
 
-	write_lock_irqsave(&core_ctl_policy_lock, flags);
 	if (policy != enable_policy) {
 		old_val = enable_policy;
 		enable_policy = policy;
 		success = true;
+
+		/* reset recorded data when turn on */
+		if (!old_val && enable_policy)
+			policy_chg_notify();
 	}
-	write_unlock_irqrestore(&core_ctl_policy_lock, flags);
+
 	if (success)
 		pr_info("%s: Change policy from %d to %d successfully.",
 			TAG, old_val, policy);
@@ -225,6 +313,8 @@ static struct kernel_param_ops set_core_ctl_policy_param_ops = {
 param_check_uint(policy_enable, &enable_policy);
 module_param_cb(policy_enable, &set_core_ctl_policy_param_ops, &enable_policy, 0600);
 MODULE_PARM_DESC(policy_enable, "echo cpu pause policy if needed");
+
+/* ==================== support function ======================== */
 
 static unsigned int apply_limits(const struct cluster_data *cluster,
 				 unsigned int need_cpus)
@@ -299,27 +389,137 @@ bool is_cluster_init(unsigned int cid)
 	return  cluster_state[cid].inited;
 }
 
+static int power_cost_evaluation(struct cluster_data *cluster)
+{
+	struct cluster_data *prev_cluster;
+	struct cpu_data *cpu_stat;
+	int cpu, cid = 0, win_idx = 0;
+	int need_isolated_cpu;
+	unsigned long cap_avg = 0, prev_cap_avg = 0, prev_new_cap;
+	unsigned int ret = 1;
+
+	if (unlikely(!cluster || !cluster->inited))
+		return ret;
+
+	cid = cluster->cluster_id;
+
+	if (cid == L_CLUSTER_ID)
+		return ret;
+
+	need_isolated_cpu = cluster->active_cpus - cluster->new_need_cpus;
+	prev_cluster = &cluster_state[cid - 1];
+
+	for_each_cpu(cpu, &cluster->cpu_mask) {
+		cpu_stat = &per_cpu(cpu_state, cpu);
+		win_idx = cpu_stat->win_idx;
+		cap_avg += _capacity_of(cpu) * cpu_stat->cpu_util_pct[win_idx];
+	}
+	cap_avg = div_u64(cap_avg, cluster->active_cpus * 100);
+
+	for_each_cpu(cpu, &prev_cluster->cpu_mask) {
+		cpu_stat = &per_cpu(cpu_state, cpu);
+		win_idx = cpu_stat->win_idx;
+		prev_cap_avg += _capacity_of(cpu) * cpu_stat->cpu_util_pct[win_idx];
+	}
+	prev_cap_avg = div_u64(prev_cap_avg, prev_cluster->active_cpus * 100);
+
+	prev_new_cap = prev_cap_avg + div_u64(need_isolated_cpu*cap_avg, prev_cluster->active_cpus);
+	if (prev_new_cap > prev_cluster->cap_turn_point)
+		ret = 0;
+
+	return ret;
+}
+
+static void check_freq_min_req(void)
+{
+	unsigned int index = 0;
+	unsigned long flags;
+	struct cluster_data *cluster;
+	unsigned long last_freq_qos_max_of_min;
+
+	/* no need check with camera mode */
+	if (enable_policy == CAMERA_MODE)
+		return;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	for_each_cluster(cluster, index) {
+		last_freq_qos_max_of_min = get_freq_qos_max_of_min(index);
+		if (last_freq_qos_max_of_min > cluster->freq_thres) {
+			cluster->deiso_reason |= DEISO_OVER_FREQ_THRES;
+			cluster->boost_by_freq = true;
+		} else
+			cluster->boost_by_freq = false;
+	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+uint32_t (*wlan_cur_cpumask_req_hook)(void);
+static void check_wlan_request(void)
+{
+	int i;
+	unsigned long flags;
+	uint32_t wlan_cpu_req, cluster_cpu_mask;
+	struct cluster_data *cluster;
+
+	if (wlan_cur_cpumask_req_hook) {
+		wlan_cpu_req = wlan_cur_cpumask_req_hook();
+
+		spin_lock_irqsave(&core_ctl_state_lock, flags);
+		cluster = &cluster_state[B_CLUSTER_ID];
+		cluster_cpu_mask = 0;
+		for_each_cpu(i, &cluster->cpu_mask)
+			cluster_cpu_mask |= (1U << i);
+		cluster->boost_by_wlan = (wlan_cpu_req & cluster_cpu_mask)?true:false;
+		if (cluster->boost_by_wlan)
+			cluster->deiso_reason |= DEISO_WLAN_REQ;
+
+		cluster = &cluster_state[M_CLUSTER_ID];
+		cluster_cpu_mask = 0;
+		for_each_cpu(i, &cluster->cpu_mask)
+			cluster_cpu_mask |= (1U << i);
+		cluster->boost_by_wlan = (wlan_cpu_req & cluster_cpu_mask)?true:false;
+		if (cluster->boost_by_wlan)
+			cluster->deiso_reason |= DEISO_WLAN_REQ;
+		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	}
+}
+
 static bool demand_eval(struct cluster_data *cluster)
 {
 	unsigned long flags;
 	unsigned int need_cpus = 0;
 	bool ret = false;
 	bool need_flag = false;
+	unsigned int cost_flag = 0;
 	unsigned int new_need;
 	unsigned int old_need;
 	s64 now, elapsed;
+	unsigned int cluster_boost_state, boost_state;
+	unsigned int cid, active_cpus, min_cpus, max_cpus, enable, next_offline_time;
+	int gas_enable = 0;
+
+	irq_log_store();
 
 	if (unlikely(!cluster->inited))
 		return ret;
 
-	spin_lock_irqsave(&core_ctl_state_lock, flags);
+#if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
+	gas_enable = get_top_grp_aware();
+#endif
 
-	read_lock(&core_ctl_policy_lock);
-	if (cluster->boost || !cluster->enable || !enable_policy)
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	cid = cluster->cluster_id;
+	active_cpus = cluster->active_cpus;
+	min_cpus = cluster->min_cpus;
+	max_cpus = cluster->max_cpus;
+	enable = cluster->enable;
+	cluster_boost_state = cluster->boost;
+
+	boost_state = cluster->boost || cluster->boost_by_wlan || cluster->boost_by_freq;
+	if (boost_state || !cluster->enable || !enable_policy || gas_enable)
 		need_cpus = cluster->max_cpus;
 	else
 		need_cpus = cluster->new_need_cpus;
-	read_unlock(&core_ctl_policy_lock);
 
 	/* check again active cpus. */
 	cluster->active_cpus = get_active_cpu_count(cluster);
@@ -344,28 +544,42 @@ static bool demand_eval(struct cluster_data *cluster)
 		if (new_need == cluster->active_cpus) {
 			cluster->next_offline_time = now;
 			cluster->need_cpus = new_need;
+			next_offline_time = now;
 			goto unlock;
 		}
 
 		/* Does it exceed throttle time ? */
 		elapsed = now - cluster->next_offline_time;
 		ret = elapsed >= cluster->offline_throttle_ms;
+
+		/* Calculate effective of isolation when core-off */
+		if (ret) {
+			cost_flag = power_cost_evaluation(cluster);
+			ret = ret & cost_flag;
+		}
 	}
 
 	if (ret) {
 		cluster->next_offline_time = now;
 		cluster->need_cpus = new_need;
 	}
-	trace_core_ctl_demand_eval(cluster->cluster_id,
-			old_need, new_need,
-			cluster->active_cpus,
-			cluster->min_cpus,
-			cluster->max_cpus,
-			cluster->boost,
-			cluster->enable,
-			ret && need_flag);
+	next_offline_time = cluster->next_offline_time;
 unlock:
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+
+	if (new_need != active_cpus) {
+		trace_core_ctl_demand_eval(cid,
+				old_need, new_need,
+				active_cpus,
+				min_cpus, max_cpus,
+				cluster_boost_state,
+				gas_enable,
+				enable, cost_flag,
+				ret && need_flag,
+				next_offline_time);
+	}
+
+	irq_log_store();
 	return ret && need_flag;
 }
 
@@ -409,12 +623,18 @@ static int test_set_val(struct cluster_data *cluster, unsigned int val)
 	return 0;
 }
 
+static bool test_disable_cpu(unsigned int cpu);
 static inline int core_ctl_pause_cpu(unsigned int cpu)
 {
 	int ret = 0;
 	unsigned long flags;
 
 	spin_lock_irqsave(&core_ctl_pause_lock, flags);
+	/* Unable to pause CPU */
+	if(!test_disable_cpu(cpu)) {
+		spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
+		return -EBUSY;
+	}
 	ret = sched_pause_cpu(cpu);
 	spin_unlock_irqrestore(&core_ctl_pause_lock, flags);
 
@@ -433,34 +653,91 @@ static inline int core_ctl_resume_cpu(unsigned int cpu)
 	return ret;
 }
 
-static void set_min_cpus(struct cluster_data *cluster, unsigned int val)
+int core_ctl_cpu_request_trace(void);
+static void set_min_cpus(struct cluster_data *cluster, unsigned int val, int requester, unsigned int have_demand)
 {
 	unsigned long flags;
+	unsigned int i, selected = UINT_MAX;
+	unsigned int max_min = 0;
 
-	if(val < cluster->min_cpus){
+	/* check CPU boundary */
+	if (val < cluster->min_cpus) {
 		if (test_set_val(cluster, val))
 			return;
 	}
+
+	if (requester < 0 || requester >= CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER)
+		return;
+
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
-	cluster->min_cpus = min(val, cluster->max_cpus);
+
+	/* update requester demand */
+	cluster->demand_list[requester].have_demand = have_demand;
+	cluster->demand_list[requester].min_cpus = val;
+
+	/* Find biggest demand of min_cpus */
+	for (i=0; i<CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER; i++) {
+		if (cluster->demand_list[i].have_demand && (cluster->demand_list[i].min_cpus >= max_min)) {
+			selected = i;
+			max_min = cluster->demand_list[i].min_cpus;
+		}
+	}
+	core_ctl_debug("%s: cluster#%d max_min=%d demand aggregate from %u",
+		TAG, cluster->cluster_id, max_min, selected);
+
+	/* Aggregate with max_cpus */
+	if (selected != UINT_MAX)
+		cluster->min_cpus = min(max_min, cluster->max_cpus);
+	else
+		cluster->min_cpus = default_min_cpus[cluster->cluster_id];
+
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	core_ctl_cpu_request_trace();
 	wake_up_core_ctl_thread(cluster);
 }
 
-static void set_max_cpus(struct cluster_data *cluster, unsigned int val)
+static void set_max_cpus(struct cluster_data *cluster, unsigned int val, int requester, unsigned int have_demand)
 {
 	unsigned long flags;
+	unsigned int i, selected = UINT_MAX;
+	unsigned int min_max = UINT_MAX;
 
+	/* check CPU boundary */
 	if(val < cluster->min_cpus){
 		if (test_set_val(cluster, val))
 			return;
 	}
 
+	if (requester < 0 || requester >= CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER)
+		return;
+
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
-	val = min(val, cluster->num_cpus);
-	cluster->max_cpus = val;
-	cluster->min_cpus = min(cluster->min_cpus, cluster->max_cpus);
+
+	/* update requester demand */
+	cluster->demand_list[requester].have_demand = have_demand;
+	cluster->demand_list[requester].max_cpus = val;
+
+	/* Find smallest demand of max_cpus */
+	for (i=0; i<CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER; i++) {
+		if (cluster->demand_list[i].have_demand && (cluster->demand_list[i].max_cpus <= min_max)) {
+			selected = i;
+			min_max = cluster->demand_list[i].max_cpus;
+		}
+	}
+	core_ctl_debug("%s: cluster#%d min_max=%d demand aggregate from %u",
+		TAG, cluster->cluster_id, min_max, selected);
+
+	if (selected != UINT_MAX) {
+		min_max = min(min_max, cluster->num_cpus);
+		cluster->max_cpus = min_max;
+
+		/* Aggregate with max_cpus */
+		cluster->min_cpus = min(cluster->min_cpus, cluster->max_cpus);
+	} else
+		cluster->max_cpus = cluster->num_cpus;
+
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	core_ctl_cpu_request_trace();
 	wake_up_core_ctl_thread(cluster);
 }
 
@@ -478,6 +755,7 @@ void set_offline_throttle_ms(struct cluster_data *cluster, unsigned int val)
 {
 	unsigned long flags;
 
+	core_ctl_debug("%s: Adjust offline throttle time to %u ms", TAG, val);
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	cluster->offline_throttle_ms = val;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
@@ -524,6 +802,7 @@ void set_not_preferred_locked(int cpu, bool enable)
 	}
 }
 
+unsigned long get_freq_thres(unsigned int cid);
 static int set_up_thres(struct cluster_data *cluster, unsigned int val)
 {
 	unsigned int old_thresh;
@@ -544,14 +823,189 @@ static int set_up_thres(struct cluster_data *cluster, unsigned int val)
 				cluster->cluster_id,
 				cluster->up_thres);
 		}
+		cluster->freq_thres = get_freq_thres(cluster->cluster_id);
 	}
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	return ret;
 }
 
+static void set_cpu_busy_up_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->cpu_busy_up_thres;
+	if (old_thresh != val)
+		cluster->cpu_busy_up_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+static void set_cpu_busy_down_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->cpu_busy_down_thres;
+	if (old_thresh != val)
+		cluster->cpu_busy_down_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+static void set_cpu_nr_task_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->nr_task_thres;
+	if (old_thresh != val)
+		cluster->nr_task_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+static void set_cpu_rt_nr_task_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->rt_nr_task_thres;
+	if (old_thresh != val)
+		cluster->rt_nr_task_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+static void set_cpu_active_loading_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->active_loading_thres;
+	if (old_thresh != val)
+		cluster->active_loading_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+static void set_freq_min_thres(struct cluster_data *cluster, unsigned int val)
+{
+	unsigned int old_thresh;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	old_thresh = cluster->freq_thres;
+	if (old_thresh != val)
+		cluster->freq_thres = val;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+}
+
+/*
+ * get_cpu_active_loading - Calculates the CPU loading for each CPU
+ *
+ * This function iterates over each possible CPU and calculates its loading
+ * based on the difference between total wall time and idle time since the last
+ * measurement. It stores the calculated CPU loading in the provided cpu_info
+ * structure.
+ *
+ * The CPU loading is calculated as a percentage value representing the
+ * proportion of non-idle time(active time) over the total measured wall time for each CPU.
+ *
+ * Return: 0 on success, negative error code on failure
+ */
+static int get_cpu_active_loading(void)
+{
+	unsigned long flags;
+	int cpu;
+	unsigned int cpu_active_loading, idx;
+	struct cpu_data *cpu_stat;
+	u64 prev_wall_time, prev_idle_time, wall_time, idle_time;
+	unsigned int cpu_active_loading_state[MAX_NR_CPUS], cpu_util_state[MAX_NR_CPUS];
+
+	if (!initialized)
+		return 0;
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	for_each_possible_cpu(cpu) {
+		cpu_stat = &per_cpu(cpu_state, cpu);
+		cpu_active_loading = 0;
+		wall_time = 0;
+		idle_time = 0;
+
+		prev_wall_time = cpu_stat->last_wall_time;
+		prev_idle_time = cpu_stat->last_idle_time;
+
+		/* update both wall & idle time, and idle time include iowait */
+		cpu_stat->last_idle_time = get_cpu_idle_time(cpu, &cpu_stat->last_wall_time, 1);
+
+		if (cpu_active(cpu)) {
+			wall_time = cpu_stat->last_wall_time - prev_wall_time;
+			idle_time = cpu_stat->last_idle_time - prev_idle_time;
+		}
+
+		if (wall_time > 0 && wall_time > idle_time)
+			cpu_active_loading = div_u64(((wall_time - idle_time)*100),
+							wall_time);
+
+		cpu_stat->win_idx = ((cpu_stat->win_idx + 1) % WIN_SIZE);
+		idx = cpu_stat->win_idx;
+		if (idx < WIN_SIZE) {
+			cpu_stat->cpu_active_loading[idx] = cpu_active_loading;
+			cpu_stat->cpu_util_pct[idx] = get_cpu_util_pct(cpu, false);
+		}
+
+		cpu_active_loading_state[cpu] = cpu_stat->cpu_active_loading[idx];
+		cpu_util_state[cpu] = cpu_stat->cpu_util_pct[idx];
+	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+
+	trace_core_ctl_cpu_loading_util(cpu_active_loading_state, cpu_util_state);
+	return 0;
+}
+
+int core_ctl_cpu_request_trace(void)
+{
+	struct cluster_data *cluster;
+	struct cpu_data *cpu_stat;
+	int cid, req_id, cpu;
+	unsigned long flags;
+	int min_cpus[MAX_CLUSTERS], max_cpus[MAX_CLUSTERS];
+	unsigned int min_cpus_req[MAX_CLUSTERS][CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER];
+	unsigned int max_cpus_req[MAX_CLUSTERS][CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER];
+	unsigned int have_demand[MAX_CLUSTERS][CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER];
+	unsigned int force_pause_req[MAX_NR_CPUS];
+
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	for (cid=1; cid<MAX_CLUSTERS; cid++) {
+		cluster = &cluster_state[cid];
+
+		for (req_id=0; req_id < CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER; req_id++) {
+			have_demand[cid][req_id] = cluster->demand_list[req_id].have_demand;
+			min_cpus_req[cid][req_id] = cluster->demand_list[req_id].min_cpus;
+			max_cpus_req[cid][req_id] = cluster->demand_list[req_id].max_cpus;
+		}
+		min_cpus[cid] = cluster->min_cpus;
+		max_cpus[cid] = cluster->max_cpus;
+	}
+
+	for (cpu=0; cpu<MAX_NR_CPUS; cpu++) {
+		cpu_stat = &per_cpu(cpu_state, cpu);
+		force_pause_req[cpu] = cpu_stat->force_pause_req;
+	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+
+	for (cid=1; cid<MAX_CLUSTERS; cid++) {
+		trace_core_ctl_cpu_request(cid, min_cpus[cid], max_cpus[cid],
+				have_demand[cid], min_cpus_req[cid], max_cpus_req[cid], force_pause_req);
+	}
+
+	return 0;
+}
+
 /* ==================== export function ======================== */
 
-int core_ctl_set_min_cpus(unsigned int cid, unsigned int min)
+int core_ctl_get_min_cpus(unsigned int cid)
 {
 	struct cluster_data *cluster;
 
@@ -559,12 +1013,26 @@ int core_ctl_set_min_cpus(unsigned int cid, unsigned int min)
 		return -EINVAL;
 
 	cluster = &cluster_state[cid];
-	set_min_cpus(cluster, min);
+	return cluster->min_cpus;
+}
+EXPORT_SYMBOL(core_ctl_get_min_cpus);
+
+int core_ctl_set_min_cpus(unsigned int cid, unsigned int min, int requester, unsigned int have_demand)
+{
+	struct cluster_data *cluster;
+
+	if (cid >= num_clusters)
+		return -EINVAL;
+	if (requester < 0 || requester >= CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_min_cpus(cluster, min, requester, have_demand);
 	return 0;
 }
 EXPORT_SYMBOL(core_ctl_set_min_cpus);
 
-int core_ctl_set_max_cpus(unsigned int cid, unsigned int max)
+int core_ctl_get_max_cpus(unsigned int cid)
 {
 	struct cluster_data *cluster;
 
@@ -572,7 +1040,21 @@ int core_ctl_set_max_cpus(unsigned int cid, unsigned int max)
 		return -EINVAL;
 
 	cluster = &cluster_state[cid];
-	set_max_cpus(cluster, max);
+	return cluster->max_cpus;
+}
+EXPORT_SYMBOL(core_ctl_get_max_cpus);
+
+int core_ctl_set_max_cpus(unsigned int cid, unsigned int max, int requester, unsigned int have_demand)
+{
+	struct cluster_data *cluster;
+
+	if (cid >= num_clusters)
+		return -EINVAL;
+	if (requester < 0 || requester >= CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_max_cpus(cluster, max, requester, have_demand);
 	return 0;
 }
 EXPORT_SYMBOL(core_ctl_set_max_cpus);
@@ -602,12 +1084,11 @@ int core_ctl_set_limit_cpus(unsigned int cid,
 	cluster = &cluster_state[cid];
 	max = min(max, cluster->num_cpus);
 	min = min(min, max);
-	cluster->max_cpus = max;
-	cluster->min_cpus = min;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	set_max_cpus(cluster, max, CORE_CTL_SET_CORE_POWERHAL, 1);
+	set_min_cpus(cluster, min, CORE_CTL_SET_CORE_POWERHAL, 1);
 	core_ctl_debug("%s: Try to adjust cluster %u limit cpus. min_cpus: %u, max_cpus: %u",
 			TAG, cid, min, max);
-	wake_up_core_ctl_thread(cluster);
 	return 0;
 }
 EXPORT_SYMBOL(core_ctl_set_limit_cpus);
@@ -726,20 +1207,23 @@ int core_ctl_set_up_thres(int cid, unsigned int val)
 EXPORT_SYMBOL(core_ctl_set_up_thres);
 
 /*
- *  core_ctl_force_pause_cpu - force pause or resume cpu
+ *  core_ctl_force_pause_request - force pause or resume cpu by request caller
  *  @cpu: cpu number
  *  @is_pause: set true if pause, set false if resume.
+ *  @request_mask: caller of this pause request
  *
  *  return 0 if success, else return errno
  */
-static bool test_disable_cpu(unsigned int cpu);
 static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause);
-int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
+int core_ctl_force_pause_request(unsigned int cpu, bool is_pause,
+				 unsigned int request_mask)
 {
-	int ret;
+	int ret = 0;
 	unsigned long flags;
-	struct cpu_data *c;
+	unsigned int test_req_mask;
+	struct cpu_data *cpu_stat;
 	struct cluster_data *cluster;
+	unsigned int force_paused_req;
 
 	if (cpu > nr_cpu_ids)
 		return -EINVAL;
@@ -747,72 +1231,133 @@ int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
 	if (!cpu_online(cpu))
 		return -EBUSY;
 
+	if (!request_mask)
+		return -EINVAL;
+
+	if (request_mask & (request_mask - 1))
+		return -EINVAL;
+
+	if (request_mask >= MAX_FORCE_PAUSE_TYPE) {
+		pr_info("%s:invalid force pause request %u", TAG, request_mask);
+		return -EINVAL;
+	}
+
 	/* Avoid hotplug change online mask */
 	cpu_hotplug_disable();
-	if (is_pause && !test_disable_cpu(cpu)){
+	if (is_pause && !test_disable_cpu(cpu)) {
 		cpu_hotplug_enable();
 		pr_info("%s: force pause failed, retain cpus should >= 2", TAG);
 		return -EBUSY;
 	}
 
-	c = &per_cpu(cpu_state, cpu);
-	cluster = c->cluster;
-
-	if(is_pause)
-		ret = core_ctl_pause_cpu(cpu);
-	else
-		ret = core_ctl_resume_cpu(cpu);
-
-	/* error occurs */
-	if (ret)
-		goto print_out;
-
-	/* Update cpu state */
 	spin_lock_irqsave(&core_ctl_state_lock, flags);
-	c->force_paused = is_pause;
-	/* Handle conflict with original policy */
-	if (c->paused_by_cc) {
-		c->paused_by_cc = false;
-		cluster->nr_paused_cpus--;
-	}
-	cluster->active_cpus = get_active_cpu_count(cluster);
+	cpu_stat = &per_cpu(cpu_state, cpu);
+	cluster = cpu_stat->cluster;
+	force_paused_req = cpu_stat->force_pause_req;
 	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
-	core_ctl_call_notifier(cpu, is_pause);
 
-print_out:
-	if (is_pause){
-		if (ret < 0){
-			pr_info("[Core Force Pause] Pause request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+	if (is_pause) {
+		test_req_mask = force_paused_req | request_mask;
+		ret = core_ctl_pause_cpu(cpu);
+	} else {
+		test_req_mask = force_paused_req & (~request_mask);
+		if (test_req_mask == 0)
+			ret = core_ctl_resume_cpu(cpu);
+		else {
+			cpu_stat->force_pause_req = test_req_mask;
+			cpu_hotplug_enable();
+			pr_info("[Core Force Pause] others still need paused CPU#%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+			return ret;
+		}
+	}
+
+	/* pause/resume fail */
+	if (ret < 0) {
+		cpu_hotplug_enable();
+		if (is_pause) {
+			pr_info("[Core Force Pause] Pause request fail ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
 				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
-		} else if (ret){
-			pr_info("[Core Force Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
-				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else {
-			pr_info("[Core Force Pause] Pause success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+			pr_info("[Core Force Pause] Resume request fail ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+		}
+		return ret;
+	}
+
+	/* success or already pause/resume, update cpu state */
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	cpu_stat->force_paused = is_pause;
+
+	if (is_pause) {
+		/* Handle conflict with original policy */
+		if (cpu_stat->paused_by_cc) {
+			cpu_stat->paused_by_cc = false;
+			cluster->nr_paused_cpus--;
+		}
+		cpumask_set_cpu(cpu, &cpu_force_pause_mask);
+	} else
+		cpumask_clear_cpu(cpu, &cpu_force_pause_mask);
+
+	cluster->active_cpus = get_active_cpu_count(cluster);
+	cpu_stat->force_pause_req = test_req_mask;
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	cpu_hotplug_enable();
+
+	if (is_pause) {
+		if (ret) {
+			pr_info("[Core Force Pause] Already Pause: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
 				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
+		} else {
+			pr_info("[Core Force Pause] Pause success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
+				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		}
 	} else {
-		if (ret < 0){
-			pr_info("[Core Force Pause] Resume request ret=%d, cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
-				ret, cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
-		} else if (ret){
-			pr_info("[Core Force Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+		if (ret) {
+			pr_info("[Core Force Pause] Already Resume: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
 				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		} else {
-			pr_info("[Core Force Pause] Resume success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx\n",
+			pr_info("[Core Force Pause] Resume success: cpu=%d, paused=0x%lx, online=0x%lx, act=0x%lx, req[%d]=%u\n",
 				cpu, cpu_pause_mask->bits[0], cpu_online_mask->bits[0],
-				cpu_active_mask->bits[0]);
+				cpu_active_mask->bits[0], cpu, cpu_stat->force_pause_req);
 		}
 	}
-	cpu_hotplug_enable();
+
+	core_ctl_call_notifier(cpu, is_pause);
+	core_ctl_cpu_request_trace();
+	return ret;
+}
+EXPORT_SYMBOL(core_ctl_force_pause_request);
+
+/*
+ *  core_ctl_force_pause_cpu - force pause or resume cpu
+ *  @cpu: cpu number
+ *  @is_pause: set true if pause, set false if resume.
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause)
+{
+	int ret = 0;
+
+	pr_info("We recommend use core_ctl_force_pause_request instead of this API.\n");
+	pr_info("This API will be removed in the future.\n");
+	ret = core_ctl_force_pause_request(cpu, is_pause, UNKNOWN_FORCE_PAUSE);
 	return ret;
 }
 EXPORT_SYMBOL(core_ctl_force_pause_cpu);
+
+unsigned int core_ctl_get_force_pause_mask(void)
+{
+	return cpu_force_pause_mask.bits[0];
+}
+EXPORT_SYMBOL(core_ctl_get_force_pause_mask);
 
 static ssize_t store_thermal_up_thres(struct cluster_data *state,
 		const char *buf, size_t threshold)
@@ -827,28 +1372,129 @@ static ssize_t store_thermal_up_thres(struct cluster_data *state,
 }
 
 /*
- *  core_ctl_set_cpu_busy_thres - set threshold of cpu busy state
+ *  core_ctl_set_cpu_busy_up_thres - set threshold of cpu busy state
  *  @cid: cluster id
  *  @pct: percentage of cpu loading(0-100).
  *
  *  return 0 if success, else return errno
  */
-int core_ctl_set_cpu_busy_thres(unsigned int cid, unsigned int pct)
+int core_ctl_set_cpu_busy_up_thres(unsigned int cid, unsigned int pct)
 {
-	unsigned long flags;
 	struct cluster_data *cluster;
 
 	if (pct > 100 || cid > 2)
 		return -EINVAL;
 
-	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	cluster = &cluster_state[cid];
-	cluster->cpu_busy_up_thres = pct;
-	cluster->cpu_busy_down_thres = pct > 20 ? pct - 20 : 0;
-	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	set_cpu_busy_up_thres(cluster, pct);
+
 	return 0;
 }
-EXPORT_SYMBOL(core_ctl_set_cpu_busy_thres);
+EXPORT_SYMBOL(core_ctl_set_cpu_busy_up_thres);
+
+/*
+ *  core_ctl_set_cpu_busy_down_thres - set threshold of cpu non-busy state
+ *  @cid: cluster id
+ *  @pct: percentage of cpu loading(0-100).
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_set_cpu_busy_down_thres(unsigned int cid, unsigned int pct)
+{
+	struct cluster_data *cluster;
+
+	if (pct > 100 || cid > 2)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_cpu_busy_down_thres(cluster, pct);
+
+	return 0;
+}
+EXPORT_SYMBOL(core_ctl_set_cpu_busy_down_thres);
+
+/*
+ *  core_ctl_set_cpu_nr_task_thres - set threshold of cpu busy state
+ *  @cid: cluster id
+ *  @nr task: number of cpu task
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_set_cpu_nr_task_thres(unsigned int cid, unsigned int nr_task)
+{
+	struct cluster_data *cluster;
+
+	if (cid > 2)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_cpu_nr_task_thres(cluster, nr_task);
+
+	return 0;
+}
+EXPORT_SYMBOL(core_ctl_set_cpu_nr_task_thres);
+
+/*
+ *  core_ctl_set_cpu_rt_nr_task_thres - set threshold of cpu busy state
+ *  @cid: cluster id
+ *  @rt_nr task: number of cpu rt task
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_set_cpu_rt_nr_task_thres(unsigned int cid, unsigned int rt_nr_task)
+{
+	struct cluster_data *cluster;
+
+	if (cid > 2)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_cpu_rt_nr_task_thres(cluster, rt_nr_task);
+
+	return 0;
+}
+EXPORT_SYMBOL(core_ctl_set_cpu_rt_nr_task_thres);
+
+/*
+ *  core_ctl_set_cpu_active_loading - set threshold of cpu busy state
+ *  @cid: cluster id
+ *  @loading: percentage of cpu loading(0-100).
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_set_cpu_active_loading_thres(unsigned int cid, unsigned int loading)
+{
+	struct cluster_data *cluster;
+
+	if (loading > 100 || cid > 2)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_cpu_active_loading_thres(cluster, loading);
+
+	return 0;
+}
+EXPORT_SYMBOL(core_ctl_set_cpu_active_loading_thres);
+
+/*
+ *  core_ctl_set_freq_min_thres - set threshold of frequency min
+ *  @cid: cluster id
+ *  @freq: expected frequency(KHz)
+ *
+ *  return 0 if success, else return errno
+ */
+int core_ctl_set_freq_min_thres(unsigned int cid, unsigned int freq)
+{
+	struct cluster_data *cluster;
+
+	if (cid > 2)
+		return -EINVAL;
+
+	cluster = &cluster_state[cid];
+	set_freq_min_thres(cluster, freq);
+	return 0;
+}
+EXPORT_SYMBOL(core_ctl_set_freq_min_thres);
 
 void core_ctl_notifier_register(struct notifier_block *n)
 {
@@ -862,17 +1508,22 @@ void core_ctl_notifier_unregister(struct notifier_block *n)
 }
 EXPORT_SYMBOL(core_ctl_notifier_unregister);
 
+unsigned int core_ctl_get_policy(void)
+{
+	return enable_policy;
+}
+EXPORT_SYMBOL(core_ctl_get_policy);
 /* ==================== sysctl node ======================== */
 
 static ssize_t store_min_cpus(struct cluster_data *state,
 		const char *buf, size_t count)
 {
-	unsigned int val;
+	unsigned int val, have_demand;
 
-	if (sscanf(buf, "%u\n", &val) != 1)
+	if (sscanf(buf, "%u%u\n", &val, &have_demand) != 2)
 		return -EINVAL;
 
-	set_min_cpus(state, val);
+	set_min_cpus(state, val, CORE_CTL_SET_CORE_SYSNODE, have_demand);
 	return count;
 }
 
@@ -884,12 +1535,12 @@ static ssize_t show_min_cpus(const struct cluster_data *state, char *buf)
 static ssize_t store_max_cpus(struct cluster_data *state,
 		const char *buf, size_t count)
 {
-	unsigned int val;
+	unsigned int val, have_demand;
 
-	if (sscanf(buf, "%u\n", &val) != 1)
+	if (sscanf(buf, "%u%u\n", &val, &have_demand) != 2)
 		return -EINVAL;
 
-	set_max_cpus(state, val);
+	set_max_cpus(state, val, CORE_CTL_SET_CORE_SYSNODE, have_demand);
 	return count;
 }
 
@@ -922,10 +1573,6 @@ static ssize_t store_up_thres(struct cluster_data *state,
 	unsigned int val;
 
 	if (sscanf(buf, "%u\n", &val) != 1)
-		return -EINVAL;
-
-	/* No need to change up_thres for the last cluster */
-	if (state->cluster_id >= num_clusters-1)
 		return -EINVAL;
 
 	if (val > MAX_BTASK_THRESH)
@@ -1028,14 +1675,117 @@ static ssize_t show_enable(const struct cluster_data *state, char *buf)
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->enable);
 }
 
-static ssize_t show_thermal_up_thres(const struct cluster_data *state, char *buf)
+static ssize_t store_cpu_busy_up_thres(struct cluster_data *state,
+		const char *buf, size_t count)
 {
-	return scnprintf(buf, PAGE_SIZE, "%u\n", state->thermal_up_thres);
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	if (val > MAX_BTASK_THRESH)
+		val = MAX_BTASK_THRESH;
+
+	set_cpu_busy_up_thres(state, val);
+	return count;
 }
 
 static ssize_t show_cpu_busy_up_thres(const struct cluster_data *state, char *buf)
 {
 	return scnprintf(buf, PAGE_SIZE, "%u\n", state->cpu_busy_up_thres);
+}
+
+static ssize_t store_cpu_busy_down_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	if (val > MAX_BTASK_THRESH)
+		val = MAX_BTASK_THRESH;
+
+	set_cpu_busy_down_thres(state, val);
+	return count;
+}
+
+static ssize_t show_cpu_busy_down_thres(const struct cluster_data *state, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", state->cpu_busy_down_thres);
+}
+
+static ssize_t store_cpu_nr_task_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	set_cpu_nr_task_thres(state, val);
+	return count;
+}
+
+static ssize_t show_cpu_nr_task_thres(const struct cluster_data *state, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", state->nr_task_thres);
+}
+
+static ssize_t store_cpu_rt_nr_task_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	set_cpu_rt_nr_task_thres(state, val);
+	return count;
+}
+
+static ssize_t show_cpu_rt_nr_task_thres(const struct cluster_data *state, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", state->rt_nr_task_thres);
+}
+
+static ssize_t store_cpu_active_loading_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	set_cpu_active_loading_thres(state, val);
+	return count;
+}
+
+static ssize_t show_cpu_active_loading_thres(const struct cluster_data *state, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", state->active_loading_thres);
+}
+
+static ssize_t store_freq_min_thres(struct cluster_data *state,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (sscanf(buf, "%u\n", &val) != 1)
+		return -EINVAL;
+
+	set_freq_min_thres(state, val);
+	return count;
+}
+
+static ssize_t show_freq_min_thres(const struct cluster_data *state, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%lu\n", state->freq_thres);
+}
+
+static ssize_t show_thermal_up_thres(const struct cluster_data *state, char *buf)
+{
+	return scnprintf(buf, PAGE_SIZE, "%u\n", state->thermal_up_thres);
 }
 
 static ssize_t show_global_state(const struct cluster_data *state, char *buf)
@@ -1080,7 +1830,11 @@ static ssize_t show_global_state(const struct cluster_data *state, char *buf)
 		count += snprintf(buf + count, PAGE_SIZE - count,
 				"\tPaused by core_ctl: %u\n", c->paused_by_cc);
 		count += snprintf(buf + count, PAGE_SIZE - count,
-				"\tCPU utils(%%): %u\n", c->cpu_util_pct);
+				"\tPaused by forced: %u\n", (unsigned int)c->force_paused);
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				"\tForced pause req: %u\n", c->force_pause_req);
+		count += snprintf(buf + count, PAGE_SIZE - count,
+				"\tCPU utils(%%): %u\n", c->cpu_util_pct[c->win_idx]);
 		count += snprintf(buf + count, PAGE_SIZE - count,
 				"\tIs busy: %u\n", c->is_busy);
 		count += snprintf(buf + count, PAGE_SIZE - count,
@@ -1114,7 +1868,12 @@ core_ctl_attr_rw(core_ctl_boost);
 core_ctl_attr_rw(enable);
 core_ctl_attr_ro(global_state);
 core_ctl_attr_rw(thermal_up_thres);
-core_ctl_attr_ro(cpu_busy_up_thres);
+core_ctl_attr_rw(cpu_busy_up_thres);
+core_ctl_attr_rw(cpu_busy_down_thres);
+core_ctl_attr_rw(cpu_nr_task_thres);
+core_ctl_attr_rw(cpu_rt_nr_task_thres);
+core_ctl_attr_rw(cpu_active_loading_thres);
+core_ctl_attr_rw(freq_min_thres);
 
 static struct attribute *default_attrs[] = {
 	&min_cpus.attr,
@@ -1127,6 +1886,11 @@ static struct attribute *default_attrs[] = {
 	&global_state.attr,
 	&thermal_up_thres.attr,
 	&cpu_busy_up_thres.attr,
+	&cpu_busy_down_thres.attr,
+	&cpu_nr_task_thres.attr,
+	&cpu_rt_nr_task_thres.attr,
+	&cpu_active_loading_thres.attr,
+	&freq_min_thres.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(default);
@@ -1168,45 +1932,92 @@ static struct kobj_type ktype_core_ctl = {
 	.default_groups  = default_groups,
 };
 
-static unsigned long heaviest_thres = 520;
-static unsigned int max_task_util;
-static unsigned int big_cpu_ts;
-
 /* ==================== algorithm of core control ======================== */
 
-#define MAX_NR_RUNNING_THRESHOLD   4
 /*
- * Get number of the busy CPU cores, protected by core_ctl_state_lock.
+ * Get number of the busy CPU cores
  */
 static void get_busy_cpus(void)
 {
+	unsigned long flags;
 	struct cluster_data *cluster;
-	struct cpu_data *c;
-	int cpus = 0, cid = 0, i = 0;
+	struct cpu_data *cpu_stat;
+	int cpu = 0, cid = 0, cpu_count = 0, idx = 0;
+	unsigned int busy_state[MAX_NR_CPUS] = {0};
+	unsigned int max_nr_state[MAX_NR_CPUS] = {0};
+	unsigned int max_rt_nr_state[MAX_NR_CPUS] = {0};
+	unsigned int max_vip_nr_state[MAX_NR_CPUS] = {0};
+	unsigned int over_nr_task = 0, over_act_load = 0, over_rt_vip_nr_task = 0;
 
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	/* Define need spread cpus */
 	for (cid = 0; cid < num_clusters; cid++) {
+		cpu_count = 0;
 		cluster = &cluster_state[cid];
-		for_each_cpu(i, &cluster->cpu_mask) {
-			c = &per_cpu(cpu_state, i);
-			if (c->is_busy && get_max_nr_running(i) > MAX_NR_RUNNING_THRESHOLD)
-				cpus++;
+
+		if (!cluster || !cluster->inited)
+			continue;
+
+		for_each_cpu(cpu, &cluster->cpu_mask) {
+			if (cpu >= MAX_NR_CPUS)
+				continue;
+
+			cpu_stat = &per_cpu(cpu_state, cpu);
+			idx = cpu_stat->win_idx;
+
+			/* check CPU is busy or not */
+			if (cpu_stat->cpu_util_pct[idx] > cluster->cpu_busy_up_thres)
+				cpu_stat->is_busy = true;
+			else if (cpu_stat->cpu_util_pct[idx] < cluster->cpu_busy_down_thres)
+				cpu_stat->is_busy = false;
+			/* else remain previous status */
+
+			cpu_stat->max_nr_state = get_max_nr_running(cpu);
+			cpu_stat->max_rt_nr_state = get_max_rt_nr_running(cpu);
+			cpu_stat->max_vip_nr_state = get_max_vip_nr_running(cpu);
+
+			busy_state[cpu] = (unsigned int)cpu_stat->is_busy;
+			max_nr_state[cpu] = cpu_stat->max_nr_state;
+			max_rt_nr_state[cpu] = cpu_stat->max_rt_nr_state;
+			max_vip_nr_state[cpu] = cpu_stat->max_vip_nr_state;
+
+			over_nr_task = max_nr_state[cpu] > cluster->nr_task_thres;
+			over_act_load = cpu_stat->cpu_active_loading[idx] > cluster->active_loading_thres;
+			over_rt_vip_nr_task = max_rt_nr_state[cpu] + max_vip_nr_state[cpu] > cluster->rt_nr_task_thres;
+
+			if (busy_state[cpu] && over_nr_task) {
+				cluster->deiso_reason |= DEISO_BUSY_NR_TASK;
+				cpu_count++;
+			} else if (enable_policy != CAMERA_MODE) {
+				if (busy_state[cpu] && over_act_load) {
+					cluster->deiso_reason |= DEISO_BUSY_ACT_LOAD;
+					cpu_count++;
+				} else if (over_rt_vip_nr_task) {
+					cluster->deiso_reason |= DEISO_BUSY_RT_NR_TASK;
+					cpu_count++;
+				}
+			}
 		}
-		cluster->need_spread_cpus = cpus;
-		cpus = 0;
+		cluster->need_spread_cpus = cpu_count;
 	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+
+	trace_core_ctl_busy_cpus(busy_state, max_nr_state, max_rt_nr_state, max_vip_nr_state);
 }
 
 #define BIG_TASK_AVG_THRESHOLD 25
 /*
- * Get number of big tasks, protected by core_ctl_state_lock.
+ * Get number of big tasks
  */
 static void get_nr_running_big_task(void)
 {
+	unsigned long flags;
 	int avg_down[MAX_CLUSTERS] = {0};
 	int avg_up[MAX_CLUSTERS] = {0};
 	int nr_up[MAX_CLUSTERS] = {0};
 	int nr_down[MAX_CLUSTERS] = {0};
-	int need_spread_cpus[MAX_CLUSTERS] = {0};
+	int cluster_nr_up[MAX_CLUSTERS] = {0};
+	int cluster_nr_down[MAX_CLUSTERS] = {0};
 	int i, delta;
 
 	for (i = 0; i < num_clusters; i++) {
@@ -1217,6 +2028,7 @@ static void get_nr_running_big_task(void)
 					  &nr_up[i]);
 	}
 
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	for (i = 0; i < num_clusters; i++) {
 		/* reset nr_up and nr_down */
 		cluster_state[i].nr_up = 0;
@@ -1254,11 +2066,12 @@ static void get_nr_running_big_task(void)
 	}
 
 	for (i = 0; i < num_clusters; i++) {
-		nr_up[i] = cluster_state[i].nr_up;
-		nr_down[i] = cluster_state[i].nr_down;
-		need_spread_cpus[i] = cluster_state[i].need_spread_cpus;
+		cluster_nr_up[i] = cluster_state[i].nr_up;
+		cluster_nr_down[i] = cluster_state[i].nr_down;
 	}
-	trace_core_ctl_update_nr_over_thres(nr_up, nr_down, need_spread_cpus);
+
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	trace_core_ctl_nr_over_thres(cluster_nr_up, cluster_nr_down, nr_up, nr_down, avg_up, avg_down);
 }
 
 /*
@@ -1301,11 +2114,23 @@ static inline bool window_check(void)
 	return do_check;
 }
 
-static void check_heaviest_util(void)
+enum {
+	NO_NEED_RESCUE	= 0,
+	BUSY_NR	= 1,
+	BUSY_RT_NR	= 2,
+	HEAVY_NORMAL_TASK	= 4
+};
+
+static void check_heaviest_status(void)
 {
+	unsigned long flags;
 	struct cluster_data *big_cluster;
 	struct cluster_data *mid_cluster;
-	unsigned int max_capacity;
+	unsigned int max_capacity, big_cpu_ts=0;
+	unsigned long heaviest_thres;
+	static unsigned int max_task_util;
+	int cpu, rescue_big_core = NO_NEED_RESCUE;
+	struct cpu_data *cpu_stat;
 
 	if (num_clusters <= 2)
 		return;
@@ -1331,78 +2156,128 @@ static void check_heaviest_util(void)
 	max_capacity = get_max_capacity(mid_cluster->cluster_id);
 	heaviest_thres = div64_u64(heaviest_thres * max_capacity, 100);
 
+	/* rescue prime core when busy */
+	if (enable_policy != CAMERA_MODE) {
+		spin_lock_irqsave(&core_ctl_state_lock, flags);
+		for_each_cpu(cpu, &big_cluster->cpu_mask) {
+			cpu_stat = &per_cpu(cpu_state, cpu);
+
+			if (cpu_stat->is_busy && cpu_stat->max_nr_state > 1) {
+				mid_cluster->new_need_cpus += (cpu_stat->max_nr_state - 1);
+				rescue_big_core |= BUSY_NR;
+			}
+			if (cpu_stat->max_rt_nr_state > big_cluster->rt_nr_task_thres) {
+				mid_cluster->new_need_cpus += cpu_stat->max_rt_nr_state;
+				rescue_big_core |= BUSY_RT_NR;
+			}
+		}
+
+		if (big_cluster->nr_down + big_cluster->nr_up > 1) {
+			mid_cluster->new_need_cpus += (big_cluster->nr_down + big_cluster->nr_up);
+			rescue_big_core |= HEAVY_NORMAL_TASK;
+		}
+
+		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	}
+
 	if (big_cluster->new_need_cpus)
-		return;
+		goto print_log;
 
 	/* If max util is over threshold */
 	if (max_task_util > heaviest_thres) {
+		spin_lock_irqsave(&core_ctl_state_lock, flags);
 		big_cluster->new_need_cpus++;
-
-		/*
-		 * For example:
-		 *   Consider TLP=1 and heaviest is over threshold,
-		 *   prefer to decrease a need CPU of mid cluster
-		 *   to save power consumption
-		 */
 		if (mid_cluster->new_need_cpus > 0)
 			mid_cluster->new_need_cpus--;
+
+		spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	}
+
+print_log:
+	trace_core_ctl_heaviest_util(big_cpu_ts, heaviest_thres, max_task_util, rescue_big_core);
 }
 
 static inline void core_ctl_main_algo(void)
 {
+	unsigned long flags;
 	unsigned int index = 0;
 	struct cluster_data *cluster;
 	unsigned int orig_need_cpu[MAX_CLUSTERS] = {0};
 	struct cpumask active_cpus;
+	unsigned int nr_assist_cpu[MAX_CLUSTERS] = {0};
+	unsigned int need_spread_cpu[MAX_CLUSTERS] = {0};
+	unsigned int boost_by_freq[MAX_CLUSTERS] = {0};
+	unsigned int boost_by_wlan[MAX_CLUSTERS] = {0};
+	unsigned int deiso_reason[MAX_CLUSTERS] = {0};
 
+	for_each_cluster(cluster, index)
+		cluster->deiso_reason = DEISO_NONE;
+
+	/* get each cpu loading */
+	get_cpu_active_loading();
 	/* get needed spread cpus */
 	get_busy_cpus();
 	/* get TLP of over threshold tasks */
 	get_nr_running_big_task();
 
+	index = 0;
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	/* Apply TLP of tasks */
 	for_each_cluster(cluster, index) {
 		int temp_need_cpus = 0;
-
-		if (index == 0) {
-			cluster->nr_assist = cluster->nr_up;
-			cluster->nr_assist += cluster->need_spread_cpus;
-			cluster->new_need_cpus = cluster->num_cpus;
-			continue;
-		}
 
 		temp_need_cpus += cluster->nr_up;
 		temp_need_cpus += cluster->nr_down;
 		temp_need_cpus += cluster->need_spread_cpus;
 		temp_need_cpus += get_prev_cluster_nr_assist(index);
 
-		cluster->new_need_cpus = temp_need_cpus;
+		if (cluster->nr_up)
+			cluster->deiso_reason |= DEISO_HEAVY_TASK;
 
-		/* nr_assist(i) = max(0, need_cpus(i) - max_cpus(i)) */
-		cluster->nr_assist =
-			(temp_need_cpus > cluster->max_cpus ?
-			 (temp_need_cpus - cluster->max_cpus) : 0);
+		if (cluster->nr_down)
+			cluster->deiso_reason |= DEISO_NORMAL_TASK;
+
+		if (index == L_CLUSTER_ID)
+			cluster->nr_assist = cluster->nr_up + cluster->need_spread_cpus;
+		else {
+			/* nr_assist(i) = max(0, need_cpus(i) - max_cpus(i)) */
+			cluster->nr_assist =
+				(temp_need_cpus > cluster->max_cpus ?
+				(temp_need_cpus - cluster->max_cpus) : 0);
+		}
+		cluster->new_need_cpus = temp_need_cpus;
 	}
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 
 	/*
 	 * Ensure prime cpu make core-on
 	 * if heaviest task is over threshold.
 	 */
-	check_heaviest_util();
+	check_heaviest_status();
+
+	check_freq_min_req();
+
+	check_wlan_request();
 
 	index = 0;
+	spin_lock_irqsave(&core_ctl_state_lock, flags);
 	for_each_cluster(cluster, index) {
 		orig_need_cpu[index] = cluster->new_need_cpus;
+		nr_assist_cpu[index] = cluster->nr_assist;
+		need_spread_cpu[index] = cluster->need_spread_cpus;
+		boost_by_freq[index] = cluster->boost_by_freq;
+		boost_by_wlan[index] = cluster->boost_by_wlan;
+		deiso_reason[index] = cluster->deiso_reason;
 	}
-
+	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
 	cpumask_andnot(&active_cpus, cpu_online_mask, cpu_pause_mask);
-	trace_core_ctl_algo_info(big_cpu_ts, heaviest_thres, max_task_util,
-			cpumask_bits(&active_cpus)[0], orig_need_cpu);
+
+	trace_core_ctl_algo_info(enable_policy, need_spread_cpu, nr_assist_cpu, orig_need_cpu,
+				cpumask_bits(&active_cpus)[0], boost_by_freq, boost_by_wlan, deiso_reason);
 }
 
 unsigned long (*calc_eff_hook)(unsigned int first_cpu, int opp, unsigned int temp,
-	unsigned long dyn_power, unsigned int cap);
+				unsigned long dyn_power, unsigned int cap);
 EXPORT_SYMBOL(calc_eff_hook);
 static int need_update_ppm_eff = 1;
 static int update_ppm_eff(void);
@@ -1410,10 +2285,9 @@ static int update_ppm_eff(void);
 void core_ctl_tick(void *data, struct rq *rq)
 {
 	unsigned int index = 0;
-	unsigned long flags;
 	struct cluster_data *cluster;
-	int cpu = 0;
-	struct cpu_data *c;
+
+	irq_log_store();
 
 	/* prevent irq disable on cpu 0 */
 	if (rq->cpu == 0)
@@ -1423,42 +2297,21 @@ void core_ctl_tick(void *data, struct rq *rq)
 		return;
 
 	if (need_update_ppm_eff != 0 && calc_eff_hook) {
-		/* Prevent other threads into this section */
+		/* Prevent other threads */
 		need_update_ppm_eff = 0;
 		need_update_ppm_eff = update_ppm_eff();
 	}
 
-	spin_lock_irqsave(&core_ctl_state_lock, flags);
+	irq_log_store();
 
-	/* check CPU is busy or not */
-	for_each_possible_cpu(cpu) {
-		c = &per_cpu(cpu_state, cpu);
-		cluster = c->cluster;
-
-		if (!cluster || !cluster->inited)
-			continue;
-
-		c->cpu_util_pct = get_cpu_util_pct(cpu, false);
-		if (c->cpu_util_pct >= cluster->cpu_busy_up_thres)
-			c->is_busy = true;
-		else if (c->cpu_util_pct < cluster->cpu_busy_down_thres)
-			c->is_busy = false;
-	}
-
-	read_lock(&core_ctl_policy_lock);
-	if (enable_policy) {
-		read_unlock(&core_ctl_policy_lock);
+	if (enable_policy)
 		core_ctl_main_algo();
-	} else
-		read_unlock(&core_ctl_policy_lock);
 
-	spin_unlock_irqrestore(&core_ctl_state_lock, flags);
+	irq_log_store();
 
-	/* reset index value */
-	/* index = 0; */
-	for_each_cluster(cluster, index) {
+	for_each_cluster(cluster, index)
 		apply_demand(cluster);
-	}
+	irq_log_store();
 }
 
 inline void core_ctl_update_active_cpu(unsigned int cpu)
@@ -1678,13 +2531,13 @@ static void __ref do_core_ctl(struct cluster_data *cluster)
 
 		if (!pause_resume){
 			if (!cpumask_empty(&cpu_pause_res)){
-				pr_info("[Core Pause] pause_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
+				core_ctl_debug("[Core Pause] pause_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
 					cpu_pause_res.bits[0], cpu_online_mask->bits[0],
 					cpu_active_mask->bits[0], cpu_pause_mask->bits[0]);
 			}
 		} else {
 			if (!cpumask_empty(&cpu_resume_res)){
-				pr_info("[Core Pause] resume_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
+				core_ctl_debug("[Core Pause] resume_res=0x%lx, online=0x%lx, act=0x%lx, paused=0x%lx\n",
 					cpu_resume_res.bits[0], cpu_online_mask->bits[0],
 					cpu_active_mask->bits[0], cpu_pause_mask->bits[0]);
 			}
@@ -1694,10 +2547,6 @@ static void __ref do_core_ctl(struct cluster_data *cluster)
 		core_ctl_debug("%s: failed to adjust cluster %u from %u to %u. (min = %u, max = %u)\n",
 				TAG, cluster->cluster_id, cluster->active_cpus, need,
 				cluster->min_cpus, cluster->max_cpus);
-
-	if (periodic_debug_enable > DISABLE_DEBUG)
-		mod_delayed_work(system_power_efficient_wq,
-				&periodic_debug, 0);
 }
 
 static int __ref try_core_ctl(void *data)
@@ -1734,6 +2583,7 @@ static int cpu_pause_cpuhp_state(unsigned int cpu,  bool online)
 	unsigned long flags;
 	struct cpumask cpu_resume_req;
 	unsigned int pause_cpus;
+	unsigned int i;
 
 	if (unlikely(!cluster || !cluster->inited))
 		return 0;
@@ -1761,7 +2611,11 @@ static int cpu_pause_cpuhp_state(unsigned int cpu,  bool online)
 			cluster->nr_paused_cpus--;
 			resume = true;
 		}
-		state->cpu_util_pct = 0;
+
+		for (i=0; i<WIN_SIZE; i++) {
+			state->cpu_util_pct[i] = 0;
+			state->cpu_active_loading[i] = 0;
+		}
 		state->force_paused = false;
 		cluster->active_cpus = get_active_cpu_count(cluster);
 	}
@@ -1820,27 +2674,6 @@ static struct cluster_data *find_cluster_by_first_cpu(unsigned int first_cpu)
 	return NULL;
 }
 
-static void periodic_debug_handler(struct work_struct *work)
-{
-	struct cluster_data *cluster;
-	unsigned int index = 0;
-	unsigned int max_cpus[MAX_CLUSTERS];
-	unsigned int min_cpus[MAX_CLUSTERS];
-
-	if (periodic_debug_enable == DISABLE_DEBUG)
-		return;
-
-	for_each_cluster(cluster, index) {
-		max_cpus[index] = cluster->max_cpus;
-		min_cpus[index] = cluster->min_cpus;
-	}
-
-	trace_core_ctl_periodic_debug_handler(enable_policy, max_cpus, min_cpus,
-			cpumask_bits(cpu_online_mask)[0], cpumask_bits(cpu_pause_mask)[0]);
-	mod_delayed_work(system_power_efficient_wq,
-			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
-}
-
 static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause)
 {
 	struct core_ctl_notif_data ndata = {0};
@@ -1862,7 +2695,6 @@ static void core_ctl_call_notifier(unsigned int cpu, unsigned int is_pause)
 /* ==================== init section ======================== */
 
 static int ppm_data_init(struct cluster_data *cluster);
-
 static int cluster_init(const struct cpumask *mask)
 {
 	struct device *dev;
@@ -1871,7 +2703,7 @@ static int cluster_init(const struct cpumask *mask)
 	struct cpu_data *state;
 	unsigned int cpu;
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO-1 };
-	int ret = 0;
+	int ret = 0, i;
 
 	/* first_cpu is defined */
 	if (find_cluster_by_first_cpu(first_cpu))
@@ -1900,32 +2732,24 @@ static int cluster_init(const struct cpumask *mask)
 		return -EINVAL;
 	}
 	cluster->first_cpu = first_cpu;
-	cluster->min_cpus = 1;
 	cluster->max_cpus = cluster->num_cpus;
 	cluster->need_cpus = cluster->num_cpus;
-	cluster->offline_throttle_ms = 100;
+	cluster->offline_throttle_ms = 40;
 	cluster->enable = true;
 	cluster->nr_down = 0;
 	cluster->nr_up = 0;
 	cluster->nr_assist = 0;
-
 	cluster->min_cpus = default_min_cpus[cluster->cluster_id];
-
-	if (cluster->cluster_id ==
-			(arch_get_nr_clusters() - 1))
-		cluster->up_thres = INT_MAX;
-	else
-		cluster->up_thres =
-			get_over_threshold(cluster->cluster_id);
+	cluster->up_thres = get_over_threshold(cluster->cluster_id);
 
 	if (cluster->cluster_id == 0)
-		cluster->down_thres = INT_MAX;
+		cluster->down_thres = 0;
 	else
 		cluster->down_thres =
 			get_over_threshold(cluster->cluster_id - 1);
 
-	if (cluster->cluster_id == AB_CLUSTER_ID) {
-		cluster->thermal_degree_thres = 65000;
+	if (cluster->cluster_id == B_CLUSTER_ID) {
+		cluster->thermal_degree_thres = THERMAL_TEMP * 1000;
 		cluster->thermal_up_thres = INT_MAX;
 	} else {
 		cluster->thermal_degree_thres = INT_MAX;
@@ -1944,17 +2768,29 @@ static int cluster_init(const struct cpumask *mask)
 		state = &per_cpu(cpu_state, cpu);
 		state->cluster = cluster;
 		state->cpu = cpu;
+		state->force_pause_req = CLEARED_FORCE_PAUSE;
+		state->win_idx = 0;
 	}
 
-	cluster->cpu_busy_up_thres = 80;
-	cluster->cpu_busy_down_thres = 60;
+	cluster->cpu_busy_up_thres = busy_up_thres[cluster->cluster_id];
+	cluster->cpu_busy_down_thres = busy_down_thres[cluster->cluster_id];
+	cluster->nr_task_thres = nr_task_thres[cluster->cluster_id];
+	cluster->rt_nr_task_thres = rt_nr_task_thres[cluster->cluster_id];
+	cluster->active_loading_thres = active_loading_thres[cluster->cluster_id];
+	cluster->freq_thres = get_freq_thres(cluster->cluster_id);
 
 	cluster->next_offline_time =
 		ktime_to_ms(ktime_get()) + cluster->offline_throttle_ms;
 	cluster->active_cpus = get_active_cpu_count(cluster);
 
+	for (i=0; i<CORE_CTL_SET_CORE_MAX_DEMAND_REQUESTER; i++) {
+		cluster->demand_list[i].have_demand = 0;
+		cluster->demand_list[i].max_cpus = cluster->num_cpus;
+		cluster->demand_list[i].min_cpus = cluster->num_cpus;
+	}
+
 	cluster->core_ctl_thread = kthread_run(try_core_ctl, (void *) cluster,
-			"core_ctl_v3/%d", first_cpu);
+			"core_ctl_v5/%d", first_cpu);
 	if (IS_ERR(cluster->core_ctl_thread))
 		return PTR_ERR(cluster->core_ctl_thread);
 
@@ -1975,9 +2811,6 @@ static inline int get_opp_count(struct cpufreq_policy *policy)
 	cpufreq_for_each_entry_idx(freq_pos, policy->freq_table, opp_nr);
 	return opp_nr;
 }
-
-#define NORMAL_TEMP	45
-#define THERMAL_TEMP	85
 
 /*
  * x1: BL cap
@@ -2007,10 +2840,8 @@ static unsigned int find_turn_point(struct cluster_data *c1,
 	bool stop_going = false;
 	unsigned int turn_point = 0;
 
-	/* BLCPU */
 	for (i = 0; i < c1->ppm_data.opp_nr - 1; i++) {
 		changed = false;
-		/* BCPU */
 		for (j = c2->ppm_data.opp_nr - 1; j >= 0; j--) {
 			unsigned long c1_eff, c2_eff;
 
@@ -2046,6 +2877,22 @@ static unsigned int find_turn_point(struct cluster_data *c1,
 	return turn_point;
 }
 
+static void update_ppm_log_handler(struct work_struct *work);
+static DECLARE_DELAYED_WORK(update_ppm_log, update_ppm_log_handler);
+
+static void update_ppm_log_handler(struct work_struct *work)
+{
+	int cid;
+	struct cluster_data *prev_cluster;
+
+	for(cid=0; cid<MAX_CLUSTERS; cid++) {
+		if (cid != L_CLUSTER_ID) {
+			prev_cluster = &cluster_state[cid - 1];
+			pr_info("%s: update ppm cid=%d turn_cap=%u ", TAG, cid-1, prev_cluster->cap_turn_point);
+		}
+	}
+}
+
 static int update_ppm_eff(void)
 {
 	int opp_nr, first_cpu, cid, i;
@@ -2071,25 +2918,19 @@ static int update_ppm_eff(void)
 		}
 
 		/* calculate turning point */
-		if (cid == AB_CLUSTER_ID) {
+		if (cid != L_CLUSTER_ID) {
 			struct cluster_data *prev_cluster = &cluster_state[cid - 1];
 			unsigned int turn_point = 0;
 
-			/* thermal case */
-			turn_point = find_turn_point(prev_cluster, cluster, true);
+			turn_point = find_turn_point(prev_cluster, cluster, false);
 			if (!turn_point)
 				turn_point = prev_cluster->ppm_data.ppm_tbl[0].capacity;
 
-			if (turn_point) {
-				unsigned int val = 0;
-
-				val = div64_u64(turn_point * 100,
-					prev_cluster->ppm_data.ppm_tbl[0].capacity);
-				if (val <= 100)
-					prev_cluster->thermal_up_thres = val;
-			}
+			prev_cluster->cap_turn_point = turn_point;
 		}
 	}
+	mod_delayed_work(system_power_efficient_wq, &update_ppm_log,
+						msecs_to_jiffies(100));
 	return 0;
 }
 
@@ -2140,27 +2981,46 @@ static int ppm_data_init(struct cluster_data *cluster)
 	cpufreq_cpu_put(policy);
 
 	/* calculate turning point */
-	if (cid == AB_CLUSTER_ID) {
+	if (cid != L_CLUSTER_ID) {
 		struct cluster_data *prev_cluster = &cluster_state[cid - 1];
 		unsigned int turn_point = 0;
 
-		/* thermal case */
-		turn_point = find_turn_point(prev_cluster, cluster, true);
+		turn_point = find_turn_point(prev_cluster, cluster, false);
 		if (!turn_point)
 			turn_point = prev_cluster->ppm_data.ppm_tbl[0].capacity;
 
-		if (turn_point) {
-			unsigned int val = 0;
-
-			val = div64_u64(turn_point * 100,
-				prev_cluster->ppm_data.ppm_tbl[0].capacity);
-			if (val <= 100)
-				prev_cluster->thermal_up_thres = val;
-			pr_info("%s: thermal_turn_pint is %u, thermal_down_thre is change to %u",
-				 TAG, turn_point, val);
-		}
+		prev_cluster->cap_turn_point = turn_point;
+		pr_info("%s: init ppm cid=%d, turn_cap=%u ", TAG, cid-1, turn_point);
 	}
 	return 0;
+}
+
+unsigned long get_freq_thres(unsigned int cid)
+{
+	struct cluster_data *cluster = &cluster_state[cid];
+	int i, opp_nr;
+	unsigned int target_freq;
+	unsigned int max_capacity, target_capacity;
+
+	if (cid >= MAX_CLUSTERS)
+		return 0;
+
+	if (!cluster->ppm_data.init)
+		return freq_thres[cid];
+
+	opp_nr = cluster->ppm_data.opp_nr;
+	max_capacity = cluster->ppm_data.ppm_tbl[0].capacity;
+	target_capacity = div_u64(cluster->up_thres*max_capacity, 100);
+	target_freq = cluster->ppm_data.ppm_tbl[0].freq;
+
+	for (i=1; i<opp_nr; i++) {
+		if (cluster->ppm_data.ppm_tbl[i].capacity < target_capacity) {
+			target_freq = cluster->ppm_data.ppm_tbl[i-1].freq;
+			break;
+		}
+	}
+
+	return target_freq;
 }
 
 static unsigned long core_ctl_copy_from_user(void *pvTo,
@@ -2197,7 +3057,7 @@ static long core_ioctl_impl(struct file *filp,
 			return -1;
 
 		bval = !!msgKM.is_pause;
-		ret = core_ctl_force_pause_cpu(msgKM.cpu, bval);
+		ret = core_ctl_force_pause_request(msgKM.cpu, bval, POWERHAL_FORCE_PAUSE);
 		break;
 	case CORE_CTL_SET_OFFLINE_THROTTLE_MS:
 		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
@@ -2237,7 +3097,32 @@ static long core_ioctl_impl(struct file *filp,
 	case CORE_CTL_SET_CPU_BUSY_THRES:
 		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
 			return -1;
-		core_ctl_set_cpu_busy_thres(msgKM.cid, msgKM.thres);
+		core_ctl_set_cpu_busy_up_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_CPU_NONBUSY_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_cpu_busy_down_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_NR_TASK_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_cpu_nr_task_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_FREQ_MIN_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_freq_min_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_ACT_LOAD_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_cpu_active_loading_thres(msgKM.cid, msgKM.thres);
+	break;
+	case CORE_CTL_SET_RT_NR_TASK_THRES:
+		if (core_ctl_copy_from_user(&msgKM, ubuf, sizeof(struct _CORE_CTL_PACKAGE)))
+			return -1;
+		core_ctl_set_cpu_rt_nr_task_thres(msgKM.cid, msgKM.thres);
 	break;
 	default:
 		pr_info("%s: %s %d: unknown cmd %x\n",
@@ -2318,8 +3203,10 @@ static int __init core_ctl_init(void)
 		}
 	}
 
-	/* init core_ctl ioctl */
+	/* init force pause mask */
+	cpumask_clear(&cpu_force_pause_mask);
 
+	/* init core_ctl ioctl */
 	pr_info("%s: start to init core_ioctl driver\n", TAG);
 	parent = proc_mkdir("cpumgr", NULL);
 	pe = proc_create("core_ioctl", 0660, parent, &core_ctl_Fops);
@@ -2333,6 +3220,9 @@ static int __init core_ctl_init(void)
 	if (ret)
 		pr_info("%s: Could not register register_pt_isolate_cb\n", TAG);
 
+	/* start periodic debug msg */
+	mod_delayed_work(system_power_efficient_wq,
+			&periodic_debug, msecs_to_jiffies(periodic_debug_delay));
 	initialized = true;
 	return 0;
 

@@ -270,7 +270,7 @@ int trusted_mem_page_based_free(enum TRUSTED_MEM_REQ_TYPE req_mem_type, u64 hand
 
 	/* we need the FF-A handle of SEL2/EL3 to do memory unmapping at TEE */
 	if (is_tee_mmap_by_page_enabled() && (mem_type == TRUSTED_MEM_TEE_PAGE))
-		return tmem_ffa_page_free(MTEE_MCHUNKS_SVP, handle);
+		return tmem_ffa_page_free(MTEE_MCHUNKS_TEE, handle);
 
 	/* we need the FF-A handle of EL2 SPM to do memory unmapping at MTEE */
 	if (!is_pkvm_enabled() &&

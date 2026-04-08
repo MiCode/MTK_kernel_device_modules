@@ -5,6 +5,7 @@
 
 #include "ccci_fsm_internal.h"
 #include "modem_sys.h"
+#include "ccci_mbrain.h"
 
 #define POLLING_INTERVAL_TIME 75000
 #define POLLING_TIMEOUT 15
@@ -72,6 +73,35 @@ static int fsm_get_no_response_assert_type(struct ccci_fsm_poller *poller_ctl)
 	return MD_FORCE_ASSERT_BY_MD_NO_RESPONSE;
 }
 
+extern ccci_mbrain_event_notify_func_t ccci_mbrain_get_event_notify_fp(void);
+
+static void send_timeout_info_to_mbrain(unsigned long long time)
+{
+	int ret = 0;
+	struct fsm_poll_data ccci_mbrain_data;
+	ccci_mbrain_event_notify_func_t ccci_mbrain_event_notify_fp = NULL;
+
+	ccci_mbrain_event_notify_fp = ccci_mbrain_get_event_notify_fp();
+	if (!ccci_mbrain_event_notify_fp) {
+		CCCI_NORMAL_LOG(0, FSM, "ccci_mbrain_get_event_notify_fp return NULL\n");
+		return;
+	}
+
+	memset(&ccci_mbrain_data, 0, sizeof(struct fsm_poll_data));
+	ccci_mbrain_data.time_stamp = time;
+
+	ret = snprintf(ccci_mbrain_data.key_info, sizeof(ccci_mbrain_data.key_info),
+					"fsd_poll_main -> send heartbeat packet time");
+	if (ret < 0 || ret >= sizeof(ccci_mbrain_data.key_info))
+		CCCI_ERROR_LOG(0, FSM, "snprintf fail, ret: %d\n", ret);
+
+	ccci_mbrain_data.cost_time = POLLING_TIMEOUT;
+
+	ret = ccci_mbrain_event_notify_fp(CCCI_MBRAIN_EVENT_FSM_POLL, (void *)&ccci_mbrain_data);
+	if (ret != 0)
+		CCCI_ERROR_LOG(0, FSM, "send info to mbrain fail, ret %d\n", ret);
+}
+
 static int fsm_poll_main(void *data)
 {
 	struct ccci_fsm_poller *poller_ctl = (struct ccci_fsm_poller *)data;
@@ -96,6 +126,7 @@ static int fsm_poll_main(void *data)
 		CCCI_NORMAL_LOG(0, FSM,
 			"poll MD status wait done %d\n", ret);
 		if (!ret) { /* timeout */
+			send_timeout_info_to_mbrain(poller_ctl->latest_poll_start_time);
 			md_state = ccci_fsm_get_md_state();
 			if (md_state == READY) {
 				CCCI_ERROR_LOG(0, FSM,

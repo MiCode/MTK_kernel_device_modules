@@ -395,11 +395,11 @@ static int npu_system_handler(struct npu_scp_ipi_param *param)
 	switch (param->act) {
 	case NPU_SCP_SYSTEM_FUNCTION_ENABLE:
 		atomic_set(&ctx->aov_enabled, 1);
-		dev_info(ctx->dev, "%s Turn on apu aov\n", __func__);
+		// dev_info(ctx->dev, "%s Turn on apu aov\n", __func__);
 		break;
 	case NPU_SCP_SYSTEM_FUNCTION_DISABLE:
 		atomic_set(&ctx->aov_enabled, 0);
-		dev_info(ctx->dev, "%s Turn off apu aov\n", __func__);
+		// dev_info(ctx->dev, "%s Turn off apu aov\n", __func__);
 		break;
 	default:
 		dev_info(ctx->dev, "%s Not supported act %d\n", __func__, param->act);
@@ -419,7 +419,7 @@ static int npu_response_arrived(struct npu_scp_ipi_param *param)
 		return -ENODEV;
 	}
 
-	pr_debug("%s get response\n", __func__);
+	// pr_debug("%s get response\n", __func__);
 	atomic_set(&ctx->response_arrived, 1);
 	complete(&ctx->comp);
 

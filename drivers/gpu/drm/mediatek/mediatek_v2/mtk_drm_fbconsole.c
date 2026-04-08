@@ -23,7 +23,12 @@
 #define MFC_FG_COLOR (ctxt->fg_color)
 #define MFC_BG_COLOR (ctxt->bg_color)
 
+#if IS_ENABLED(CONFIG_FACTORY_BUILD)
+#define MFC_FONT font_ter_16x32 // font_vga_8x16
+#define MFC_DOUBLE 2
+#else
 #define MFC_FONT font_vga_8x16
+#endif
 #define MFC_FONT_WIDTH (MFC_FONT.width)
 #define MFC_FONT_HEIGHT (MFC_FONT.height)
 #define MFC_FONT_DATA (MFC_FONT.data)
@@ -49,6 +54,150 @@ UINT32 MFC_Get_Cursor_Offset(MFC_HANDLE handle)
 	return offset;
 }
 
+#if IS_ENABLED(CONFIG_FACTORY_BUILD)
+static void _mfc_draw_row(struct MFC_CONTEXT *ctxt, BYTE *dest, BYTE raw_color, BYTE raw_color2)
+{
+	UINT32 pixel_row, i;
+	uint16_t color, color2;
+	int cols, index, index2;
+
+	for (pixel_row = 0; pixel_row < ctxt->scale; pixel_row++) {
+		for (cols = 7; cols >= 0; cols--) {
+			if (raw_color >> (unsigned int)cols & 1)
+				color = MFC_FG_COLOR;
+			else
+				color = MFC_BG_COLOR;
+
+			if (raw_color2 >> (unsigned int)cols & 1)
+				color2 = MFC_FG_COLOR;
+			else
+				color2 = MFC_BG_COLOR;
+
+			for (i = 0; i < ctxt->scale; i++) {
+				index = i + (7 - cols) * ctxt->scale;
+				index2 = i + (15 - cols) * ctxt->scale;
+				((uint16_t *)dest)[index] = color;
+				((uint16_t *)dest)[index2] = color2;
+			}
+		}
+		dest += MFC_PITCH;
+	}
+}
+
+static void _mfc_draw_char(struct MFC_CONTEXT *ctxt, UINT32 x, UINT32 y, char c)
+{
+	BYTE ch = *((BYTE *)&c);
+	const BYTE *cdat = (const BYTE *)MFC_FONT_DATA + ch * MFC_FONT_HEIGHT * MFC_DOUBLE;
+	BYTE *dest = NULL;
+	INT32 rows, cols, offset;
+
+	int font_draw_table16[4];
+
+	if (x > (MFC_WIDTH - MFC_FONT_WIDTH)) {
+		DDPPR_ERR("draw width too large,x=%d\n", x);
+		return;
+	}
+	if (y > (MFC_HEIGHT - MFC_FONT_HEIGHT)) {
+		DDPPR_ERR("draw hight too large,y=%d\n", y);
+		return;
+	}
+	DDPPR_ERR("_mfc_draw_char,x=%d, y=%d, MFC_PITCH:%d, MFC_BPP:%d \n", x, y, MFC_PITCH, MFC_BPP);
+	DDPPR_ERR("_mfc_draw_char,scale:%d, charvalue:%d\n", ctxt->scale, c);
+
+	offset = y * MFC_PITCH + x * MFC_BPP;
+	offset *= ctxt->scale;
+	dest = (MFC_ROW_FIRST + offset);
+
+	switch (MFC_BPP) {
+	case 2:
+		font_draw_table16[0] =
+			MAKE_TWO_RGB565_COLOR(MFC_BG_COLOR, MFC_BG_COLOR);
+		font_draw_table16[1] =
+			MAKE_TWO_RGB565_COLOR(MFC_BG_COLOR, MFC_FG_COLOR);
+		font_draw_table16[2] =
+			MAKE_TWO_RGB565_COLOR(MFC_FG_COLOR, MFC_BG_COLOR);
+		font_draw_table16[3] =
+			MAKE_TWO_RGB565_COLOR(MFC_FG_COLOR, MFC_FG_COLOR);
+
+		for (rows = MFC_FONT_HEIGHT; rows--;) {
+			BYTE bits = *cdat++;
+			BYTE bits2 = *cdat++;
+
+			if (ctxt->scale >= 2) {
+				_mfc_draw_row(ctxt, dest, bits, bits2);
+				dest += (MFC_PITCH * ctxt->scale);
+			} else {
+				((UINT32 *)dest)[0] =
+					font_draw_table16[bits >> 6];
+				((UINT32 *)dest)[1] =
+					font_draw_table16[bits >> 4 & 3];
+				((UINT32 *)dest)[2] =
+					font_draw_table16[bits >> 2 & 3];
+				((UINT32 *)dest)[3] =
+					font_draw_table16[bits & 3];
+				dest += MFC_PITCH;
+			}
+		}
+		break;
+	case 3:
+		for (rows = MFC_FONT_HEIGHT; rows--; dest += MFC_PITCH) {
+			BYTE bits = *cdat++;
+			BYTE bits2 = *cdat++;
+			BYTE *tmp = dest;
+			int index2 = 3*8;
+			for (cols = 0; cols < 8; ++cols) {
+				UINT32 color = (((unsigned int)bits >>
+						       (unsigned int)(7 -
+						       cols)) & 0x1)
+						       ? MFC_FG_COLOR
+						       : MFC_BG_COLOR;
+				UINT32 color2 = (((unsigned int)bits2 >>
+						       (unsigned int)(7 -
+						       cols)) & 0x1)
+						       ? MFC_FG_COLOR
+						       : MFC_BG_COLOR;
+				((BYTE *)tmp)[0] = color & 0xff;
+				((BYTE *)tmp)[1] = (color >> 8) & 0xff;
+				((BYTE *)tmp)[2] = (color >> 16) & 0xff;
+				((BYTE *)tmp)[index2] = color2 & 0xff;
+				((BYTE *)tmp)[index2+1] = (color2 >> 8) & 0xff;
+				((BYTE *)tmp)[index2+2] = (color2 >> 16) & 0xff;
+
+				tmp += 3;
+			}
+		}
+		break;
+	case 4:
+		for (rows = MFC_FONT_HEIGHT; rows--; dest += MFC_PITCH) {
+			BYTE bits = *cdat++;
+			BYTE bits2 = *cdat++;
+			BYTE *tmp = dest;
+			int index2 = 4*8;
+			for (cols = 0; cols < 8; ++cols) {
+				UINT32 color = ((bits >> (7 - cols)) & 0x1)
+						       ? MFC_FG_COLOR
+						       : MFC_BG_COLOR;
+				UINT32 color2 = ((bits2 >> (7 - cols)) & 0x1)
+						       ? MFC_FG_COLOR
+						       : MFC_BG_COLOR;
+				((BYTE *)tmp)[1] = color & 0xff;
+				((BYTE *)tmp)[2] = (color >> 8) & 0xff;
+				((BYTE *)tmp)[3] = (color >> 16) & 0xff;
+				((BYTE *)tmp)[0] = (color >> 16) & 0xff;
+				((BYTE *)tmp)[index2+1] = color2 & 0xff;
+				((BYTE *)tmp)[index2+2] = (color2 >> 8) & 0xff;
+				((BYTE *)tmp)[index2+3] = (color2 >> 16) & 0xff;
+				((BYTE *)tmp)[index2] = (color2 >> 16) & 0xff;
+				tmp += 4;
+			}
+		}
+		break;
+	default:
+		DDPPR_ERR("draw char fail,MFC_BPP=%d\n", MFC_BPP);
+		break;
+	}
+}
+#else
 static void _mfc_draw_row(struct MFC_CONTEXT *ctxt, BYTE *dest, BYTE raw_color)
 {
 	UINT32 pixel_row, i;
@@ -163,7 +312,7 @@ static void _mfc_draw_char(struct MFC_CONTEXT *ctxt, UINT32 x, UINT32 y, char c)
 		break;
 	}
 }
-
+#endif
 static void _mfc_scroll_up(struct MFC_CONTEXT *ctxt)
 {
 	const UINT32 bg_color =

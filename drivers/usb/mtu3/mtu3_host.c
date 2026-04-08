@@ -74,7 +74,11 @@ enum ssusb_uwk_vers {
 
 #define USB2_PORT_SC(x)		(0x420 + 0x10 * (x))
 #define DEV_SPEED_MASK		(0xf << 10)
-#define DEV_LOWSPEED(p)		(((p) & DEV_SPEED_MASK) == (0x2 << 10))
+#define DEV_SPEED(p)		(((p) & DEV_SPEED_MASK) >> 10)
+#define DEV_UNDEFSPEED		0x0
+#define DEV_FULLSPEED		0x1
+#define DEV_LOWSPEED		0x2
+#define DEV_HIGHSPEED		0x3
 
 /*
  * ip-sleep wakeup mode:
@@ -177,18 +181,26 @@ void ssusb_set_host_low_speed_bypass(struct ssusb_mtk *ssusb)
 	if (!ssusb->ls_slp_quirk || IS_ERR_OR_NULL(ssusb->host_base))
 		return;
 
+	ssusb->ls_slp_bypass = 0;
 	for (i = 0; i < num_u2p; i++) {
 		if ((0x1 << i) & ssusb->u2p_dis_msk)
 			continue;
 
 		value = readl(ssusb->host_base + USB2_PORT_SC(num_u3p + i));
 
-		if (DEV_LOWSPEED(value))
+		switch (DEV_SPEED(value)) {
+		case DEV_LOWSPEED:
 			ssusb->ls_slp_bypass |= (0x1 << i);
-		else
-			ssusb->ls_slp_bypass &= ~(0x1 << i);
+			ssusb->host_dev = true;
+			break;
+		case DEV_FULLSPEED:
+		case DEV_HIGHSPEED:
+			ssusb->host_dev = true;
+			break;
+		default:
+			break;
+		}
 	}
-
 }
 
 void ssusb_clear_host_low_speed_bypass(struct ssusb_mtk *ssusb)
@@ -462,6 +474,9 @@ static void ssusb_host_cleanup(struct ssusb_mtk *ssusb)
 {
 	if (ssusb->is_host)
 		ssusb_set_vbus(&ssusb->otg_switch, 0);
+
+	/* wait for USB bus idle */
+	ssusb_wait_power_state(ssusb, MTU3_STATE_POWER_OFF);	
 
 	ssusb_host_disable(ssusb);
 }

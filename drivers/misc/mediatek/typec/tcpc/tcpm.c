@@ -3,6 +3,7 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
+#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include "inc/tcpm.h"
 #include "inc/tcpci.h"
 #include "inc/tcpci_typec.h"
@@ -84,14 +85,8 @@ int tcpm_shutdown(struct tcpc_device *tcpc)
 }
 EXPORT_SYMBOL(tcpm_shutdown);
 
-int tcpm_suspend(struct tcpc_device *tcpc)
+int tcpm_check_suspend_pending(struct tcpc_device *tcpc)
 {
-	int ret = 0;
-
-	/*
-	 * the following 3 if statements are lockless solutions
-	 * for preventing some race conditions
-	 */
 	if (atomic_read(&tcpc->suspend_pending) > 0)
 		return -EBUSY;
 
@@ -99,21 +94,40 @@ int tcpm_suspend(struct tcpc_device *tcpc)
 	    tcpc_get_timer_tick(tcpc))
 		return -EBUSY;
 
-	if (atomic_read(&tcpc->suspend_pending) > 0)
-		return -EBUSY;
+	return 0;
+}
+EXPORT_SYMBOL(tcpm_check_suspend_pending);
+
+int tcpm_suspend(struct tcpc_device *tcpc)
+{
+	int ret = 0;
+
+	ret = tcpm_check_suspend_pending(tcpc);
+	if (ret)
+		return ret;
 
 #if CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND
 	tcpci_lock_typec(tcpc);
 	ret = tcpc_typec_suspend(tcpc);
 	tcpci_unlock_typec(tcpc);
+	if (ret)
+		return ret;
 #endif	/* CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND */
 
+	atomic_set(&tcpc->is_suspended, true);
+
+	ret = tcpm_check_suspend_pending(tcpc);
+	if (ret)
+		tcpm_resume(tcpc);
 	return ret;
 }
 EXPORT_SYMBOL(tcpm_suspend);
 
 void tcpm_resume(struct tcpc_device *tcpc)
 {
+	atomic_set(&tcpc->is_suspended, false);
+	wake_up_all(&tcpc->resume_wait_que);
+
 #if CONFIG_TYPEC_SNK_ONLY_WHEN_SUSPEND
 	tcpci_lock_typec(tcpc);
 	tcpc_typec_resume(tcpc);
@@ -133,11 +147,11 @@ int tcpm_inquire_remote_cc(struct tcpc_device *tcpc,
 		if (rv < 0)
 			goto out;
 	}
-
 	*cc1 = tcpc->typec_remote_cc[0];
 	*cc2 = tcpc->typec_remote_cc[1];
 out:
 	tcpci_unlock_typec(tcpc);
+
 	return rv;
 }
 EXPORT_SYMBOL(tcpm_inquire_remote_cc);
@@ -167,9 +181,10 @@ int tcpm_inquire_vbus_level(struct tcpc_device *tcpc, bool from_ic)
 	if (from_ic) {
 		rv = tcpci_get_power_status(tcpc);
 		if (rv < 0)
-			return rv;
+			goto out;
 	}
 	rv = tcpc->vbus_level;
+out:
 	tcpci_unlock_typec(tcpc);
 
 	return rv;
@@ -178,7 +193,7 @@ EXPORT_SYMBOL(tcpm_inquire_vbus_level);
 
 int tcpm_inquire_cc_high(struct tcpc_device *tcpc)
 {
-	int rv = TCPM_ERROR_UNKNOWN;
+	int rv = 0;
 
 	tcpci_lock_typec(tcpc);
 	if (!tcpc->cc_hidet_en)
@@ -379,6 +394,14 @@ uint8_t tcpm_inquire_pd_power_role(struct tcpc_device *tcpc)
 	return pd_port->power_role;
 }
 EXPORT_SYMBOL(tcpm_inquire_pd_power_role);
+
+uint8_t tcpm_inquire_pd_state_curr(
+	struct tcpc_device *tcpc_dev)
+{
+	struct pd_port *pd_port = &tcpc_dev->pd_port;
+	return pd_port->pe_state_curr;
+}
+EXPORT_SYMBOL(tcpm_inquire_pd_state_curr);
 
 uint8_t tcpm_inquire_pd_vconn_role(struct tcpc_device *tcpc)
 {
@@ -2048,19 +2071,20 @@ int tcpm_dpm_bk_event_cb(
 {
 	struct pd_port *pd_port = &tcpc->pd_port;
 
-	if (pd_port->tcpm_bk_event_id != event->event_id) {
+	if (pd_port->tcpm_bk_event_id != event->event_id ||
+	    pd_port->tcpm_bk_event_serial != event->event_serial) {
 		TCPM_DBG("bk_event_cb_dummy: expect:%d real:%d\n",
 			pd_port->tcpm_bk_event_id, event->event_id);
 		return 0;
 	}
 
-	pd_port->tcpm_bk_ret = ret;
-	pd_port->tcpm_bk_done = true;
-
 #if CONFIG_USB_PD_TCPM_CB_2ND
 	if (ret == TCP_DPM_RET_SUCCESS)
 		tcpm_dpm_bk_copy_data(pd_port);
 #endif	/* CONFIG_USB_PD_TCPM_CB_2ND */
+
+	pd_port->tcpm_bk_ret = ret;
+	pd_port->tcpm_bk_done = true;
 
 	wake_up(&pd_port->tcpm_bk_wait_que);
 	return 0;
@@ -2075,15 +2099,17 @@ static inline int __tcpm_dpm_wait_bk_event(
 	wait_event_timeout(pd_port->tcpm_bk_wait_que, pd_port->tcpm_bk_done,
 			   msecs_to_jiffies(tout_ms));
 
-	if (pd_port->tcpm_bk_done)
-		return pd_port->tcpm_bk_ret;
 	mutex_lock(&pd_port->pd_lock);
-
-	pd_port->tcpm_bk_event_id = TCP_DPM_EVT_UNKNOWN;
 
 #if CONFIG_USB_PD_TCPM_CB_2ND
 	pd_port->tcpm_bk_cb_data = NULL;
+	pd_port->tcpm_bk_cb_data_max = 0;
 #endif	/* CONFIG_USB_PD_TCPM_CB_2ND */
+
+	if (pd_port->tcpm_bk_done)
+		ret = pd_port->tcpm_bk_ret;
+	pd_port->tcpm_bk_event_id = TCP_DPM_EVT_UNKNOWN;
+	pd_port->tcpm_bk_event_serial++;
 
 	mutex_unlock(&pd_port->pd_lock);
 
@@ -2104,24 +2130,6 @@ static inline int tcpm_dpm_wait_bk_event(
 	return ret;
 }
 
-#if CONFIG_MTK_HANDLE_PPS_TIMEOUT
-static void mtk_handle_tcp_event_result(
-	struct tcpc_device *tcpc, struct tcp_dpm_event *event, int ret)
-{
-	struct tcp_dpm_event evt_hreset = {
-		.event_id = TCP_DPM_EVT_HARD_RESET,
-	};
-
-	if (ret == TCPM_SUCCESS || ret == TCP_DPM_RET_NOT_SUPPORT)
-		return;
-
-	if (event->event_id == TCP_DPM_EVT_GET_STATUS
-		|| event->event_id == TCP_DPM_EVT_GET_PPS_STATUS) {
-		tcpm_put_tcp_dpm_event(tcpc, &evt_hreset);
-	}
-}
-#endif /* CONFIG_MTK_HANDLE_PPS_TIMEOUT */
-
 static int __tcpm_put_tcp_dpm_event_bk(
 	struct tcpc_device *tcpc, struct tcp_dpm_event *event,
 	uint32_t tout_ms, uint8_t *data, uint8_t size)
@@ -2129,13 +2137,18 @@ static int __tcpm_put_tcp_dpm_event_bk(
 	int ret;
 	struct pd_port *pd_port = &tcpc->pd_port;
 
-	pd_port->tcpm_bk_done = false;
-	pd_port->tcpm_bk_event_id = event->event_id;
+	mutex_lock(&pd_port->pd_lock);
 
 #if CONFIG_USB_PD_TCPM_CB_2ND
 	pd_port->tcpm_bk_cb_data = data;
 	pd_port->tcpm_bk_cb_data_max = size;
 #endif	/* CONFIG_USB_PD_TCPM_CB_2ND */
+
+	pd_port->tcpm_bk_done = false;
+	pd_port->tcpm_bk_event_id = event->event_id;
+	event->event_serial = pd_port->tcpm_bk_event_serial;
+
+	mutex_unlock(&pd_port->pd_lock);
 
 	ret = tcpm_put_tcp_dpm_event(tcpc, event);
 	if (ret != TCPM_SUCCESS)
@@ -2172,13 +2185,10 @@ static int tcpm_put_tcp_dpm_event_bk(
 	if (ret == TCP_DPM_RET_DENIED_REPEAT_REQUEST)
 		ret = TCPM_SUCCESS;
 
-#if CONFIG_MTK_HANDLE_PPS_TIMEOUT
-	mtk_handle_tcp_event_result(tcpc, event, ret);
-#endif /* CONFIG_MTK_HANDLE_PPS_TIMEOUT */
-
 	return ret;
 }
 
 #endif	/* CONFIG_USB_PD_BLOCK_TCPM */
 
 #endif /* CONFIG_USB_POWER_DELIVERY */
+#endif	/* CONFIG_TCPC_CLASS */

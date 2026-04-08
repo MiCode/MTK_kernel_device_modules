@@ -14,7 +14,11 @@
 #define CFG_RECOVERY_SUPPORT
 
 /* ipi share buffer size: it will remove later */
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+#define SHARE_BUF_SIZE  288
+#else
 #define SHARE_BUF_SIZE  240
+#endif
 
 /* adsp feature PRI list */
 /* The higher number, higher priority */
@@ -141,6 +145,8 @@ enum adsp_ipi_id {
 	ADSP_IPI_MET_ADSP = 30,
 	ADSP_IPI_ADSP_TIMER = 31,
 	ADSP_IPI_PCIE = 32,
+	ADSP_IPI_MBRAIN_ENABLE = 33,
+	ADSP_IPI_MBRAIN_DONE = 34,
 	ADSP_NR_IPI,
 };
 
@@ -150,10 +156,12 @@ enum adsp_reserve_mem_id_t {
 	ADSP_A_DEBUG_DUMP_MEM_ID,
 	ADSP_A_IPI_DMA_MEM_ID,
 	ADSP_A_CORE_DUMP_MEM_ID,
+	ADSP_A_MBRAIN_MEM_ID,
 	ADSP_B_LOGGER_MEM_ID,
 	ADSP_B_DEBUG_DUMP_MEM_ID,
 	ADSP_B_IPI_DMA_MEM_ID,
 	ADSP_B_CORE_DUMP_MEM_ID,
+	ADSP_B_MBRAIN_MEM_ID,
 	ADSP_C2C_MEM_ID,
 	ADSP_PCIE_MEM_ID,
 	ADSP_L2SRAM_CTRL_MEM_ID,

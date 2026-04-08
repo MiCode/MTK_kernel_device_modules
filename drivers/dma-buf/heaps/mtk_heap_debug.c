@@ -233,6 +233,9 @@ struct proc_dir_entry *dma_heaps_all_entry;
 struct proc_dir_entry *dma_heaps_stats;
 struct proc_dir_entry *dma_heaps_stat_pid;
 struct proc_dir_entry *dma_heaps_monitor;
+// MIUI ADD: Performance_PerformanceEnhance
+struct proc_dir_entry *dma_heaps_perf_dis_refill;
+// END Performance_PerformanceEnhance
 #endif
 
 
@@ -2068,6 +2071,42 @@ static int heap_stat_pid_proc_show(struct seq_file *s, void *v)
 }
 
 
+// MIUI ADD: Performance_PerformanceEnhance
+static int perf_dis_refill_proc_show(struct seq_file *s, void *v)
+{
+	bool dis = get_perf_dis_refill();
+
+	if (!s) {
+		return -EINVAL;
+	}
+
+	seq_printf(s, "%d\n", dis);
+
+	return 0;
+}
+
+static int perf_dis_refill_proc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, perf_dis_refill_proc_show, pde_data(inode));
+}
+
+static ssize_t perf_dis_refill_proc_write(struct file *file, const char *buf,
+					  size_t count, loff_t *data)
+{
+	int ret = 0;
+	bool dis = false;
+
+	ret = kstrtobool_from_user(buf, count, &dis);
+	if (ret) {
+		return ret;
+	}
+
+	set_perf_dis_refill(dis);
+
+	return count;
+}
+// END Performance_PerformanceEnhance
+
 static int heap_stat_pid_proc_open(struct inode *inode, struct file *file)
 {
 	return single_open(file, heap_stat_pid_proc_show, pde_data(inode));
@@ -2139,6 +2178,16 @@ static const struct proc_ops heap_monitor_proc_fops = {
 	.proc_lseek = seq_lseek,
 	.proc_release = single_release,
 };
+
+// MIUI ADD: Performance_PerformanceEnhance
+static const struct proc_ops perf_dis_refill_proc_fops = {
+	.proc_open = perf_dis_refill_proc_open,
+	.proc_read = seq_read,
+	.proc_write = perf_dis_refill_proc_write,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+// END Performance_PerformanceEnhance
 
 static int dma_buf_init_dma_heaps_procfs(void)
 {
@@ -2259,6 +2308,21 @@ static int dma_buf_init_procfs(void)
 		return -1;
 	}
 	pr_info("create debug file for rss_pid\n");
+
+
+    // MIUI ADD: Performance_PerformanceEnhance
+	dma_heaps_perf_dis_refill = proc_create_data("perf_dis_refill",
+                        S_IFREG | 0600,
+				        dma_heap_proc_root,
+                        &perf_dis_refill_proc_fops,
+			            NULL);
+	if (!dma_heaps_perf_dis_refill) {
+		pr_info("%s failed to create procfs rss_pid dir:%ld\n",
+			__func__, PTR_ERR(dma_heaps_perf_dis_refill));
+		return -1;
+	}
+	pr_info("create debug file for perf_dis_refill\n");
+	// END Performance_PerformanceEnhance
 
 	/* set group of proc file rss_pid to system */
 	uid = make_kuid(&init_user_ns, 0);

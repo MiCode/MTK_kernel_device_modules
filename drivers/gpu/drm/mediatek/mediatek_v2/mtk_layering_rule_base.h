@@ -150,6 +150,7 @@ struct layering_rule_info_t {
 	unsigned int rpo_in_max_height;
 	u32 bk_mml_dl_lye;
 	bool need_repaint;
+	bool ovl_exdma_rule;
 };
 
 enum SCN_FACTOR {
@@ -208,6 +209,9 @@ struct layering_rule_ops {
 #define HRT_SET_NO_COMPRESS_FLAG(hrt_num, value)                               \
 	(hrt_num = ((hrt_num & ~(0x7800)) | ((value & 0xf) << 11)))
 
+#define HRT_GET_SUM_LAYER_FLAG(hrt_num) ((hrt_num & 0x78000) >> 15)
+#define HRT_SET_SUM_LAYER_FLAG(hrt_num, value)                               \
+	(hrt_num = ((hrt_num & ~(0x78000)) | ((value & 0xf) << 15)))
 
 #define HRT_GET_PATH_ID(hrt_path) (hrt_path & 0x1F)
 

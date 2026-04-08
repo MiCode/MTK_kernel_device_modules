@@ -93,6 +93,7 @@ struct mdw_mem_map {
 	struct mdw_mem *m;
 	void (*get)(struct mdw_mem_map *map);
 	void (*put)(struct mdw_mem_map *map);
+	uint64_t id;
 };
 
 struct mdw_mem_invoke {
@@ -127,8 +128,8 @@ struct mdw_mem {
 	struct device *mdev;
 	struct dma_buf *dbuf;
 	void *priv;
-	int (*bind)(void *session, struct mdw_mem *m);
-	void (*unbind)(void *session, struct mdw_mem *m);
+	int (*bind)(uint64_t session_id, struct mdw_mem *m);
+	void (*unbind)(uint64_t session_id, struct mdw_mem *m);
 
 	/* map */
 	uint64_t device_va;
@@ -139,6 +140,7 @@ struct mdw_mem {
 	/* control */
 	int handle;
 	bool belong_apu;
+	bool belong_list;
 	bool need_handle;
 	struct list_head maps;
 	struct mdw_fpriv *mpriv;
@@ -148,6 +150,8 @@ struct mdw_mem {
 	struct list_head p_chunk; //to mem pool
 	struct mutex mtx;
 	void (*release)(struct mdw_mem *m);
+
+	uint64_t id;
 };
 
 /* default chunk size of memory pool */
@@ -171,6 +175,7 @@ struct mdw_mem_pool {
 	struct kref m_ref;
 	void (*get)(struct mdw_mem_pool *pool);
 	void (*put)(struct mdw_mem_pool *pool);
+	uint64_t id;
 };
 
 struct mdw_dinfo {
@@ -285,6 +290,8 @@ struct mdw_device {
 	struct mutex dtime_mtx;
 	struct mutex power_mtx;
 	uint32_t power_gain_time_us;
+
+	atomic64_t session_id_cnt;
 };
 
 struct mdw_fpriv {
@@ -314,6 +321,8 @@ struct mdw_fpriv {
 
 	/* cmd execute id counter */
 	uint32_t counter;
+
+	uint64_t id;
 };
 
 struct mdw_exec_info {

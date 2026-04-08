@@ -148,7 +148,7 @@ char *hash_table_to_char_array(unsigned int *p_buffer_size)
 	char *array, *ptr;
 	int ret;
 	char c;
-	unsigned int invalid_indices[MAX_INVALID_ENTRIES];
+	struct str_hash_entry *invalid_entries[MAX_INVALID_ENTRIES];
 	unsigned int invalid_count = 0;
 
 	hash_for_each(str_hash_table, bkt, entry, hnode) {
@@ -157,14 +157,14 @@ char *hash_table_to_char_array(unsigned int *p_buffer_size)
 			MMEERR("invalid value:%llx,ret:%d,invalid_count:%d",(unsigned long long)entry->value,
 				ret, invalid_count);
 			if (invalid_count < MAX_INVALID_ENTRIES) {
-				invalid_indices[invalid_count++] = bkt;
+				invalid_entries[invalid_count++] = entry;
 			} else {
 				MMEERR("invalid count exceeded max entries:%d", MAX_INVALID_ENTRIES);
 				return NULL;
 			}
 			continue;
 		}
-		total_size += 16 + strlen(entry->value) + 2;
+		total_size += snprintf(NULL, 0, "%lx:%s", entry->key, entry->value) + 1;
 	}
 
 	MMEINFO("total_size:%d", total_size);
@@ -184,7 +184,7 @@ char *hash_table_to_char_array(unsigned int *p_buffer_size)
 		bool skip_entry = false;
 
 		for (unsigned int i = 0; i < invalid_count; ++i) {
-			if (invalid_indices[i] == bkt) {
+			if (invalid_entries[i] == entry) {
 				skip_entry = true;
 				break;
 			}
@@ -193,20 +193,12 @@ char *hash_table_to_char_array(unsigned int *p_buffer_size)
 		if (skip_entry)
 			continue;
 
-		ret = snprintf(ptr, total_size - (ptr - array), "%lx:", entry->key);
-		if (ret < 0) {
-			MMEERR("snprintf failed, ret:%d", ret);
-			kfree(array);
-			return NULL;
-		}
-		ptr += ret;
-
-		ret = snprintf(ptr, total_size - (ptr - array), "%s", entry->value);
-		if (ret < 0) {
-			MMEERR("snprintf failed, ret:%d", ret);
-			kfree(array);
-			return NULL;
-		}
+		ret = snprintf(ptr, total_size - (ptr - array), "%lx:%s", entry->key, entry->value);
+	if (ret < 0 || ret >= total_size - (ptr - array)) {
+		MMEERR("snprintf failed or buffer overflow, ret:%d", ret);
+		kfree(array);
+		return NULL;
+	}
 		ptr += ret;
 		*ptr = '\0';
 		ptr += 1;
@@ -476,7 +468,9 @@ EXPORT_SYMBOL(mme_register_dump_callback);
 
 static unsigned char mme_dump_block[MME_DUMP_BLOCK_SIZE];
 static char *p_str_buffer;
+static int p_str_buffer_refcnt;
 unsigned int g_str_buffer_size;
+static DEFINE_SPINLOCK(p_str_buffer_lock);
 
 
 static unsigned int mme_fill_dump_block(void *p_src, void *p_dst,
@@ -828,7 +822,11 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 		mme_header.pid_number = ALIGN(pid_count, 4);
 
 		g_str_buffer_size = 0;
+		spin_lock(&p_str_buffer_lock);
 		p_str_buffer = hash_table_to_char_array(&g_str_buffer_size);
+		if (p_str_buffer)
+			p_str_buffer_refcnt++;
+		spin_unlock(&p_str_buffer_lock);
 		if (!p_str_buffer || g_str_buffer_size == 0) {
 			MMEERR("ERROR: allocate p_str_buffer failed, p_str_buffer:%p, g_str_buffer_size:%d",
 				p_str_buffer, g_str_buffer_size);
@@ -891,11 +889,24 @@ static void mme_get_dump_buffer(unsigned int start, void *p_block_buf, unsigned 
 		}
 	}
 
+	spin_lock(&p_str_buffer_lock);
 	MMEINFO("p_str_buffer:%px, g_str_buffer_size:%d", p_str_buffer, g_str_buffer_size);
 	mme_dump_buffer(p_str_buffer, p_block_buf, g_str_buffer_size,
 					block_buf_size, &total_pos, &region_base, &block_pos);
-	if (block_pos == block_buf_size)
+	if (block_pos == block_buf_size){
+		spin_unlock(&p_str_buffer_lock);
 		return;
+	}
+	if (p_str_buffer) {
+		MMEMSG("p_str_buffer_refcnt:%d", p_str_buffer_refcnt);
+		p_str_buffer_refcnt--;
+		if (p_str_buffer_refcnt == 0) {
+			MMEMSG("free p_str_buffer:%p", p_str_buffer);
+			kfree(p_str_buffer);
+			p_str_buffer = NULL;
+		}
+	}
+	spin_unlock(&p_str_buffer_lock);
 
 	*p_copy_size = block_pos;
 }

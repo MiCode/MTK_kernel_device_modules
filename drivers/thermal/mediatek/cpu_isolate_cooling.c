@@ -11,7 +11,6 @@
 #include <linux/of_device.h>
 #include <linux/thermal.h>
 #include <core_ctl.h>
-#include "cpu_isolate_cooling.h"
 
 #define MAX_CPUS 8
 
@@ -23,6 +22,7 @@ struct cpu_isolate_cooling_device {
 	unsigned int cur_state;
 };
 
+extern int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause);
 
 static struct cpu_isolate_cooling_device cpu_isolate_devs[MAX_CPUS];
 
@@ -50,10 +50,11 @@ static int cpu_isolate_set_cur_state(struct thermal_cooling_device *cdev, unsign
 
 	dev->cur_state = state;
 
-	if (state == 1)
+	if (state == 1) {
 		ret = core_ctl_force_pause_cpu(dev->cpu_id, true);
-	else
+	} else {
 		ret = core_ctl_force_pause_cpu(dev->cpu_id, false);
+	}
 
 	if (ret != 0)
 		pr_info("%s:%d set cpu%d iso %lu error %d\n", __func__, __LINE__, dev->cpu_id, state, ret);
@@ -91,11 +92,11 @@ static int cpu_isolate_probe(struct platform_device *pdev)
 		if (ret)
 			pr_notice("%s:%d snprintf error\n", __func__, __LINE__);
 
-		cpu_isolate_devs[i].cdev = thermal_of_cooling_device_register(np,
+		cpu_isolate_devs[i].cdev = thermal_of_cooling_device_register(np, 
 			cpu_isolate_devs[i].cooler_name, &cpu_isolate_devs[i],  &cpu_isolate_cooling_ops);
 
 		if (IS_ERR(cpu_isolate_devs[i].cdev)) {
-			pr_info("Failed to register cooling device for CPU %d ~~~\n", i);
+			pr_err("Failed to register cooling device for CPU %d ~~~\n", i);
 			return PTR_ERR(cpu_isolate_devs[i].cdev);
 		}
 	}
@@ -111,9 +112,9 @@ static int cpu_isolate_remove(struct platform_device *pdev)
 	if (nr_cpu_ids < MAX_CPUS)
 		num_cpu = nr_cpu_ids;
 
-	for (i = 0; i < num_cpu; i++)
+	for (i = 0; i < num_cpu; i++) {
 		thermal_cooling_device_unregister(cpu_isolate_devs[i].cdev);
-
+	}
 
 	return 0;
 }
@@ -137,4 +138,4 @@ module_platform_driver(cpu_isolate_driver);
 
 MODULE_AUTHOR("Samuel Hsieh <samuel.hsieh@mediatek.com>");
 MODULE_DESCRIPTION("Mediatek cpu isolate cooling driver");
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("GPL v2");

@@ -81,7 +81,14 @@ static void mtu3_vbus_draw_work(struct work_struct *data)
 	int ret;
 
 	if (mtu->is_active) {
+#if defined(CONFIG_PDTEST_MODE)
+		if (mtu->usb_pd && !mtu->gadget_suspend &&
+				mtu->g.state == USB_STATE_CONFIGURED)
+			val.intval = UNLIMIT_CURRENT_MASK; /* unlimited */
+		else if (mtu->vbus_draw < USB_SELF_POWER_VBUS_MAX_DRAW)
+#else
 		if (mtu->vbus_draw < USB_SELF_POWER_VBUS_MAX_DRAW)
+#endif
 			val.intval = 0; /* 0 mA*/
 		else if (mtu->vbus_draw == USB_SELF_POWER_VBUS_MAX_DRAW)
 			val.intval = 100; /* 100 mA*/
@@ -223,6 +230,8 @@ static inline void mtu3_hs_softconn_set(struct mtu3 *mtu, bool enable)
 	} else {
 		mtu3_clrbits(mtu->mac_base, U3D_POWER_MANAGEMENT,
 			SOFT_CONN | SUSPENDM_ENABLE);
+		/* Delay for eUSB2 port reset signal */
+		mdelay(4);
 	}
 	dev_dbg(mtu->dev, "SOFTCONN = %d\n", !!enable);
 }
@@ -278,6 +287,8 @@ int mtu3_device_enable(struct mtu3 *mtu)
 void mtu3_device_disable(struct mtu3 *mtu)
 {
 	void __iomem *ibase = mtu->ippc_base;
+
+	ssusb_wait_power_state(mtu->ssusb, MTU3_STATE_POWER_OFF);
 
 	if (mtu->u3_capable)
 		mtu3_setbits(ibase, SSUSB_U3_CTRL(0),
@@ -518,6 +529,11 @@ void mtu3_dev_on_off(struct mtu3 *mtu, int is_on)
 		mtu3_ss_func_set(mtu, false);
 		mtu3_hs_softconn_set(mtu, false);
 	}
+
+	if (is_on)
+		mtu3_gadget_u2_lpm_lock_init(mtu);
+	else
+		mtu3_gadget_u2_lpm_lock_deinit(mtu);
 
 	dev_info(mtu->dev, "gadget (%s) pullup D%s\n",
 		usb_speed_string(mtu->speed), is_on ? "+" : "-");
@@ -1023,8 +1039,10 @@ static irqreturn_t mtu3_u2_common_isr(struct mtu3 *mtu)
 	if (u2comm & RESET_INTR)
 		mtu3_gadget_reset(mtu);
 
-	if (u2comm & LPM_RESUME_INTR)
-		mtu3_gadget_u2_lpm_lock(mtu, U2_LPM_LOCK_TIMEOUT);
+	if (u2comm & LPM_RESUME_INTR) {
+		if (mtu->u2_lpm_quirks & MTU3_U2_LPM_SW_MODE)
+			mtu3_gadget_u2_lpm_lock(mtu, U2_LPM_LOCK_TIMEOUT);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -1263,6 +1281,11 @@ int ssusb_gadget_init(struct ssusb_mtk *ssusb)
 
 	dev_info(dev, "max_speed_host: %s\n", usb_speed_string(mtu->max_speed_host));
 
+	of_property_read_u32(dev->of_node, "mediatek,u2-lpm-quirks", &mtu->u2_lpm_quirks);
+	if (of_device_is_compatible(mtu->dev->of_node, "mediatek,mt6991-mtu3"))
+		mtu->u2_lpm_quirks |= MTU3_U2_LPM_SW_MODE;
+
+	dev_info(dev, "u2_lpm_quirks: 0x%x\n", mtu->u2_lpm_quirks);
 
 	ret = mtu3_set_dma_mask(mtu);
 	if (ret) {

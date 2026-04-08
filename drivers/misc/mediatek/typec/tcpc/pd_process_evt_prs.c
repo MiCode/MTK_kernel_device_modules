@@ -131,8 +131,12 @@ static inline bool pd_process_hw_msg(
 {
 	switch (pd_event->msg) {
 	case PD_HW_VBUS_PRESENT:
-		if (pd_port->pe_state_curr == PE_PRS_SNK_SRC_SOURCE_ON)
+		if (pd_port->pe_state_curr == PE_PRS_SNK_SRC_SOURCE_ON) {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+			mdelay(20);
+#endif
 			pd_send_sop_ctrl_msg(pd_port, PD_CTRL_PS_RDY);
+		}
 
 		return false;
 

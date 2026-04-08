@@ -325,12 +325,6 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 			DRM_MMP_EVENT_END(rdma0, val, 0);
 		DDPIRQ("[IRQ] %s: frame done!\n", mtk_dump_comp_str(rdma));
 		if (mtk_crtc) {
-			if (mtk_crtc->esd_ctx) {
-				unsigned int index = drm_crtc_index(&mtk_crtc->base);
-
-				CRTC_MMP_MARK(index, target_time, rdma->id, 0);
-				atomic_set(&mtk_crtc->esd_ctx->target_time, 0);
-			}
 			if (rdma->id == DDP_COMPONENT_RDMA0) {
 				unsigned long long rdma_end_time = sched_clock();
 
@@ -396,9 +390,14 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 			  mtk_dump_comp_str(rdma), priv->underflow_cnt);
 		if (mtk_crtc)
 			drm_priv = mtk_crtc->base.dev->dev_private;
-		if (drm_priv && (drm_priv->data->mmsys_id == MMSYS_MT6768
+		if (mtk_crtc && drm_priv && (drm_priv->data->mmsys_id == MMSYS_MT6768
 			|| drm_priv->data->mmsys_id == MMSYS_MT6765
 			|| drm_priv->data->mmsys_id == MMSYS_MT6761))
+			set_ovl_reset_flag(mtk_crtc);
+		if (drm_priv && (drm_priv->data->mmsys_id == MMSYS_MT6768
+			|| drm_priv->data->mmsys_id == MMSYS_MT6765
+			|| drm_priv->data->mmsys_id == MMSYS_MT6761
+			|| drm_priv->data->mmsys_id == MMSYS_MT6771))
 			DDPMSG("%s: pix(%d,%d,%d,%d)\n", mtk_dump_comp_str(rdma),
 				readl(MT6768_DISP_REG_RDMA_IN_P_CNT + rdma->regs),
 				readl(MT6768_DISP_REG_RDMA_IN_LINE_CNT + rdma->regs),
@@ -442,15 +441,6 @@ static irqreturn_t mtk_disp_rdma_irq_handler(int irq, void *dev_id)
 	if (val & (1 << 5)) {
 		DDPIRQ("[IRQ] %s: target line!\n", mtk_dump_comp_str(rdma));
 		if (mtk_crtc) {
-			if (mtk_crtc->esd_ctx &&
-				(!(val & (1 << 2)))) {
-				unsigned int index = drm_crtc_index(&mtk_crtc->base);
-
-				CRTC_MMP_MARK(index, target_time, rdma->id, 1);
-				atomic_set(&mtk_crtc->esd_ctx->target_time, 1);
-				wake_up_interruptible(
-					&mtk_crtc->esd_ctx->check_task_wq);
-			}
 			if (!mtk_crtc_is_frame_trigger_mode(&mtk_crtc->base) &&
 					(val & (1 << 2)) == 0 &&
 					(rdma->id == DDP_COMPONENT_RDMA0 ||
@@ -1858,16 +1848,17 @@ const struct mtk_disp_rdma_data mt6768_rdma_driver_data = {
 	.has_greq_urg_num = false,
 	.is_support_34bits = false,
 	.dsi_buffer = false,
+	.disable_underflow = true,
 };
 
 const struct mtk_disp_rdma_data mt6761_rdma_driver_data = {
 	.fifo_size = SZ_1K * 6,
-	.pre_ultra_low_us = 60,
-	.pre_ultra_high_us = 70,
-	.ultra_low_us = 40,
-	.ultra_high_us = 60,
-	.urgent_low_us = 30,
-	.urgent_high_us = 35,
+	.pre_ultra_low_us = 95,
+	.pre_ultra_high_us = 105,
+	.ultra_low_us = 75,
+	.ultra_high_us = 95,
+	.urgent_low_us = 55,
+	.urgent_high_us = 70,
 	.sodi_config = mt6768_mtk_sodi_config,
 	.shadow_update_reg = 0x00bc,
 	.support_shadow = false,
@@ -1879,12 +1870,12 @@ const struct mtk_disp_rdma_data mt6761_rdma_driver_data = {
 
 const struct mtk_disp_rdma_data mt6765_rdma_driver_data = {
 	.fifo_size = SZ_1K * 6,
-	.pre_ultra_low_us = 80,
-	.pre_ultra_high_us = 90,
-	.ultra_low_us = 60,
-	.ultra_high_us = 80,
-	.urgent_low_us = 43,
-	.urgent_high_us = 58,
+	.pre_ultra_low_us = 95,
+	.pre_ultra_high_us = 105,
+	.ultra_low_us = 75,
+	.ultra_high_us = 95,
+	.urgent_low_us = 55,
+	.urgent_high_us = 70,
 	.sodi_config = mt6768_mtk_sodi_config,
 	.shadow_update_reg = 0x00bc,
 	.support_shadow = false,
@@ -1977,6 +1968,21 @@ static const struct mtk_disp_rdma_data mt6983_rdma_driver_data = {
 	.has_greq_urg_num = true,
 	.is_support_34bits = true,
 	.dsi_buffer = true,
+};
+
+static const struct mtk_disp_rdma_data mt6771_rdma_driver_data = {
+	.fifo_size = SZ_1K * 5,
+	.pre_ultra_low_us = 60,
+	.pre_ultra_high_us = 70,
+	.ultra_low_us = 40,
+	.ultra_high_us = 60,
+	.urgent_low_us = 30,
+	.urgent_high_us = 35,
+	.sodi_config = mt6771_mtk_sodi_config,
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+	.has_greq_urg_num = false,
+	.is_support_34bits = false,
 };
 
 static const struct mtk_disp_rdma_data mt6895_rdma_driver_data = {
@@ -2105,6 +2111,8 @@ static const struct of_device_id mtk_disp_rdma_driver_dt_match[] = {
 	 .data = &mt2701_rdma_driver_data},
 	{.compatible = "mediatek,mt6761-disp-rdma",
 	 .data = &mt6761_rdma_driver_data},
+	{.compatible = "mediatek,mt6771-disp-rdma",
+	 .data = &mt6771_rdma_driver_data},
 	{.compatible = "mediatek,mt6765-disp-rdma",
 	 .data = &mt6765_rdma_driver_data},
 	{.compatible = "mediatek,mt6768-disp-rdma",

@@ -667,8 +667,10 @@ static int map_phy_to_kernel(struct rt_smem_region_lk_fmt *tbl, u32 num)
 			state = 1;
 		} else {
 			if (tbl[i].inf.flags & SMEM_ATTR_NO_MAP) {
-				ret = map_and_update_tbl(tbl, start_idx, i - 1, start_addr, size);
 				state = 0;
+				if (size == 0)
+					continue;
+				ret = map_and_update_tbl(tbl, start_idx, i - 1, start_addr, size);
 				if (ret < 0)
 					return -1;
 			} else

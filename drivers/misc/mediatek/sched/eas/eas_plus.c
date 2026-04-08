@@ -30,7 +30,6 @@
 
 #include <mt-plat/mtk_irq_mon.h>
 #include "arch.h"
-
 MODULE_LICENSE("GPL");
 
 #define CORE_PAUSE_OUT		0

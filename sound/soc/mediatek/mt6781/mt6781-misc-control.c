@@ -14,8 +14,8 @@
 
 #include "../common/mtk-afe-fe-dai.h"
 #include "../common/mtk-afe-platform-driver.h"
-#if defined(CONFIG_MTK_VOW_BARGE_IN_SUPPORT)
-#include "../scp_vow/mtk-scp-vow-common.h"
+#if IS_ENABLED(CONFIG_MTK_VOW_BARGE_IN_SUPPORT)
+#include "../vow/mtk-scp-vow.h"
 #endif
 
 #include "mt6781-afe-common.h"
@@ -2026,8 +2026,8 @@ static int mt6781_afe_vow_bargein_get(struct snd_kcontrol *kcontrol,
 	struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
 	int id;
 
-	id = get_scp_vow_memif_id();
-	ucontrol->value.integer.value[0] = afe->memif[id].vow_bargein_enable;
+	id = MT6781_MEMIF_AWB;
+	ucontrol->value.integer.value[0] = afe->memif[id].vow_barge_in_enable;
 
 	return 0;
 }
@@ -2040,11 +2040,11 @@ static int mt6781_afe_vow_bargein_set(struct snd_kcontrol *kcontrol,
 	int id;
 	int val;
 
-	id = get_scp_vow_memif_id();
+	id = MT6781_MEMIF_AWB;
 	val = ucontrol->value.integer.value[0];
 	dev_info(afe->dev, "%s(), %d\n", __func__, val);
 
-	afe->memif[id].vow_bargein_enable = (val > 0) ? true : false;
+	afe->memif[id].vow_barge_in_enable = (val > 0) ? true : false;
 
 	return 0;
 }

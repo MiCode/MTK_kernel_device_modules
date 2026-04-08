@@ -5,6 +5,7 @@
  */
 
 #include <linux/component.h>
+#include <linux/clk.h>
 #include <linux/dma-mapping.h>
 #include <linux/ioport.h>
 #include <linux/module.h>
@@ -31,6 +32,8 @@
 /* RROT register offset */
 #define RROT_EN				0x000
 #define RROT_RESET			0x008
+#define RROT_INTERRUPT_ENABLE		0x010
+#define RROT_INTERRUPT_STATUS		0x018
 #define RROT_VCSEL			0x01c
 #define RROT_CON			0x020
 #define RROT_SHADOW_CTRL		0x024
@@ -301,6 +304,7 @@ struct mml_comp_rrot {
 	phys_addr_t smi_larb_con;
 
 	u8 pipe;	/* separate rrot and rrot_2nd */
+	bool irq;
 };
 
 struct rrot_offset {
@@ -419,7 +423,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg)
 	if (dest->rotate == MML_ROT_90 || dest->rotate == MML_ROT_270)
 		swap(outw, outh);
 
-	if (binning && (w >> 1) >= outw) {
+	if (binning && (w >> 1) >= outw && !(src->width & 0x3)) {
 		cfg->frame_in.width = (src->width + 1) >> 1;
 		cfg->bin_x = 1;
 		for (i = 0; i < cfg->info.dest_cnt; i++) {
@@ -428,7 +432,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg)
 			calc_binning_crop(&crop->r.left, &crop->x_sub_px);
 		}
 	}
-	if (binning && (h >> 1) >= outh) {
+	if (binning && (h >> 1) >= outh && !(src->height & 0x3)) {
 		cfg->frame_in.height = (src->height + 1) >> 1;
 		cfg->bin_y = 1;
 		for (i = 0; i < cfg->info.dest_cnt; i++) {
@@ -1203,6 +1207,9 @@ static s32 rrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	if (rrot->data->vcsel)
 		cmdq_pkt_write(pkt, NULL, base_pa + RROT_VCSEL,
 			mml_iscouple(cfg->info.mode) ? 0x3 : 0x0, U32_MAX);
+
+	if (mml_irq && rrot->irq)
+		cmdq_pkt_write(pkt, NULL, base_pa + RROT_INTERRUPT_ENABLE, 0x5, U32_MAX);
 
 	if (mml_rdma_crc) {
 		if (MML_FMT_COMPRESS(src->format))
@@ -2218,6 +2225,37 @@ static void rrot_init_frame_done_event(struct mml_comp *comp, u32 event)
 		rrot->event_eof = event;
 }
 
+static s32 rrot_clk_disable(struct mml_comp *comp, bool dpc)
+{
+	struct mml_comp_rrot *rrot = comp_to_rrot(comp);
+	u32 i;
+
+	comp->clk_cnt--;
+	if (comp->clk_cnt > 0)
+		return 0;
+	if (comp->clk_cnt < 0) {
+		mml_err("%s comp %u %s cnt %d",
+			__func__, comp->id, comp->name, comp->clk_cnt);
+		return -EINVAL;
+	}
+
+	if (mml_irq && rrot->irq) {
+		/* always clear irq status and irq en */
+		writel(0, comp->base + RROT_INTERRUPT_ENABLE);
+		writel(0, comp->base + RROT_INTERRUPT_STATUS);
+	}
+
+	mml_mmp(clk_disable, MMPROFILE_FLAG_START, comp->id, (mml_irq && rrot->irq));
+	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
+		if (IS_ERR_OR_NULL(comp->clks[i]))
+			break;
+		clk_disable_unprepare(comp->clks[i]);
+	}
+	mml_mmp(clk_disable, MMPROFILE_FLAG_END, comp->id, 0);
+
+	return 0;
+}
+
 static u32 rrot_datasize_get(struct mml_task *task, struct mml_comp_config *ccfg)
 {
 	struct rrot_frame_data *rrot_frm = rrot_frm_data(ccfg);
@@ -2421,7 +2459,7 @@ static void rrot_task_done(struct mml_comp *comp, struct mml_task *task,
 static const struct mml_comp_hw_ops rrot_hw_ops = {
 	.init_frame_done_event = &rrot_init_frame_done_event,
 	.clk_enable = &mml_comp_clk_enable,
-	.clk_disable = &mml_comp_clk_disable,
+	.clk_disable = &rrot_clk_disable,
 	.qos_datasize_get = &rrot_datasize_get,
 	.qos_stash_bw_get = &rrot_qos_stash_bw_get,
 	.qos_format_get = &rrot_format_get,
@@ -2676,6 +2714,38 @@ static const struct component_ops mml_comp_ops = {
 	.unbind = mml_unbind,
 };
 
+#define rrot_pipe_mmp(_pipe, flag, v1, v2) do { \
+	if (_pipe == 0) \
+		mml_mmp(rrot0, flag, v1, v2); \
+	else \
+		mml_mmp(rrot1, flag, v1, v2); \
+} while (0)
+
+#define RROT_IRQ_UNDERRUN		(BIT(2))
+#define RROT_IRQ_FRAME_COMPLETE		(BIT(0))
+
+static irqreturn_t mml_rrot_irq_handler(int irq, void *dev_id)
+{
+	struct mml_comp_rrot *rrot = dev_id;
+	struct mml_comp *comp = &rrot->comp;
+	void __iomem *base = comp->base;
+	unsigned long irq_status = readl(base + RROT_INTERRUPT_STATUS);
+
+	rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
+
+	if (!irq_status)
+		return IRQ_NONE;
+
+	writel(0, base + RROT_INTERRUPT_STATUS);
+
+	if (irq_status & RROT_IRQ_FRAME_COMPLETE)
+		rrot_pipe_mmp(rrot->pipe, MMPROFILE_FLAG_END, comp->id, 0);
+	else if (irq_status & RROT_IRQ_UNDERRUN)
+		mml_mmp(underrun, MMPROFILE_FLAG_PULSE, comp->id, 0);
+
+	return IRQ_HANDLED;
+}
+
 static struct mml_comp_rrot *dbg_probed_components[4];
 static int dbg_probed_count;
 
@@ -2684,6 +2754,7 @@ static int probe(struct platform_device *pdev)
 	struct device *dev = &pdev->dev;
 	struct mml_comp_rrot *priv;
 	s32 ret;
+	int irq;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -2724,6 +2795,17 @@ static int probe(struct platform_device *pdev)
 		mml_err("read pipe fail");
 
 	of_property_read_u16(dev->of_node, "event-frame-done", &priv->event_eof);
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		mml_log("fail to get rrot%u irq %d", priv->pipe, irq);
+	else {
+		ret = devm_request_irq(dev, irq, mml_rrot_irq_handler,
+			IRQF_SHARED, dev_name(dev), priv);
+		priv->irq = true;
+		mml_log("register rrot%u irq %s %d irq %d",
+			priv->pipe, ret ? "fail" : "success", ret, irq);
+	}
 
 	/* assign ops */
 	priv->comp.tile_ops = &rrot_tile_ops;

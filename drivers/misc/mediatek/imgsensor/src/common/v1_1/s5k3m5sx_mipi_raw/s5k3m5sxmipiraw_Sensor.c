@@ -3075,6 +3075,7 @@ static kal_uint32 set_max_framerate_by_scenario(
 			LOG_INF(
 			"Warning: current_fps %d fps is not support, so use cap's setting: %d fps!\n"
 			, framerate, imgsensor_info.cap.max_framerate/10);
+		}
 		frame_length = imgsensor_info.cap.pclk / framerate * 10
 				/ imgsensor_info.cap.linelength;
 		spin_lock(&imgsensor_drv_lock);
@@ -3086,7 +3087,6 @@ static kal_uint32 set_max_framerate_by_scenario(
 				+ imgsensor.dummy_line;
 			imgsensor.min_frame_length = imgsensor.frame_length;
 			spin_unlock(&imgsensor_drv_lock);
-		}
 
 		if (imgsensor.frame_length > imgsensor.shutter)
 			set_dummy();
@@ -3401,10 +3401,18 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-		if (IS_MT6893(g_platform_id) || IS_MT6885(g_platform_id))
+		if (IS_MT6885(g_platform_id))
 			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 3000000;
 		else if (IS_MT6877(g_platform_id))
 			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1500000;
+		else if (IS_MT6893(g_platform_id))
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1733500;
+		else if (IS_MT6781(g_platform_id))
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1346200;
+		else if (IS_MT6833(g_platform_id))
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1087000;
+		else if (IS_MT6853(g_platform_id))
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 1263600;
 		break;
 	case SENSOR_FEATURE_GET_PERIOD:
 		*feature_return_para_16++ = imgsensor.line_length;

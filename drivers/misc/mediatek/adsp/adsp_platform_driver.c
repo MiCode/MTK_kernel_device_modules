@@ -10,6 +10,9 @@
 #include <linux/ktime.h>
 #include <linux/pm_runtime.h>
 #include <slbc_ops.h>
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+#include "adsp_ipi.h"
+#endif
 #include "adsp_mbox.h"
 #include "adsp_logger.h"
 #include "adsp_timesync.h"
@@ -58,6 +61,13 @@ int adsp_after_bootup(struct adsp_priv *pdata)
 	/* force release slb buffer */
 	while (slb_memory_control(false) > 0)
 		;
+
+	/* Enable adsp_mbrain if need */
+	if (pdata->mbrain_enable) {
+		pr_info("%s(), core(%d) adsp_mbrain enable\n", __func__, pdata->id);
+		if (adsp_mbrain_enable(pdata) < 0)
+			pr_info("%s(), core(%d) adsp_mbrain enable fail\n", __func__, pdata->id);
+	}
 
 	return adsp_awake_unlock(pdata->id);
 }
@@ -172,7 +182,8 @@ int adsp_core0_suspend(void)
 	return 0;
 ERROR:
 	pr_warn("%s(), can't going to suspend, ret(%d)\n", __func__, ret);
-	adsp_mbox_dump();
+	if (pdata->recv_mbox)
+		adsp_mbox_dump();
 	adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 	return ret;
 }
@@ -191,7 +202,8 @@ int adsp_core0_resume(void)
 
 		if (get_adsp_state(pdata) != ADSP_RUNNING) {
 			pr_warn("%s, can't going to resume, ret(%d)\n", __func__, ret);
-			adsp_mbox_dump();
+			if (pdata->recv_mbox)
+				adsp_mbox_dump();
 			adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 			return -ETIME;
 		}
@@ -252,7 +264,8 @@ int adsp_core1_suspend(void)
 	return 0;
 ERROR:
 	pr_warn("%s(), can't going to suspend, ret(%d)\n", __func__, ret);
-	adsp_mbox_dump();
+	if (pdata->recv_mbox)
+		adsp_mbox_dump();
 	adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 	return ret;
 }
@@ -273,7 +286,8 @@ int adsp_core1_resume(void)
 
 		if (get_adsp_state(pdata) != ADSP_RUNNING) {
 			pr_warn("%s, can't going to resume, ret(%d)\n", __func__, ret);
-			adsp_mbox_dump();
+			if (pdata->recv_mbox)
+				adsp_mbox_dump();
 			adsp_aed_dispatch(EXCEP_KERNEL, pdata);
 			return -ETIME;
 		}
@@ -428,11 +442,17 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 	if (adspsys->desc->version == 1)
 		adsp_update_mpu_memory_info(pdata);
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	adsp_ipi_init();
+	adsp_irq_registration(pdata->id, ADSP_IRQ_IPC_ID, adsp_ipi_handler, pdata);
+#endif
+
 	/* wdt irq */
 	adsp_irq_registration(pdata->id, ADSP_IRQ_WDT_ID, adsp_wdt_handler, pdata);
 
 	/* mailbox */
-	pdata->recv_mbox->prdata = &pdata->id;
+	if (pdata->recv_mbox)
+		pdata->recv_mbox->prdata = &pdata->id;
 
 	/* slb init ipi */
 	adsp_ipi_registration(ADSP_IPI_SLB_INIT, adsp_slb_init_handler, "slb_init");
@@ -445,9 +465,7 @@ int adsp_core_common_init(struct adsp_priv *pdata)
 	pdata->mdev.minor = MISC_DYNAMIC_MINOR;
 	pdata->mdev.name = pdata->name;
 	pdata->mdev.fops = &adsp_core_file_ops;
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 	pdata->mdev.groups = adsp_core_attr_groups;
-#endif
 
 	/* pre-wakelock */
 	spin_lock_init(&pdata->wakelock);
@@ -530,3 +548,29 @@ EXIT:
 	return adsp_type;
 }
 EXPORT_SYMBOL(get_adsp_type);
+
+/* MBrain */
+int adsp_mbrain_register_callback(audio_adsp_mbrain_notify_callback mbrain_cbk)
+{
+	int ret = 0;
+
+	if (!mbrain_cbk)
+		return -EINVAL;
+
+	set_adsp_mbrain_cbk(mbrain_cbk);
+	pr_debug("%s(), mbrain_cbk registered", __func__);
+
+	return ret;
+}
+EXPORT_SYMBOL(adsp_mbrain_register_callback);
+
+int adsp_mbrain_unregister_callback(void)
+{
+	int ret = 0;
+
+	set_adsp_mbrain_cbk(NULL);
+	pr_debug("%s(), mbrain_cbk unregistered", __func__);
+
+	return ret;
+}
+EXPORT_SYMBOL(adsp_mbrain_unregister_callback);

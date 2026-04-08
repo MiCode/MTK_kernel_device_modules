@@ -190,13 +190,6 @@ static void swpm_sp_routine(struct timer_list *t)
 	swpm_sp_internal_update();
 	spin_unlock_irqrestore(&swpm_sp_spinlock, flags);
 
-	if (update_interval_ms == DEFAULT_UPDATE_MS)
-		pr_notice("%s regular update(%d), total_suspend(%llu)\n",
-				__func__, retry_cnt, total_suspend_us);
-	else
-		pr_notice("%s retry update(%d), total_suspend(%llu)\n",
-				__func__, retry_cnt, total_suspend_us);
-
 	mod_timer(t, jiffies + msecs_to_jiffies(update_interval_ms));
 	update_interval_ms = DEFAULT_UPDATE_MS;
 }

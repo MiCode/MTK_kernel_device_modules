@@ -28,6 +28,7 @@
 #include "../mcupm/include/mcupm_ipi_id.h"
 #include "cpufreq-dbg-lite.h"
 #include "sugov/cpufreq.h"
+#include "pf_ctrl.h"
 
 #ifdef pr_fmt
 #undef pr_fmt
@@ -248,12 +249,15 @@ static int mtk_cpudvfs_init(void)
 	dsu_ctrl_deubg_enable = false;
 	user_ctrl_mode = 0;
 
+	mtk_pf_ctrl_init();
+
 	return 0;
 }
 module_init(mtk_cpudvfs_init);
 
 static void mtk_cpudvfs_exit(void)
 {
+	mtk_pf_ctrl_exit();
 }
 module_exit(mtk_cpudvfs_exit);
 

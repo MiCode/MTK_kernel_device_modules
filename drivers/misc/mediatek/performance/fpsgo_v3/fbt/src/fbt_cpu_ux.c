@@ -71,6 +71,7 @@ static struct kmem_cache *hwui_frame_info_cachep __ro_after_init;
 
 static int fpsgo_ux_gcc_enable;
 static int sbe_rescue_enable;
+static int ai_rescuing_frame_id;
 static int sbe_rescuing_frame_id_legacy;
 static int sbe_enhance_f;
 static int sbe_dy_max_enhance;
@@ -90,6 +91,20 @@ static int gas_threshold_for_high_TLP;
 static int global_sbe_dy_enhance;
 static int global_sbe_dy_enhance_max_pid;
 static int global_dfrc_fps_limit;
+
+//AI hint
+static int registered;
+static int curr_pid;
+static unsigned long long curr_idf;
+
+typedef void (*heavy_fp)(int jank, int tgid, int pid, unsigned long long frameid);
+int (*register_jank_ux_callback_fp)(heavy_fp cb);
+EXPORT_SYMBOL(register_jank_ux_callback_fp);
+int (*unregister_jank_ux_callback_fp)(heavy_fp cb);
+EXPORT_SYMBOL(unregister_jank_ux_callback_fp);
+void (*sbe_frame_hint_fp)(int frame_start, int perf_index, int capacity_area,
+	int buffer_count, unsigned long long frame_id);
+EXPORT_SYMBOL(sbe_frame_hint_fp);
 
 static struct fpsgo_loading temp_blc_dep[MAX_DEP_NUM];
 static struct fbt_setting_info sinfo;
@@ -136,6 +151,35 @@ static int nsec_to_100usec(unsigned long long nsec)
 	husec = div64_u64(nsec, (unsigned long long)NSEC_PER_HUSEC);
 
 	return (int)husec;
+}
+
+void set_curr_thread(int pid, unsigned long long identifier)
+{
+	curr_pid = pid;
+	curr_idf = identifier;
+}
+
+void receive_jank_detection(int perf, int tgid, int pid, unsigned long long frameid)
+{
+	struct render_info *rinfo = NULL;
+
+	fpsgo_render_tree_lock(__func__);
+	rinfo =	fpsgo_search_and_add_render_info(curr_pid, curr_idf, 0);
+
+	if (rinfo != NULL) {
+		fpsgo_main_trace("Received heavy detection: %d", perf);
+		fpsgo_sbe_rescue(rinfo, 1, perf, RESCUE_TYPE_AI_RESCUE, 0, frameid);
+	}
+	fpsgo_render_tree_unlock(__func__);
+}
+
+void register_jank_cb(void)
+{
+	if (register_jank_ux_callback_fp && registered == 0){
+		register_jank_ux_callback_fp(receive_jank_detection);
+		fpsgo_main_trace("register_jank_ux_callback_fp...");
+		registered =1;
+	}
 }
 
 int get_ux_general_policy(void)
@@ -350,6 +394,9 @@ static void fbt_ux_set_cap_with_sbe(struct render_info *thr)
 	set_blc_wt = thr->ux_blc_cur + thr->sbe_enhance;
 	set_blc_wt = clamp(set_blc_wt, 0, 100);
 
+	set_blc_wt = thr->ai_boost > 0 ? thr->ai_boost : set_blc_wt;
+	set_blc_wt = clamp(set_blc_wt, 0, 100);
+
 	fpsgo_get_blc_mlock(__func__);
 	if (thr->p_blc)
 		thr->p_blc->blc = set_blc_wt;
@@ -376,16 +423,40 @@ static void fbt_ux_set_cap_with_sbe(struct render_info *thr)
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, local_max_cap, "[ux]perf_idx_max");
 }
 
+void get_proc_name(int tgid, char *name)
+{
+	struct task_struct *gtsk = NULL;
+
+	rcu_read_lock();
+	gtsk = find_task_by_vpid(tgid);
+	if (gtsk) {
+		get_task_struct(gtsk);
+		strscpy(name, gtsk->comm, 16);
+		put_task_struct(gtsk);
+		name[15] = '\0';
+	} else {
+		name[0]= '\0';
+	}
+	rcu_read_unlock();
+}
+
 void fbt_ux_frame_start(struct render_info *thr, unsigned long long frameid, unsigned long long ts)
 {
 	if (!thr)
 		return;
 
+	thr->ai_boost = 0;
 	thr->ux_blc_cur = thr->ux_blc_next;
 	if (ux_general_policy)
 		fpsgo_set_deplist_policy(thr, FPSGO_TASK_VIP);
 
 	fbt_ux_set_cap_with_sbe(thr);
+
+	if (sbe_frame_hint_fp) {
+		fpsgo_main_trace("[ai_hint] sbe_rescued:%d, enhance_f: %d, frameid: %llu",
+				thr->boost_info.sbe_rescue, thr->sbe_dy_enhance_f, frameid);
+		sbe_frame_hint_fp(1, thr->ux_blc_cur, -1, thr->cur_buffer_count, frameid);
+	}
 
 	if (sbe_dy_rescue_enable && !list_empty(&thr->scroll_list)) {
 		struct hwui_frame_info *frame = get_valid_hwui_frame_info_from_pool(thr);
@@ -503,12 +574,57 @@ void fbt_ux_frame_end(struct render_info *thr, unsigned long long frameid,
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->ux_blc_next, "[ux]ux_blc_next");
 
 EXIT:
+	if (sbe_frame_hint_fp) {
+		fpsgo_main_trace("[ai_hint] sbe_rescued:%d, enhance_f: %d",
+				thr->boost_info.sbe_rescue, thr->sbe_dy_enhance_f);
+		sbe_frame_hint_fp(0, thr->boost_info.sbe_rescue, loading, thr->cur_buffer_count, frameid);
+	}
+
 	thr->ux_blc_cur = 0;
 	fbt_ux_set_cap_with_sbe(thr);
 	fpsgo_fbt2fstb_update_cpu_frame_info(thr->pid, thr->buffer_id,
 		thr->tgid, thr->frame_type,
 		0, thr->running_time, targettime,
 		thr->ux_blc_next, 100, 0, 0);
+}
+
+void fpsgo_ai_boost(struct render_info *thr, int start, int boost, unsigned long long frame_id)
+{
+	mutex_lock(&fbt_mlock);
+	if (start) {
+		struct hwui_frame_info *frame =
+			get_hwui_frame_info_by_frameid(thr, frame_id);
+
+		if (frame == NULL) {
+			fpsgo_main_trace("frame not found!\n");
+			goto leave;
+		} else if (frame->end_ts > frame->start_ts) {
+			fpsgo_main_trace("frame is end :%llu\n", frame_id);
+			goto leave;
+		}
+
+		ai_rescuing_frame_id = frame_id;
+
+		thr->ai_boost = boost < 0 ?  0 : boost;
+		thr->ai_boost = clamp(thr->ai_boost, 0, 100);
+		thr->boost_info.ai_boost = 1;
+
+		fbt_ux_set_cap_with_sbe(thr);
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->ai_boost, "[ux]ai_boost");
+	} else {
+		if (thr->boost_info.ai_boost == 0)
+			goto leave;
+		if (frame_id < ai_rescuing_frame_id)
+			goto leave;
+		ai_rescuing_frame_id = -1;
+		thr->boost_info.ai_boost = 0;
+		thr->ai_boost = 0;
+
+		fbt_ux_set_cap_with_sbe(thr);
+		fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id, thr->ai_boost, "[ux]ai_boost");
+	}
+leave:
+	mutex_unlock(&fbt_mlock);
 }
 
 void fbt_ux_frame_err(struct render_info *thr, int frame_count,
@@ -1158,6 +1274,14 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 	if (!thr || !sbe_rescue_enable)	//thr must find the 5566 one.
 		return;
 
+	if (rescue_type == RESCUE_TYPE_AI_RESCUE) {
+		fpsgo_ai_boost(thr, start, enhance, frame_id);
+		return;
+	}
+
+	if (!start)
+		fpsgo_ai_boost(thr, 0, 0, frame_id);
+
 	mutex_lock(&fbt_mlock);
 	if (start) {
 		//before rescue check buffer count
@@ -1220,6 +1344,12 @@ void fpsgo_sbe_rescue(struct render_info *thr, int start, int enhance,
 			fpsgo_set_affnity_on_rescue(thr->tgid, FPSGO_PREFER_M);
 			fpsgo_set_affnity_on_rescue(thr->pid, FPSGO_PREFER_M);
 			#endif
+		}
+
+		if (thr->boost_info.ai_boost) {
+			// thr->boost_info.sbe_rescue = 0;
+			thr->sbe_enhance = 0;
+			goto leave;
 		}
 
 		fbt_ux_set_cap_with_sbe(thr);
@@ -1879,6 +2009,7 @@ int __init fbt_cpu_ux_init(void)
 	ux_general_policy = fbt_get_ux_scroll_policy_type();
 	ux_general_policy_type = 0;
 	ux_general_policy_dpt_setwl = 0;
+	ai_rescuing_frame_id = -1;
 	sbe_rescuing_frame_id_legacy = -1;
 	sbe_enhance_f = 50;
 	sbe_dy_max_enhance = 70;
@@ -1891,6 +2022,7 @@ int __init fbt_cpu_ux_init(void)
 	gas_threshold_for_low_TLP = 10;
 	gas_threshold_for_high_TLP = 5;
 	global_dfrc_fps_limit = UX_TARGET_DEFAULT_FPS;
+	registered = 0;
 
 	frame_info_cachep = kmem_cache_create("ux_frame_info",
 		sizeof(struct ux_frame_info), 0, SLAB_HWCACHE_ALIGN, NULL);

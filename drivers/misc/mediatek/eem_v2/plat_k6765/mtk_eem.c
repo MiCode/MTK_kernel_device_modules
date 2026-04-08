@@ -2286,23 +2286,25 @@ static int eem_probe(struct platform_device *pdev)
 
 static int eem_suspend(void)
 {
-	struct eem_det *det;
+struct eem_det *det;
+	unsigned long flag;
 
 	eem_error("Start EEM suspend\n");
 
 	for_each_det(det) {
+		mt_ptp_lock(&flag);
 		if (HAS_FEATURE(det, FEA_INIT02) &&
 			det->ctrl_id <= EEM_CTRL_CCI) {
-			unsigned long flag;
-
-			mt_ptp_lock(&flag);
 			memcpy(det->volt_tbl, det->volt_tbl_init2,
 			sizeof(det->volt_tbl_init2));
 			eem_set_eem_volt(det);
-			mt_ptp_unlock(&flag);
 		}
+		det->ops->switch_bank(det, NR_EEM_PHASE);
+		eem_write(EEMEN, 0x0 | SEC_MOD_SEL);
+		/* clear all pending EEM int & config EEMINTEN */
+		eem_write(EEMINTSTS, 0xffffffff);
+		mt_ptp_unlock(&flag);
 	}
-
 	return 0;
 }
 

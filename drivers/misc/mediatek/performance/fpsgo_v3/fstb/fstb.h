@@ -103,6 +103,9 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 		int *target_fps, int *target_fps_ori, int *target_cpu_time, int *fps_margin,
 		int *quantile_cpu_time, int *quantile_gpu_time,
 		int *target_fpks, int *cooler_on);
+void fpsgo_other2fstb_query_fps(int pid, unsigned long long bufID,
+		int *target_fps, int *target_fps_ori, int *fps_margin,
+		int *target_fpks, int *cooler_on);
 long long fpsgo_base2fstb_get_gpu_time(int pid, unsigned long long bufID);
 
 /* EARA */

@@ -16,6 +16,8 @@
 
 u32 cpu_type;
 u32 cpu_map;
+u32 cpu_hint_mode;
+u32 cpu_uclamp_min;
 
 static struct {
 	dev_t device;
@@ -95,16 +97,22 @@ static int teeperf_probe(struct platform_device *pdev)
 	}
 
 	ret = of_property_read_u32(node, "cpu-type", &cpu_type);
-	if (ret || !cpu_type) {
+	if (ret || !cpu_type)
 		pr_info(PFX "invalid cpu type\n");
-		return -EINVAL;
-	}
+
 
 	ret = of_property_read_u32(node, "cpu-map", &cpu_map);
-	if (ret || !cpu_map) {
+	if (ret || !cpu_map)
 		pr_info(PFX "invalid cpu map\n");
-		return -EINVAL;
-	}
+
+
+	ret = of_property_read_u32(node, "svp-cpu-hint-mode", &cpu_hint_mode);
+	if (ret || !cpu_hint_mode)
+		pr_info(PFX "not set hint mode\n");
+
+	ret = of_property_read_u32(node, "svp-cpu-uclamp-min", &cpu_uclamp_min);
+	if (ret || !cpu_uclamp_min)
+		pr_info(PFX "not set uclamp value\n");
 
 	ret = teeperf_device_common_init();
 	if (ret)

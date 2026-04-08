@@ -116,8 +116,7 @@ static struct mddp_md_log_t mddp_md_log_temp_s[] = {
 	"==================== [%s] START MD LOG ===================="},
 	{MDDP_MD_LOG_ID_STOP,
 	"==================== [%s] STOP MD LOG ===================="},
-	{MDDP_MD_LOG_ID_GET_LOG,
-	"[%s] %s"},
+	{MDDP_MD_LOG_ID_GET_LOG, "[%s] %s"},
 };
 
 //------------------------------------------------------------------------------

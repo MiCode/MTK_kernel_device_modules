@@ -138,6 +138,8 @@ int sar_data_report_t(int32_t value[3], int64_t time_stamp)
 		__pm_wakeup_event(cxt->ws[index], 250);
 	return err;
 }
+EXPORT_SYMBOL_GPL(sar_data_report_t);
+
 int sar_data_report(int32_t value[3])
 {
 	return sar_data_report_t(value, 0);

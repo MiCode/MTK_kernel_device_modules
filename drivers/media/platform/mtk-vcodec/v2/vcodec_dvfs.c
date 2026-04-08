@@ -19,6 +19,7 @@
 #include <linux/ktime.h>
 #include "mtk_vcodec_drv.h"
 #include "vcp_feature_define.h"
+#include "pf_ctrl.h"
 
 struct vcodec_inst *get_inst(struct mtk_vcodec_ctx *ctx)
 {
@@ -424,7 +425,14 @@ u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 	} else if (inst->codec_type == MTK_INST_ENCODER) {
 		if (perf != 0) {
 			inst->op_rate = MAX(MAX(inst->op_rate_user, inst->op_rate_adaptive), inst->fps);
-			freq = (u64)inst->width * inst->height / 256 * inst->op_rate;
+
+			/* HEVC Encoder boost for 720P180 test */
+			if (inst->priority == 0 && (inst->op_rate_user <=0 || inst->op_rate_user >=90) &&
+			inst->codec_fmt == 1129727304 && (inst->width * inst->height <= 1280 * 736))
+				freq = (u64)inst->width * inst->height / 256 * inst->op_rate * 100;
+			else
+				freq = (u64)inst->width * inst->height / 256 * inst->op_rate;
+
 			if (inst->b_frame == 0)
 				freq = freq * perf->cy_per_mb_1;
 			else
@@ -770,3 +778,19 @@ void mtk_vcodec_cpu_adaptive_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 		}
 	}
 }
+
+void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
+{
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	if (ctx == NULL) {
+		mtk_v4l2_debug(0, "%s [VDVFS] ctx is NULL\n", __func__);
+		return;
+	}
+	if (!mtk_vcodec_has_active_inst(ctx->dev, MTK_INST_DECODER)) {
+		mtk_set_pf_ctrl_enable((bool)enable, PF_CTRL_USER_VP);
+		mtk_v4l2_debug(0, "%s [VDVFS] pf dynamic control %s\n", __func__,
+				mtk_get_pf_ctrl_enable()?"enable":"disable");
+	}
+#endif
+}
+

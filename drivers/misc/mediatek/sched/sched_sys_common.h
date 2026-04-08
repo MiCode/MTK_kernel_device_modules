@@ -12,6 +12,7 @@ extern void cleanup_sched_common_sysfs(void);
 
 #if IS_ENABLED(CONFIG_MTK_CORE_PAUSE)
 extern struct kobj_attribute sched_core_pause_info_attr;
+extern struct kobj_attribute sched_shortcut_compress_attr;
 extern int sched_pause_cpu(int cpu);
 extern int sched_resume_cpu(int cpu);
 extern int resume_cpus(struct cpumask *cpus);
@@ -24,4 +25,6 @@ extern int set_cpu_active_bitmask(int mask);
 extern void task_rotate_init(void);
 extern void check_for_migration(struct task_struct *p);
 #endif
+extern struct kobj_attribute sched_util_est_ctrl;
+extern bool sysctl_util_est;
 #endif

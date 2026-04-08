@@ -1385,7 +1385,7 @@ static int mtk_thermal_wrapper_get_crit_temp
 	return ret;
 }
 
-static int mtk_thermal_get_trip_temp(struct thermal_zone_device *tz, int trip_id, int temp)
+static int mtk_thermal_get_trip_temp(struct thermal_zone_device *tz, int trip_id, int *temp)
 {
 	struct mtk_thermal_tz_data *tzdata = NULL;
 
@@ -1397,7 +1397,7 @@ static int mtk_thermal_get_trip_temp(struct thermal_zone_device *tz, int trip_id
 	tzdata = tz->devdata;
 
 	if (trip_id < tzdata->num_trip  && tzdata->trips != NULL) {
-		temp = tzdata->trips[trip_id].temperature;
+		*temp = tzdata->trips[trip_id].temperature;
 		return 0;
 	} else {
 		return -1;
@@ -1762,7 +1762,7 @@ static int mtk_cooling_wrapper_set_cur_state
 					/* WARN_ON_ONCE(1); */
 					trip_temp = 120000;
 				} else {
-					ret = mtk_thermal_get_trip_temp(mcdata->tz, mcdata->trip, trip_temp);
+					ret = mtk_thermal_get_trip_temp(mcdata->tz, mcdata->trip, &trip_temp);
 
 					if (!ret) {
 						THRML_LOG("[.set_cur_state] trip_temp:%ld\n",
@@ -2050,7 +2050,7 @@ static int __init thermal_monitor_init(void)
 		mtk_cooler_backlight_init();
 #endif
 		mtk_cooler_kshutdown_init();
-	//	mtk_thermal_ipi_init();
+		mtk_thermal_ipi_init();
 		mtk_cooler_atm_init();
 		mtk_cooler_dtm_init();
 		mtk_cooler_bcct_init();
@@ -2095,7 +2095,7 @@ static void __exit thermal_monitor_exit(void)
 	mtk_cooler_backlight_exit();
 #endif
 	mtk_cooler_kshutdown_exit();
-	//mtk_thermal_ipi_exit();
+	mtk_thermal_ipi_exit();
 	mtk_cooler_atm_exit();
 	mtk_cooler_dtm_exit();
 	mtk_cooler_bcct_exit();

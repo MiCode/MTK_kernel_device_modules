@@ -68,7 +68,8 @@ struct uarthub_drv_cbs uarthub_drv_export_cbs = {
 	.inband_trigger_ctrl = uarthub_core_inband_trigger_ctrl,
 	.inband_is_tx_complete = uarthub_core_inband_is_tx_complete,
 	.inband_enable_ctrl = uarthub_core_inband_enable_ctrl,
-	.inband_is_support = uarthub_core_inband_is_support
+	.inband_is_support = uarthub_core_inband_is_support,
+	.is_enable_fw_flow_ctrl_with_inband = uarthub_core_is_enable_fw_flow_ctrl_with_inband
 };
 
 /* FPGA test only */

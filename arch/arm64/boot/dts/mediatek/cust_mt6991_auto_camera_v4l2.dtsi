@@ -7,7 +7,7 @@
 			compatible = "mediatek,seninf";
 			csi-port = "4";
 
-			// nvmem-cells = <&csi_efuse4>;
+			nvmem-cells = <&csi_efuse4>;
 			nvmem-cell-names = "rg_csi";
 
 			port {
@@ -20,7 +20,7 @@
 			compatible = "mediatek,seninf";
 			csi-port = "3";
 
-			// nvmem-cells = <&csi_efuse3>;
+			nvmem-cells = <&csi_efuse3>;
 			nvmem-cell-names = "rg_csi";
 
 			port {
@@ -33,7 +33,7 @@
 			compatible = "mediatek,seninf";
 			csi-port = "5";
 
-			// nvmem-cells = <&csi_efuse5>;
+			nvmem-cells = <&csi_efuse5>;
 			nvmem-cell-names = "rg_csi";
 
 			port {
@@ -46,7 +46,7 @@
 			compatible = "mediatek,seninf";
 			csi-port = "2";
 
-			// nvmem-cells = <&csi_efuse3>;
+			nvmem-cells = <&csi_efuse2>;
 			nvmem-cell-names = "rg_csi";
 
 			port {
@@ -59,7 +59,7 @@
 			compatible = "mediatek,seninf";
 			csi-port = "2";
 
-			// nvmem-cells = <&csi_efuse3>;
+			nvmem-cells = <&csi_efuse2>;
 			nvmem-cell-names = "rg_csi";
 
 			port {
@@ -72,7 +72,7 @@
 			compatible = "mediatek,seninf";
 			csi-port = "2";
 
-			// nvmem-cells = <&csi_efuse3>;
+			nvmem-cells = <&csi_efuse2>;
 			nvmem-cell-names = "rg_csi";
 
 			port {
@@ -85,7 +85,7 @@
 			compatible = "mediatek,seninf";
 			csi-port = "2";
 
-			// nvmem-cells = <&csi_efuse3>;
+			nvmem-cells = <&csi_efuse2>;
 			nvmem-cell-names = "rg_csi";
 
 			port {
@@ -98,7 +98,7 @@
 			compatible = "mediatek,seninf";
 			csi-port = "2";
 
-			// nvmem-cells = <&csi_efuse3>;
+			nvmem-cells = <&csi_efuse2>;
 			nvmem-cell-names = "rg_csi";
 
 			port {
@@ -111,7 +111,7 @@
 			compatible = "mediatek,seninf";
 			csi-port = "3";
 
-			// nvmem-cells = <&csi_efuse3>;
+			nvmem-cells = <&csi_efuse3>;
 			nvmem-cell-names = "rg_csi";
 
 			port {

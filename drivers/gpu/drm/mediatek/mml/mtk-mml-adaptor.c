@@ -49,9 +49,6 @@ struct mml_frame_config *frame_config_find_reuse(struct mml_ctx *ctx,
 		if (!idx)
 			mode = cfg->info.mode;
 
-		if (submit->update && cfg->last_jobid == submit->job->jobid)
-			goto done;
-
 		if (check_frame_wo_change(submit, cfg) && !cfg->err)
 			goto done;
 
@@ -177,6 +174,7 @@ void frame_config_init(struct mml_frame_config *cfg,
 
 	cfg->job_id = atomic_inc_return(&ctx->config_serial);
 	cfg->info = submit->info;
+	cfg->max_size = submit->max_size;
 	cfg->disp_dual = ctx->disp_dual;
 	cfg->disp_vdo = ctx->disp_vdo;
 	cfg->ctx = ctx;
@@ -214,6 +212,7 @@ s32 frame_buf_to_task_buf(struct mml_file_buf *fbuf,
 	u8 i;
 	s32 ret = 0;
 
+	user_buf->cnt = min(user_buf->cnt, MML_MAX_PLANES);
 	if (user_buf->use_dma)
 		mml_buf_get(fbuf, user_buf->dmabuf, user_buf->cnt, name);
 	else
@@ -577,6 +576,10 @@ int mml_ctx_init(struct mml_ctx *ctx, struct mml_dev *mml,
 
 	}
 	ctx->wq_destroy = alloc_ordered_workqueue("%s", 0, threads[1]);
+	if (!ctx->wq_destroy) {
+		mml_err("[adpt]fail to create destroy workqueue %s", threads[1]);
+		goto err;
+	}
 	if (threads[2]) {
 		ctx->kt_config[0] = kthread_create_worker(0, "%s", threads[2]);
 		if (IS_ERR(ctx->kt_config[0])) {
@@ -640,8 +643,11 @@ void mml_ctx_deinit(struct mml_ctx *ctx)
 		frame_config_queue_destroy(cfg);
 	}
 
-	destroy_workqueue(ctx->wq_destroy);
-	ctx->wq_destroy = NULL;
+	mml_msg("[adpt]%s destroy_workqueue %p on ctx %p", __func__, ctx->wq_destroy, ctx);
+	if (ctx->wq_destroy) {
+		destroy_workqueue(ctx->wq_destroy);
+		ctx->wq_destroy = NULL;
+	}
 	if (ctx->kt_config[0]) {
 		kthread_destroy_worker(ctx->kt_config[0]);
 		ctx->kt_config[0] = NULL;
@@ -650,8 +656,10 @@ void mml_ctx_deinit(struct mml_ctx *ctx)
 		kthread_destroy_worker(ctx->kt_config[1]);
 		ctx->kt_config[1] = NULL;
 	}
-	kthread_destroy_worker(ctx->kt_done);
-	ctx->kt_done = NULL;
+	if (ctx->kt_done) {
+		kthread_destroy_worker(ctx->kt_done);
+		ctx->kt_done = NULL;
+	}
 
 	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++)
 		for (j = 0; j < ARRAY_SIZE(ctx->tile_cache[i].func_list); j++)

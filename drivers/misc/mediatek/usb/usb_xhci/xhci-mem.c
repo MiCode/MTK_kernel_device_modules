@@ -496,6 +496,15 @@ void xhci_free_endpoint_ring(struct xhci_hcd *xhci,
 		struct xhci_virt_device *virt_dev,
 		unsigned int ep_index)
 {
+
+	struct xhci_virt_ep *ep;
+	ep = &virt_dev->eps[ep_index];
+	if (list_empty(&ep->ring->td_list)) {
+		xhci_info(xhci, "%s EP empty\n", __func__);
+	} else {
+		xhci_info(xhci, "%s EP not empty\n", __func__);
+		mdelay(100);
+	}
 	if (xhci_vendor_is_usb_offload_enabled(xhci, virt_dev, ep_index))
 		xhci_vendor_free_transfer_ring(xhci, virt_dev->eps[ep_index].ring, ep_index);
 	else
@@ -1002,6 +1011,10 @@ void xhci_free_virt_device(struct xhci_hcd *xhci, int slot_id)
 		xhci_free_container_ctx(xhci, dev->in_ctx);
 	if (dev->out_ctx)
 		xhci_free_container_ctx(xhci, dev->out_ctx);
+
+	/* Set the vdev of sideband  to NULL */
+	if (dev->sideband && dev->sideband->vdev)
+		dev->sideband->vdev = NULL;
 
 	if (dev->udev && dev->udev->slot_id)
 		dev->udev->slot_id = 0;

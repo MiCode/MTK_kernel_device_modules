@@ -102,12 +102,10 @@ void pe_snk_transition_sink_entry(struct pd_port *pd_port)
 {
 	pd_enable_pe_state_timer(pd_port, PD_TIMER_PS_TRANSITION);
 
-#if CONFIG_USB_PD_SNK_GOTOMIN
 	if (pd_check_ctrl_msg_event(pd_port, PD_CTRL_GOTO_MIN)) {
 		if (pd_port->dpm_caps & DPM_CAP_LOCAL_GIVE_BACK)
 			pd_port->request_i_new = pd_port->request_i_op;
 	}
-#endif	/* CONFIG_USB_PD_SNK_GOTOMIN */
 
 	pd_dpm_snk_standby_power(pd_port);
 }
@@ -124,6 +122,15 @@ void pe_snk_ready_entry(struct pd_port *pd_port)
 
 void pe_snk_hard_reset_entry(struct pd_port *pd_port)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int rv = 0;
+	uint32_t chip_vid = 0;
+ 
+	rv = tcpci_get_chip_vid(pd_port->tcpc, &chip_vid);
+	if (!rv &&  SOUTHCHIP_PD_VID == chip_vid) {
+		pd_enable_timer(pd_port, PD_TIMER_HARD_RESET_COMPLETE);
+	}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	pd_send_hard_reset(pd_port);
 }
 

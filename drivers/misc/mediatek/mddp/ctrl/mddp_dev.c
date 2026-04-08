@@ -217,15 +217,18 @@ state_show(struct device *dev, struct device_attribute *attr, char *buf)
 	/*
 	 * Detailed state.
 	 */
+	spin_lock(&list->locker);
 	entry = mddp_query_dstate(list, seq);
 	while (entry) {
-		ret_num += scnprintf(buf + ret_num, PAGE_SIZE - ret_num,
-				"%s\n",
-				((struct mddp_dstate_t *)entry->rb_data)->str);
-
+		if (entry->rb_data) {
+			ret_num += scnprintf(buf + ret_num, PAGE_SIZE - ret_num,
+					"%s\n",
+					((struct mddp_dstate_t *)entry->rb_data)->str);
+		}
 		seq += 1;
 		entry = mddp_query_dstate(list, seq);
 	}
+	spin_unlock(&list->locker);
 
 	// OK.
 	return ret_num;
@@ -281,7 +284,7 @@ static int32_t em_cmd_status;
 static ssize_t
 em_test_show(struct device *dev, struct device_attribute *attr, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "staus:%d, cmd_buf:%s\n",
+	return scnprintf(buf, PAGE_SIZE, "status:%d, cmd_buf:%s\n",
 			em_cmd_status, em_cmd_buf);
 }
 
@@ -298,7 +301,6 @@ em_test_store(struct device *dev,
 	unsigned int            str_len;
 
 	str_len = strlen(buf);
-
 	snprintf(em_cmd_buf, EM_CMD_BUF_SZ, "%.*s",
 			(int)min(count, sizeof(em_cmd_buf) - 1), buf);
 	strsep_buf_p = em_cmd_buf;
@@ -358,14 +360,18 @@ md_log_show(struct device *dev, struct device_attribute *attr, char *buf)
 	/*
 	 * Detailed state.
 	 */
+	spin_lock(&list->locker);
 	entry = mddp_query_dstate(list, seq);
 	while (entry) {
-		ret_num += scnprintf(buf + ret_num, PAGE_SIZE - ret_num,
-				"%s\n",	((struct mddp_md_log_t *)entry->rb_data)->str);
+		if (entry->rb_data) {
+			ret_num += scnprintf(buf + ret_num, PAGE_SIZE - ret_num,
+					"%s\n",	((struct mddp_md_log_t *)entry->rb_data)->str);
+		}
 
 		seq += 1;
 		entry = mddp_query_dstate(list, seq);
 	}
+	spin_unlock(&list->locker);
 
 	// OK.
 	return ret_num;
@@ -392,7 +398,6 @@ md_log_store(struct device *dev,
 	return count;
 }
 static DEVICE_ATTR_RW(md_log);
-
 
 static struct attribute *mddp_attrs[] = {
 	&dev_attr_version.attr,
@@ -468,8 +473,6 @@ static struct mddp_dev_rb_t *mddp_dev_rb_query(
 	struct mddp_dev_rb_t     *entry = NULL;
 	uint32_t                  cnt = 0;
 
-	spin_lock(&list->locker);
-
 	entry = mddp_dev_rb_peek(list);
 	while (entry) {
 		if (seq == cnt)
@@ -484,8 +487,6 @@ static struct mddp_dev_rb_t *mddp_dev_rb_query(
 		cnt += 1;
 	}
 
-	spin_unlock(&list->locker);
-
 	return entry;
 }
 
@@ -494,13 +495,9 @@ static struct mddp_dev_rb_t *mddp_dev_rb_dequeue(
 {
 	struct mddp_dev_rb_t     *entry = NULL;
 
-	spin_lock(&list->locker);
-
 	entry = mddp_dev_rb_peek(list);
 	if (entry)
 		__mddp_dev_rb_unlink(entry, list);
-
-	spin_unlock(&list->locker);
 
 	return entry;
 }
@@ -527,14 +524,19 @@ static void mddp_clear_dstate(
 {
 	struct mddp_dev_rb_t           *entry;
 
+	spin_lock(&list->locker);
 	entry = mddp_dequeue_dstate(list);
 	while (entry) {
 		kfree(((struct mddp_md_log_t *)entry->rb_data)->str);
+		((struct mddp_md_log_t *)entry->rb_data)->str = NULL;
 		kfree(entry->rb_data);
+		entry->rb_data = NULL;
 		kfree(entry);
+		entry = NULL;
 
 		entry = mddp_dequeue_dstate(list);
 	}
+	spin_unlock(&list->locker);
 }
 
 //------------------------------------------------------------------------------
@@ -733,13 +735,18 @@ void mddp_enqueue_dstate(enum mddp_dstate_id_e id, ...)
 	mddp_dev_rb_enqueue_tail(list, entry);
 	dstate_buffer_size += entry->rb_len;
 	while (dstate_buffer_size > MDDP_DSTATE_MAX_BUF_SZ) {
+		spin_lock(&list->locker);
 		entry = mddp_dev_rb_dequeue(list);
 		if (entry) {
 			dstate_buffer_size -= entry->rb_len;
 			kfree(((struct mddp_dstate_t *)entry->rb_data)->str);
+			((struct mddp_dstate_t *)entry->rb_data)->str = NULL;
 			kfree(entry->rb_data);
+			entry->rb_data = NULL;
 			kfree(entry);
+			entry = NULL;
 		}
+		spin_unlock(&list->locker);
 	}
 }
 
@@ -828,13 +835,18 @@ void mddp_enqueue_md_log(enum mddp_md_log_id_e id, ...)
 	mddp_dev_rb_enqueue_tail(list, entry);
 	md_log_buffer_size += entry->rb_len;
 	while (md_log_buffer_size > MDDP_DSTATE_MAX_BUF_SZ) {
+		spin_lock(&list->locker);
 		entry = mddp_dev_rb_dequeue(list);
 		if (entry) {
 			md_log_buffer_size -= entry->rb_len;
 			kfree(((struct mddp_md_log_t *)entry->rb_data)->str);
+			((struct mddp_md_log_t *)entry->rb_data)->str = NULL;
 			kfree(entry->rb_data);
+			entry->rb_data = NULL;
 			kfree(entry);
+			entry = NULL;
 		}
+		spin_unlock(&list->locker);
 	}
 }
 
@@ -907,16 +919,21 @@ static ssize_t mddp_dev_read(struct file *file, char *buf, size_t count, loff_t 
 			ret = -EFAULT;
 		}
 
+		spin_lock(&list->locker);
 		entry = mddp_dev_rb_dequeue(list);
 		if (entry == NULL) {
 			MDDP_C_LOG(MDDP_LL_WARN,
 					"%s: unexpected dequeue fail!\n",
 					__func__);
 			ret = -EFAULT;
+			spin_unlock(&list->locker);
 			goto exit;
 		}
 		kfree(entry->rb_data);
+		entry->rb_data = NULL;
 		kfree(entry);
+		entry = NULL;
+		spin_unlock(&list->locker);
 	} else {
 		ret = -ENOBUFS;
 		goto exit;
@@ -1113,7 +1130,6 @@ static long mddp_dev_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 			}
 		}
 		break;
-
 	default:
 		MDDP_C_LOG(MDDP_LL_WARN, "%s: Invalid command(%d)!\n",
 				__func__, dev_req.msg);
@@ -1123,7 +1139,7 @@ static long mddp_dev_ioctl(struct file *file, unsigned int cmd, unsigned long ar
 
 ioctl_error:
 	MDDP_C_LOG(MDDP_LL_INFO,
-			"%s: cmd(%d) app_type(%d), ret (%ld).\n",
+			"%s: cmd(%d), app_type(%d), ret (%ld).\n",
 			__func__, dev_req.msg, dev_req.app_type, ret);
 	return ret;
 }

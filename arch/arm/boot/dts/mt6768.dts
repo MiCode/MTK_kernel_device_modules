@@ -1043,6 +1043,7 @@ transparent_hugepage=never clk_ignore_unused=1";
 	low_battery_throttling {
 		compatible = "mediatek,low_battery_throttling";
 		lvsys-thd-enable = <0>;
+		lbat-legacy-proj = <1>;
 		vbat-thd-enable = <1>;
 		bat0-thd-volts-l = <
 			3250 3100 2700
@@ -1079,20 +1080,6 @@ transparent_hugepage=never clk_ignore_unused=1";
 
 	mdpm: mdpm {
 		compatible = "mediatek,mt6768-mdpm";
-	};
-
-	cpu_power_throttling: cpu_power_throttling {
-		compatible = "mediatek,cpu-power-throttling";
-		lbat-max-level = <2>;
-		lbat-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		lbat-limit-freq-lv2 = < 900000  900000 1300000>;
-
-		oc-max-level = <2>;
-		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		oc-limit-freq-lv2 = < 900000  900000 900000>;
-
-		soc-max-level = <1>;
-		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 	};
 
 	md_power_throttling: md_power_throttling {
@@ -4143,6 +4130,7 @@ transparent_hugepage=never clk_ignore_unused=1";
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3 &smi_larb4>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	smi_larb2: smi_larb2@15021000 {

@@ -11,7 +11,7 @@
 
 /* ---- Policy Engine State ---- */
 
-#if PE_DBG_ENABLE | PE_STATE_INFO_ENABLE
+#if PE_DBG_ENABLE || PE_STATE_INFO_ENABLE
 #if PE_STATE_FULL_NAME
 
 static const char *const pe_state_name[] = {
@@ -53,6 +53,9 @@ static const char *const pe_state_name[] = {
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	"PE_SRC_GIVE_SOURCE_CAP_EXT",
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	"PE_SRC_GIVE_SINK_CAP_EXT",
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #if CONFIG_USB_PD_REV30_STATUS_LOCAL
 	"PE_SRC_GIVE_SOURCE_STATUS",
 #endif	/* CONFIG_USB_PD_REV30_STATUS_LOCAL */
@@ -316,6 +319,9 @@ static const char *const pe_state_name[] = {
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	"SRC_GIVE_CAP_EXT",
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	"SRC_GIVE_SNK_CAP_EXT",
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #if CONFIG_USB_PD_REV30_STATUS_LOCAL
 	"SRC_GIVE_STATUS",
 #endif	/* CONFIG_USB_PD_REV30_STATUS_LOCAL */
@@ -541,14 +547,10 @@ static const char *const pe_state_name[] = {
 	"IDLE2",
 };
 #endif	/* PE_STATE_FULL_NAME */
-#endif /* PE_DBG_ENABLE | PE_STATE_INFO_ENABLE */
+#endif /* PE_DBG_ENABLE || PE_STATE_INFO_ENABLE */
 
 struct pe_state_actions {
-	void (*entry_action)
-		(struct pd_port *pd_port);
-	/* const void (*exit_action)
-	 * (struct pd_port *pd_port, struct pd_event *pd_event);
-	 */
+	void (*entry_action)(struct pd_port *pd_port);
 };
 
 #define PE_STATE_ACTIONS(state) { .entry_action = state##_entry, }
@@ -591,6 +593,9 @@ static const struct pe_state_actions pe_state_actions[] = {
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	PE_STATE_ACTIONS(pe_src_give_source_cap_ext),
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	PE_STATE_ACTIONS(pe_src_give_sink_cap_ext),
+#endif /* CONFIG_OEM_TCPC_PD_SC2150 */
 #if CONFIG_USB_PD_REV30_STATUS_LOCAL
 	PE_STATE_ACTIONS(pe_src_give_source_status),
 #endif	/* CONFIG_USB_PD_REV30_STATUS_LOCAL */
@@ -945,6 +950,13 @@ void (*pe_get_exit_action(uint8_t pe_state))
 	return retval;
 }
 
+int pd_usb_connected = 0;
+int get_pd_usb_connected(void)
+{
+	return pd_usb_connected;
+}
+EXPORT_SYMBOL(get_pd_usb_connected);
+
 static inline void print_state(
 	struct pd_port *pd_port, uint8_t state)
 {
@@ -956,16 +968,11 @@ static inline void print_state(
 	bool __maybe_unused vdm_evt = pd_curr_is_vdm_evt(pd_port);
 	struct tcpc_device __maybe_unused *tcpc = pd_port->tcpc;
 
-#if PE_DBG_ENABLE
-	PE_DBG("%s -> %s (%c%c%c)\n",
+	PE_STATE_INFO("%s -> %s (%c%c%c)\n",
 		vdm_evt ? "VDM" : "PD", pe_state_name[state],
 		pd_port->power_role ? 'P' : 'C',
 		pd_port->data_role ? 'D' : 'U',
 		pd_port->vconn_role ? 'Y' : 'N');
-#else
-	PE_STATE_INFO("%s-> %s\n",
-		vdm_evt ? "VDM" : "PD", pe_state_name[state]);
-#endif	/* PE_DBG_ENABLE */
 }
 
 static inline void pe_reset_vdm_state_variable(
@@ -990,9 +997,16 @@ static inline void pd_pe_state_change(
 	uint8_t new_state = pd_port->pe_state_next;
 
 	if (old_state >= PD_NR_PE_STATES || new_state >= PD_NR_PE_STATES) {
-		PD_BUG_ON(1);
+		PD_WARN_ON(1);
 		return;
 	}
+
+	if (new_state >= PE_IDLE1)
+		pd_usb_connected = 0;
+	else if (new_state == PE_SNK_READY)
+		pd_usb_connected = 1;
+	else if (new_state == PE_SRC_READY)
+		pd_usb_connected = 2;
 
 	if (new_state < PE_IDLE1 && new_state != PE_ERROR_RECOVERY)
 		prev_exit_action = pe_get_exit_action(old_state);
@@ -1030,10 +1044,6 @@ static inline void pd_pe_state_change(
 		pd_port->pe_pd_state = new_state;
 
 	pd_port->pe_state_curr = new_state;
-
-	/* Change RX cap first for compliance */
-	if (pd_port->state_machine > PE_STATE_MACHINE_NORMAL)
-		pd_set_rx_enable(pd_port, PD_RX_CAP_PE_SWAP);
 }
 
 static int pd_handle_event(
@@ -1079,9 +1089,22 @@ static inline bool pd_try_get_vdm_event(
 {
 	bool ret = false;
 	struct pd_port *pd_port = &tcpc->pd_port;
-
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    int rv = 0;
+    uint32_t chip_id, chip_pid;
+    rv = tcpci_get_chip_id(tcpc, &chip_id);
+    rv |= tcpci_get_chip_pid(tcpc, &chip_pid);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	switch (pd_port->pe_pd_state) {
 #if CONFIG_USB_PD_PE_SINK
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    case PE_SNK_TRANSITION_SINK:
+        if (!rv && SC2150A_DID == chip_id && 
+                SC2150_PID == chip_pid)  {
+            ret = pd_get_vdm_event(tcpc, pd_event);
+        }
+        break;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	case PE_SNK_READY:
 #endif	/* CONFIG_USB_PD_PE_SINK */
 #if CONFIG_USB_PD_PE_SOURCE
@@ -1241,7 +1264,9 @@ static inline uint8_t pd_try_get_active_event(
 	uint8_t ret;
 	uint8_t from_pe = PD_TCP_FROM_PE;
 	struct pd_port *pd_port = &tcpc->pd_port;
+#if CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG || DPM_DBG_ENABLE
 	struct pe_data *pe_data = &pd_port->pe_data;
+#endif	/* CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG || DPM_DBG_ENABLE */
 
 	if (!pd_check_tx_ready(pd_port))
 		return PE_NEW_EVT_NULL;
@@ -1282,7 +1307,8 @@ static inline uint8_t pd_try_get_active_event(
 		return PE_NEW_EVT_VDM;
 
 #if CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG
-	pe_data->pd_sent_ams_init_cmd = false;
+	if (ret != TCP_DPM_EVT_DUMMY)
+		pe_data->pd_sent_ams_init_cmd = false;
 #endif	/* CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG */
 
 	return PE_NEW_EVT_PD;

@@ -222,7 +222,12 @@ u32 cmdq_dev_enable_device_clock(bool enable,
 
 bool cmdq_dev_device_clock_is_enable(struct clk *clk_module)
 {
-	return true;
+	if (IS_ERR(clk_module)) {
+		CMDQ_LOG("[WARN]clock not supported\n");
+		return false;
+	}
+
+	return __clk_is_enabled(clk_module);
 }
 
 /* Common Clock Framework */
@@ -511,7 +516,7 @@ void cmdq_dev_init(struct platform_device *pDevice)
 			gCmdqDev.pDev, &gCmdqDev.regBasePA,
 			gCmdqDev.regBaseVA, gCmdqDev.irqId,
 			gCmdqDev.irqSecId);
-
+#ifndef MT8788_MDP
 		node2 = of_parse_phandle(node, "mediatek,mailbox-gce-m", 0);
 		if (!node2)
 			break;
@@ -539,7 +544,7 @@ void cmdq_dev_init(struct platform_device *pDevice)
 			gCmdqDev.pDev, &gCmdqDev.regBasePA,
 			gCmdqDev.regBaseVA, gCmdqDev.irqId,
 			gCmdqDev.irqSecId);
-
+#endif
 		node2 = of_parse_phandle(node, "mediatek,mailbox-gce", 0);
 		if (!node2)
 			break;

@@ -677,7 +677,11 @@ bool mtk_ddp_comp_is_virt(struct mtk_ddp_comp *comp)
 	if (comp->id < 0 || comp->id >= DDP_COMPONENT_ID_MAX)
 		return false;
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	return mtk_ddp_matches[comp->id].is_virt_comp;
+#else
+	return false;
+#endif
 }
 
 bool mtk_ddp_comp_is_virt_by_id(enum mtk_ddp_comp_id id)

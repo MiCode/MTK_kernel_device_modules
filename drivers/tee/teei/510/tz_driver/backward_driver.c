@@ -61,10 +61,10 @@ static long register_shared_param_buf(struct service_handler *handler)
 
 #ifdef UT_DMA_ZONE
 	handler->param_buf = (void *)__get_free_pages(GFP_KERNEL | GFP_DMA,
-				get_order(ROUND_UP(handler->size, SZ_4K)));
+				teei_get_order(ROUND_UP(handler->size, SZ_4K)));
 #else
 	handler->param_buf = (void *)__get_free_pages(GFP_KERNEL,
-				get_order(ROUND_UP(handler->size, SZ_4K)));
+				teei_get_order(ROUND_UP(handler->size, SZ_4K)));
 #endif
 	if ((unsigned char *)(handler->param_buf) == NULL) {
 		IMSG_ERROR("[%s][%d]: kmalloc vdrv_buffer failed.\n",
@@ -116,7 +116,7 @@ static long register_shared_param_buf(struct service_handler *handler)
 free_memory:
 	/* Release the resource and return. */
 	free_pages((unsigned long)(handler->param_buf),
-				get_order(ROUND_UP(handler->size, SZ_4K)));
+				teei_get_order(ROUND_UP(handler->size, SZ_4K)));
 	handler->param_buf = NULL;
 
 	return retVal;

@@ -42,6 +42,23 @@
 
 #include "aed.h"
 
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+#include <linux/cred.h>
+#endif
+
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+static u32 aed_sid;
+static u32 aedv_sid;
+struct task_security_struct {
+	u32 osid; /* SID prior to last execve */
+	u32 sid; /* current SID */
+	u32 exec_sid; /* exec SID */
+	u32 create_sid; /* fscreate SID */
+	u32 keycreate_sid; /* keycreate SID */
+	u32 sockcreate_sid; /* fscreate SID */
+} __randomize_layout;
+#endif
+
 struct aee_req_queue {
 	struct list_head list;
 	spinlock_t lock;
@@ -70,6 +87,9 @@ static struct proc_dir_entry *aed_proc_dir;
 #define MaxStackSize 8100
 #define MaxMapsSize 65536
 #define MAX_PROCTITLE_AUDIT_LEN 128
+#define MAX_CMDLINE_PARAM_LEN 256
+static char powerup_reason[MAX_CMDLINE_PARAM_LEN] = {0};
+static char poweroff_reason[MAX_CMDLINE_PARAM_LEN] = {0};
 
 static int ee_num;
 static int kernelapi_num;
@@ -1091,18 +1111,75 @@ out:
 	return res;
 }
 
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+int get_current_sid(u32 *sid_out)
+{
+	const struct cred *cred;
+	u32 sid;
+
+	if (!current->mm) {
+		pr_info("aee: current task [%d] is not a native task\n",
+				current->pid);
+	return -EPERM;
+	}
+
+	cred = get_current_cred();
+	if (!cred) {
+		pr_info("aee: failed to get current credentials\n");
+		return -EFAULT;
+	}
+
+	if (!cred->security) {
+		pr_info("aee: no security info for current task [%d]\n",
+				current->pid);
+		put_cred(cred);
+		return -EFAULT;
+	}
+
+	sid = ((const struct task_security_struct *)cred->security)->sid;
+	*sid_out = sid;
+
+	put_cred(cred);
+	return 0;
+}
+
+int check_sid(void)
+{
+	u32 temp_sid = 0;
+
+	if (!(aed_sid || aedv_sid)) {
+		pr_info("aee: No security info for current task\n");
+		return -1;
+	}
+
+	if (get_current_sid(&temp_sid) != 0) {
+		pr_info("aee: Failed to get current SID\n");
+		return -1;
+	}
+
+	if ((aed_sid == temp_sid) || (aedv_sid == temp_sid))
+		return 0;
+	return -1;
+}
+#endif
+
 static int compare_cmdline(void)
 {
 	int len = 0;
 	char buf[MAX_PROCTITLE_AUDIT_LEN] = {0};
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+	int ret;
+#endif
 
 	len = aee_get_cmdline(current, buf, MAX_PROCTITLE_AUDIT_LEN);
 	if (len == 0)
 		return -1;
-
-	if (strncmp(buf, "/system_ext/bin/aee_aed", 23) &&
-		strncmp(buf, "/system/system_ext/bin/aee_aed", 30) &&
-		strncmp(buf, "/vendor/bin/aee_aed", 19)
+	if (strncmp(buf,  "/system_ext/bin/aee_aed",
+			strlen("/system_ext/bin/aee_aed")) &&
+		strncmp(buf, "/system/system_ext/bin/aee_aed",
+			strlen("/system/system_ext/bin/aee_aed")) &&
+		strncmp(buf, "/vendor/bin/aee_aed",
+			strlen("/vendor/bin/aee_aed"))
 #if IS_ENABLED(CONFIG_MTK_AEE_YOCTO)
 		&& strncmp(buf, "/usr/bin/aee_aed", 16) &&
 		strncmp(buf, "/usr/bin/aee_aed64", 18)
@@ -1111,6 +1188,34 @@ static int compare_cmdline(void)
 		pr_debug("%s: open failed!\n", __func__);
 		return -1;
 	}
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX)
+
+	if (!strncmp(buf,  "/system_ext/bin/aee_aed",
+			strlen("/system_ext/bin/aee_aed")) ||
+		!strncmp(buf, "/system/system_ext/bin/aee_aed",
+			strlen("/system/system_ext/bin/aee_aed"))) {
+		if (aed_sid == 0) {
+			ret = get_current_sid(&aed_sid);
+			if (ret)
+				pr_info(" get aed sid fail!\n");
+		}
+		if(check_sid()){
+			pr_info("invalid process sid open /dev/aed!\n");
+			return -1;
+		}
+	} else if (!strncmp(buf,  "/vendor/bin/aee_aed",
+			strlen("/vendor/bin/aee_aed"))) {
+		if (aedv_sid == 0) {
+			ret = get_current_sid(&aedv_sid);
+			if (ret)
+				pr_info(" get aedv sid fail!\n");
+		}
+		if(check_sid()){
+			pr_info("invalid process sid open /dev/aed!\n");
+			return -1;
+		}
+	}
+#endif
 	return 0;
 }
 
@@ -2275,6 +2380,56 @@ static int aed_proc_init(void)
 }
 
 /******************************************************************************
+ * Add powerup & poweroff reason
+ *****************************************************************************/
+static ssize_t powerup_reason_show(struct kobject *kobj,
+		struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, sizeof(powerup_reason), "%s\n", powerup_reason);
+};
+
+static ssize_t poweroff_reason_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return snprintf(buf, sizeof(poweroff_reason), "%s\n", poweroff_reason);
+};
+
+static struct kobj_attribute powerup_reason_attr ={ \
+	.attr = { .name = __stringify(powerup_reason), .mode = 0644 },
+	.show = powerup_reason_show,
+};
+
+static struct kobj_attribute poweroff_reason_attr ={ \
+	.attr = { .name = __stringify(poweroff_reason), .mode = 0644 },
+	.show = poweroff_reason_show,
+};
+
+static struct attribute *bootinfo_attrs[] = {
+	&powerup_reason_attr.attr,
+        &poweroff_reason_attr.attr,
+	NULL,
+};
+static struct attribute_group bootinfo_attr_group = {
+	.attrs = bootinfo_attrs,
+};
+static struct kobject *bootinfo_kobj;
+int bootinfo_sys_init(void)
+{
+	int ret = -ENOMEM;;
+	bootinfo_kobj = kobject_create_and_add("bootinfo", NULL);
+	if (!bootinfo_kobj) {
+		pr_err("set powerup reason failed\n");
+		return ret;
+	}
+	ret = sysfs_create_group(bootinfo_kobj, &bootinfo_attr_group);
+	if (ret){
+		pr_err("set powerup reason failed\n");
+		kobject_put(bootinfo_kobj);
+	}
+	return ret;
+}
+
+/******************************************************************************
  * Module related
  *****************************************************************************/
 static const struct file_operations aed_ee_fops = {
@@ -2384,6 +2539,10 @@ static int __init aed_init(void)
 	}
 	pr_notice("aee kernel api ready");
 
+	pr_err("powerup reason:%s", powerup_reason);
+	pr_err("poweroff reason:%s", poweroff_reason);
+	bootinfo_sys_init();
+  
 	mtk_slog_init();
 
 	return err;
@@ -2408,3 +2567,6 @@ module_exit(aed_exit);
 MODULE_LICENSE("GPL");
 MODULE_DESCRIPTION("MediaTek AED Driver");
 MODULE_AUTHOR("MediaTek Inc.");
+module_param_string(pureason, powerup_reason, MAX_CMDLINE_PARAM_LEN,0644);
+module_param_string(poffreason, poweroff_reason, MAX_CMDLINE_PARAM_LEN,0644);
+

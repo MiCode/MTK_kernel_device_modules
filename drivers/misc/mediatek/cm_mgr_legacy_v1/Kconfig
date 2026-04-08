@@ -22,6 +22,14 @@ config MTK_CM_MGR_MT6768
 	  on power table.
 	  If unsure, say N.
 
+config MTK_CM_MGR_LEGACY_MT8788
+    tristate "MTK_CM_MGR_LEGACY_MT8788"
+    help
+      This kernel config can be used to enable CM_MGR MT8788. When enable
+      this option, dram opp level will be changed which will depended
+      on power table.
+      If unsure, say N.
+
 config MTK_CM_MGR_MT6877
 	tristate "MTK CM_MGR for MT6877"
 	help

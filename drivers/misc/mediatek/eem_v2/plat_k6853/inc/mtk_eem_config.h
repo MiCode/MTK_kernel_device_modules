@@ -24,7 +24,7 @@
 #define EEM_FAKE_EFUSE		(0)
 #define UPDATE_TO_UPOWER	(1)
 #define EEM_LOCKTIME_LIMIT	(3000)
-#define SUPPORT_PICACHU		(0)
+#define SUPPORT_PICACHU		(1)
 #define SUPPORT_PI_LOG_AREA		(0)
 
 #define ENABLE_INIT_TIMER	(1)

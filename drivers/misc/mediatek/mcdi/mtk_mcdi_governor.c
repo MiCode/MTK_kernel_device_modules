@@ -471,7 +471,7 @@ int any_core_deepidle_sodi_check(int cpu)
 		return state;
 
 	any_core_cpu_cond_inc(LAST_CORE_CNT);
-#if IS_ENABLED(CONFIG_MTK_SPM) || IS_ENABLED(CONFIG_MTK_SPM_V0)
+#if IS_ENABLED(CONFIG_MTK_SPM) || IS_ENABLED(CONFIG_MTK_SPM_V0) || IS_ENABLED(CONFIG_MTK_SPM_V4)
 	/* Check other deepidle/SODI criteria */
 	mtk_idle_state = mtk_idle_select(cpu);
 #endif
@@ -902,6 +902,7 @@ void idle_refcnt_inc(bool is_wfi)
 	/* if (enter) */
 		/* trace_all_cpu_idle_rcuidle(1); */
 }
+EXPORT_SYMBOL(idle_refcnt_inc);
 
 void idle_refcnt_dec(bool is_wfi)
 {
@@ -948,6 +949,7 @@ void idle_refcnt_dec(bool is_wfi)
 	/* if (leave) */
 		/* trace_all_cpu_idle_rcuidle(0); */
 }
+EXPORT_SYMBOL(idle_refcnt_dec);
 
 int all_cpu_idle_ratio_get(void)
 {

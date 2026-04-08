@@ -38,7 +38,7 @@
 //#include "../imgsensor_i2c.h"
 //#include "imgsensor_common.h"
 #include "s5k3p9spmipiraw_Sensor.h"
-
+#include "platform_common.h"
 #if IS_ENABLED(CONFIG_MTK_CAM_SECURITY_SUPPORT)
 #include "imgsensor_ca.h"
 #endif
@@ -59,7 +59,7 @@
 #define S5K3P9SP_EEPROM_WRITE_ID 0xA1
 
 static DEFINE_SPINLOCK(imgsensor_drv_lock);
-
+static unsigned int g_platform_id;
 static struct imgsensor_info_struct imgsensor_info = {
 		.sensor_id = S5K3P9SP_SENSOR_ID,
 
@@ -104,14 +104,15 @@ static struct imgsensor_info_struct imgsensor_info = {
 		},
 		.normal_video = {
 			.pclk = 560000000,
-			.linelength = 12960,
-			.framelength = 1440,
+			.linelength = 7152,
+			.framelength = 2608,
 			.startx = 0,
 			.starty = 0,
-			.grabwindow_width = 1920,
-			.grabwindow_height = 1080,
+			.grabwindow_width = 2320,
+			.grabwindow_height = 1306,
+
 			.mipi_data_lp2hs_settle_dc = 85,
-			.mipi_pixel_rate = 216666667,
+			.mipi_pixel_rate = 269400000,
 			.max_framerate = 300,
 		},
 		.hs_video = {
@@ -209,8 +210,8 @@ static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[5] = {
 	{4640, 3488, 0000, 0000, 4640, 3488, 2320, 1744,
 	 0000, 0000, 2320, 1744, 0000, 0000, 2320, 1744},/* Capture == Preview*/
 #endif
-	{4640, 3488, 0400, 0664, 3840, 2160, 1920, 1080,
-	 0000, 0000, 1920, 1080, 0000, 0000, 1920, 1080},/* Video */
+	{4640, 3488, 0000,  438, 4640, 2612, 2320, 1306,
+	 0000, 0000, 2320, 1306,    0,    0, 2320, 1306},/* Video */
 	{4640, 3488, 0400, 0664, 3840, 2160, 1920, 1080,
 	 0000, 0000, 1920, 1080, 0000, 0000, 1920, 1080},/* hs_video == Video */
 	{4640, 3488, 0000, 0000, 4640, 3488, 2320, 1744,
@@ -3806,12 +3807,12 @@ static kal_uint16 addr_data_pair_normal_video[] = {
 	0x602A, 0x1758,
 	0x6F12, 0x0000,
 	0x6028, 0x4000,
-	0x0344, 0x0190,
-	0x0346, 0x02A0,
-	0x0348, 0x109F,
-	0x034A, 0x0B0F,
-	0x034C, 0x0780,
-	0x034E, 0x0438,
+	0x0344, 0x0000,
+	0x0346, 0x01BE,
+	0x0348, 0x122F,
+	0x034A, 0x0BF1,
+	0x034C, 0x0910,
+	0x034E, 0x051A,
 	0x0350, 0x0004,
 	0x0900, 0x0122,
 	0x0380, 0x0002,
@@ -3832,14 +3833,10 @@ static kal_uint16 addr_data_pair_normal_video[] = {
 	0x030A, 0x0001,
 	0x030C, 0x0000,
 	0x030E, 0x0004,
-	0x0310, 0x005A,
+	0x0310, 0x0070,
 	0x0312, 0x0001,
-	0x6028, 0x2000,
-	0x602A, 0x16A6,
-	0x6F12, 0x006C,
-	0x6028, 0x4000,
-	0x0340, 0x05A0,
-	0x0342, 0x32A0,
+	0x0340, 0x0A30,
+	0x0342, 0x1BF0,
 	0x0202, 0x0100,
 	0x0200, 0x0100,
 	0x021E, 0x0000,
@@ -4898,8 +4895,10 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		}
 		break;
 	case SENSOR_FEATURE_GET_OFFSET_TO_START_OF_EXPOSURE:
-		*(MUINT32 *)(uintptr_t)(*(feature_data + 1))
-			= 2500000;
+		if (IS_MT6781(g_platform_id))
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1)) = 770800;
+		else
+			*(MUINT32 *)(uintptr_t)(*(feature_data + 1))= 2500000;
 		break;
 	case SENSOR_FEATURE_GET_PERIOD_BY_SCENARIO:
 		switch (*feature_data) {
@@ -5209,13 +5208,20 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 	return ERROR_NONE;
 }	/*	feature_control()  */
 
+static void set_platform_info(unsigned int platform_id)
+{
+	g_platform_id = platform_id;
+	pr_info("%s id:%x\n", __func__, g_platform_id);
+}
+
 static struct SENSOR_FUNCTION_STRUCT sensor_func = {
 	open,
 	get_info,
 	get_resolution,
 	feature_control,
 	control,
-	close
+	close,
+	set_platform_info
 };
 
 UINT32 S5K3P9SP_MIPI_RAW_SensorInit(struct SENSOR_FUNCTION_STRUCT **pfFunc)

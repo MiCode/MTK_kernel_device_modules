@@ -150,7 +150,9 @@ static void mtk_idle_init(void)
 {
 	mtk_idle_sysfs_entry_node_add("idle_state"
 			, 0644, &idle_state_fops, NULL);
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
 	md_notify_flightmode_cb_register(spm_set_by_flightmode);
+#endif
 }
 
 void mtk_cpuidle_framework_init(void)

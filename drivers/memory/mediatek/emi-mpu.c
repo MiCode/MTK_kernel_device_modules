@@ -90,13 +90,14 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 	struct emi_mpu *mpu = (struct emi_mpu *)dev_id;
 	struct reg_info_t *dump_reg = mpu->dump_reg;
 	void __iomem *emi_cen_base;
-	unsigned int emi_id, i, axi_id;
+	unsigned int emi_id, i, axi_id, port_id;
 	ssize_t msg_len;
 	int n, nr_vio;
 	bool violation;
 	char md_str[MTK_EMI_MAX_CMD_LEN + 10] = {'\0'};
 	const unsigned int hp_mask = 0x600000;
 	const unsigned int r_vio = 0x40000000;
+	const unsigned int slb_only_mask = 0x2000000;
 
 	if (mpu->in_msg_dump)
 		goto ignore_violation;
@@ -143,6 +144,21 @@ static irqreturn_t emimpu_violation_irq(int irq, void *dev_id)
 
 		if (!violation)
 			continue;
+
+		port_id = (dump_reg[2].value >> 4) & 0xf;
+		port_id = (dump_reg[0].value & 0xffff) | (port_id << 16);
+		port_id = port_id & 0x7;
+		if ((port_id == 2) || (port_id == 5)) {
+			if (dump_reg[2].value & slb_only_mask) {
+				pr_info("%s: %s(0x%x),%s(0x%x),%s(0x%x),%s(0x%x),%s(0x%x);\n",
+						__func__,
+						"MMPC_EMI_REQ", readl(mpu->mmpc_emi_req),
+						"MMPC_DDRSRC_REQ", readl(mpu->mmpc_ddrsrc_req),
+						"FAKE0_EN", readl(mpu->ovl1_fake0_en),
+						"OVL1_EXDMA2_EN", readl(mpu->ovl1_exdma2_en),
+						"OVL1_EXDMA7_EN", readl(mpu->ovl1_exdma7_en));
+			}
+		}
 
 		nr_vio++;
 
@@ -447,6 +463,12 @@ static int emimpu_probe(struct platform_device *pdev)
 		MTK_EMI_MAX_CMD_LEN, GFP_KERNEL);
 	if (!(mpu->vio_msg))
 		return -ENOMEM;
+
+	mpu->mmpc_emi_req = ioremap(0x31b5103c, 0x4);
+	mpu->mmpc_ddrsrc_req = ioremap(0x31b5101c, 0x4);
+	mpu->ovl1_fake0_en = ioremap(0x32800200, 0x4);
+	mpu->ovl1_exdma2_en = ioremap(0x32C50020, 0x4);
+	mpu->ovl1_exdma7_en = ioremap(0x32CA0020, 0x4);
 
 	global_emi_mpu = mpu;
 	platform_set_drvdata(pdev, mpu);

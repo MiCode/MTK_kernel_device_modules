@@ -7,5 +7,6 @@ config MTK_CAMERA_ISP_RAW_SUPPORT
 	  from the imgsensor.
 	  Disable if it is not supported or not wanted.
 
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/src/isp_50/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/src/isp_4/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/cameraisp/src/isp_3/Kconfig"

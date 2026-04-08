@@ -104,7 +104,8 @@ struct vcp_regs {
 	void __iomem *bus_prot;
 	void __iomem *cfg_pwr;
 	void __iomem *cfgreg_ap;
-	void __iomem *cfg_sec_gpr;
+	void __iomem *cfg_sec;
+	void __iomem *cfg_sec_ctrl;
 	void __iomem *vcp_vlp_ao_rsvd7;
 	void __iomem *vcp_pwr_ack;
 	void __iomem *vcp_clk_sys;
@@ -233,6 +234,7 @@ extern unsigned int is_vcp_suspending(void);
 extern unsigned int is_vcp_ao(void);
 extern int vcp_register_mminfra_cb(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 	mminfra_dump_ptr mminfra_dump_func);
+extern int vcp_mminfra_on_off_cb(bool on);
 
 /*extern vcp notify*/
 extern void vcp_send_reset_wq(enum vcp_core_id core_id, enum VCP_RESET_TYPE type);

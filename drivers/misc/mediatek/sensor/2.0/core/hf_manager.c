@@ -1918,6 +1918,8 @@ static int __init hf_manager_init(void)
 	struct device *dev;
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO / 2 };
 
+	pr_info("%s enter\n", __func__);
+
 	init_hf_core(&hfcore);
 
 	hf_manager_major = register_chrdev(0, "hf_manager", &hf_manager_fops);
@@ -1954,6 +1956,9 @@ static int __init hf_manager_init(void)
 		goto err_device;
 	}
 	sched_setscheduler_nocheck(hfcore.kworker->task, SCHED_FIFO, &param);
+
+	pr_info("%s done \n", __func__);
+
 	return 0;
 
 err_device:

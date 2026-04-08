@@ -154,6 +154,7 @@ void ged_dvfs_vsync_offset_level_set(int i32level);
 int ged_dvfs_vsync_offset_level_get(void);
 
 unsigned int ged_dvfs_get_gpu_loading(void);
+unsigned int ged_dvfs_get_gpu_loading_avg(void);
 unsigned int ged_dvfs_get_gpu_blocking(void);
 unsigned int ged_dvfs_get_gpu_idle(void);
 unsigned int ged_dvfs_get_custom_ceiling_gpu_freq(void);
@@ -237,6 +238,7 @@ bool ged_gpu_predict_apo_notify(void);
 unsigned int ged_get_apo_autosuspend_delay_ms(void);
 int ged_get_apo_autosuspend_delay_ref_count(void);
 void ged_set_apo_autosuspend_delay_ctrl(int ctrl);
+int ged_get_apo_autosuspend_delay_ctrl(void);
 int ged_get_apo_autosuspend_delay_target_ref_count(void);
 void ged_set_apo_autosuspend_delay_target_ref_count(int apo_autosuspend_delay_target_ref_count);
 void ged_set_apo_autosuspend_delay_ms_ref_idletime_nolock(long long idle_time);
@@ -306,6 +308,9 @@ void set_api_sync_flag(int flag);
 int get_api_sync_flag(void);
 void ged_reset_api_sync_ts(void);
 unsigned long long ged_get_api_sync_ts(void);
+unsigned long long ged_get_api_boost_end_ts(void);
+unsigned long long ged_get_api_boost_interval(void);
+void ged_reset_api_boost_interval(void);
 #define LOADING_ACTIVE 0
 #define LOADING_MAX_3DTA_COM 1
 #define LOADING_MAX_3DTA 2

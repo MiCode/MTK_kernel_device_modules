@@ -108,6 +108,7 @@ enum mtk_drm_mml_dbg {
 	MMP_MML_SUBMIT = 0x4000,
 	MMP_MML_IDLE = 0x8000,
 	MMP_MML_REPAINT = 0x10000,
+	MMP_MML_ADDON_CONFIG = 0x20000,
 };
 
 #if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
@@ -175,5 +176,10 @@ enum GCE_COND_REVERSE_COND {
 #define GCE_SLEEP(us) cmdq_pkt_sleep(_cond_pkt, us, _gpr)
 int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
+
+#if defined(CONFIG_VIS_DISPLAY_DALI)
+void nvt_set_idlemgr(unsigned int flag);
+void nvt_set_pq_trigger(unsigned int flag);
+#endif
 
 #endif

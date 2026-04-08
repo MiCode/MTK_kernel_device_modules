@@ -17,6 +17,7 @@
 
 #define MML_MAX_COMPONENTS	50
 #define MML_MAX_PORT		18
+#define MML_MAX_LARB		5
 
 struct mml_comp;
 struct mml_dev;
@@ -103,6 +104,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bo
 s32 mml_comp_init(struct platform_device *comp_pdev, struct mml_comp *comp);
 
 s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev);
+void mml_comp_init_larb_idx(struct mml_dev *mml, struct mml_topology_cache *cache);
 s32 mml_comp_pw_enable(struct mml_comp *comp, const s8 mode);
 s32 mml_comp_pw_disable(struct mml_comp *comp, const s8 mode);
 s32 mml_comp_clk_enable(struct mml_comp *comp);
@@ -323,6 +325,7 @@ void mml_dev_put_dle_ctx(struct mml_dev *mml,
 	void (*ctx_release)(struct mml_dle_ctx *ctx));
 struct mml_m2m_ctx *mml_dev_create_m2m_ctx(struct mml_dev *mml,
 	struct mml_m2m_ctx *(*ctx_create)(struct mml_dev *mml));
+struct kthread_worker *mml_dev_get_config_worker(struct mml_dev *mml);
 
 struct mml_v4l2_dev *mml_get_v4l2_dev(struct mml_dev *mml);
 

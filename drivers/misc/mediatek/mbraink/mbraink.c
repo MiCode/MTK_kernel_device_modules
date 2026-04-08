@@ -1134,6 +1134,86 @@ static long handle_vdec_fps_info(unsigned long arg, void *mbraink_data)
 	return ret;
 }
 
+static long handle_power_spmi_glitch_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_spmi_glitch_struct_data *power_spmi_glitch_buffer =
+		(struct mbraink_spmi_glitch_struct_data *)(mbraink_data);
+	long ret = 0;
+
+	memset(power_spmi_glitch_buffer,
+		0,
+		sizeof(struct mbraink_spmi_glitch_struct_data));
+	ret = mbraink_power_get_spmi_glitch_info(power_spmi_glitch_buffer);
+	if (copy_to_user((struct mbraink_spmi_glitch_struct_data *) arg,
+			power_spmi_glitch_buffer,
+			sizeof(struct mbraink_spmi_glitch_struct_data))) {
+		pr_notice("Copy power_spmi_glitch_buffer to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_wifi_wakeup_info(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_wifi2mbr_wakeupinfo_data *wifi_wakeupinfo_buf =
+		(struct mbraink_wifi2mbr_wakeupinfo_data *)(mbraink_data);
+	long ret = 0;
+
+	if (copy_from_user(wifi_wakeupinfo_buf,
+			(struct mbraink_wifi2mbr_wakeupinfo_data *) arg,
+			sizeof(struct mbraink_wifi2mbr_wakeupinfo_data))) {
+		pr_notice("copy mbraink_wifi2mbr_wakeupinfo_data data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (wifi_wakeupinfo_buf->idx > 2147483647) {
+		pr_notice("wifi wakeup info: Invalid idx %u\n", wifi_wakeupinfo_buf->idx);
+		return -EINVAL;
+	}
+
+	mbraink_get_wifi_wakeupinfo_data(wifi_wakeupinfo_buf->idx, wifi_wakeupinfo_buf);
+	if (copy_to_user((struct mbraink_wifi2mbr_wakeupinfo_data *) arg,
+			wifi_wakeupinfo_buf,
+			sizeof(struct mbraink_wifi2mbr_wakeupinfo_data))) {
+		pr_notice("Copy wifi_wakeupinfo_buf to UserSpace error!\n");
+		return -EPERM;
+	}
+	return ret;
+}
+
+static long handle_trace_cpufreq(unsigned long arg, void *mbraink_data)
+{
+	struct mbraink_cpufreq_trace_data *cpufreq_trace_buffer =
+		(struct mbraink_cpufreq_trace_data *)(mbraink_data);
+	unsigned short tracing_idx = 0;
+	long ret = 0;
+
+	if (copy_from_user(cpufreq_trace_buffer,
+			(struct mbraink_cpufreq_trace_data *) arg,
+			sizeof(struct mbraink_cpufreq_trace_data))) {
+		pr_notice("copy cpufreq_trace_buffer data from user Err!\n");
+		return -EPERM;
+	}
+
+	if (cpufreq_trace_buffer->tracing_idx > MAX_CPUFREQ_TRACE_NUM) {
+		pr_notice("invalid cpufreq tracing_idx %u !\n",
+			cpufreq_trace_buffer->tracing_idx);
+		return -EINVAL;
+	}
+
+	tracing_idx = cpufreq_trace_buffer->tracing_idx;
+
+	mbraink_get_cpufreq_trace_info(tracing_idx, cpufreq_trace_buffer);
+
+	if (copy_to_user((struct mbraink_cpufreq_trace_data *) arg,
+			cpufreq_trace_buffer, sizeof(struct mbraink_cpufreq_trace_data))) {
+		pr_notice("%s: Copy cpufreq_trace_buffer to UserSpace error!\n",
+			__func__);
+		return -EPERM;
+	}
+	return ret;
+}
+
 static long mbraink_ioctl(struct file *filp,
 							unsigned int cmd,
 							unsigned long arg)
@@ -1554,6 +1634,35 @@ static long mbraink_ioctl(struct file *filp,
 		kfree(mbraink_data);
 		break;
 	}
+	case RO_POWER_SPMI_GLITCH_INFO:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_spmi_glitch_struct_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_power_spmi_glitch_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_WIFI_WAKEUP_INFO:
+	{
+		mbraink_data =
+			kmalloc(sizeof(struct mbraink_wifi2mbr_wakeupinfo_data),
+				GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_wifi_wakeup_info(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
+	case RO_TRACE_CPUFREQ:
+	{
+		mbraink_data = kmalloc(sizeof(struct mbraink_cpufreq_trace_data), GFP_KERNEL);
+		if (!mbraink_data)
+			goto End;
+		ret = handle_trace_cpufreq(arg, mbraink_data);
+		kfree(mbraink_data);
+		break;
+	}
 	default:
 		pr_notice("%s:illegal ioctl number %u.\n", __func__, cmd);
 		return -EINVAL;
@@ -1625,14 +1734,37 @@ static int mbraink_resume(struct device *dev)
 
 #if IS_ENABLED(CONFIG_PM)
 
+static int append_wifi_wakeup_info(char *buf, int pos, int max_size,
+				   const struct mbraink_wakeup_reason_struct *wakeup_data)
+{
+	int n = snprintf(buf + pos, max_size - pos,
+			 " %lld:%d:%d:%lld:%lld:%lld:%lld:%lld:%lld",
+			 wakeup_data->timestamp,
+			 (int)wakeup_data->wkup_reason,
+			 wakeup_data->wkup_info,
+			 wakeup_data->total_suspend_period,
+			 wakeup_data->resume_time,
+			 wakeup_data->suspend_time,
+			 wakeup_data->wifi_wkup_period,
+			 wakeup_data->wifi_wkup_time,
+			 wakeup_data->wifi_suspend_time);
+
+	if (n < 0 || n >= max_size - pos)
+		return -1;
+
+	return n;
+}
+
 static int mbraink_post_suspend(void)
 {
 	struct timespec64 tv = { 0 };
 	ktime_t resume_ktime;
-	char netlink_buf[MAX_BUF_SZ] = {'\0'};
+	char *netlink_buf;
 	long long last_resume_ktime = 0;
 	struct mbraink_battery_data resume_battery_buffer;
+	struct mbraink_wifi2mbr_wakeupinfo_data *wifi_wakeupinfo_buf;
 	int n = 0;
+	int ret = 0;
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
 	struct lpm_logger_mbrain_dbg_ops *logger_mbrain_ops = NULL;
@@ -1644,8 +1776,21 @@ static int mbraink_post_suspend(void)
 	if (mbraink_priv.last_suspend_timestamp == 0 || mbraink_priv.last_suspend_ktime == 0)
 		return -1;
 
+	netlink_buf = kmalloc(MAX_BUF_SZ, GFP_KERNEL);
+	if (!netlink_buf)
+		return -ENOMEM;
+
+	wifi_wakeupinfo_buf = kmalloc(sizeof(struct mbraink_wifi2mbr_wakeupinfo_data), GFP_KERNEL);
+	if (!wifi_wakeupinfo_buf) {
+		kfree(netlink_buf);
+		pr_info("%s : wifi_wakeupinfo_buf allocation failed\n", __func__);
+		return -ENOMEM;
+	}
+
 	memset(&resume_battery_buffer, 0,
 		sizeof(struct mbraink_battery_data));
+	memset(wifi_wakeupinfo_buf, 0,
+		sizeof(struct mbraink_wifi2mbr_wakeupinfo_data));
 
 	ktime_get_real_ts64(&tv);
 	resume_ktime = ktime_get();
@@ -1657,13 +1802,14 @@ static int mbraink_post_suspend(void)
 	mbraink_get_battery_info(&resume_battery_buffer, mbraink_priv.last_resume_timestamp);
 
 #if IS_ENABLED(CONFIG_MTK_LOW_POWER_MODULE)
-
 	logger_mbrain_ops = get_lpm_logger_mbrain_dbg_ops();
 	if (logger_mbrain_ops && logger_mbrain_ops->get_last_suspend_wakesrc)
 		wakeup_event = (long long)(logger_mbrain_ops->get_last_suspend_wakesrc());
 #else
 	wakeup_event = 0;
 #endif
+
+	mbraink_get_wifi_wakeupinfo_data(0, wifi_wakeupinfo_buf);
 
 	n = snprintf(netlink_buf, MAX_BUF_SZ,
 		"%s %lld:%lld:%lld:%lld:%lld %d:%d:%d:%d:%d:%d:%d:%d %d:%d:%d:%d:%d:%d:%d:%d",
@@ -1691,19 +1837,36 @@ static int mbraink_post_suspend(void)
 		resume_battery_buffer.precise_uisoc2
 	);
 
-	if (n < 0 || n > MAX_BUF_SZ)
+	if (n < 0 || n > MAX_BUF_SZ) {
 		pr_info("%s : snprintf error n = %d\n", __func__, n);
-	else
-		mbraink_netlink_send_msg(netlink_buf);
+		ret = -1;
+		goto out;
+	}
+
+	if (wifi_wakeupinfo_buf->count > 0) {
+		int wifi_info_len = append_wifi_wakeup_info(netlink_buf, n, MAX_BUF_SZ,
+							    &wifi_wakeupinfo_buf->wakeup_data[0]);
+		if (wifi_info_len < 0) {
+			pr_info("%s : append_wifi_wakeup_info error\n", __func__);
+			ret = -1;
+			goto out;
+		}
+		n += wifi_info_len;
+	}
+
+	mbraink_netlink_send_msg(netlink_buf);
 
 	last_resume_timestamp = mbraink_priv.last_resume_timestamp;
 	mbraink_priv.last_resume_timestamp = 0;
 	mbraink_priv.last_suspend_timestamp = 0;
 	mbraink_priv.last_suspend_ktime = 0;
 	memset(&mbraink_priv.suspend_battery_buffer, 0,
-		sizeof(struct mbraink_battery_data));
+	   sizeof(struct mbraink_battery_data));
 
-	return 0;
+out:
+	kfree(netlink_buf);
+	kfree(wifi_wakeupinfo_buf);
+	return ret;
 }
 
 static void mbraink_post_suspend_get_spm(void)
@@ -1817,6 +1980,7 @@ static ssize_t mbraink_info_show(struct device *dev,
 								struct device_attribute *attr,
 								char *buf)
 {
+	mbraink_netlink_send_msg("aee_db_close");
 	return sprintf(buf, "show the process information...\n");
 }
 
@@ -2193,8 +2357,6 @@ static void mbraink_exit(void)
 	mbraink_dev_exit();
 	mbraink_genetlink_exit();
 	mbraink_process_tracer_exit();
-	mbraink_gpu_deinit();
-	mbraink_audio_deinit();
 	mbraink_cpufreq_notify_exit();
 	mbraink_memory_deinit();
 	mbraink_audio_deinit();

@@ -438,6 +438,11 @@
 			compatible = "mediatek,mt63xx-debug";
 		};
 
+		mt63xx-oc-debug {
+			compatible = "mediatek,mt63xx-oc-debug";
+		};
+
+
 		pmic_auxadc: pmic-auxadc {
 			compatible = "mediatek,pmic-auxadc",
 				     "mediatek,mt6359p-auxadc";
@@ -564,7 +569,7 @@
 				xo-id = <3>;
 			};
 			XO-EXT {
-				xo-id = <7>;
+				xo-id = <6>;
 			};
 		};
 

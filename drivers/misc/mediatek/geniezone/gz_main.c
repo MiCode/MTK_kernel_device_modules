@@ -450,7 +450,8 @@ static long tz_client_open_session(struct file *filep, void __user *arg)
 		return -EFAULT;
 
 	/* Check if can we access UUID string. 10 for min uuid len. */
-	if (!access_ok((void *)param.data, 10))
+	if (IS_ERR_OR_NULL((const void *)param.data) ||
+			!access_ok((void *)param.data, 10))
 		return -EFAULT;
 
 	KREE_DEBUG("%s: uuid addr = 0x%llx\n", __func__, param.data);
@@ -530,7 +531,8 @@ static long tz_client_tee_service(struct file *file, void __user *arg,
 	}
 
 	if (cparam.paramTypes != TZPT_NONE || cparam.param) {
-		if (!access_ok((void *)cparam.param, sizeof(oparam)))
+		if (IS_ERR_OR_NULL((const void *)cparam.param) ||
+				!access_ok((void *)cparam.param, sizeof(oparam)))
 			return -EFAULT;
 
 		cret = copy_from_user(oparam,
@@ -581,7 +583,8 @@ static long tz_client_tee_service(struct file *file, void __user *arg,
 				ubuf, ubuf_sz);
 
 			if (type != TZPT_MEM_OUTPUT) {
-				if (!access_ok(ubuf, ubuf_sz)) {
+				if (IS_ERR_OR_NULL((const void *)ubuf) ||
+						!access_ok(ubuf, ubuf_sz)) {
 					KREE_ERR("%s: cannnot read mem\n",
 						__func__);
 					cret = -EFAULT;
@@ -589,7 +592,8 @@ static long tz_client_tee_service(struct file *file, void __user *arg,
 				}
 			}
 			if (type != TZPT_MEM_INPUT) {
-				if (!access_ok(ubuf, ubuf_sz)) {
+				if (IS_ERR_OR_NULL((const void *)ubuf) ||
+						!access_ok(ubuf, ubuf_sz)) {
 					KREE_ERR("%s: cannnot write mem\n",
 						__func__);
 					cret = -EFAULT;
@@ -864,7 +868,7 @@ us_map_fail:
 				for (i = 0; i < pin->nrPages; i++)
 					put_page(delpages[i]);
 			}
-			kfree(pin->pageArray);
+			kvfree(pin->pageArray);
 		}
 		/*kfree(pin);*/
 		//vfree(pin);

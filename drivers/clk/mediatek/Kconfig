@@ -28,6 +28,15 @@ config MTK_CLKMGR_DEBUG
 	  and clock driver debug feature. Trigger by clock
 	  debug cmd.
 
+config MTK_CLKMGR_DEBUG_REG_RW
+	bool "Clock Manager Debug Support for clk register Read/Write"
+	help
+	  Enable this option to allow direct register read and write
+	  access for MediaTek clock manager drivers. This is intended
+	  for debugging purposes and provides nodes or interfaces
+	  to read or write clock registers via debug commands.
+	  Do not enable for production use due to potential system risks.
+
 config COMMON_CLK_MT6761
 	tristate "Clock driver for MediaTek MT6761"
 	depends on ARM64 || ARM || COMPILE_TEST
@@ -104,6 +113,17 @@ config COMMON_CLK_MT6768
 	  This driver supports MediaTek MT6768 basic clocks,
 	  which is used to control basic clock output.
 	  If you wish to use clock resources from the MT6853 SOC,
+	  say Y. Otherwise, say N.
+
+config COMMON_CLK_MT6771
+	tristate "Clock driver for MediaTek MT6771"
+	depends on ARM64 || ARM || COMPILE_TEST
+	select DEVICE_MODULES_COMMON_CLK_MEDIATEK
+	default MACH_MT6771
+	help
+	  This driver supports MediaTek MT6771 basic clocks,
+	  which is used to control basic clock output.
+	  If you wish to use clock resources from the MT6771 SOC,
 	  say Y. Otherwise, say N.
 
 config COMMON_CLK_MT6833
@@ -191,7 +211,7 @@ config COMMON_CLK_MT6833_VCODEC
 
 config MTK_DUMP_CLK_REFCNT_BY_DEVICE
 	tristate "Mediatek Clock enable debug"
-	depends on COMMON_CLK_MT6768 || COMMON_CLK_MT6877 || COMMON_CLK_MT6761
+	depends on COMMON_CLK_MT6768 || COMMON_CLK_MT6877 || COMMON_CLK_MT6761 || COMMON_CLK_MT6781 || COMMON_CLK_MT6853
 	help
 		This config supports to add the logs
                 which can record Clock Enable/Prepare

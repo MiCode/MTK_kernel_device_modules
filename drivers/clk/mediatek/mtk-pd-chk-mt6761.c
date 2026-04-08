@@ -16,6 +16,8 @@
 #define TAG				"[pdchk] "
 #define BUG_ON_CHK_ENABLE		0
 
+static unsigned int suspend_cnt;
+
 /*
  * The clk names in Mediatek CCF.
  */
@@ -249,6 +251,22 @@ static bool is_mtcmos_chk_bug_on(void)
 	return false;
 }
 
+static bool pdchk_is_suspend_retry_stop(bool reset_cnt)
+{
+	if (reset_cnt == true) {
+		suspend_cnt = 0;
+		return true;
+	}
+
+	suspend_cnt++;
+	pr_notice("%s: suspend cnt: %d\n", __func__, suspend_cnt);
+
+	if (suspend_cnt < 2)
+		return false;
+
+	return true;
+}
+
 /*
  * init functions
  */
@@ -263,10 +281,12 @@ static struct pdchk_ops pdchk_mt6761_ops = {
 	.get_off_mtcmos_id = get_off_mtcmos_id,
 	.get_notice_mtcmos_id = get_notice_mtcmos_id,
 	.is_mtcmos_chk_bug_on = is_mtcmos_chk_bug_on,
+	.is_suspend_retry_stop = pdchk_is_suspend_retry_stop,
 };
 
 static int pd_chk_mt6761_probe(struct platform_device *pdev)
 {
+	suspend_cnt = 0;
 	pdchk_common_init(&pdchk_mt6761_ops);
 	return 0;
 }

@@ -78,41 +78,43 @@ static struct imgsensor_info_struct imgsensor_info = {
 		.mipi_pixel_rate = 213600000,
 	},
 	.cap = {
-		.pclk = 678400000, /*//30fps case*/
-		.linelength = 5640, /*//0x1608*/
-		.framelength = 4008, /*//0x0FA8*/
+		.pclk = 688000000, /*//30fps case*/
+		.linelength = 9008, /*//0x2330*/
+		.framelength = 2544, /*//0x09F0*/
 		.startx = 0,
 		.starty = 0,
-		.grabwindow_width = 5184, /*//0x1440*/
-		.grabwindow_height = 3880, /*//0x0F28*/
-		/*//grabwindow_height should be 16's N times*/
-		.mipi_data_lp2hs_settle_dc = 85,
+		.grabwindow_width = 2592, /*//0x0A20*/
+		.grabwindow_height = 1940, /*//0x0794*/
+		//grabwindow_height should be 16's N times
+		.mipi_data_lp2hs_settle_dc = 0x22,
 		.max_framerate = 300,
-		.mipi_pixel_rate = 672000000,
+		.mipi_pixel_rate = 213600000,
 	},
 	.cap1 = {
-		.pclk = 678000000, /*//30fps case*/
-		.linelength = 5640, /*//0x1608*/
-		.framelength = 4008, /*//0x0FA8*/
+		.pclk = 688000000, /*//30fps case*/
+		.linelength = 9008, /*//0x2330*/
+		.framelength = 2544, /*//0x09F0*/
 		.startx = 0,
 		.starty = 0,
-		.grabwindow_width = 5184, /*//0x1440*/
-		.grabwindow_height = 3880, /*//0x0F28*/
-		/*//grabwindow_height should be 16's N times*/
-		.mipi_data_lp2hs_settle_dc = 85,
+		.grabwindow_width = 2592, /*//0x0A20*/
+		.grabwindow_height = 1940, /*//0x0794*/
+		//grabwindow_height should be 16's N times
+		.mipi_data_lp2hs_settle_dc = 0x22,
 		.max_framerate = 300,
+		.mipi_pixel_rate = 213600000,
 	},
 	.cap2 = {
-		.pclk = 678000000, /*//30fps case*/
-		.linelength = 5640, /*//0x1608*/
-		.framelength = 4008, /*//0x0FA8*/
+		.pclk = 688000000, /*//30fps case*/
+		.linelength = 9008, /*//0x2330*/
+		.framelength = 2544, /*//0x09F0*/
 		.startx = 0,
 		.starty = 0,
-		.grabwindow_width = 5184, /*//0x1440*/
-		.grabwindow_height = 3880, /*//0x0F28*/
-		/*//grabwindow_height should be 16's N times*/
-		.mipi_data_lp2hs_settle_dc = 85,
+		.grabwindow_width = 2592, /*//0x0A20*/
+		.grabwindow_height = 1940, /*//0x0794*/
+		//grabwindow_height should be 16's N times
+		.mipi_data_lp2hs_settle_dc = 0x22,
 		.max_framerate = 300,
+		.mipi_pixel_rate = 213600000,
 	},
 	.normal_video = {
 		.pclk = 688000000, /*//30fps case*/
@@ -268,8 +270,8 @@ static struct SENSOR_WINSIZE_INFO_STRUCT imgsensor_winsize_info[5] = {
 	{ 5200, 3880,    8,    0, 5184, 3880, 2592, 1940,
 	     0,    0, 2592, 1940,    0,    0, 2592, 1940},
 
-	{ 5200, 3880,    0,    0, 5184, 3880, 5184, 3880,
-	     0,    0, 5184, 3880,    0,    0, 5184, 3880},
+	{ 5200, 3880,    8,    0, 5184, 3880, 2592, 1940,
+	     0,    0, 2592, 1940,    0,    0, 2592, 1940},
 
 	{ 5200, 3880,    8,    0, 5184, 3880, 2592, 1940,
 	     0,    0, 2592, 1940,    0,    0, 2592, 1940},
@@ -1189,7 +1191,7 @@ static void preview_setting(void)
 }				/*      preview_setting  */
 
 
-
+/*
 static kal_uint16 addr_data_pair_cap_2t7sp[] = {
 	0x6028, 0x2000,
 	0x0344, 0x0008,
@@ -1226,8 +1228,7 @@ static kal_uint16 addr_data_pair_cap_2t7sp[] = {
 	0x602A, 0x1C78,
 	0x6F12, 0x8100
 };
-
-
+*/
 
 static void capture_setting(kal_uint16 currefps)
 {
@@ -1263,10 +1264,8 @@ static void capture_setting(kal_uint16 currefps)
  *	 Lane :	4	lane
  *	 First Pixel :	Gr	First
  */
-	table_write_cmos_sensor(addr_data_pair_cap_2t7sp,
-			sizeof(addr_data_pair_cap_2t7sp) / sizeof(kal_uint16));
-
-
+	table_write_cmos_sensor(addr_data_pair_pre_2t7sp,
+		sizeof(addr_data_pair_pre_2t7sp) / sizeof(kal_uint16));
 }
 
 static kal_uint16 addr_data_pair_video_2t7sp[] = {

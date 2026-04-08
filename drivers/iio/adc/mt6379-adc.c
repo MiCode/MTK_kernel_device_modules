@@ -128,12 +128,12 @@ static int mt6379_adc_read_channel(struct mt6379_priv *priv, int chan, int *val)
 
 bypass_oneshot:
 	while (retry_cnt--) {
-		/* select read report channel */
+		/* Select the channel of report data */
 		ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_REPORT_CH,
 					MT6379_MASK_ADC_REPORT_CH, chan);
 		if (ret) {
 			dev_info(priv->dev, "%s: Failed to select ADC report channel\n", __func__);
-			return ret;
+			goto adc_unlock;
 		}
 
 		usleep_range(1000, 1200);
@@ -141,7 +141,7 @@ bypass_oneshot:
 				      &be_val, sizeof(be_val));
 		if (ret) {
 			dev_info(priv->dev, "%s, Failed to read ADC_REPORT\n", __func__);
-			return ret;
+			goto adc_unlock;
 		}
 
 		*val = be16_to_cpu(be_val);
@@ -287,7 +287,8 @@ static irqreturn_t mt6379_adc_trigger_handler(int irq, void *p)
 	for_each_set_bit(bit, indio_dev->active_scan_mask, indio_dev->masklength) {
 		ret = mt6379_adc_read_channel(priv, bit, &val);
 		if (ret < 0) {
-			dev_err(priv->dev, "Failed to get channel %d conversion val\n", bit);
+			dev_info(priv->dev, "%s, Failed to get channel %d conversion val\n",
+				 __func__, bit);
 			goto out;
 		}
 
@@ -307,17 +308,20 @@ static inline int mt6379_adc_reset(struct mt6379_priv *priv)
 	__be16 be_val = 0;
 	int ret;
 
-	ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_CONFG1,
-				MT6379_ZCVEN_MASK, MT6379_ZCVEN_MASK);
+	/* Select ZCV channel of report data */
+	ret = regmap_write_bits(priv->regmap, MT6379_REG_ADC_REPORT_CH,
+				MT6379_MASK_ADC_REPORT_CH, MT6379_ADC_ZCV);
 	if (ret)
-		dev_err(priv->dev, "%s, Failed to enable ZCV channel\n", __func__);
+		dev_info(priv->dev, "%s, Failed to select ZCV report channel\n", __func__);
 
+	usleep_range(1000, 1200);
 	ret = regmap_raw_read(priv->regmap, MT6379_REG_ADC_REPORT_H, &be_val, sizeof(be_val));
 	if (ret)
 		dev_err(priv->dev, "%s, Failed to read ZCV val\n", __func__);
 
 	priv->zcv = be16_to_cpu(be_val);
-	dev_info(priv->dev, "%s, zcv = %d mV (boot voltage with plug-in)\n", __func__, priv->zcv);
+	dev_info(priv->dev, "%s, zcv = %d mV (boot voltage with first plug-in when ZCVEN enable)\n",
+		 __func__, priv->zcv);
 
 	/* Disable ZCV */
 	return regmap_update_bits(priv->regmap, MT6379_REG_ADC_CONFG1, MT6379_ZCVEN_MASK, 0);
@@ -332,7 +336,7 @@ static int mt6379_adc_probe(struct platform_device *pdev)
 
 	regmap = dev_get_regmap(pdev->dev.parent, NULL);
 	if (!regmap) {
-		dev_err(&pdev->dev, "Failed to get regmap\n");
+		dev_info(&pdev->dev, "Failed to get regmap\n");
 		return -ENODEV;
 	}
 
@@ -351,7 +355,7 @@ static int mt6379_adc_probe(struct platform_device *pdev)
 
 	ret = mt6379_adc_reset(priv);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to reset\n");
+		dev_info(&pdev->dev, "Failed to reset\n");
 		return ret;
 	}
 
@@ -365,7 +369,7 @@ static int mt6379_adc_probe(struct platform_device *pdev)
 	ret = devm_iio_triggered_buffer_setup(&pdev->dev, indio_dev, NULL,
 					      mt6379_adc_trigger_handler, NULL);
 	if (ret) {
-		dev_err(&pdev->dev, "Failed to allocate iio trigger buffer\n");
+		dev_info(&pdev->dev, "Failed to allocate iio trigger buffer\n");
 		return ret;
 	}
 

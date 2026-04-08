@@ -652,6 +652,8 @@ s32 cmdq_pkt_poll_timeout(struct cmdq_pkt *pkt, u32 value, u8 subsys,
 
 void cmdq_pkt_perf_end(struct cmdq_pkt *pkt);
 void cmdq_pkt_perf_begin(struct cmdq_pkt *pkt);
+void cmdq_pkt_save_tpr_to_dram(struct cmdq_pkt *pkt, const u32 offset);
+u32 cmdq_mbox_get_tpr_from_dram(struct cmdq_pkt *pkt, u32 offset);
 u32 *cmdq_pkt_get_perf_ret(struct cmdq_pkt *pkt);
 
 /**
@@ -771,6 +773,8 @@ u32 cmdq_buf_cmd_parse_buf(u64 *buf, u32 cmd_nr, dma_addr_t buf_pa,
 s32 cmdq_pkt_dump_buf(struct cmdq_pkt *pkt, dma_addr_t curr_pa);
 
 int cmdq_dump_pkt(struct cmdq_pkt *pkt, dma_addr_t pc, bool dump_inst);
+
+void cmdq_pkt_sleep_by_poll(struct cmdq_pkt *pkt, u32 tick);
 
 char *cmdq_pkt_parse_buf(struct cmdq_pkt *pkt, u32 *size_out, void **raw_out, u32 *size_raw_out);
 

@@ -30,6 +30,8 @@
 #define RESCUE_TYPE_BUFFER_FOUNT_FITLER   (1 << 9)
 #define RESCUE_TYPE_PRE_ANIMATION         (1 << 10)
 #define RESCUE_TYPE_ENABLE_MARGIN         (1 << 11)
+#define RESCUE_TYPE_AI_RESCUE             (1 << 12)
+
 
 extern void set_task_basic_vip(int pid);
 extern void unset_task_basic_vip(int pid);
@@ -151,6 +153,10 @@ extern void flt_ctrl_force_set(int set);
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
 extern void group_set_mode(u32 mode);
 #endif
+void register_jank_cb(void);
+void get_proc_name(int tgid, char *name);
+void set_curr_thread(int pid, unsigned long long identifier);
+
 
 void __exit fbt_cpu_ux_exit(void);
 int __init fbt_cpu_ux_init(void);

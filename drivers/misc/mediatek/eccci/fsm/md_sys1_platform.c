@@ -27,7 +27,13 @@
 #endif
 
 #include <linux/regulator/consumer.h> /* for MD PMIC */
-
+#if (IS_ENABLED(CONFIG_MTK_SPM_V4) && IS_ENABLED(CONFIG_MTK_PMQOS))
+#include <vcorefs_v3/mtk_vcorefs_governor.h>
+#include "mtk-pm-qos.h"
+#endif
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+#include "mtk_spm_sleep.h"
+#endif
 #include "ccci_core.h"
 #include "modem_sys.h"
 #include "md_sys1_platform.h"
@@ -72,6 +78,54 @@ static struct ccci_clk_node clk_table[] = {
 #define ROr2W(a, b, c)  ccci_write32(a, b, (ccci_read32(a, b)|c))
 #define RAnd2W(a, b, c)  ccci_write32(a, b, (ccci_read32(a, b)&c))
 #define RabIsc(a, b, c) ((ccci_read32(a, b)&c) != c)
+
+#if IS_ENABLED(CONFIG_PM)
+static atomic_t is_suspend = ATOMIC_INIT(0);
+
+static int ccci_pm_event(struct notifier_block *notifier, unsigned long pm_event, void *unused)
+{
+	switch (pm_event) {
+	case PM_SUSPEND_PREPARE:
+		if (atomic_read(&is_suspend) == 0)
+			atomic_set(&is_suspend, 1);
+		return NOTIFY_DONE;
+	case PM_POST_SUSPEND:
+		if (atomic_read(&is_suspend) == 1)
+			atomic_set(&is_suspend, 0);
+		return NOTIFY_DONE;
+	}
+	return NOTIFY_OK;
+}
+
+static struct notifier_block ccci_pm_notifier_block = {
+	.notifier_call = ccci_pm_event,
+	.priority = 0,
+};
+#endif /* CONFIG_PM */
+
+#if !IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) && !IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY)
+static void wait_pm_resume(void)
+{
+	int count = 0;
+
+#if IS_ENABLED(CONFIG_PM)
+	while(atomic_read(&is_suspend) == 1) {
+		if (count % 10 == 0)
+			CCCI_NORMAL_LOG(0, TAG, "Waiting to PM enter resume....\n");
+
+		if( count == 300 ) {
+			CCCI_ERROR_LOG(0, TAG, "Wait PM resume timeout 300 times\n");
+			break;
+		}
+
+		count++;
+		msleep(100);
+	}
+#endif /* CONFIG_PM */
+
+	CCCI_NORMAL_LOG(0, TAG, "run %d times to exit\n", count);
+}
+#endif /* CONFIG_COMMON_CLK_PG_LEGACY */
 
 #ifdef ENABLE_DEBUG_DUMP /* Fix me! */
 void md1_subsys_debug_dump(enum subsys_id sys)
@@ -203,8 +257,12 @@ void md_cd_lock_modem_clock_src(int locked)
 
 	if (res.a0 && md_cd_plat_val_ptr.md_gen < 6295) {
 		CCCI_ERROR_LOG(-1, TAG, "[md_gen < 6295] using spm\n");
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+		spm_ap_mdsrc_req(locked);
+#else
 		if (s_md_clock_src_callback)
 			s_md_clock_src_callback(locked);
+#endif
 		return;
 	}
 
@@ -567,6 +625,7 @@ static void md1_dpsw_pmic_setting_off(void)
 	int ret, idx;
 	int r_value = 0;
 	struct regulator *Vmodem_reg_ref = NULL;
+	unsigned long Vmodem_max_val;
 
 	if (!(md_cd_plat_val_ptr.power_flow_config & (1 << MD_DPSW_SETTING))) {
 		CCCI_NORMAL_LOG(0, TAG,
@@ -594,6 +653,7 @@ static void md1_dpsw_pmic_setting_off(void)
 			/* get Vmodem value */
 			} else if (strcmp(md_reg_table[idx].reg_name, "md-vmodem") == 0) {
 				Vmodem_reg_ref = md_reg_table[idx].reg_ref;
+				Vmodem_max_val = md_reg_table[idx].reg_vol1;
 				CCCI_NORMAL_LOG(-1, TAG,
 					"[POWER OFF]pmic get_voltage %s=%d uV\n",
 					md_reg_table[idx].reg_name,
@@ -604,7 +664,7 @@ static void md1_dpsw_pmic_setting_off(void)
 
 	if (r_value && (Vmodem_reg_ref != NULL)) {
 		/* set Vmodem same as Vsram */
-		ret = regulator_set_voltage(Vmodem_reg_ref, r_value, 750000);
+		ret = regulator_set_voltage(Vmodem_reg_ref, r_value, Vmodem_max_val);
 		if (ret)
 			CCCI_ERROR_LOG(-1, TAG, "set Vsram value to Vmodem fail\n");
 		ret = regulator_sync_voltage(Vmodem_reg_ref);
@@ -967,6 +1027,7 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 #if IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) || IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY)
 	clk_disable_unprepare(clk_table[0].clk_ref);
 #else
+	wait_pm_resume();
 	ret = pm_runtime_put_sync(&md->plat_dev->dev);
 #endif
 
@@ -984,9 +1045,8 @@ static int md_cd_power_off(struct ccci_modem *md, unsigned int timeout)
 		CCCI_NORMAL_LOG(0, TAG, "[POWER OFF] OFF done delay 4ms\n");
 	}
 
-	/* 1. power off srclkena for gen97 */
-	if ((md_cd_plat_val_ptr.md_gen == 6297 || md_cd_plat_val_ptr.md_gen == 6295) &&
-	    (md_cd_plat_val_ptr.power_flow_config & (1 << SRCCLKENA_SETTING_BIT))) {
+	/* 1. power off srclkena */
+	if (md_cd_plat_val_ptr.power_flow_config & (1 << SRCCLKENA_SETTING_BIT)) {
 		ret = regmap_read(md->hw_info->plat_val->infra_ao_base,
 			INFRA_AO_MD_SRCCLKENA, &reg_value);
 		if (ret) {
@@ -1681,44 +1741,31 @@ void md1_pll_init(struct ccci_modem *md)
 	CCCI_BOOTUP_LOG(0, TAG, "pll init: end\n");
 }
 
-
-#ifdef SUPPORT_MT6739
-static int (*vcorefs_request_dvfs_callback)(enum dvfs_kicker, enum dvfs_opp);
-void ccci_set_svcorefs_request_dvfs_cb(int (*vcorefs_request_dvfs_opp)(enum dvfs_kicker, enum dvfs_opp))
-{
-	vcorefs_request_dvfs_callback = vcorefs_request_dvfs_opp;
-}
-EXPORT_SYMBOL(ccci_set_svcorefs_request_dvfs_cb);
-#endif
-
-
 /* mt6739 used vcore old fun to set value */
 static int md_cd_vcore_config_old (unsigned int hold_req)
 {
 	static int is_hold;
 	int ret = -1;
-#ifdef SUPPORT_MT6739
-	if (!vcorefs_request_dvfs_callback) {
-		CCCI_ERROR_LOG(0, TAG,
-			"register vcorefs_request_dvfs_callback func fail\n");
-		return ret;
-	}
+#if (IS_ENABLED(CONFIG_MTK_SPM_V4) && IS_ENABLED(CONFIG_MTK_PMQOS))
+	static struct mtk_pm_qos_request md_qos_vcore_request;
 #endif
 
-	CCCI_BOOTUP_LOG(0, TAG,
-		"md_cd_vcore_config: is_hold=%d, hold_req=%d\n", is_hold, hold_req);
+	CCCI_BOOTUP_LOG(0, TAG, "md_cd_vcore_config: is_hold=%d, hold_req=%d\n",
+		is_hold, hold_req);
 	if (hold_req && is_hold == 0) {
-		//ret = vcorefs_request_dvfs_callback(KIR_APCCCI, OPP_0);
+#if (IS_ENABLED(CONFIG_MTK_SPM_V4) && IS_ENABLED(CONFIG_MTK_PMQOS))
+		mtk_pm_qos_add_request(&md_qos_vcore_request, MTK_PM_QOS_VCORE_OPP, 0);
+#endif
 		is_hold = 1;
 	} else if (hold_req == 0 && is_hold) {
-		//ret = vcorefs_request_dvfs_callback(KIR_APCCCI, OPP_UNREQ);
+#if (IS_ENABLED(CONFIG_MTK_SPM_V4) && IS_ENABLED(CONFIG_MTK_PMQOS))
+		mtk_pm_qos_remove_request(&md_qos_vcore_request);
+#endif
 		is_hold = 0;
 	} else
-		CCCI_ERROR_LOG(0, TAG,
-			"invalid hold_req: is_hold=%d, hold_req=%d\n", is_hold, hold_req);
-	if (ret)
-		CCCI_ERROR_LOG(0, TAG,
-			"md_cd_vcore_config fail: ret=%d, hold_req=%d\n", ret, hold_req);
+		CCCI_ERROR_LOG(0, TAG, "invalid hold_req: is_hold=%d, hold_req=%d\n",
+			is_hold, hold_req);
+
 	return ret;
 }
 
@@ -1734,8 +1781,8 @@ int md_cd_vcore_config(unsigned int hold_req)
 		return -1;
 	if (md_cd_plat_val_ptr.md_gen >= 6295)
 		return 0;
-	/* mt6739 used vcore old fun to set value */
-	if (ap_plat_info == 6739) {
+	/* mt6771 used vcore old fun to set value */
+	if (ap_plat_info == 6771) {
 		ret = md_cd_vcore_config_old(hold_req);
 		return ret;
 	}
@@ -1841,6 +1888,7 @@ static int md_cd_power_on(struct ccci_modem *md)
 #if IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY_V1) || IS_ENABLED(CONFIG_COMMON_CLK_PG_LEGACY)
 	ret = clk_prepare_enable(clk_table[0].clk_ref);
 #else
+	wait_pm_resume();
 	ret = pm_runtime_get_sync(&md->plat_dev->dev);
 #endif
 	CCCI_BOOTUP_LOG(0, TAG,
@@ -2160,6 +2208,7 @@ static int md_cd_get_modem_hw_info(struct platform_device *dev_ptr,
 	ret = clk_prepare_enable(clk_table[0].clk_ref);
 	CCCI_NORMAL_LOG(0, TAG, "[POWER ON] dummy: clk: MD MTCMOS ON %d\n", ret);
 #else
+	wait_pm_resume();
 	pm_runtime_enable(&dev_ptr->dev);
 	dev_pm_syscore_device(&dev_ptr->dev, true);
 	retval = pm_runtime_get_sync(&dev_ptr->dev);
@@ -2248,6 +2297,14 @@ static int ccci_modem_probe(struct platform_device *plat_dev)
 			"%s:alloc md hw mem fail\n", __func__);
 		return -1;
 	}
+
+#if IS_ENABLED(CONFIG_PM)
+	ret = register_pm_notifier(&ccci_pm_notifier_block);
+	if (ret)
+		CCCI_ERROR_LOG(-1, TAG,
+			"%s:failed to register PM notifier %d\n", __func__, ret);
+#endif /* CONFIG_PM */
+
 	ret = md_cd_get_modem_hw_info(plat_dev, &dev_cfg, md_hw);
 	if (ret != 0) {
 		CCCI_ERROR_LOG(-1, TAG,
@@ -2262,6 +2319,12 @@ static int ccci_modem_probe(struct platform_device *plat_dev)
 	if (ret < 0) {
 		kfree(md_hw);
 	}
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+	/* register callback func for spm */
+	register_exec_ccci_kern_func_pfn(&exec_ccci_kern_func);
+	CCCI_NORMAL_LOG(0, TAG, "%s: hook register_exec_ccci_kern_func_pfn done\n",
+		__func__);
+#endif
 	time_total = sched_clock() - time_total;
 	CCCI_NORMAL_LOG(-1, TAG, "%s cost: %llu\n", __func__, time_total);
 	ccci_dump_write(CCCI_DUMP_MD_INIT,

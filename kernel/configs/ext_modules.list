@@ -7,3 +7,5 @@
 ../vendor/mediatek/kernel_modules/met_drv_v3/met_api
 #../vendor/mediatek/kernel_modules/task_turbo_int
 ../vendor/mediatek/kernel_modules/task_turbo_cus
+../vendor/mediatek/kernel_modules/game_cus
+../vendor/mediatek/kernel_modules/game_int

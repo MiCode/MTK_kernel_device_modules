@@ -69,6 +69,8 @@ struct JpegDeviceStruct {
 	struct icc_path *jpeg_path_bsdma[HW_CORE_NUMBER];
 	struct icc_path *jpeg_path_huff_offset[HW_CORE_NUMBER];
 	long ven0BaseVA;
+	long smiLarbBaseVA[JPEG_LARB_COUNT];
+	uint32_t axdomain[JPEG_LARB_COUNT];
 };
 
 const long jpeg_dev_get_hybrid_decoder_base_VA(int id);

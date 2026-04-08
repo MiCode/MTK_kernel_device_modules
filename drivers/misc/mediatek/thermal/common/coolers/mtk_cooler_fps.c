@@ -576,7 +576,7 @@ static int adp_fps_set_cur_state(struct thermal_cooling_device *cdev,
 	set_sma_val(tpcb_history, tpcb_sma_len, &tpcb_history_idx,
 			mtk_thermal_get_temp(MTK_THERMAL_SENSOR_AP));
 
-	if (!mtk_get_gpu_loading(&gpu_loading))
+	if (!mtk_get_gpu_loading_avg(&gpu_loading))
 		gpu_loading = 0;
 
 	set_sma_val(gpu_loading_history, gpu_loading_sma_len,

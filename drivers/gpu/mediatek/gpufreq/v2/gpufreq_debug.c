@@ -154,6 +154,8 @@ static int gpufreq_status_proc_show(struct seq_file *m, void *v)
 		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" :
 		g_shared_status->stress_test == STRESS_ASCENDING ? "Ascending" :
 		g_shared_status->stress_test == STRESS_DESCENDING ? "Descending" :
+		g_shared_status->stress_test == STRESS_SEESAW ? "Seesaw" :
+		g_shared_status->stress_test == STRESS_RANDOM_DUAL ? "Random_Dual" :
 		g_shared_status->stress_test == STRESS_SLT2 ? "SLT2" : "Off");
 	seq_printf(m,
 		"%-16s AgingMargin: %s, AVSMargin: %s, GPM1.0: %s, GPM3.0: %s, DFD: %s\n",
@@ -789,6 +791,8 @@ static int mfgsys_config_proc_show(struct seq_file *m, void *v)
 		g_shared_status->stress_test == STRESS_MAX_MIN ? "Max_Min" :
 		g_shared_status->stress_test == STRESS_ASCENDING ? "Ascending" :
 		g_shared_status->stress_test == STRESS_DESCENDING ? "Descending" :
+		g_shared_status->stress_test == STRESS_SEESAW ? "Seesaw" :
+		g_shared_status->stress_test == STRESS_RANDOM_DUAL ? "Random_Dual" :
 		g_shared_status->stress_test == STRESS_SLT2 ? "SLT2" : "Disable",
 		g_shared_status->test_mode == TEST_PRIVILEGE ? "Privilege" :
 		g_shared_status->test_mode == TEST_ADVANCED ? "Advanced" : "Normal");
@@ -852,7 +856,7 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 
 	mutex_lock(&gpufreq_debug_lock);
 
-	if (sscanf(buf, "%14s %10s", input_target, input_val) == 2) {
+	if (sscanf(buf, "%15s %15s", input_target, input_val) == 2) {
 		/* parsing */
 		if (sysfs_streq(input_target, "test_mode")) {
 			target = CONFIG_TEST_MODE;
@@ -875,6 +879,10 @@ static ssize_t mfgsys_config_proc_write(struct file *file,
 				val = STRESS_ASCENDING;
 			else if (sysfs_streq(input_val, "descending"))
 				val = STRESS_DESCENDING;
+			else if (sysfs_streq(input_val, "seesaw"))
+				val = STRESS_SEESAW;
+			else if (sysfs_streq(input_val, "random_dual"))
+				val = STRESS_RANDOM_DUAL;
 			else if (sysfs_streq(input_val, "slt2"))
 				val = STRESS_SLT2;
 		} else if (sysfs_streq(input_target, "margin")) {

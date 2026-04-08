@@ -676,6 +676,7 @@ static int battery_oc_parse_dt(struct platform_device *pdev, unsigned int num)
 			priv->unit_fg_cur = MT6357_UNIT_FGCURRENT;
 			break;
 		case MT6358_CHIP_ID:
+		case MT6366_CHIP_ID:
 			priv->default_rfg = MT6358_DEFAULT_RFG;
 			priv->unit_fg_cur = MT6358_UNIT_FGCURRENT;
 			break;

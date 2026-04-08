@@ -44,6 +44,7 @@ bool dcs_get_setting_dirty(void);
 // for dcs_stress
 int dcs_get_dcs_stress(void);
 void dcs_set_dcs_stress(int enable);
+void dcs_debug(void);
 
 // for dcs adjust
 void dcs_set_adjust_support(unsigned int val);

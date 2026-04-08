@@ -1250,9 +1250,11 @@ int mmc_dbg_register(struct mmc_host *mmc)
 	/* Blocktag */
 #if IS_ENABLED(CONFIG_MTK_BLOCK_IO_TRACER)
 	ret = mmc_mtk_biolog_init(mmc);
-	if (ret) {
+	if (ret && ret != -EEXIST) {
 		kfree(mmc_aee_buffer);
 		mmc_aee_buffer = NULL;
+		dev_info(mmc->parent,"[%s %d]mmc_aee_buffer=NULL\n",
+			__func__, __LINE__);
 		return ret;
 	}
 #endif

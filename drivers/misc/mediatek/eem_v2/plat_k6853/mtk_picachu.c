@@ -149,17 +149,17 @@ static void get_picachu_mem_addr(void)
 {
 	void __iomem *virt_addr;
 
-	virt_addr = ioremap(EEM_PTPSPARE0, 0);
-	if(virt_addr == NULL || virt_addr == 0){
-		pr_info("Virtual address after ioremap is 0\n");
-		return ;
+	virt_addr = ioremap(EEM_PTPSPARE0, 4);
+	if (!virt_addr) {
+		picachu_pr_notice("ioremap fail\n");
+		return;
 	}
+
 	picachu_mem_base_virt = 0;
 	picachu_mem_size = 0x80000;
-	pr_info("[PICACHU] check virtual address\n");
-	pr_info("[PICACHU] virtual address =0x%llx\n", (unsigned long long)picachu_mem_base_phys);
+
 	picachu_mem_base_phys = picachu_read(virt_addr);
-	pr_info("[PICACHU] passed check virtual address\n");
+
 	if ((void __iomem *)picachu_mem_base_phys != NULL) {
 		picachu_mem_base_virt =
 			(phys_addr_t)(uintptr_t)ioremap_wc(
@@ -227,11 +227,11 @@ static void dump_picachu_info(struct seq_file *m, struct picachu_info *info)
 	}
 
 return;
-	addr_ptr = ioremap(MCUCFG_SPARE_REG, 0);
+	addr_ptr = ioremap(MCUCFG_SPARE_REG, 4);
 	val = picachu_read(addr_ptr);
 	seq_printf(m, "\nAging counter value: 0x%08x\n", val);
 
-	addr_ptr = ioremap(EEM_PTPSPARE1, 0);
+	addr_ptr = ioremap(EEM_PTPSPARE1, 4);
 	val = picachu_read(addr_ptr);
 	if (val != 0) {
 		if ((val & 0x80000000) > 0)

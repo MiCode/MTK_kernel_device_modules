@@ -209,10 +209,10 @@ uint32_t printV6Msg(struct mdfpm_log *mdfpm_log_buf, int action_id_t, char *str_
 	return size;
 }
 
+char buffer[MDFPM_SEND_LOG_BUF_SZ];
 uint32_t print_unexpected_id(struct mdfpm_log *mdfpm_log_buf, uint32_t buf_len, char *str_dstate)
 {
 	uint32_t i, size, idx = 0;
-	char buffer[MDFPM_SEND_LOG_BUF_SZ];
 
 	for (i = 0; i < buf_len; i++)
 		idx += snprintf(&buffer[idx], buf_len-idx, "%u", mdfpm_log_buf->buf[i]);
@@ -222,11 +222,11 @@ uint32_t print_unexpected_id(struct mdfpm_log *mdfpm_log_buf, uint32_t buf_len, 
 	return size;
 }
 
+char str_dstate[MDFPM_SEND_LOG_BUF_SZ];
 static void mddp_print_mdfpm_log(struct mdfpm_log *buf, uint32_t buf_len)
 {
 	uint32_t size = 0;
 	struct mdfpm_log *mdfpm_log_buf;
-	char str_dstate[MDFPM_SEND_LOG_BUF_SZ];
 
 	if (buf_len >= MDFPM_SEND_LOG_HEADER) {
 		mdfpm_log_buf = (struct mdfpm_log *)buf;

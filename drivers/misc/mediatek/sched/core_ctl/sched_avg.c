@@ -11,11 +11,12 @@
 #include <linux/printk.h>
 #include <linux/sched/clock.h>
 #include <trace/hooks/sched.h>
-
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
 #include "sched_avg.h"
 #include "common.h"
+#include <mt-plat/mtk_irq_mon.h>
+#include <eas/vip.h>
 
 #define TAG "sched_avg"
 
@@ -30,7 +31,6 @@ struct over_thres_stats {
 	int nr_over_up_thres;
 	int dn_thres;
 	int up_thres;
-	int nr_running_diff;
 	atomic_long_t max_task_util;
 	u64 nr_over_dn_thres_prod_sum;
 	u64 nr_over_up_thres_prod_sum;
@@ -41,28 +41,35 @@ struct over_thres_stats {
 struct cluster_over_thres_stats {
 	u64 last_get_over_thres_time;
 	u64 max_capacity;
+	unsigned long freq_qos_max_of_min;
 };
 
 static DEFINE_PER_CPU(struct over_thres_stats, cpu_over_thres_state);
 static DEFINE_PER_CPU(u64, nr);
 static DEFINE_PER_CPU(u64, nr_max);
+static DEFINE_PER_CPU(u64, rt_nr);
+static DEFINE_PER_CPU(u64, rt_nr_max);
+static DEFINE_PER_CPU(u64, vip_nr);
+static DEFINE_PER_CPU(u64, vip_nr_max);
 static DEFINE_PER_CPU(u64, last_time);
 static DEFINE_PER_CPU(spinlock_t, nr_lock) = __SPIN_LOCK_UNLOCKED(nr_lock);
 static DEFINE_PER_CPU(spinlock_t, nr_over_thres_lock) = __SPIN_LOCK_UNLOCKED(nr_over_thres_lock);
+static DEFINE_SPINLOCK(core_ctl_cluster_state_lock);
 /*
  * static DEFINE_PER_CPU(u64, nr_prod_sum);
  * static DEFINE_PER_CPU(unsigned long, iowait_prod_sum);
  */
 static int init_thres;
 static int global_task_util;
+static struct notifier_block *core_ctl_freq_qos_min_notifier;
 
 /* pelt.h */
-#define OVER_THRES_SIZE			2
 #define MAX_CLUSTER_NR			3
 #define MAX_UTIL_TRACKER_PERIODIC_MS	8
+#define MAX_NR_POLICY	8
 
 static int init_thres_table(void);
-static unsigned int over_thres[OVER_THRES_SIZE] = {80, 50};
+static unsigned int over_thres[MAX_CLUSTER_NR] = {70, 70, 50};
 static struct cluster_over_thres_stats cluster_over_thres_table[MAX_CLUSTER_NR];
 
 void sched_max_util_task(int *util)
@@ -103,24 +110,35 @@ unsigned long _capacity_of(int cpu)
 {
 	return cpu_rq(cpu)->cpu_capacity;
 }
+EXPORT_SYMBOL(_capacity_of);
 
 unsigned int get_cpu_util_pct(unsigned int cpu, bool orig)
 {
 	struct cfs_rq *cfs_rq;
-	unsigned long capacity;
-	unsigned long util;
+	unsigned long cfs_util, cpu_util = 0;
+	unsigned long capacity, umin, umax;
+	unsigned long util_est;
 	unsigned int util_pct;
 
-	cfs_rq = &cpu_rq(cpu)->cfs;
-	util = READ_ONCE(cfs_rq->avg.util_avg);
+	/* camera mode only consider CFS loading & orig capacity */
+	if (core_ctl_get_policy() != 2) {
+		cfs_util = mtk_cpu_util_cfs_boost(cpu);
+		cpu_util = mtk_effective_cpu_util_total(cpu, NULL, -1,
+					1, &umin, &umax, NULL, NULL, NULL, 0, false);
+		capacity = (orig == true) ? arch_scale_cpu_capacity(cpu) : _capacity_of(cpu);
+	} else {
+		cfs_rq = &cpu_rq(cpu)->cfs;
+		cfs_util = READ_ONCE(cfs_rq->avg.util_avg);
+		if (sched_feat(UTIL_EST) && is_util_est_enable()) {
+			util_est = READ_ONCE(cfs_rq->avg.util_est);
+			cpu_util = max_t(unsigned long, cfs_util, util_est);
+		}
+		capacity = arch_scale_cpu_capacity(cpu);
+	}
 
-	if (sched_feat(UTIL_EST) && is_util_est_enable())
-		util = max_t(unsigned long, util,
-			READ_ONCE(cfs_rq->avg.util_est));
+	cpu_util = min_t(unsigned long, cpu_util, capacity);
+	util_pct = (unsigned int)div64_ul((cpu_util * 100), capacity);
 
-	capacity = (orig == true) ? capacity_orig_of(cpu) : _capacity_of(cpu);
-	util = min_t(unsigned long, util, capacity);
-	util_pct = (unsigned int)div64_ul((util * 100), capacity);
 	return util_pct;
 }
 EXPORT_SYMBOL(get_cpu_util_pct);
@@ -134,12 +152,11 @@ EXPORT_SYMBOL(get_cpu_util_pct);
  *
  * Update average with latest nr_running value for CPU
  */
-void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
+void sched_update_nr_prod(int cpu, unsigned long nr_running, unsigned long rt_nr_running, int inc)
 {
 	s64 diff;
 	u64 curr_time;
 	unsigned long flags;
-	struct over_thres_stats *cpu_over_thres;
 
 	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
 	curr_time = sched_clock();
@@ -152,19 +169,36 @@ void sched_update_nr_prod(int cpu, unsigned long nr_running, int inc)
 	per_cpu(last_time, cpu) = curr_time;
 	/* To prevent to add count, because already do outside */
 	per_cpu(nr, cpu) = nr_running;
+	per_cpu(rt_nr, cpu) = rt_nr_running;
+	per_cpu(vip_nr, cpu) = sum_num_vip_in_cpu(cpu);
 
 	if (per_cpu(nr, cpu) > per_cpu(nr_max, cpu))
 		per_cpu(nr_max, cpu) = per_cpu(nr, cpu);
+	if (per_cpu(rt_nr, cpu) > per_cpu(rt_nr_max, cpu))
+		per_cpu(rt_nr_max, cpu) = per_cpu(rt_nr, cpu);
+	if (per_cpu(vip_nr, cpu) > per_cpu(vip_nr_max, cpu))
+		per_cpu(vip_nr_max, cpu) = per_cpu(vip_nr, cpu);
 	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
-	spin_lock_irqsave(&per_cpu(nr_over_thres_lock, cpu), flags);
-	cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
-	cpu_over_thres->nr_running_diff = nr_running - cpu_over_thres->nr_over_dn_thres;
-	spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 }
 
 void sched_update_nr_running_cb(void *data, struct rq *rq, int count)
 {
-	sched_update_nr_prod(cpu_of(rq), rq->nr_running, count);
+	unsigned long rq_rt_nrruning = 0;
+	struct rt_rq *rt_rq = NULL;
+
+	if (!core_ctl_get_policy())
+		return;
+
+	if (rq == NULL)
+		return;
+
+	if (rq)
+		rt_rq = &rq->rt;
+
+	if (rt_rq && rt_rq->rt_nr_running)
+		rq_rt_nrruning = rt_rq->rt_nr_running;
+
+	sched_update_nr_prod(cpu_of(rq), rq->nr_running, rq_rt_nrruning, count);
 }
 
 static inline unsigned long task_util(struct task_struct *p)
@@ -224,7 +258,7 @@ EXPORT_SYMBOL(arch_get_cluster_cpus);
 
 unsigned int get_over_threshold(int index)
 {
-	if (index >= 0 && index <= OVER_THRES_SIZE)
+	if (index >= 0 && index <= MAX_CLUSTER_NR)
 		return over_thres[index];
 	return 100;
 }
@@ -242,7 +276,7 @@ EXPORT_SYMBOL(get_max_capacity);
 static void over_thresh_chg_notify(void);
 int set_over_threshold(unsigned int index, unsigned int val)
 {
-	if (index >= OVER_THRES_SIZE || val > 100)
+	if (index >= MAX_CLUSTER_NR || val > 100)
 		return -EINVAL;
 
 	over_thres[index] = (int)val;
@@ -255,6 +289,8 @@ enum over_thres_type is_task_over_thres(struct task_struct *p)
 {
 	struct over_thres_stats *cpu_over_thres;
 	unsigned long util;
+	unsigned int uclamp_min;
+	struct uclamp_se *uc_min_req;
 	int cpu;
 
 	if (!p)
@@ -262,6 +298,12 @@ enum over_thres_type is_task_over_thres(struct task_struct *p)
 
 	cpu = cpu_of(task_rq(p));
 	util = task_util(p);
+	/* uclamp request for capacity */
+	uc_min_req = &p->uclamp_req[UCLAMP_MIN];
+	uclamp_min = uc_min_req->value;
+	if (uclamp_min > util)
+		util = uclamp_min;
+
 	cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 
 	/* track task with max utilization */
@@ -277,48 +319,47 @@ enum over_thres_type is_task_over_thres(struct task_struct *p)
 		return NO_OVER_THRES;
 }
 
-static DEFINE_SPINLOCK(deferrable_lock);
-static void sched_avg_deferred_func(struct work_struct *work)
-{
-	over_thresh_chg_notify();
-	printk_deferred_once("core_clt reset\n");
-}
-static DECLARE_WORK(sched_avg_deferred_work, sched_avg_deferred_func);
-
-#if IS_ENABLED(CONFIG_ARM64)
-#define DEFERRED_WORK_DEBOUNCE_TIME	(5 * NSEC_PER_SEC)
-#else
-#define DEFERRED_WORK_DEBOUNCE_TIME	(5LL * NSEC_PER_SEC)
-#endif
-static void reset_over_thre_deferred(u64 curr_time)
-{
-	static s64 deferred_work_last_update;
-	s64 diff;
-
-	spin_lock(&deferrable_lock);
-	diff = (s64) (curr_time - deferred_work_last_update);
-	if (diff < DEFERRED_WORK_DEBOUNCE_TIME) {
-		spin_unlock(&deferrable_lock);
-		return;
-	}
-	deferred_work_last_update = curr_time;
-	spin_unlock(&deferrable_lock);
-
-	schedule_work(&sched_avg_deferred_work);
-}
-
 int get_max_nr_running(int cpu)
 {
 	int max_nr = 0;
+	unsigned long flags;
 
-	spin_lock(&per_cpu(nr_lock, cpu));
+	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
 	max_nr = per_cpu(nr_max, cpu);
 	/* reset max_nr value */
 	per_cpu(nr_max, cpu) = per_cpu(nr, cpu);
-	spin_unlock(&per_cpu(nr_lock, cpu));
+	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
 	return max_nr;
 }
 EXPORT_SYMBOL(get_max_nr_running);
+
+int get_max_rt_nr_running(int cpu)
+{
+	int max_rt_nr = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
+	max_rt_nr = per_cpu(rt_nr_max, cpu);
+	/* reset max_nr value */
+	per_cpu(rt_nr_max, cpu) = per_cpu(rt_nr, cpu);
+	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
+	return max_rt_nr;
+}
+EXPORT_SYMBOL(get_max_rt_nr_running);
+
+int get_max_vip_nr_running(int cpu)
+{
+	int max_vip_nr = 0;
+	unsigned long flags;
+
+	spin_lock_irqsave(&per_cpu(nr_lock, cpu), flags);
+	max_vip_nr = per_cpu(vip_nr_max, cpu);
+	/* reset max_nr value */
+	per_cpu(vip_nr_max, cpu) = per_cpu(vip_nr, cpu);
+	spin_unlock_irqrestore(&per_cpu(nr_lock, cpu), flags);
+	return max_vip_nr;
+}
+EXPORT_SYMBOL(get_max_vip_nr_running);
 
 int sched_get_nr_over_thres_avg(int cluster_id,
 				int *dn_avg,
@@ -334,7 +375,6 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 	int cpu = 0;
 	int cluster_nr;
 	struct cpumask cls_cpus;
-	bool reset = false;
 
 	/* Need to make sure initialization done. */
 	if (!init_thres) {
@@ -346,7 +386,7 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 	/* cluster_id need reasonale. */
 	cluster_nr = arch_get_nr_clusters();
 	if (cluster_id < 0 || cluster_id >= cluster_nr) {
-		printk_deferred_once("%s: invalid cluster id %d\n", __func__, cluster_id);
+		pr_info("%s: invalid cluster id %d\n", __func__, cluster_id);
 		return -EINVAL;
 	}
 
@@ -370,24 +410,12 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 
 		cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 
-		if ((s64) (curr_time - cpu_over_thres->dn_last_update_time < 0)) {
+		if (curr_time < cpu_over_thres->dn_last_update_time) {
 			clk_faulty = 1;
 			spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 			break;
 		}
 
-		if (cpu_over_thres->nr_over_dn_thres < 0 ||
-		    cpu_over_thres->nr_over_up_thres < 0 ||
-			cpu_over_thres->nr_running_diff < 0) {
-			reset = true;
-			printk_deferred_once("%s: nr_over_dn_thres: %d nr_over_up_thres:%d nr_running_diff:%d\n",
-					TAG, cpu_over_thres->nr_over_dn_thres,
-					cpu_over_thres->nr_over_up_thres,
-					cpu_over_thres->nr_running_diff);
-
-			spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
-			break;
-		}
 		/* get sum of nr_over_thres */
 		*sum_nr_over_dn_thres += cpu_over_thres->nr_over_dn_thres;
 		*sum_nr_over_up_thres += cpu_over_thres->nr_over_up_thres;
@@ -412,9 +440,6 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 		spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 	}
 
-	if (reset)
-		reset_over_thre_deferred(curr_time);
-
 	if (clk_faulty) {
 		*dn_avg = *up_avg = 0;
 		*sum_nr_over_dn_thres = *sum_nr_over_up_thres = 0;
@@ -427,6 +452,32 @@ int sched_get_nr_over_thres_avg(int cluster_id,
 	return 0;
 }
 EXPORT_SYMBOL(sched_get_nr_over_thres_avg);
+
+void policy_chg_notify(void)
+{
+	over_thresh_chg_notify();
+	pr_info("%s: re-enable policy, flush over_thres status", TAG);
+}
+EXPORT_SYMBOL(policy_chg_notify);
+
+unsigned long get_freq_qos_max_of_min(unsigned int cid)
+{
+	struct cluster_over_thres_stats *cluster_over_thres;
+	unsigned long flags;
+	unsigned long last_freq_qos_max_of_min = 0;
+
+	if (cid >= MAX_CLUSTER_NR) {
+		pr_info("%s: error cid=%d to get freq qos min.", TAG, cid);
+		return last_freq_qos_max_of_min;
+	}
+	spin_lock_irqsave(&core_ctl_cluster_state_lock, flags);
+	cluster_over_thres = &cluster_over_thres_table[cid];
+	last_freq_qos_max_of_min = cluster_over_thres->freq_qos_max_of_min;
+	cluster_over_thres->freq_qos_max_of_min = 0;
+	spin_unlock_irqrestore(&core_ctl_cluster_state_lock, flags);
+	return last_freq_qos_max_of_min;
+}
+EXPORT_SYMBOL(get_freq_qos_max_of_min);
 
 static void over_thresh_chg_notify(void)
 {
@@ -450,7 +501,7 @@ static void over_thresh_chg_notify(void)
 		cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 
 		if (cid < 0 || cid >= cluster_nr) {
-			printk_deferred_once("%s: cid=%d is out of nr=%d\n",
+			pr_info("%s: cid=%d is out of nr=%d\n",
 			__func__, cid, cluster_nr);
 			continue;
 		}
@@ -484,9 +535,7 @@ static void over_thresh_chg_notify(void)
 			continue;
 		}
 
-		/*
-		 * re-calculate over_thres count when updated threshold
-		 */
+		/* re-calculate over_thres count when updated threshold */
 		list_for_each_entry(p, &cpu_rq(cpu)->cfs_tasks, se.group_node) {
 			struct cc_task_struct *cc_ts =
 				&((struct mtk_task *) p->android_vendor_data1)->cc_task;
@@ -505,9 +554,9 @@ static void over_thresh_chg_notify(void)
 		}
 
 		/*
-		 * Threshold for over_thres is changed.
-		 * Need to reset stats
-		 */
+		* Threshold for over_thres is changed.
+		* Need to reset stats
+		*/
 		cpu_over_thres->nr_over_up_thres = nr_over_up_thres;
 		cpu_over_thres->nr_over_up_thres_prod_sum = 0;
 		cpu_over_thres->up_last_update_time = curr_time;
@@ -516,9 +565,9 @@ static void over_thresh_chg_notify(void)
 		cpu_over_thres->nr_over_dn_thres_prod_sum = 0;
 		cpu_over_thres->dn_last_update_time = curr_time;
 
-		cpu_over_thres->nr_running_diff = 0;
 		spin_unlock(&per_cpu(nr_over_thres_lock, cpu));
 		raw_spin_unlock_irqrestore(&cpu_rq(cpu)->__lock, flags);
+		atomic_long_set(&cpu_over_thres->max_task_util, 0);
 	}
 }
 
@@ -538,17 +587,28 @@ void sched_update_nr_over_thres_prod(struct task_struct *p, int cpu, int inc)
 	enum over_thres_type over_type = NO_OVER_THRES;
 	struct over_thres_stats *cpu_over_thres = NULL;
 	unsigned long util;
+	unsigned int uclamp_min;
+	struct uclamp_se *uc_min_req;
 	struct cc_task_struct *cc_ts = NULL;
 
 	/* TODO: should be error handle ? */
 	if (!init_thres) {
-		printk_deferred_once("assertion failed at %s:%d\n",
+		pr_info("assertion failed at %s:%d\n",
 				__FILE__,
 				__LINE__);
 		return;
 	}
 
+	if (!p)
+		return;
+
 	util = task_util(p);
+	/* uclamp request for capacity */
+	uc_min_req = &p->uclamp_req[UCLAMP_MIN];
+	uclamp_min = uc_min_req->value;
+	if (uclamp_min > util)
+		util = uclamp_min;
+
 	spin_lock_irqsave(&per_cpu(nr_over_thres_lock, cpu), flags);
 	cpu_over_thres = &per_cpu(cpu_over_thres_state, cpu);
 
@@ -583,7 +643,7 @@ static void update_nr_over_thres_locked(struct over_thres_stats *stats,
 	if (over_type == NO_OVER_THRES)
 		return;
 
-	/* track task with max utilization */
+	/* track task with max utilization or uclamp_min */
 	if (util > atomic_long_read(&stats->max_task_util))
 		atomic_long_set(&stats->max_task_util, util);
 
@@ -638,15 +698,22 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 	enum over_thres_type new_type = NO_OVER_THRES;
 	unsigned long flags;
 	unsigned long util;
+	unsigned int uclamp_min;
+	struct uclamp_se *uc_min_req;
 	int cpu;
 	struct cc_task_struct *cc_ts = NULL;
 
+	if (!core_ctl_get_policy())
+		return;
+
 	if (!init_thres) {
-		printk_deferred_once("assertion failed at %s:%d\n",
+		pr_info("assertion failed at %s:%d\n",
 				__FILE__,
 				__LINE__);
 		return;
 	}
+
+	irq_log_store();
 
 	if (entity_is_task(se) && se->on_rq) {
 		p = task_of(se);
@@ -657,6 +724,12 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 		old_type = READ_ONCE(cc_ts->over_type);
 
 		util = task_util(p);
+		/* uclamp request for capacity */
+		uc_min_req = &p->uclamp_req[UCLAMP_MIN];
+		uclamp_min = uc_min_req->value;
+		if (uclamp_min > util)
+			util = uclamp_min;
+
 		stats = &per_cpu(cpu_over_thres_state, cpu);
 		new_type = get_over_type(stats, util);
 
@@ -677,6 +750,8 @@ void pelt_se_tp(void *data, struct sched_entity *se)
 		WRITE_ONCE(cc_ts->over_type, (u64)new_type);
 		spin_unlock_irqrestore(&per_cpu(nr_over_thres_lock, cpu), flags);
 	}
+
+	irq_log_store();
 }
 
 
@@ -703,6 +778,11 @@ static inline int cfs_rq_throttled(struct cfs_rq *cfs_rq)
 
 void inc_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	if (!core_ctl_get_policy())
+		return;
+
+	irq_log_store();
+
 #if IS_ENABLED(CONFIG_CFS_BANDWIDTH)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
@@ -715,10 +795,16 @@ void inc_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 	}
 #endif
 	sched_update_nr_over_thres_prod(p, cpu_of(rq), 1);
+	irq_log_store();
 }
 
 void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p, int flags)
 {
+	if (!core_ctl_get_policy())
+		return;
+
+	irq_log_store();
+
 #if IS_ENABLED(CONFIG_CFS_BANDWIDTH)
 	struct cfs_rq *cfs_rq;
 	struct sched_entity *se = &p->se;
@@ -731,6 +817,7 @@ void dec_nr_over_thres_running(void *data, struct rq *rq, struct task_struct *p,
 	}
 #endif
 	sched_update_nr_over_thres_prod(p, cpu_of(rq), -1);
+	irq_log_store();
 }
 
 /*
@@ -779,7 +866,7 @@ static int init_thres_table(void)
 	if (init_thres)
 		return 0;
 
-	printk_deferred_once("%s start.\n", __func__);
+	pr_info("%s: init start.\n", __func__);
 
 	global_task_util = 0;
 
@@ -792,7 +879,7 @@ static int init_thres_table(void)
 		arch_get_cluster_cpus(&cls_cpus, i);
 		cpu = cpumask_first(&cls_cpus);
 		cluster_over_thres_table[i].max_capacity =
-			capacity_orig_of(cpu);
+			arch_scale_cpu_capacity(cpu);
 	}
 
 	for_each_possible_cpu(cpu) {
@@ -852,7 +939,7 @@ int get_over_thres_stats(char *buf, int buf_size)
 
 		len += snprintf(buf+len, buf_size-len,
 			"cpu=%d capacity=%lu dn_thres=%d up_thres=%d\n",
-			cpu, cpu_rq(cpu)->cpu_capacity_orig,
+			cpu, arch_scale_cpu_capacity(cpu),
 			cpu_over_thres->dn_thres,
 			cpu_over_thres->up_thres);
 	}
@@ -875,7 +962,7 @@ static ssize_t show_over_util(struct kobject *kobj,
 	unsigned int len = 0, i;
 	unsigned int max_len = 4096;
 
-	for (i = 0; i < OVER_THRES_SIZE; i++) {
+	for (i = 0; i < MAX_CLUSTER_NR; i++) {
 		len += snprintf(buf+len,
 			max_len-len, "over_util threshold[%u]=%d max=100\n",
 				i, over_thres[i]);
@@ -920,6 +1007,116 @@ static int init_attribs(void)
 	return ret;
 }
 
+static inline int get_nr_policy(void)
+{
+	int cpu, count = 0;
+	struct cpufreq_policy *policy, *last_policy = NULL;
+
+	for_each_possible_cpu(cpu) {
+		if (cpu >= MAX_NR_POLICY)
+			break;
+
+		policy = cpufreq_cpu_get(cpu);
+		if (!policy) {
+			pr_info("%s: No cpufreq policy for cpu %d\n", TAG, cpu);
+			continue;
+		}
+
+		if (policy == last_policy) {
+			cpufreq_cpu_put(policy);
+			continue;
+		}
+
+		last_policy = policy;
+		cpufreq_cpu_put(policy);
+		count++;
+	}
+
+	return count;
+}
+
+static int freq_qos_min_notifier_call(struct notifier_block *nb,
+				unsigned long freq_limit_min, void *ptr)
+{
+	int cid = nb - core_ctl_freq_qos_min_notifier;
+	struct cluster_over_thres_stats *cluster_over_thres;
+	unsigned long flags;
+
+	spin_lock_irqsave(&core_ctl_cluster_state_lock, flags);
+	cluster_over_thres = &cluster_over_thres_table[cid];
+	if (freq_limit_min > cluster_over_thres->freq_qos_max_of_min)
+		cluster_over_thres->freq_qos_max_of_min = freq_limit_min;
+	spin_unlock_irqrestore(&core_ctl_cluster_state_lock, flags);
+
+	return 0;
+}
+
+static void unregister_core_ctl_freq_qos_notifier(void)
+{
+	struct cpufreq_policy *policy;
+	int policy_idx = 0;
+	int cpu, ret = 0, nr_policy = 0;
+
+	nr_policy = get_nr_policy();
+	for_each_possible_cpu(cpu) {
+		if (policy_idx >= nr_policy || cpu >= MAX_NR_POLICY)
+			break;
+		policy = cpufreq_cpu_get(cpu);
+		if (policy) {
+			ret = freq_qos_remove_notifier(&policy->constraints, FREQ_QOS_MIN,
+						core_ctl_freq_qos_min_notifier + policy_idx);
+		}
+		if (ret)
+			pr_info("%s: freq_qos_min_notifier unregister failed with policy#%d\n", TAG, policy_idx);
+		policy_idx++;
+		if (!cpumask_empty(policy->related_cpus))
+			cpu = cpumask_last(policy->related_cpus);
+		cpufreq_cpu_put(policy);
+	}
+}
+
+static int init_core_ctl_freq_qos_notifier(void)
+{
+	struct cpufreq_policy *policy;
+	int cpu, ret = 0, policy_idx, nr_policy = 0;
+
+	nr_policy = get_nr_policy();
+	core_ctl_freq_qos_min_notifier = kcalloc(nr_policy, sizeof(struct notifier_block), GFP_KERNEL);
+	if (!core_ctl_freq_qos_min_notifier) {
+		pr_info("%s: Failed to allocate memory for freq_qos_min_notifier.\n", TAG);
+		return -ENOMEM;
+	}
+	for (policy_idx = 0; policy_idx < nr_policy; policy_idx++)
+		core_ctl_freq_qos_min_notifier[policy_idx].notifier_call = freq_qos_min_notifier_call;
+
+	policy_idx = 0;
+	for_each_possible_cpu(cpu) {
+		if (policy_idx >= nr_policy || cpu >= MAX_NR_POLICY)
+			break;
+		policy = cpufreq_cpu_get(cpu);
+		if (policy) {
+			ret = freq_qos_add_notifier(&policy->constraints, FREQ_QOS_MIN,
+						core_ctl_freq_qos_min_notifier + policy_idx);
+			if (ret) {
+				pr_info("%s: freq_qos_min_notifier register failed with policy#%d\n", TAG, policy_idx);
+				cpufreq_cpu_put(policy);
+				goto register_failed;
+			}
+		}
+		policy_idx++;
+		if (!cpumask_empty(policy->related_cpus))
+			cpu = cpumask_last(policy->related_cpus);
+		cpufreq_cpu_put(policy);
+	}
+	pr_info("%s: core_ctl_freq_qos_notifier registered, nr_policy=%d\n", TAG, nr_policy);
+
+	return ret;
+
+register_failed:
+	unregister_core_ctl_freq_qos_notifier();
+	return ret;
+}
+
 int init_sched_avg(void)
 {
 	int ret, ret_error_line;
@@ -931,6 +1128,12 @@ int init_sched_avg(void)
 	}
 
 	ret = init_attribs();
+	if (ret) {
+		ret_error_line = __LINE__;
+		goto failed;
+	}
+
+	ret =  init_core_ctl_freq_qos_notifier();
 	if (ret) {
 		ret_error_line = __LINE__;
 		goto failed;
@@ -988,4 +1191,5 @@ void exit_sched_avg(void)
 {
 	unregister_trace_pelt_se_tp(pelt_se_tp, NULL);
 	unregister_trace_sched_update_nr_running_tp(sched_update_nr_running_cb, NULL);
+	unregister_core_ctl_freq_qos_notifier();
 }

@@ -1947,25 +1947,26 @@ static u32 mdp_get_poll_gpr(u16 engine, u32 reg_addr)
 	u32 gpr;
 
 	switch (engine) {
+	case ENGBASE_MDP_RDMA0:
 	case ENGBASE_MDP_HDR0:
 	case ENGBASE_MDP_AAL0:
 	case ENGBASE_MDP_RSZ0:
 	case ENGBASE_MDP_TDSHP0:
 	case ENGBASE_MDP_COLOR0:
 	case ENGBASE_MDP_WROT0:
-		gpr = CMDQ_GPR_R12;
+		gpr = CMDQ_GPR_R08;
 		break;
 	case ENGBASE_MDP_RDMA1:
 	case ENGBASE_MDP_AAL1:
 	case ENGBASE_MDP_RSZ1:
 	case ENGBASE_MDP_TDSHP1:
 	case ENGBASE_MDP_WROT1:
-		gpr = CMDQ_GPR_R14;
+		gpr = CMDQ_GPR_R10;
 		break;
 	default:
 		CMDQ_ERR("%s engine not support:%hu reg_addr:%#x\n",
 			__func__, engine, reg_addr);
-		gpr = CMDQ_GPR_R12;
+		gpr = CMDQ_GPR_R08;
 		break;
 	}
 

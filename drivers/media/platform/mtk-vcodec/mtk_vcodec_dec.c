@@ -1633,7 +1633,7 @@ static void mtk_vdec_queue_noseqheader_event(struct mtk_vcodec_ctx *ctx)
 
 void mtk_vdec_queue_error_event(struct mtk_vcodec_ctx *ctx)
 {
-	static const struct v4l2_event ev_error = {
+	static struct v4l2_event ev_error = {
 		.type = V4L2_EVENT_MTK_VDEC_ERROR,
 	};
 
@@ -2007,6 +2007,7 @@ static void mtk_vdec_worker(struct work_struct *work)
 	unsigned int dpbsize = 0;
 	struct mtk_color_desc color_desc = {.hdr_type = 0};
 	struct vdec_fb drain_fb;
+	int src_cnt_before, dst_cnt_before, pair_cnt_before;
 
 	mutex_lock(&ctx->worker_lock);
 	mtk_vdec_do_gettimeofday(&worktvstart);
@@ -2123,6 +2124,10 @@ static void mtk_vdec_worker(struct work_struct *work)
 			ctx->group_dec_cnt = 0;
 		}
 		ctx->group_dec_cnt++;
+
+		src_cnt_before = v4l2_m2m_num_src_bufs_ready(ctx->m2m_ctx);
+		dst_cnt_before = v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx);
+		pair_cnt_before = MIN(src_cnt_before, dst_cnt_before);
 
 		has_stop = mtk_vdec_lpw_check_dec_stop(ctx, false, true, "before dec");
 		if (ctx->in_group && (ctx->lpw_state == VDEC_LPW_WAIT || ctx->dynamic_low_latency ||
@@ -2264,10 +2269,21 @@ static void mtk_vdec_worker(struct work_struct *work)
 	}
 
 	if (ctx->low_pw_mode) {
+		int src_cnt, dst_cnt, pair_cnt;
 		unsigned long flags;
 
 		spin_lock_irqsave(&ctx->lpw_lock, flags);
 		mtk_vdec_lpw_check_dec_stop(ctx, false, false, "after dec");
+
+		src_cnt = v4l2_m2m_num_src_bufs_ready(ctx->m2m_ctx);
+		dst_cnt = v4l2_m2m_num_dst_bufs_ready(ctx->m2m_ctx);
+		pair_cnt = MIN(src_cnt, dst_cnt);
+		if (ctx->in_group && (pair_cnt == 0 || ctx->dynamic_low_latency))
+			mtk_lpw_err("[%d] pair cnt before %d(%d,%d) after %d(%d,%d) but in_group %d, lpw_state(%d), dynamic_low_latency %d, lpw_dec_start_cnt %d, group_dec_cnt %d",
+				ctx->id, pair_cnt, src_cnt, dst_cnt,
+				pair_cnt_before, src_cnt_before, dst_cnt_before, ctx->in_group,
+				ctx->lpw_state, ctx->dynamic_low_latency, ctx->lpw_dec_start_cnt, ctx->group_dec_cnt);
+
 		if (ctx->in_group && (ctx->lpw_state == VDEC_LPW_WAIT || ctx->dynamic_low_latency))
 			ctx->in_group = false;
 		mtk_vdec_lpw_start_timer(ctx);
@@ -4306,6 +4322,7 @@ static int vb2ops_vdec_start_streaming(struct vb2_queue *q, unsigned int count)
 		vcodec_trace_begin("dvfs(stream_on)");
 		mutex_lock(&ctx->dev->dec_dvfs_mutex);
 		if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
+			mtk_vcodec_cpu_pf_ctrl(ctx, true);
 			mtk_vdec_prepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
 			ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
 			if (ret != 0)
@@ -4470,6 +4487,7 @@ static void vb2ops_vdec_stop_streaming(struct vb2_queue *q)
 	ctx->is_active = 0;
 	if (ctx->dev->vdec_dvfs_params.mmdvfs_in_vcp) {
 		mtk_vdec_unprepare_vcp_dvfs_data(ctx, vcp_dvfs_data);
+		mtk_vcodec_cpu_pf_ctrl(ctx, false);
 		ret = vdec_if_set_param(ctx, SET_PARAM_MMDVFS, vcp_dvfs_data);
 		if (ret != 0)
 			mtk_v4l2_err("[VDVFS][%d] stream off ipi fail, ret %d", ctx->id, ret);

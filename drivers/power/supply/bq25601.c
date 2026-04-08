@@ -1293,6 +1293,7 @@ static int bq25601_enable_vbus(struct regulator_dev *rdev)
 {
 	bq25601_set_chg_config(0);
 	bq25601_set_otg_config(1);
+	bq25601_set_watchdog(0x0);      /* disable WDT timer */
 
 	return 0;
 }
@@ -1308,6 +1309,36 @@ static int bq25601_disable_vbus(struct regulator_dev *rdev)
 static int bq25601_is_enabled_vbus(struct regulator_dev *rdev)
 {
 	return bq25601_get_otg_config();
+}
+
+static int bq25601_get_vbus(struct charger_device *chg_dev, u32 *vbus)
+{
+	struct bq25601_info *info = NULL;
+	struct power_supply *chg_type_psy = NULL;
+	union power_supply_propval prop = {0};
+	unsigned int ret_val;
+
+	info = (struct bq25601_info *)dev_get_drvdata(&chg_dev->dev);
+	if (IS_ERR_OR_NULL(info)) {
+		pr_info("%s get info fail\n", __func__);
+		return -EINVAL;
+	}
+
+	chg_type_psy = devm_power_supply_get_by_phandle(info->dev, "charger");
+	if (IS_ERR_OR_NULL(chg_type_psy)) {
+		pr_info("%s get chg_type_psy fail\n", __func__);
+		return -EINVAL;
+	}
+
+	ret_val = power_supply_get_property(chg_type_psy, POWER_SUPPLY_PROP_VOLTAGE_NOW, &prop);
+	if (ret_val < 0){
+		pr_info("%s get POWER_SUPPLY_PROP_VOLTAGE_NOW fail\n", __func__);
+		return ret_val;
+	}
+
+	pr_info("%s vbus: %d\n", __func__, prop.intval);
+	*vbus = prop.intval*1000;
+	return ret_val;
 }
 
 static const struct regulator_ops bq25601_vbus_ops = {
@@ -1338,6 +1369,7 @@ static struct charger_ops bq25601_chg_ops = {
 	.set_charging_current = bq25601_set_current,
 	.get_input_current = bq25601_get_input_current,
 	.set_input_current = bq25601_set_input_current,
+	.get_vbus_adc = bq25601_get_vbus,
 	/*.get_constant_voltage = bq25601_get_battery_voreg,*/
 	.set_constant_voltage = bq25601_set_cv_voltage,
 	.kick_wdt = bq25601_reset_watch_dog_timer,

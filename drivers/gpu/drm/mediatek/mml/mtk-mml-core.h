@@ -42,6 +42,7 @@ extern int mml_rrot_msg;
 extern int mml_dl_dpc;
 extern int mml_stash;
 extern int rdma_stash_leading;
+extern int mml_irq;
 
 /* see mml_qos in mtk-mml-core.c */
 #define MML_QOS_EN_MASK			0x1
@@ -82,6 +83,12 @@ enum mml_hrt_mode {
 };
 extern int mtk_mml_hrt_mode;
 extern int mml_hrt_bound;
+
+extern int mml_mutex_dl_sof;
+#define mutex_dl_disp_sof	(mml_mutex_dl_sof & BIT(0))	/* for cmd mode trigger by disp */
+#define mutex_dl_perf_en	(mml_mutex_dl_sof & BIT(1))
+#define mutex_dl_perf_log	(mml_mutex_dl_sof & BIT(2))
+#define mutex_dl_disp_sof_vdo	(mml_mutex_dl_sof & BIT(3))	/* for vdo mode trigger by disp */
 
 /* define in mtk-mml-wrot.c */
 extern int mml_wrot_bkgd_en;
@@ -410,6 +417,12 @@ struct mml_topology_path {
 		};
 	};
 
+	/* bits to enable/disable ultra for this path */
+	struct {
+		phys_addr_t larb_base;
+		u32 ultra_mask;
+	} larbs[MML_MAX_LARB];
+
 	/* engine flag for this path */
 	u64 engine_flags;
 
@@ -446,11 +459,17 @@ struct mml_topology_ops {
 	enum mml_hw_caps (*support_hw_caps)(void);
 };
 
+enum mml_throughput_index {
+	mml_tput_ap,
+	mml_tput_dpc,
+	mml_tput_modes
+};
+
 struct mml_path_client {
 	/* running tasks on same cients from all configs */
 	struct list_head tasks;
 	/* current throughput */
-	u32 throughput;
+	u32 throughput[mml_tput_modes];	/* 0:AP 1:DPC */
 	u32 sys_en_ref[mml_max_sys];
 };
 
@@ -461,8 +480,8 @@ struct mml_sys_qos {
 	u32 opp_speeds[MML_MAX_OPPS];
 	int opp_volts[MML_MAX_OPPS];
 	u64 freq_max;
-	u32 current_volt;
-	u8 current_level;
+	u32 current_volt[mml_tput_modes];	/* 0:AP 1:DPC */
+	u8 current_level[mml_tput_modes];	/* 0:AP 1:DPC */
 	struct mutex qos_mutex;
 };
 
@@ -520,6 +539,7 @@ struct mml_pipe_cache {
 struct mml_frame_config {
 	struct list_head entry;
 	struct mml_frame_info info;
+	struct mml_frame_size max_size;
 	enum mml_sys_id sysid;		/* main mmlsys used for this config */
 
 	/* frame input image size after rrot binning and rotate */
@@ -684,7 +704,7 @@ struct mml_task_reuse {
 struct mml_task_pipe {
 	struct mml_task *task;	/* back to task */
 	struct list_head entry_clt;
-	u32 throughput;
+	u32 throughput[mml_tput_modes];	/* 0:AP 1:DPC */
 	u32 bandwidth;
 	struct completion ready;	/* ready for submit */
 
@@ -733,6 +753,8 @@ struct mml_task {
 
 	struct cmdq_backup dlo_status;
 	u32 dlo_size;
+
+	struct cmdq_backup ovl_dli[3];
 
 	/* mml context */
 	struct mml_ctx *ctx;
@@ -884,6 +906,13 @@ struct mml_comp_debug_ops {
 	void (*reset)(struct mml_comp *comp, struct mml_frame_config *cfg, u32 pipe);
 };
 
+struct mml_comp_bw {
+	u16 srt_bw;
+	u16 hrt_bw;
+	u16 stash_srt_bw;
+	u16 stash_hrt_bw;
+};
+
 struct mml_comp {
 	u32 id;
 	u32 sub_idx;
@@ -893,14 +922,13 @@ struct mml_comp {
 	struct clk *clks[2];
 	struct device *larb_dev;
 	phys_addr_t larb_base;
-	u32 larb_port;
+	u8 larb_port;
+	u8 larb_port_stash;
+	u8 larb_idx;
 	s32 pw_cnt;
 	s32 mminfra_pw_cnt;
 	s32 clk_cnt;
-	u32 srt_bw;
-	u32 hrt_bw;
-	u32 stash_srt_bw;
-	u32 stash_hrt_bw;
+	struct mml_comp_bw bw[mml_tput_modes];	/* 0:AP 1:DPC */
 	struct icc_path *icc_path;
 	struct icc_path *icc_dpc_path;
 	struct icc_path *icc_stash_path;

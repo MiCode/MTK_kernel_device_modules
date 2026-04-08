@@ -35,6 +35,7 @@
 #include "fpsgo_frame_info.h"
 
 #define MAX_FPSGO_CB_NUM 5
+#define HINT_FRAME_ERR_NUMBER 3
 
 static struct kobject *comp_kobj;
 static struct workqueue_struct *composer_wq;
@@ -74,15 +75,25 @@ static DEFINE_MUTEX(fpsgo_boost_cb_lock);
 static DEFINE_MUTEX(fpsgo_boost_lock);
 static DEFINE_MUTEX(user_hint_lock);
 static DEFINE_MUTEX(fpsgo_frame_info_cb_lock);
+static DEFINE_MUTEX(cur_l2q_info_lock);
+static DEFINE_MUTEX(loom_cb_lock);
 
 static fpsgo_notify_is_boost_cb notify_fpsgo_boost_cb_list[MAX_FPSGO_CB_NUM];
 static struct render_frame_info_cb fpsgo_frame_info_cb_list[FPSGO_MAX_CALLBACK_NUM];
+static struct FSTB_FRAME_L2Q_INFO cur_l2q_info[MAX_SF_BUFFER_SIZE];
+static int cur_l2q_info_index;
+
+
+void (*enable_ux_jank_detection_fp)(bool enable, const char *info, int tgid, int pid);
+EXPORT_SYMBOL(enable_ux_jank_detection_fp);
 
 typedef void (*heavy_fp)(int jank, int pid);
 int (*fpsgo2jank_detection_register_callback_fp)(heavy_fp cb);
 EXPORT_SYMBOL(fpsgo2jank_detection_register_callback_fp);
 int (*fpsgo2jank_detection_unregister_callback_fp)(heavy_fp cb);
 EXPORT_SYMBOL(fpsgo2jank_detection_unregister_callback_fp);
+int (*fpsgo_com_set_mfrc_active_fp)(int tgid, int enable);
+EXPORT_SYMBOL(fpsgo_com_set_mfrc_active_fp);
 
 static enum hrtimer_restart prepare_do_recycle(struct hrtimer *timer)
 {
@@ -303,6 +314,125 @@ static void fpsgo_com_do_jank_detection_hint(struct work_struct *psWork)
 	kfree(hint);
 }
 
+void (*fpsgo2game_noitfy_loom_queue_end_fp)(int rpid, int tgid, unsigned long long buf_id);
+void fpsgo_notify_loom_qudeq_cb(int rpid, int tgid, unsigned long long buf_id)
+{
+	if (!rpid || !tgid || !buf_id)
+		return;
+
+	mutex_lock(&loom_cb_lock);
+	if (fpsgo2game_noitfy_loom_queue_end_fp)
+		fpsgo2game_noitfy_loom_queue_end_fp(rpid, tgid, buf_id);
+	mutex_unlock(&loom_cb_lock);
+}
+
+void register_fpsgo_loom_cb(int set, fpsgo_loom_callback cb)
+{
+	mutex_lock(&loom_cb_lock);
+	if (set)
+		fpsgo2game_noitfy_loom_queue_end_fp = cb;
+	else
+		fpsgo2game_noitfy_loom_queue_end_fp = NULL;
+	mutex_unlock(&loom_cb_lock);
+}
+EXPORT_SYMBOL(register_fpsgo_loom_cb);
+
+static void fpsgo_comp_set_logic_head(struct render_info *f_render,
+	unsigned long long sf_buf_id, unsigned long long logic_head_ts,
+	int logic_head_is_valid)
+{
+	unsigned long long expected_fps = 0, expected_time = 0;
+	int prev_l2q_index = 0;
+
+	if (!f_render || cur_l2q_info_index < 0 || cur_l2q_info_index >= MAX_SF_BUFFER_SIZE)
+		return;
+
+	mutex_lock(&cur_l2q_info_lock);
+	cur_l2q_info[cur_l2q_info_index].pid = f_render->pid;
+	cur_l2q_info[cur_l2q_info_index].buf_id = f_render->buffer_id;
+	cur_l2q_info[cur_l2q_info_index].sf_buf_id = sf_buf_id;
+
+	expected_fps = (unsigned long long) f_render->boost_info.target_fps;
+
+	if (expected_fps)
+		expected_time = div64_u64(NSEC_PER_SEC, expected_fps);
+
+	if (logic_head_ts) {
+		cur_l2q_info[cur_l2q_info_index].logic_head_fixed_ts = logic_head_ts;
+		cur_l2q_info[cur_l2q_info_index].logic_head_ts = logic_head_ts;
+	} else {
+		cur_l2q_info[cur_l2q_info_index].logic_head_fixed_ts = 0;
+		cur_l2q_info[cur_l2q_info_index].logic_head_ts = 0;
+		if (cur_l2q_info_index == 0)
+			prev_l2q_index = MAX_SF_BUFFER_SIZE - 1;
+		else
+			prev_l2q_index = cur_l2q_info_index - 1;
+		while (prev_l2q_index != cur_l2q_info_index) {
+			if (cur_l2q_info[prev_l2q_index].pid == cur_l2q_info[cur_l2q_info_index].pid) {
+				cur_l2q_info[cur_l2q_info_index].logic_head_fixed_ts =
+					cur_l2q_info[prev_l2q_index].logic_head_fixed_ts + expected_time;
+				break;
+			}
+			if (prev_l2q_index == 0)
+				prev_l2q_index = MAX_SF_BUFFER_SIZE - 1;
+			else
+				prev_l2q_index--;
+		}
+	}
+	cur_l2q_info[cur_l2q_info_index].is_logic_head_alive = logic_head_is_valid;
+
+	cur_l2q_info_index = (cur_l2q_info_index + 1) % MAX_SF_BUFFER_SIZE;
+
+	mutex_unlock(&cur_l2q_info_lock);
+}
+
+int fpsgo_get_now_logic_head(unsigned long long sf_buffer_id,
+	int *pid, unsigned long long *logic_head_ts, unsigned int *is_logic_head_alive,
+	unsigned long long *now_ts)
+{
+	int ret = 0, i = 0;
+	unsigned long long now_ktime_ns = 0;
+	bool found = false;
+
+	now_ktime_ns = fpsgo_get_time();
+
+	mutex_lock(&cur_l2q_info_lock);
+
+	if (cur_l2q_info_index == 0)
+		i = MAX_SF_BUFFER_SIZE - 1;
+	else
+		i = cur_l2q_info_index - 1;
+
+	while(i != cur_l2q_info_index) {
+		if (cur_l2q_info[i].sf_buf_id == sf_buffer_id) {
+			found = true;
+			break;
+		}
+		if (i == 0)
+			i = MAX_SF_BUFFER_SIZE - 1;
+		else
+			i--;
+	}
+	if (!found)
+		goto out;
+
+	if (pid)
+		*pid = cur_l2q_info[i].pid;
+	if (logic_head_ts)
+		*logic_head_ts = cur_l2q_info[i].logic_head_fixed_ts;
+	if (is_logic_head_alive)
+		*is_logic_head_alive = cur_l2q_info[i].is_logic_head_alive;
+	if (now_ts)
+		*now_ts = now_ktime_ns;
+
+	fpsgo_main_trace("[%s] sf_buf_id=%llu, pid=%d, logic_ts=%llu, is_logic_alive=%d, now_ts=%llu",
+		__func__, sf_buffer_id, cur_l2q_info[i].pid, cur_l2q_info[i].logic_head_fixed_ts,
+		cur_l2q_info[i].is_logic_head_alive, now_ktime_ns);
+out:
+	mutex_unlock(&cur_l2q_info_lock);
+	return ret;
+}
+
 static int fpsgo_comp_make_pair_l2q(struct render_info *f_render,
 	unsigned long long cur_queue_end, unsigned long long logic_head_ts, int has_logic_head,
 	int is_logic_valid, unsigned long long sf_buf_id)
@@ -390,8 +520,6 @@ static void fpsgo_com_get_l2q_time(int pid, unsigned long long buf_id, int tgid,
 		unsigned long long pprev_queue_end_ts, unsigned long long dequeue_start_ts,
 		unsigned long long sf_buf_id, struct render_info *f_render)
 {
-		unsigned long long logic_head_ts = 0;
-		int has_logic_head = 0, is_logic_valid = 0;
 		int l2q_enable_pid_final = 0;
 
 		if (!f_render)
@@ -399,11 +527,8 @@ static void fpsgo_com_get_l2q_time(int pid, unsigned long long buf_id, int tgid,
 
 		l2q_enable_pid_final = f_render->attr.l2q_enable_by_pid;
 		if (fpsgo_touch_latency_ko_ready && l2q_enable_pid_final) {
-			is_logic_valid = fpsgo_comp2fstb_get_logic_head(pid, buf_id,
-				tgid, enqueue_end_time, prev_queue_end_ts, pprev_queue_end_ts,
-				dequeue_start_ts, &logic_head_ts, &has_logic_head);
-			fpsgo_comp_make_pair_l2q(f_render, enqueue_end_time, logic_head_ts,
-				has_logic_head, is_logic_valid, sf_buf_id);
+			fpsgo_comp_make_pair_l2q(f_render, enqueue_end_time, f_render->logic_head_ts,
+				f_render->has_logic_head, f_render->is_logic_valid, sf_buf_id);
 		}
 }
 
@@ -419,7 +544,8 @@ static void fpsgo_com_delete_policy_cmd(struct fpsgo_com_policy_cmd *iter)
 			iter->control_hwui_by_pid == BY_PID_DEFAULT_VAL &&
 			iter->app_cam_meta_min_fps == BY_PID_DEFAULT_VAL &&
 			iter->dep_loading_thr_by_pid == BY_PID_DEFAULT_VAL &&
-			iter->cam_bypass_window_ms_by_pid == BY_PID_DEFAULT_VAL) {
+			iter->cam_bypass_window_ms_by_pid == BY_PID_DEFAULT_VAL &&
+			iter->mfrc_active_by_pid == BY_PID_DEFAULT_VAL) {
 			min_iter = iter;
 			goto delete;
 		} else
@@ -481,6 +607,7 @@ static struct fpsgo_com_policy_cmd *fpsgo_com_get_policy_cmd(int tgid,
 	iter->app_cam_meta_min_fps = BY_PID_DEFAULT_VAL;
 	iter->dep_loading_thr_by_pid = BY_PID_DEFAULT_VAL;
 	iter->cam_bypass_window_ms_by_pid = BY_PID_DEFAULT_VAL;
+	iter->mfrc_active_by_pid = BY_PID_DEFAULT_VAL;
 	iter->ts = ts;
 
 	rb_link_node(&iter->rb_node, parent, p);
@@ -876,6 +1003,8 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	unsigned long long sf_buf_id)
 {
 	int ret;
+	int tgid = 0;
+	unsigned long long buffer_id = 0;
 	unsigned long cb_mask = 0;
 	unsigned long long raw_runtime = 0;
 	unsigned long long running_time = 0;
@@ -897,6 +1026,9 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 	ret = fpsgo_com_refetch_buffer(f_render, pid, identifier, 0);
 	if (!ret)
 		goto exit;
+
+	tgid = fpsgo_get_tgid(pid);
+	buffer_id = f_render->buffer_id;
 
 	f_render->hwui = fpsgo_search_and_add_hwui_info(f_render->pid, 0) ?
 			RENDER_INFO_HWUI_TYPE : RENDER_INFO_HWUI_NONE;
@@ -1004,6 +1136,14 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 			f_render->hwui);
 		break;
 	case MFRC_BY_PASS_FRAME:
+		fpsgo_comp2fstb_prepare_calculate_target_fps(pid, f_render->buffer_id,
+			enqueue_end_time);
+		fpsgo_comp2fstb_queue_time_update(pid,
+			f_render->buffer_id,
+			f_render->frame_type,
+			enqueue_end_time,
+			f_render->api,
+			f_render->hwui);
 		f_render->frame_count++;
 
 		fpsgo_systrace_c_fbt_debug(-300, 0, f_render->enqueue_length,
@@ -1025,6 +1165,9 @@ void fpsgo_ctrl2comp_enqueue_end(int pid,
 exit:
 	fpsgo_thread_unlock(&f_render->thr_mlock);
 	fpsgo_render_tree_unlock(__func__);
+
+	/* loom frame callback */
+	fpsgo_notify_loom_qudeq_cb(pid, tgid, buffer_id);
 }
 
 void fpsgo_ctrl2comp_dequeue_start(int pid,
@@ -1085,10 +1228,14 @@ exit:
 
 void fpsgo_ctrl2comp_dequeue_end(int pid,
 	unsigned long long dequeue_end_time,
-	unsigned long long identifier)
+	unsigned long long identifier,
+	unsigned long long sf_buf_id)
 {
 	struct render_info *f_render;
 	int ret;
+	unsigned long long pprev_enqueue_end = 0, prev_enqueue_end = 0,
+		dequeue_start_ts = 0;
+	int l2q_enable_pid_final = 0;
 
 	fpsgo_render_tree_lock(__func__);
 
@@ -1126,11 +1273,23 @@ void fpsgo_ctrl2comp_dequeue_end(int pid,
 			f_render->frame_type = MFRC_BY_PASS_FRAME;
 	}
 
+	pprev_enqueue_end = f_render->prev_t_enqueue_end;
+	prev_enqueue_end = f_render->t_enqueue_end;
+	dequeue_start_ts = f_render->t_dequeue_start;
+
 	switch (f_render->frame_type) {
 	case NON_VSYNC_ALIGNED_TYPE:
 	case MFRC_FRAME:
 		f_render->t_dequeue_end = dequeue_end_time;
 		f_render->dequeue_length = dequeue_end_time - f_render->t_dequeue_start;
+		l2q_enable_pid_final = f_render->attr.l2q_enable_by_pid;
+		if (fpsgo_touch_latency_ko_ready && l2q_enable_pid_final) {
+			f_render->is_logic_valid = fpsgo_comp2fstb_get_logic_head(pid, f_render->buffer_id,
+				f_render->tgid, dequeue_end_time, prev_enqueue_end, pprev_enqueue_end,
+				dequeue_start_ts, &f_render->logic_head_ts, &f_render->has_logic_head);
+			fpsgo_comp_set_logic_head(f_render, sf_buf_id, f_render->logic_head_ts,
+				f_render->has_logic_head);
+		}
 		fpsgo_comp2fbt_deq_end(f_render, dequeue_end_time);
 		fpsgo_systrace_c_fbt_debug(-300, 0, f_render->dequeue_length,
 			"%d_%d-dequeue_length", pid, f_render->frame_type);
@@ -1225,6 +1384,13 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 	if (!f_render->p_blc)
 		fpsgo_base2fbt_node_init(f_render);
 
+	if (f_render->frame_hint >= HINT_FRAME_ERR_NUMBER){
+		fpsgo_systrace_c_fbt(pid, identifier, f_render->frame_hint, "[ux]frame_hint");
+		fpsgo_thread_unlock(&f_render->thr_mlock);
+		fpsgo_render_tree_unlock(__func__);
+		goto out;
+	}
+
 	mutex_lock(&f_render->ux_mlock);
 	frame_info = fpsgo_ux_search_and_add_frame_info(f_render, frameID, frame_start_time, 1);
 	if (!frame_info) {
@@ -1243,7 +1409,7 @@ void fpsgo_ctrl2comp_hint_frame_start(int pid,
 	fpsgo_render_tree_unlock(__func__);
 
 	fpsgo_com_notify_fpsgo_is_boost(1);
-
+ out:
 	mutex_lock(&recycle_lock);
 	if (recycle_idle_cnt) {
 		recycle_idle_cnt = 0;
@@ -1314,7 +1480,8 @@ void fpsgo_ctrl2comp_hint_frame_end(int pid,
 	}
 
 	fpsgo_thread_lock(&f_render->thr_mlock);
-
+	f_render->frame_hint = 0;
+	fpsgo_systrace_c_fbt(pid, identifier, 0, "[ux]frame_hint");
 	// fill the frame info.
 	f_render->frame_type = FRAME_HINT_TYPE;
 	f_render->t_enqueue_start = frame_end_time; // for recycle only.
@@ -1370,7 +1537,7 @@ void fpsgo_ctrl2comp_hint_frame_err(int pid,
 	f_render->t_enqueue_start = time; // for recycle only.
 
 	fpsgo_thread_lock(&f_render->thr_mlock);
-
+	f_render->frame_hint++;
 	mutex_lock(&f_render->ux_mlock);
 	frame_info = fpsgo_ux_search_and_add_frame_info(f_render, frameID, time, 0);
 	if (!frame_info) {
@@ -1561,6 +1728,7 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 				char *specific_name, int num)
 {
 	char *thread_name = NULL;
+	char *proc_name = NULL;
 	int ret;
 	int i;
 	int *final_pid_arr =  NULL;
@@ -1586,6 +1754,11 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 	if (!strncpy(thread_name, name, 16))
 		goto out;
 	thread_name[15] = '\0';
+
+	proc_name = kcalloc(16, sizeof(char), GFP_KERNEL);
+	if (!proc_name)
+		goto out;
+	proc_name[15] = '\0';
 
 	final_pid_arr = kcalloc(10, sizeof(int), GFP_KERNEL);
 	if (!final_pid_arr)
@@ -1646,6 +1819,9 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 		fpsgo_render_tree_unlock(__func__);
 	}
 
+	if (test_bit(FPSGO_HWUI, &mask))
+		register_jank_cb();
+
 	for (i = 0; i < final_pid_arr_idx; i++) {
 		if (test_bit(FPSGO_CONTROL, &mask))
 			switch_ui_ctrl(final_pid_arr[i], start);
@@ -1673,8 +1849,18 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 					attr_iter->attr.qr_enable_by_pid = 0;
 			}
 
+			if (enable_ux_jank_detection_fp) {
+				get_proc_name(tgid, proc_name);
+				enable_ux_jank_detection_fp(true, proc_name, tgid, final_pid_arr[i]);
+				fpsgo_main_trace(
+					"enable_ux_jank_detection for: tgid=%d, pid=%d, proc_name=%s",
+					tgid, final_pid_arr[i], proc_name
+				);
+			}
+
 			//get render_info struct for this tid and buffer_id
 			if (test_bit(FPSGO_HWUI, &mask) && thr != NULL) {
+				set_curr_thread(final_pid_arr[i], final_bufID_arr[i]);
 				int add_new_scrolling = 1;
 				int type = test_bit(FPSGO_MOVEING, &mask) ?
 						FPSGO_MOVEING : (test_bit(FPSGO_FLING, &mask) ? FPSGO_FLING : 0);
@@ -1702,6 +1888,9 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 		} else {
 			if (ux_general_policy && thr)
 				fpsgo_reset_deplist_task_priority(thr);
+
+			if (enable_ux_jank_detection_fp)
+				enable_ux_jank_detection_fp(false, proc_name, tgid, final_pid_arr[i]);
 
 			//update scroll_info when scroll end
 			if (test_bit(FPSGO_HWUI, &mask) && thr != NULL) {
@@ -1742,6 +1931,7 @@ int fpsgo_ctrl2comp_set_sbe_policy(int tgid, char *name, unsigned long mask,
 
 out:
 	kfree(thread_name);
+	kfree(proc_name);
 	kfree(final_pid_arr);
 	kfree(final_bufID_arr);
 	kfree(final_idf_arr);
@@ -2022,9 +2212,66 @@ out:
 	mutex_unlock(&recycle_lock);
 }
 
-int fpsgo_com_get_mfrc_is_on(void)
+
+void fpsgo_com_set_all_policy_mfrc(int enable)
 {
-	return mfrc_active;
+	struct fpsgo_com_policy_cmd *iter;
+	struct rb_root *rbr;
+	struct rb_node *rbn;
+
+	rbr = &fpsgo_com_policy_cmd_tree;
+	rbn = rb_first(rbr);
+	while (rbn) {
+		iter = rb_entry(rbn, struct fpsgo_com_policy_cmd, rb_node);
+		iter->mfrc_active_by_pid = enable;
+		if (enable == -1) {
+			fpsgo_com_delete_policy_cmd(iter);
+			rbn = rb_first(rbr);
+			continue;
+		}
+		rbn = rb_next(rbn);
+	}
+}
+
+int fpsgo_com_set_mfrc_active(int tgid, int enable)
+{
+	int ret = 0;
+	struct fpsgo_com_policy_cmd *iter = NULL;
+
+	mutex_lock(&fpsgo_com_policy_cmd_lock);
+	if (tgid == -1) {
+		fpsgo_com_set_all_policy_mfrc(enable);
+		goto out;
+	}
+	iter = fpsgo_com_get_policy_cmd(tgid, 0, 1);
+	if (iter) {
+		iter->mfrc_active_by_pid = enable;
+		if (enable == -1)
+			fpsgo_com_delete_policy_cmd(iter);
+	} else {
+		ret = 1;
+	}
+out:
+	mutex_unlock(&fpsgo_com_policy_cmd_lock);
+	xgf_trace("[fpsgo_comp] ret=%d,tgid=%d, mfrc=%d", ret, tgid, enable);
+
+	return ret;
+}
+
+int fpsgo_com_get_mfrc_is_active(int tgid)
+{
+	int local_mfrc_active = mfrc_active;
+	struct fpsgo_com_policy_cmd *iter = NULL;
+
+	mutex_lock(&fpsgo_com_policy_cmd_lock);
+	iter = fpsgo_com_get_policy_cmd(tgid, 0, 0);
+	if (iter) {
+		if (iter->mfrc_active_by_pid != BY_PID_DEFAULT_VAL)
+			local_mfrc_active = iter->mfrc_active_by_pid;
+	}
+	mutex_unlock(&fpsgo_com_policy_cmd_lock);
+
+	return local_mfrc_active;
 }
 
 int notify_fpsgo_touch_latency_ko_ready(void)
@@ -2159,7 +2406,7 @@ int fpsgo_ktf2comp_test_queue_dequeue(int pid, unsigned long long bufID, int fra
 		fpsgo_ctrl2comp_dequeue_start(pid, ts, bufID);
 		usleep_range(deq_length_us, deq_length_us * 2);
 		ts = fpsgo_get_time();
-		fpsgo_ctrl2comp_dequeue_end(pid, ts, bufID);
+		fpsgo_ctrl2comp_dequeue_end(pid, ts, bufID, 0);
 		usleep_range(q2q_us, q2q_us * 2);
 	}
 
@@ -2278,7 +2525,7 @@ static KOBJ_ATTR_WO(control_hwui_by_pid);
 FPSGO_COM_SYSFS_WRITE_POLICY_CMD(dep_loading_thr_by_pid, 3, 0, 100);
 static KOBJ_ATTR_WO(dep_loading_thr_by_pid);
 
-FPSGO_COM_SYSFS_WRITE_POLICY_CMD(mfrc_active_by_pid, 4, 0, 1);
+FPSGO_COM_SYSFS_WRITE_POLICY_CMD(mfrc_active_by_pid, 4, -1, 1);
 static KOBJ_ATTR_WO(mfrc_active_by_pid);
 
 FPSGO_COM_SYSFS_WRITE_POLICY_CMD(cam_bypass_window_ms_by_pid, 5, 0, 60000);
@@ -2639,6 +2886,9 @@ int __init fpsgo_composer_init(void)
 
 	init_fpsgo_is_boosting_callback();
 	init_fpsgo_frame_info_cb_list();
+	fpsgo_com_set_mfrc_active_fp = fpsgo_com_set_mfrc_active;
+
+	cur_l2q_info_index = 0;
 
 	if (!fpsgo_sysfs_create_dir(NULL, "composer", &comp_kobj)) {
 		fpsgo_sysfs_create_file(comp_kobj, &kobj_attr_control_hwui);

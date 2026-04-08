@@ -6,6 +6,7 @@
 
 #ifndef _MTK_CPU_POWER_THROTTLING_H_
 #define _MTK_CPU_POWER_THROTTLING_H_
+#define PT_OP_SET_MPMM    0
 
 enum cpu_pt_type {
 	LBAT_POWER_THROTTLING,

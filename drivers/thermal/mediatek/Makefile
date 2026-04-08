@@ -45,3 +45,4 @@ obj-$(CONFIG_MTK_WIFI_THERMAL) += wifi_cooling.o
 obj-$(CONFIG_MTK_FAN_THERMAL) += fan_cooling.o
 
 obj-$(CONFIG_MTK_CPU_ISOLATE_THERMAL) += cpu_isolate_cooling.o
+

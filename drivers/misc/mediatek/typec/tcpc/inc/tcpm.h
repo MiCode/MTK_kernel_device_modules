@@ -50,6 +50,7 @@ enum pd_connect_result {
 	PD_CONNECT_HARD_RESET,
 	PD_CONNECT_SOFT_RESET,
 	PD_CONNECT_NEW_SRC_CAP,
+	PD_CONNECT_PARTNER_ID_PRESENT,
 
 /* CONFIG_USB_PD_CUSTOM_DBGACC */
 	PD_CONNECT_PE_READY_DBGACC_UFP,
@@ -153,7 +154,8 @@ enum {
 	TCP_NOTIFY_VBUS_SHORT_CC,
 	TCP_NOTIFY_PS_CHANGE,
 	TCP_NOTIFY_CC_HI,
-	TCP_NOTIFY_MISC_END = TCP_NOTIFY_CC_HI,
+	TCP_NOTIFY_ALERT_RATELIMITED,
+	TCP_NOTIFY_MISC_END = TCP_NOTIFY_ALERT_RATELIMITED,
 };
 
 struct tcp_ny_pd_state {
@@ -331,11 +333,9 @@ struct tcp_ny_typec_otp {
 
 struct tcp_ny_wd0_state {
 	bool wd0;
-};
-
-struct tcp_ny_vbus_short_cc {
-	bool short_status;
-	u8 short_cc;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	bool is_typec_port0;
+#endif
 };
 
 struct tcp_notify {
@@ -359,9 +359,10 @@ struct tcp_notify {
 		struct tcp_ny_cable_type cable_type;
 		struct tcp_ny_typec_otp typec_otp;
 		struct tcp_ny_wd0_state wd0_state;
-		struct tcp_ny_vbus_short_cc vsc_status;
+		int vsc_status;
 		int vbus_level;
 		int cc_hi;
+		bool alert_ratelimited;
 	};
 };
 
@@ -714,6 +715,7 @@ struct tcp_dpm_custom_vdm_data {
 
 struct tcp_dpm_event {
 	uint8_t event_id;
+	uint8_t event_serial;
 	void *user_data;
 	tcp_dpm_event_cb event_cb;
 
@@ -875,6 +877,7 @@ extern int unregister_tcp_dev_notifier(struct tcpc_device *tcpc,
 				struct notifier_block *nb, uint8_t flags);
 
 extern int tcpm_shutdown(struct tcpc_device *tcpc);
+extern int tcpm_check_suspend_pending(struct tcpc_device *tcpc);
 extern int tcpm_suspend(struct tcpc_device *tcpc);
 extern void tcpm_resume(struct tcpc_device *tcpc);
 
@@ -926,6 +929,9 @@ extern uint8_t tcpm_inquire_pd_data_role(
 
 extern uint8_t tcpm_inquire_pd_power_role(
 	struct tcpc_device *tcpc);
+
+extern uint8_t tcpm_inquire_pd_state_curr(
+	struct tcpc_device *tcpc_dev);
 
 extern uint8_t tcpm_inquire_pd_vconn_role(
 	struct tcpc_device *tcpc);
@@ -1359,12 +1365,6 @@ static inline void tcpm_inquire_sink_vbus(struct tcpc_device *tcpc,
 {
 }
 
-static inline int tcpm_typec_set_wake_lock(
-	struct tcpc_device *tcpc, bool user_lock)
-{
-	return TCPM_ERROR_NO_IMPLEMENT;
-}
-
 static inline int tcpm_typec_set_usb_sink_curr(
 	struct tcpc_device *tcpc, int curr)
 {
@@ -1423,6 +1423,12 @@ static inline uint8_t tcpm_inquire_pd_data_role(
 
 static inline uint8_t tcpm_inquire_pd_power_role(
 	struct tcpc_device *tcpc)
+{
+	return 0;
+}
+
+static inline uint8_t tcpm_inquire_pd_state_curr(
+	struct tcpc_device *tcpc_dev)
 {
 	return 0;
 }

@@ -11,6 +11,7 @@ mt6379s-objs			:= mt6379-spmi.o mt6379-core.o
 obj-$(CONFIG_MFD_MT6379_SPMI)	+= mt6379s.o
 obj-$(CONFIG_MFD_MT6681)	+= mt6681-core.o
 obj-$(CONFIG_MT6685_AUDCLK)	+= mt6685-audclk.o
+obj-$(CONFIG_MT6685_335CLK)	+= mt6685-335clk.o
 
 ifndef CONFIG_GRT_HYPERVISOR
 obj-$(CONFIG_MFD_MT6685)	+= mt6685-core.o
@@ -20,8 +21,8 @@ obj-$(CONFIG_MFD_MT6685)	+= hyp-mt6685-core.o
 obj-$(CONFIG_MFD_MTK_SPMI_PMIC)	+= hyp-mtk-spmi-pmic.o
 endif
 
-ifeq ($(CONFIG_DEBUG_FS), y)
+
 obj-$(CONFIG_MFD_MTK_SPMI_PMIC)	+= mtk-spmi-pmic-debug.o
-endif
+
 obj-$(CONFIG_MFD_RT9490)	+= rt9490.o
 obj-$(CONFIG_REGULATOR_MT6362)	+= mt6362-core.o

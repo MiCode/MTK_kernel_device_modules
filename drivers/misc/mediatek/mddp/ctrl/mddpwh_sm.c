@@ -26,7 +26,6 @@ static struct work_struct mddp_unhook_work;
 //------------------------------------------------------------------------------
 // Global variables.
 //------------------------------------------------------------------------------
-static struct wfpm_deactivate_md_func_rsp_t deact_rsp_metadata_s;
 /* To handle one of the corner case,
  * where DRV_NOTIFY sent to MD before smem layout lead to MD crash
  */
@@ -73,9 +72,7 @@ static void mddpwh_sm_enable(struct mddp_app_t *app)
 		smem_num = 0;
 	}
 
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) +
-			 sizeof(struct wfpm_enable_md_func_req_t) +
-			 sizeof(struct wfpm_smem_info_t) * smem_num, GFP_ATOMIC);
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
 
 	if (unlikely(!md_msg))
 		return;
@@ -83,12 +80,12 @@ static void mddpwh_sm_enable(struct mddp_app_t *app)
 	md_msg->msg_id = IPC_MSG_ID_WFPM_ENABLE_MD_FAST_PATH_REQ;
 	md_msg->data_len = sizeof(struct wfpm_enable_md_func_req_t) +
 				sizeof(struct wfpm_smem_info_t) * smem_num;
-	enable_req = (struct wfpm_enable_md_func_req_t *)&(md_msg->data);
+	enable_req = (struct wfpm_enable_md_func_req_t *)&md_msg->data;
 	enable_req->mode = WFPM_FUNC_MODE_TETHER;
 	enable_req->version = __MDDP_VERSION__;
 	enable_req->smem_num = smem_num;
 
-	memcpy(&(enable_req->smem_info), smem_info,
+	memcpy(&enable_req->smem_info, smem_info,
 			sizeof(struct wfpm_smem_info_t) * smem_num);
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_NULL);
 }
@@ -129,16 +126,14 @@ static void mddpwh_sm_disable(struct mddp_app_t *app)
 		app->drv_hdlr.change_state(MDDP_STATE_DISABLING, NULL, NULL);
 
 	// 2. Send DISABLE to MD
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) +
-			sizeof(struct wfpm_md_fast_path_common_req_t),
-			GFP_ATOMIC);
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
 	if (unlikely(!md_msg)) {
 		MDDP_S_LOG(MDDP_LL_ERR,
 				"%s: Failed to alloc md_msg bug!\n", __func__);
 		return;
 	}
 
-	disable_req = (struct wfpm_md_fast_path_common_req_t *)&(md_msg->data);
+	disable_req = (struct wfpm_md_fast_path_common_req_t *)&md_msg->data;
 	disable_req->mode = WFPM_FUNC_MODE_TETHER;
 
 	md_msg->msg_id = IPC_MSG_ID_WFPM_DISABLE_MD_FAST_PATH_REQ;
@@ -166,14 +161,13 @@ static void mddpwh_sm_act(struct mddp_app_t *app)
 		app->drv_hdlr.change_state(MDDP_STATE_ACTIVATING, NULL, NULL);
 
 	// 3. Send ACTIVATING to MD
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) +
-		sizeof(struct wfpm_activate_md_func_req_t), GFP_ATOMIC);
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
 
 	if (unlikely(!md_msg)) {
 		return;
 	}
 
-	act_req = (struct wfpm_activate_md_func_req_t *)&(md_msg->data);
+	act_req = (struct wfpm_activate_md_func_req_t *)&md_msg->data;
 	act_req->mode = WFPM_FUNC_MODE_TETHER;
 
 	md_msg->msg_id = IPC_MSG_ID_WFPM_ACTIVATE_MD_FAST_PATH_REQ;
@@ -192,7 +186,6 @@ static void mddpwh_sm_rsp_act_ok(struct mddp_app_t *app)
 	// 2. Send RSP to upper module.
 	mddp_dev_response(app->type, MDDP_CMCMD_ACT_RSP,
 			true, (uint8_t *)&act, sizeof(act));
-
 	schedule_work(&mddp_hook_work);
 }
 
@@ -206,14 +199,13 @@ static void mddpwh_sm_deact(struct mddp_app_t *app)
 		app->drv_hdlr.change_state(MDDP_STATE_DEACTIVATING, NULL, NULL);
 
 	// 2. Send ACTIVATING to MD
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) +
-		sizeof(struct wfpm_activate_md_func_req_t), GFP_ATOMIC);
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
 
 	if (unlikely(!md_msg)) {
 		return;
 	}
 
-	deact_req = (struct wfpm_activate_md_func_req_t *)&(md_msg->data);
+	deact_req = (struct wfpm_activate_md_func_req_t *)&md_msg->data;
 	deact_req->mode = WFPM_FUNC_MODE_TETHER;
 
 	md_msg->msg_id = IPC_MSG_ID_WFPM_DEACTIVATE_MD_FAST_PATH_REQ;
@@ -226,7 +218,6 @@ static void mddpwh_sm_rsp_deact(struct mddp_app_t *app)
 	struct mddp_dev_rsp_deact_t     deact = {0};
 
 	schedule_work(&mddp_unhook_work);
-
 	// 2. Send RSP to WiFi
 	if (app->drv_hdlr.change_state != NULL)
 		app->drv_hdlr.change_state(app->state, NULL, NULL);
@@ -239,6 +230,13 @@ static void mddpwh_sm_rsp_deact(struct mddp_app_t *app)
 static void mddpwh_sm_md_reset(struct mddp_app_t *app)
 {
 	schedule_work(&wfpm_reset_work);
+}
+
+static void mddpwh_sm_err_handling(struct mddp_app_t *app)
+{
+	// Device is already deactivated and expected to be unhooked.
+	// schedule unhook_work to complete "work_comp" to avoid infinite wait_for_completion
+	schedule_work(&mddp_unhook_work);
 }
 
 //------------------------------------------------------------------------------
@@ -280,7 +278,7 @@ static struct mddp_sm_entry_t mddpwh_deactivated_state_machine_s[] = {
 {MDDP_EVT_FUNC_ENABLE,    MDDP_STATE_ENABLING,     mddpwh_sm_enable},
 {MDDP_EVT_FUNC_DISABLE,   MDDP_STATE_DISABLING,    mddpwh_sm_disable},
 {MDDP_EVT_FUNC_ACT,       MDDP_STATE_ACTIVATING,   mddpwh_sm_act},
-{MDDP_EVT_FUNC_DEACT,     MDDP_STATE_DEACTIVATED,  NULL},
+{MDDP_EVT_FUNC_DEACT,     MDDP_STATE_DEACTIVATED,  mddpwh_sm_err_handling},
 {MDDP_EVT_MD_RSP_OK,      MDDP_STATE_DEACTIVATED,  NULL},
 {MDDP_EVT_DUMMY,          MDDP_STATE_DEACTIVATED,  NULL} /* End of SM. */
 };
@@ -354,10 +352,8 @@ static void mddpw_wfpm_send_smem_layout(void)
 			"%s: smem_info(%llx), smem_num(%u)\n",
 			__func__, (unsigned long long)smem_info, smem_num);
 
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) +
-			sizeof(struct wfpm_enable_md_func_req_t) +
-			smem_num * sizeof(struct wfpm_smem_info_t),
-			GFP_ATOMIC);
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
+
 	if (unlikely(!md_msg)) {
 		return;
 	}
@@ -365,12 +361,11 @@ static void mddpw_wfpm_send_smem_layout(void)
 	md_msg->msg_id = IPC_MSG_ID_WFPM_SEND_SMEM_LAYOUT_NOTIFY;
 	md_msg->data_len = sizeof(struct wfpm_enable_md_func_req_t) +
 			smem_num * sizeof(struct wfpm_smem_info_t);
-	enable_req = (struct wfpm_enable_md_func_req_t *)
-			&(md_msg->data);
+	enable_req = (struct wfpm_enable_md_func_req_t *)&md_msg->data;
 	enable_req->mode = WFPM_FUNC_MODE_TETHER;
 	enable_req->version = __MDDP_VERSION__;
 	enable_req->smem_num = smem_num;
-	memcpy(&(enable_req->smem_info), smem_info,
+	memcpy(&enable_req->smem_info, smem_info,
 			smem_num * sizeof(struct wfpm_smem_info_t));
 
 	mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_NULL);
@@ -462,9 +457,6 @@ static int32_t mddpw_wfpm_msg_hdlr(uint32_t msg_id, void *buf, uint32_t buf_len)
 			mddp_sm_set_state_by_md_rsp(app,
 				MDDP_STATE_DEACTIVATING, true);
 
-			memcpy(&deact_rsp_metadata_s,
-					buf,
-					sizeof(deact_rsp_metadata_s));
 		} else {
 			/* DEACT FAIL. */
 			MDDP_S_LOG(MDDP_LL_NOTICE,
@@ -473,9 +465,6 @@ static int32_t mddpw_wfpm_msg_hdlr(uint32_t msg_id, void *buf, uint32_t buf_len)
 			mddp_sm_set_state_by_md_rsp(app,
 				MDDP_STATE_DEACTIVATING, false);
 
-			memcpy(&deact_rsp_metadata_s,
-					buf,
-					sizeof(deact_rsp_metadata_s));
 		}
 		break;
 
@@ -529,8 +518,7 @@ static int32_t mddpw_drv_add_txd(struct mddpw_txd_t *txd)
 		return -ENODEV;
 	}
 
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) +
-	sizeof(struct mddpw_txd_t) + txd->txd_length, GFP_ATOMIC);
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
 
 	if (unlikely(!md_msg)) {
 		return -ENOMEM;
@@ -716,9 +704,7 @@ static int32_t mddpw_drv_notify_info(
 		return -ENODEV;
 	}
 
-	md_msg = kzalloc(sizeof(struct mddp_md_msg_t) +
-		sizeof(struct mddpw_drv_notify_info_t) +
-		wifi_notify->buf_len, GFP_ATOMIC);
+	md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
 
 	if (unlikely(!md_msg)) {
 		return -ENOMEM;
@@ -878,12 +864,11 @@ static ssize_t mddpwh_sysfs_callback(
 	}
 #ifdef MDDP_EM_SUPPORT
 	if (cmd == MDDP_SYSFS_EM_CMD_TEST_WRITE) {
-		md_msg = kzalloc(sizeof(struct mddp_md_msg_t) +
-					buf_len + 4, GFP_ATOMIC);
+		md_msg = kzalloc(sizeof(struct mddp_md_msg_t), GFP_ATOMIC);
 		if (md_msg) {
 			md_msg->msg_id = IPC_MSG_ID_MDFPM_EM_TEST_REQ;
 			md_msg->data_len = buf_len;
-			memcpy(&(md_msg->data), buf, buf_len);
+			memcpy(&md_msg->data, buf, buf_len);
 			mddp_ipc_send_md(app, md_msg, MDFPM_USER_ID_MDFPM);
 		}
 
@@ -916,7 +901,11 @@ static void wfpm_reset_work_func(struct work_struct *work)
 
 static void mddp_hook_work_func(struct work_struct *work)
 {
+	struct mddp_app_t       *app;
+
+	app = mddp_get_app_inst(MDDP_APP_TYPE_WH);
 	mddp_netfilter_hook();
+	complete(&app->work_comp);
 }
 
 static void mddp_unhook_work_func(struct work_struct *work)
@@ -927,6 +916,7 @@ static void mddp_unhook_work_func(struct work_struct *work)
 	mddp_netfilter_unhook();
 	mddp_f_dev_del_wan_dev(app->ap_cfg.ul_dev_name);
 	mddp_f_dev_del_lan_dev(app->ap_cfg.dl_dev_name);
+	complete(&app->work_comp);
 }
 
 void mddpw_notify_wlan_mdinfo(void)

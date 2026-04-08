@@ -319,14 +319,14 @@ static bool eusb2_repeater_getcid(struct eusb2_repeater *rptr)
 	}
 
 	/* Read CHIP id, it should be 0x22 and 0x32 */
-	ret = i2c_smbus_read_byte_data(rptr->i2c, CHIP_ID_0);
+	ret = i2c_smbus_read_byte_data(rptr->i2c, CHIP_ID_1);
 	if (ret < 0) {
 		dev_info(rptr->dev, "NXP Repeater i2c read chip id fail.\n");
 		return false;
 	}
 	val = (u8)ret << 8;
 
-	ret = i2c_smbus_read_byte_data(rptr->i2c, CHIP_ID_1);
+	ret = i2c_smbus_read_byte_data(rptr->i2c, CHIP_ID_0);
 	if (ret < 0) {
 		dev_info(rptr->dev, "NXP Repeater i2c read chip id fail.\n");
 		return false;

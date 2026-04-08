@@ -258,17 +258,19 @@ int mtk_rsz_calc_tile_params(u32 frm_in_len, u32 frm_out_len, bool tile_mode,
 	u32 tile_in_len[2] = {0};
 	u32 tile_out_len[2] = {0};
 	u32 y_in_start, y_in_end, y_out_start, y_out_end, dst_y, dst_height;
+	s64 m_m1_zoom, n_m1_zoom;
 
 	DDPINFO("%s:%s:in_len:%u,out_len:%u,ori_in_len:%u,ori_out_len:%u\n", __func__,
 		t[0].par_update_y ? "pUpdate:on" : "pUpdate:off", t[0].in_len, t[0].out_len,
 		t[0].ori_in_len, t[0].ori_out_len);
 
 	if(t[0].par_update_y){
-		step = (UNIT * (t[0].ori_in_len - 1) + (t[0].ori_out_len - 2)) /
-			(t[0].ori_out_len - 1);
+		n_m1_zoom = ((s64)t[0].ori_out_len - 1) << 20;
+		m_m1_zoom = ((s64)t[0].ori_in_len - 1) << 20;
+		step = mult_frac(UNIT, m_m1_zoom, n_m1_zoom);
 
-		sub_offset[0] = (step * (t[0].ori_out_len - 1) - UNIT *
-			(t[0].ori_in_len - 1)) / 2;
+		sub_offset[0] = (s32)(UNIT * (t[0].ori_in_len - 1) - (s32)step *
+			(t[0].ori_out_len - 1)) / 2;
 		if (sub_offset[0] < 0) {
 			int_offset[0]--;
 			sub_offset[0] = UNIT + sub_offset[0];
@@ -279,13 +281,18 @@ int mtk_rsz_calc_tile_params(u32 frm_in_len, u32 frm_out_len, bool tile_mode,
 		}
 		dst_y = t[0].dst_y - t[0].overhead_y;
 		dst_height = frm_out_len + (t[0].overhead_y << 1);
+		sub_offset[0] = ((s64)sub_offset[0] << 20) / UNIT;
 
 		mtk_rsz_back_taps(dst_y, dst_y + dst_height - 1, step, UNIT,
-			int_offset[0], sub_offset[0], t[0].ori_in_len - 1, 2,
+			int_offset[0], sub_offset[0], t[0].ori_in_len - 1, 1,
 			&y_in_start, &y_in_end);
+		if(y_in_end > y_in_start + dst_height - 1)
+			y_in_end = y_in_start + dst_height - 1;
+
 		mtk_rsz_for_taps(y_in_start, y_in_end, t[0].ori_in_len - 1, step, UNIT,
-			int_offset[0], sub_offset[0], t[0].ori_out_len - 1, 2, dst_y,
+			int_offset[0], sub_offset[0], t[0].ori_out_len - 1, 1, dst_y,
 			&y_out_start, &y_out_end, &(int_offset[0]), &(sub_offset[0]));
+		y_out_end = y_out_start + dst_height - 1;
 
 		t[0].src_y = y_in_start;
 		t[0].step = step;
@@ -299,9 +306,11 @@ int mtk_rsz_calc_tile_params(u32 frm_in_len, u32 frm_out_len, bool tile_mode,
 		return 0;
 	}
 
-	if (frm_out_len > 1)
-		step = (UNIT * (frm_in_len - 1) + (frm_out_len - 2)) /
-			(frm_out_len - 1);
+	if (frm_out_len > 1) {
+		n_m1_zoom = ((s64)frm_out_len - 1) << 20;
+		m_m1_zoom = ((s64)frm_in_len - 1) << 20;
+		step = mult_frac(UNIT, m_m1_zoom, n_m1_zoom);
+	}
 	else {
 		DRM_ERROR("%s:%d Division by zero\n", __func__, __LINE__);
 		return -1;
@@ -309,7 +318,7 @@ int mtk_rsz_calc_tile_params(u32 frm_in_len, u32 frm_out_len, bool tile_mode,
 
 
 	/* left half */
-	offset[0] = (step * (frm_out_len - 1) - UNIT * (frm_in_len - 1)) / 2;
+	offset[0] = (s32)(step * (frm_out_len - 1) - (s32)UNIT * (frm_in_len - 1)) / 2;
 	init_phase = UNIT - offset[0];
 	sub_offset[0] = -offset[0];
 	if (sub_offset[0] < 0) {

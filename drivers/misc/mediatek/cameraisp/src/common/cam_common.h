@@ -31,6 +31,7 @@
 
 /* ========== */
 #define IS_MT6785(id) ((id) == 0x6785)
+#define IS_MT6771(id) ((id) == 0x6771)
 
 /* ========== */
 #define IS_MT6768(id) ((id) == 0x6768)
@@ -162,6 +163,7 @@
 #define IS_SECURE_TZMP1(id)	(			\
 					IS_MT6765(id) ||        \
 					IS_MT6768(id) ||	\
+					IS_MT6771(id) ||	\
 					IS_MT6781(id) ||	\
 					IS_MT6789(id) ||	\
 					IS_MT6833(id) ||	\
@@ -213,6 +215,8 @@
 				platform_id = 0x6779;				\
 			else if (strncmp(platform_id_str, "mt6785", 6) == 0)	\
 				platform_id = 0x6785;				\
+			else if (strncmp(platform_id_str, "mt6771", 6) == 0)	\
+				platform_id = 0x6771;				\
 			else if (strncmp(platform_id_str, "mt6768", 6) == 0)	\
 				platform_id = 0x6768;				\
 			else if (strncmp(platform_id_str, "mt6765", 6) == 0)	\

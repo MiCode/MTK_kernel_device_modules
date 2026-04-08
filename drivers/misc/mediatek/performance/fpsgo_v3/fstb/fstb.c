@@ -69,6 +69,8 @@ int fstb_no_r_timer_enable;
 EXPORT_SYMBOL(fstb_no_r_timer_enable);
 int fstb_filter_poll_enable;
 EXPORT_SYMBOL(fstb_filter_poll_enable);
+int fstb_check_interpolate_enable;
+EXPORT_SYMBOL(fstb_check_interpolate_enable);
 
 DECLARE_WAIT_QUEUE_HEAD(queue);
 DECLARE_WAIT_QUEUE_HEAD(active_queue);
@@ -562,6 +564,7 @@ int fpsgo_other2fstb_get_fps(int pid, unsigned long long bufID,
 
 	return 0;
 }
+EXPORT_SYMBOL(fpsgo_other2fstb_get_fps);
 
 static int fstb_enter_delete_render_info(int clear, int *r_pid_arr,
 	unsigned long long *r_bufid_arr, int r_num)
@@ -1909,7 +1912,7 @@ void fpsgo_comp2fstb_notify_info(int pid, unsigned long long bufID,
 		iter->target_fps_diff, &local_final_tfps, NULL, NULL);
 
 	if (!test_bit(USER_TYPE, &iter->master_type)) {
-		if (!fpsgo_com_get_mfrc_is_on())
+		if (!fpsgo_com_get_mfrc_is_active(iter->proc_id))
 			ged_kpi_set_target_FPS_margin(iter->bufid, local_final_tfps,
 				local_fps_margin, iter->target_fps_diff, iter->cpu_time);
 		else
@@ -2062,6 +2065,9 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 				iter->target_fps_v2 : iter->target_fps;
 		tolerence_fps = iter->self_ctrl_fps_enable ?
 				iter->target_fps_margin_v2 : iter->target_fps_margin;
+		if (fpsgo_com_get_mfrc_is_active(iter->proc_id))
+			local_tfps = local_tfps >> 1;
+
 		local_tfps = fstb_arbitrate_target_fps(local_tfps, &tolerence_fps, iter);
 		fstb_post_process_target_fps(local_tfps, tolerence_fps, iter->target_fps_diff,
 			&local_final_tfps, &local_final_tfpks, &total_time);
@@ -2081,6 +2087,64 @@ void fpsgo_fbt2fstb_query_fps(int pid, unsigned long long bufID,
 
 	mutex_unlock(&fstb_lock);
 }
+
+void fpsgo_other2fstb_query_fps(int pid, unsigned long long bufID,
+		int *target_fps, int *target_fps_ori, int *fps_margin,
+		int *target_fpks, int *cooler_on)
+{
+	struct FSTB_FRAME_INFO *iter = NULL;
+	unsigned long long total_time;
+	int local_tfps = 0;
+	int tolerence_fps = 0;
+	int local_final_tfps = dfps_ceiling;
+	int local_final_tfpks = dfps_ceiling * 1000;
+
+	mutex_lock(&fstb_lock);
+
+	hlist_for_each_entry(iter, &fstb_frame_infos, hlist) {
+		if (iter->pid == pid && iter->bufid == bufID)
+			break;
+	}
+
+	*cooler_on = 0;
+
+	if (!iter) {
+		fstb_post_process_target_fps(dfps_ceiling, 0, 0,
+			&local_final_tfps, &local_final_tfpks, &total_time);
+	} else if (test_bit(USER_TYPE, &iter->master_type)) {
+		local_final_tfpks = div64_u64(1000000000000ULL, iter->target_time);
+		local_final_tfps = local_final_tfpks / 1000;
+		local_tfps = local_final_tfps;
+		tolerence_fps = 0;
+		total_time = iter->target_time;
+	} else {
+		if (iter->target_fps_diff)
+			*cooler_on = 1;
+
+		local_tfps = iter->self_ctrl_fps_enable ?
+				iter->target_fps_v2 : iter->target_fps;
+		tolerence_fps = iter->self_ctrl_fps_enable ?
+				iter->target_fps_margin_v2 : iter->target_fps_margin;
+		if (fpsgo_com_get_mfrc_is_active(iter->proc_id))
+			local_tfps = local_tfps >> 1;
+
+		local_tfps = fstb_arbitrate_target_fps(local_tfps, &tolerence_fps, iter);
+		fstb_post_process_target_fps(local_tfps, tolerence_fps, iter->target_fps_diff,
+			&local_final_tfps, &local_final_tfpks, &total_time);
+	}
+
+	if (target_fps)
+		*target_fps = local_final_tfps;
+	if (target_fpks)
+		*target_fpks = local_final_tfpks;
+	if (target_fps_ori)
+		*target_fps_ori = local_tfps;
+	if (fps_margin)
+		*fps_margin = tolerence_fps;
+
+	mutex_unlock(&fstb_lock);
+}
+EXPORT_SYMBOL(fpsgo_other2fstb_query_fps);
 
 static int fpsgo_power2fstb_get_final_target_fps(struct FSTB_FRAME_INFO *iter)
 {
@@ -2698,6 +2762,38 @@ err:
 
 static KOBJ_ATTR_RW(fstb_fps_list);
 
+static ssize_t fstb_check_interpolate_enable_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	char *acBuffer = NULL;
+	int arg;
+	int min = 0, max = 3;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0) {
+				if (arg >= (min) && arg <= (max)) {
+					mutex_lock(&fstb_lock);
+					fstb_check_interpolate_enable = arg;
+					if (fstb_check_interpolate_enable == 0 ||
+						fstb_check_interpolate_enable == 2) {
+						fpsgo_com_set_mfrc_active(-1, -1);
+					}
+					mutex_unlock(&fstb_lock);
+				}
+			}
+		}
+	}
+out:
+	kfree(acBuffer);
+	return count;
+}
+
 FSTB_SYSFS_READ(margin_mode, 1, margin_mode);
 FSTB_SYSFS_WRITE_VALUE(margin_mode, margin_mode, 0, 2);
 static KOBJ_ATTR_RW(margin_mode);
@@ -2729,6 +2825,9 @@ static KOBJ_ATTR_RW(fstb_no_r_timer_enable);
 FSTB_SYSFS_READ(fstb_filter_poll_enable, 1, fstb_filter_poll_enable);
 FSTB_SYSFS_WRITE_VALUE(fstb_filter_poll_enable, fstb_filter_poll_enable, 0, 1);
 static KOBJ_ATTR_RW(fstb_filter_poll_enable);
+
+FSTB_SYSFS_READ(fstb_check_interpolate_enable, 1, fstb_check_interpolate_enable);
+static KOBJ_ATTR_RW(fstb_check_interpolate_enable);
 
 FSTB_SYSFS_READ(gpu_slowdown_check, 1, gpu_slowdown_check);
 FSTB_SYSFS_WRITE_VALUE(gpu_slowdown_check, gpu_slowdown_check, 0, 1);
@@ -3200,6 +3299,8 @@ int mtk_fstb_init(void)
 		fpsgo_sysfs_create_file(fstb_kobj,
 				&kobj_attr_fstb_filter_poll_enable);
 		fpsgo_sysfs_create_file(fstb_kobj,
+				&kobj_attr_fstb_check_interpolate_enable);
+		fpsgo_sysfs_create_file(fstb_kobj,
 				&kobj_attr_gpu_slowdown_check);
 		fpsgo_sysfs_create_file(fstb_kobj,
 				&kobj_attr_fstb_policy_cmd);
@@ -3257,6 +3358,8 @@ int __exit mtk_fstb_exit(void)
 			&kobj_attr_fstb_no_r_timer_enable);
 	fpsgo_sysfs_remove_file(fstb_kobj,
 			&kobj_attr_fstb_filter_poll_enable);
+	fpsgo_sysfs_remove_file(fstb_kobj,
+			&kobj_attr_fstb_check_interpolate_enable);
 	fpsgo_sysfs_remove_file(fstb_kobj,
 			&kobj_attr_gpu_slowdown_check);
 	fpsgo_sysfs_remove_file(fstb_kobj,

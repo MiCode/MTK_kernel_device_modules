@@ -146,6 +146,7 @@ struct _FPSGO_LR_PAIR_PACKAGE {
 #define FPSGO_LR_PAIR               _IOW('g', 1, struct _FPSGO_LR_PAIR_PACKAGE)
 #define FPSGO_SF_TOUCH_ACTIVE       _IOW('g', 2, struct _FPSGO_LR_PAIR_PACKAGE)
 #define FPSGO_SF_EXP_L2Q            _IOW('g', 3, struct _FPSGO_LR_PAIR_PACKAGE)
+#define FPSGO_GET_LOGIC_HEAD_ONLY   _IOW('g', 5, struct _FPSGO_LR_PAIR_PACKAGE)
 
 #endif
 

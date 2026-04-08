@@ -116,6 +116,13 @@ static struct imgsensor_info_struct imgsensor_info = {
 	.ihdr_le_firstline = 0,      //1,le first ; 0, se first
 	.sensor_mode_num = 5,        //support sensor mode num
 
+	.min_gain = 64, /* 1x */
+	.max_gain = 1024, /* 16x */
+	.min_gain_iso = 100,
+	.exp_step = 1,
+	.gain_step = 1,
+	.gain_type = 4,
+
 	.cap_delay_frame = 2,        //enter capture delay frame num
 	.pre_delay_frame = 2,        //enter preview delay frame num
 	.video_delay_frame = 2,      //enter video delay frame num
@@ -1892,6 +1899,19 @@ static kal_uint32 feature_control(MSDK_SENSOR_FEATURE_ENUM feature_id,
 		spin_lock(&imgsensor_drv_lock);
 		imgsensor.current_fps = *feature_data;
 		spin_unlock(&imgsensor_drv_lock);
+		break;
+	case SENSOR_FEATURE_GET_GAIN_RANGE_BY_SCENARIO:
+		*(feature_data + 1) = imgsensor_info.min_gain;
+		*(feature_data + 2) = imgsensor_info.max_gain;
+		break;
+	case SENSOR_FEATURE_GET_BASE_GAIN_ISO_AND_STEP:
+		*(feature_data + 0) = imgsensor_info.min_gain_iso;
+		*(feature_data + 1) = imgsensor_info.gain_step;
+		*(feature_data + 2) = imgsensor_info.gain_type;
+		break;
+	case SENSOR_FEATURE_GET_MIN_SHUTTER_BY_SCENARIO:
+		*(feature_data + 1) = imgsensor_info.min_shutter;
+		*(feature_data + 2) = imgsensor_info.exp_step;
 		break;
 	case SENSOR_FEATURE_SET_HDR:
 		LOG_INF("ihdr enable: %d\n", (BOOL)*feature_data);

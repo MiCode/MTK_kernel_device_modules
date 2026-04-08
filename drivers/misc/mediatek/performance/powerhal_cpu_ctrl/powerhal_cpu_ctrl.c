@@ -300,7 +300,7 @@ static ssize_t perfmgr_perfserv_freq_proc_write(
 
 	tmp = buf;
 	while ((tok = strsep(&tmp, " ")) != NULL) {
-		if (cpu >= CORE_MAX) {
+		if (cpu < 0 || cpu >= CORE_MAX) {
 			pr_debug("@%s: cpu number error: %d\n", __func__, i);
 			goto out;
 		}
@@ -506,6 +506,33 @@ int adpf_notify_callback(unsigned int cmd, unsigned int sid)
 	return 0;
 }
 
+/**
+ * This is a temporary workaround to mitigate the abuse of ADPF by systemui.
+ * It checks if the given pid belongs to the systemui process.
+ * If it does, the request will be ignored.
+ */
+bool check_pid_for_systemui(int pid)
+{
+	struct task_struct *tsk = NULL;
+	char tmp_thread_name[16];
+
+	rcu_read_lock();
+	tsk = find_task_by_vpid(pid);
+	if (tsk) {
+		get_task_struct(tsk);
+		strscpy(tmp_thread_name, tsk->comm, 16);
+		tmp_thread_name[15] = '\0';
+		put_task_struct(tsk);
+	} else
+		tmp_thread_name[0] = '\0';
+	rcu_read_unlock();
+
+	if (strstr(tmp_thread_name, "ndroid.systemui"))
+		return true;
+	else
+		return false;
+}
+
 int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
 							unsigned int uid, int *threadIds,
 							int threadIds_size, long durationNanos)
@@ -534,6 +561,11 @@ int adpf_create_session_hint(unsigned int sid, unsigned int tgid,
 	sessionList[sid]->used = SESSION_USED;
 
 	mutex_unlock(&adpf_mutex);
+
+	if (check_pid_for_systemui(tgid)) {
+		pr_info("[%s] systemui detected, ignore the request", __func__);
+		return 0;
+	}
 
 	adpf_notify_callback(ADPF_CREATE_HINT_SESSION, sid);
 
@@ -607,6 +639,12 @@ int adpf_report_actual_work_duaration(unsigned int sid,
 	mutex_lock(&adpf_mutex);
 	if (sid >= ADPF_MAX_SESSION || sessionList[sid]->used == SESSION_UNUSED) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
+		return -1;
+	}
+
+	if (work_duration_size > ADPF_MAX_THREAD) {
+		pr_info("[%s] work_duration_size %d exceeds max", __func__, work_duration_size);
 		mutex_unlock(&adpf_mutex);
 		return -1;
 	}
@@ -802,6 +840,12 @@ int adpf_set_threads(unsigned int sid, int *threadIds, int threadIds_size)
 
 	if (sid >= ADPF_MAX_SESSION) {
 		pr_debug("[%s] sid error: %d", __func__, sid);
+		mutex_unlock(&adpf_mutex);
+		return -1;
+	}
+
+	if (threadIds_size > ADPF_MAX_THREAD) {
+		pr_info("[%s] threadIds_size %d exceeds max", __func__, threadIds_size);
 		mutex_unlock(&adpf_mutex);
 		return -1;
 	}

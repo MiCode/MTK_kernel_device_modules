@@ -13,3 +13,15 @@ config MTK_PEAK_POWER_BUDGET
 	  Select "y" if you want to enable MTK peak power budget
 	  feature
 	  Select "n" if unsure.
+
+config TARGET_PRODUCT_GOYA
+	bool "product name is GOYA"
+	default n
+	help
+	  Say Y here to make sure product is O12A
+
+config TARGET_PRODUCT_KLEE
+	bool "product name is KLEE"
+	default n
+	help
+	  Say Y here to make sure product is P10

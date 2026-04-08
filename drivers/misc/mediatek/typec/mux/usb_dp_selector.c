@@ -20,6 +20,7 @@
 
 #define CHECK_HPD_DELAY 2000
 
+static bool g_dp_sw_connect = false;
 /* MT6983 uds_V1 offset = [11]
  * MT6985 uds_V2 offset = [18] dp 4-lanes offset = [19]
  * Reserved for future platform.
@@ -109,6 +110,7 @@ static int usb_dp_selector_switch_set(struct typec_switch_dev *sw,
 #endif
 			uds->dp_sw_connect = false;
 			uds->is_dp = false;
+			g_dp_sw_connect = uds->dp_sw_connect;
 		}
 		break;
 	case TYPEC_ORIENTATION_NORMAL:
@@ -231,7 +233,11 @@ static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 		/* Mark force HPD WA by DP Team Request. */
 		/* schedule_delayed_work(&uds->check_wk, msecs_to_jiffies(CHECK_HPD_DELAY)); */
 
+#ifndef CONFIG_MTK_DPTX_PATCH_FOR_TABLET_ENABLE
+	} else if (dp_data->status) {
+#else
 	} else {
+#endif
 		u32 irq = dp_data->status & DP_STATUS_IRQ_HPD;
 		u32 state = dp_data->status & DP_STATUS_HPD_STATE;
 
@@ -259,11 +265,18 @@ static int usb_dp_selector_mux_set(struct typec_mux_dev *mux,
 			mtk_dp_SWInterruptSet(0x2);
 			uds->dp_sw_connect = false;
 		}
+		g_dp_sw_connect = uds->dp_sw_connect;
 #endif
 	}
 
 	return ret;
 }
+
+bool is_dp_sw_connect(void)
+{
+	return g_dp_sw_connect;
+}
+EXPORT_SYMBOL(is_dp_sw_connect);
 
 static void check_hpd(struct work_struct *work)
 {
@@ -278,6 +291,34 @@ static void check_hpd(struct work_struct *work)
 #endif
 	}
 }
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+static ssize_t dp_connect_store(struct device *dev,
+                 struct device_attribute *attr,
+                 const char *buf, size_t count)
+{
+    return -EINVAL;
+}
+
+static ssize_t dp_connect_show(struct device *dev,
+                struct device_attribute *attr,
+                char *buf)
+{
+    struct usb_dp_selector *uds = dev_get_drvdata(dev);
+
+    return sprintf(buf, "%d\n", uds->dp_sw_connect ? 1 : 0);
+}
+static DEVICE_ATTR_RW(dp_connect);
+
+static struct attribute *uds_attrs[] = {
+    &dev_attr_dp_connect.attr,
+    NULL
+};
+
+static const struct attribute_group uds_group = {
+    .attrs = uds_attrs,
+};
+#endif
 
 static int usb_dp_selector_probe(struct platform_device *pdev)
 {
@@ -309,7 +350,7 @@ static int usb_dp_selector_probe(struct platform_device *pdev)
 
 	uds->is_dp = false;
 	uds->dp_sw_connect = false;
-
+	g_dp_sw_connect = uds->dp_sw_connect;
 	INIT_DEFERRABLE_WORK(&uds->check_wk, check_hpd);
 
 	/* Setting Switch callback */
@@ -345,6 +386,10 @@ static int usb_dp_selector_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, uds);
 
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	if (sysfs_create_group(&dev->kobj, &uds_group))
+		dev_info(dev, "failed to create sysfs attributes\n");
+#endif
 	dev_info(dev, "probe done\n");
 	return 0;
 }

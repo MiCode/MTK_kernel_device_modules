@@ -16,6 +16,20 @@
 #include "mt6768-afe-gpio.h"
 #include "../../codecs/mt6358.h"
 #include "../common/mtk-sp-spk-amp.h"
+#if IS_ENABLED(CONFIG_AW862xx_HAPTIC)
+#include "mt6768-mt6358-ref.h"
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_AW87XXX)
+extern int aw87xxx_set_profile(int dev_index, char *profile);
+
+static char *aw_profile[] = {"Music", "Receiver", "Off"};
+
+enum aw87xxx_dev_index {
+	AW_DEV_0 = 0,
+	AW_DEV_1 = 1,
+};
+#endif
 
 #if IS_ENABLED(CONFIG_SND_SOC_MT6358_ACCDET)
       #include "../../codecs/mt6358-accdet.h"
@@ -81,15 +95,55 @@ static int mt6768_mt6358_spk_amp_event(struct snd_soc_dapm_widget *w,
 {
 	struct snd_soc_dapm_context *dapm = w->dapm;
 	struct snd_soc_card *card = dapm->card;
+#if IS_ENABLED(CONFIG_SND_SOC_AW87XXX)
+	int ret = 0;
+#endif
 
 	dev_info(card->dev, "%s(), event %d\n", __func__, event);
 
 	switch (event) {
 	case SND_SOC_DAPM_POST_PMU:
 		/* spk amp on control */
+#if IS_ENABLED(CONFIG_AW862xx_HAPTIC)
+		ref_ext_amp_switch(true);
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_AW87XXX)
+	dev_info(card->dev, "aw87xxx_set_profile speaker call\n");
+	ret = aw87xxx_set_profile(AW_DEV_0, aw_profile[0]);
+	if (ret < 0) {
+		pr_err("[Awinic] AW_DEV_0 %s: set profile[%s] failed",
+		__func__, aw_profile[0]);
+		return ret;
+	}
+	ret = aw87xxx_set_profile(AW_DEV_1, aw_profile[0]);
+	if (ret < 0) {
+		pr_err("[Awinic] AW_DEV_1 %s: set profile[%s] failed",
+		__func__, aw_profile[0]);
+		return ret;
+	}
+#endif
 		break;
 	case SND_SOC_DAPM_PRE_PMD:
 		/* spk amp off control */
+#if IS_ENABLED(CONFIG_AW862xx_HAPTIC)
+		ref_ext_amp_switch(false);
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_AW87XXX)
+	ret = aw87xxx_set_profile(AW_DEV_0, aw_profile[2]);
+	if (ret < 0) {
+		pr_err("[Awinic] AW_DEV_0 %s: set profile[%s] failed",
+		__func__, aw_profile[2]);
+		return ret;
+	}
+	ret = aw87xxx_set_profile(AW_DEV_1, aw_profile[2]);
+	if (ret < 0) {
+		pr_err("[Awinic] AW_DEV_1 %s: set profile[%s] failed",
+		__func__, aw_profile[2]);
+		return ret;
+	}
+#endif
 		break;
 	default:
 		break;
@@ -109,6 +163,25 @@ static const struct snd_soc_dapm_route mt6768_mt6358_routes[] = {
 	{EXT_SPK_AMP_W_NAME, NULL, "Headphone R Ext Spk Amp"},
 };
 
+#if IS_ENABLED(CONFIG_AW862xx_HAPTIC)
+static const char *const amp_function[] = { "Off", "On" };
+static const struct soc_enum Audio_DL_Enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(amp_function), amp_function),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(amp_function), amp_function),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(amp_function), amp_function),
+};
+static const char *const ref_Amp_PA_Type[] = { "AW_PA", "FS_PA"};
+static const char *const ref_Amp_FM_PA_MODE[] = { "IS_FM", "NOT_FM" };
+
+static const struct soc_enum ref_Amp_PA_Type_Enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ref_Amp_PA_Type), ref_Amp_PA_Type),
+};
+
+static const struct soc_enum ref_Amp_FM_PA_MODE_Enum[] = {
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(ref_Amp_FM_PA_MODE), ref_Amp_FM_PA_MODE),
+};
+#endif
+
 static const struct snd_kcontrol_new mt6768_mt6358_controls[] = {
 	SOC_DAPM_PIN_SWITCH(EXT_SPK_AMP_W_NAME),
 	SOC_ENUM_EXT("MTK_SPK_TYPE_GET", mt6768_spk_type_enum[0],
@@ -117,6 +190,18 @@ static const struct snd_kcontrol_new mt6768_mt6358_controls[] = {
 		     mt6768_spk_i2s_out_type_get, NULL),
 	SOC_ENUM_EXT("MTK_SPK_I2S_IN_TYPE_GET", mt6768_spk_type_enum[1],
 		     mt6768_spk_i2s_in_type_get, NULL),
+#if IS_ENABLED(CONFIG_AW862xx_HAPTIC)
+	SOC_ENUM_EXT("ref_2N1_Speaker_Switch", Audio_DL_Enum[0],
+		     ref_2N1_Speaker_Get, ref_2N1_Speaker_Set),
+	SOC_ENUM_EXT("ref_LoopBack_Switch", Audio_DL_Enum[1],
+		     ref_LoopBack_Get, ref_LoopBack_Set),
+	SOC_ENUM_EXT("ref_MidTest_LoopBack_Switch", Audio_DL_Enum[2],
+		     ref_MidTest_AudDrv_GPIO_Speaker_Get, ref_MidTest_AudDrv_GPIO_Speaker_Set),
+	SOC_ENUM_EXT("ref_Amp_PA_Type", ref_Amp_PA_Type_Enum[0],
+		     ref_Amp_PA_Type_Get, ref_Amp_PA_Type_Set),
+	SOC_ENUM_EXT("ref_Amp_FM_PA_MODE", ref_Amp_FM_PA_MODE_Enum[0],
+		     ref_Amp_FM_PA_MODE_Get, ref_Amp_FM_PA_MODE_Set),
+#endif
 };
 
 /*
@@ -880,6 +965,19 @@ static struct snd_soc_dai_link mt6768_mt6358_dai_links[] = {
 		SND_SOC_DAILINK_REG(scpspk),
 	},
 #endif
+
+#if IS_ENABLED(CONFIG_AW862xx_HAPTIC)
+#if defined(CONFIG_MTK_ULTRASND_PROXIMITY)
+{
+	.name = "SCP_ULTRA_Playback",
+	.stream_name = "SCP_ULTRA_Playback",
+	.cpu_dai_name = "snd-soc-dummy-dai",
+	.platform_name = "snd_scp_ultra",
+	.codec_name = "snd-soc-dummy",
+	.codec_dai_name = "snd-soc-dummy-dai",
+},
+#endif
+#endif
 };
 
 static struct snd_soc_card mt6768_mt6358_soc_card = {
@@ -952,6 +1050,9 @@ static int mt6768_mt6358_dev_probe(struct platform_device *pdev)
 			}
 		}
 	}
+#if IS_ENABLED(CONFIG_AW862xx_HAPTIC)
+	ref_parse_dts_node();
+#endif
 
 	card->dev = &pdev->dev;
 
@@ -962,6 +1063,11 @@ static int mt6768_mt6358_dev_probe(struct platform_device *pdev)
 	else
 		dev_err(&pdev->dev, "%s snd_soc_register_card pass %d\n",
 				__func__, ret);
+#if IS_ENABLED(CONFIG_AW862xx_HAPTIC)
+#if defined(CONFIG_SND_SOC_FS1599)
+	fsm_add_card_controls(card);
+#endif
+#endif
 	return ret;
 }
 

@@ -25,6 +25,7 @@ kernel_device_modules-6.6
 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_stp
 ../vendor/mediatek/kernel_modules/connectivity/gps/data_link
 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_pwr
+../vendor/mediatek/kernel_modules/connectivity/gps/mi_gps_pwr
 ../vendor/mediatek/kernel_modules/connectivity/gps/gps_scp
 ../vendor/mediatek/kernel_modules/gpu
 ../vendor/mediatek/kernel_modules/connectivity/fmradio

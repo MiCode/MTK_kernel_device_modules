@@ -2,6 +2,8 @@
 /*
  * Copyright (c) 2019 MediaTek Inc.
  */
+//#define DEBUG
+#include "asm/current.h"
 #include <linux/kthread.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
@@ -144,6 +146,50 @@ int powerhal_tid;
 int cap_ready;
 #endif
 
+void (*fpsgo2game_noitfy_queue_end)(int);
+EXPORT_SYMBOL_GPL(fpsgo2game_noitfy_queue_end);
+
+// MIUI ADD: Performance_Kscene
+#if IS_ENABLED(CONFIG_MI_KSCENE)
+static void (*nofify_ux_buffer_cnt_func)(int pid,int count, int max_buffer) = NULL;
+static void (*notify_vsync_period_func)(unsigned long long) = NULL;
+static void (*notify_render_end_func)(int tgid, int render_tid, unsigned long long vsync_id) = NULL;
+
+void register_ux_buffer_cnt_notify_func(void (*func)(int pid,int count, int max_buffer)) {
+    nofify_ux_buffer_cnt_func = func;
+}
+EXPORT_SYMBOL(register_ux_buffer_cnt_notify_func);
+
+void unregister_ux_buffer_cnt_notify_func(void) {
+    nofify_ux_buffer_cnt_func = NULL;
+}
+EXPORT_SYMBOL(unregister_ux_buffer_cnt_notify_func);
+
+void register_vsync_period_notify_func(void (*func)(unsigned long long period_ns)) {
+    notify_vsync_period_func = func;
+}
+EXPORT_SYMBOL(register_vsync_period_notify_func);
+
+void unregister_vsync_period_notify_func(void) {
+    notify_vsync_period_func = NULL;
+}
+EXPORT_SYMBOL(unregister_vsync_period_notify_func);
+
+void register_render_end_notify_func(void (*func)(int tgid, int render_tid,
+		unsigned long long vsync_id))
+{
+	notify_render_end_func = func;
+}
+EXPORT_SYMBOL(register_render_end_notify_func);
+
+void unregister_render_end_notify_func(void) {
+	notify_render_end_func = NULL;
+}
+EXPORT_SYMBOL(unregister_render_end_notify_func);
+#endif
+// END Performance_Kscene
+
+
 /* TODO: event register & dispatch */
 int fpsgo_is_enable(void)
 {
@@ -278,8 +324,12 @@ static void fpsgo_notifier_wq_cb_qudeq(int qudeq,
 		} else {
 			FPSGO_LOGI("[FPSGO_CB] QUEUE End: pid %d\n",
 					cur_pid);
+
 			fpsgo_ctrl2comp_enqueue_end(cur_pid, curr_ts,
 					id, sf_buf_id);
+
+			if (fpsgo2game_noitfy_queue_end)
+				fpsgo2game_noitfy_queue_end(cur_pid);
 		}
 		break;
 	case 0:
@@ -292,7 +342,7 @@ static void fpsgo_notifier_wq_cb_qudeq(int qudeq,
 			FPSGO_LOGI("[FPSGO_CB] DEQUEUE End: pid %d\n",
 					cur_pid);
 			fpsgo_ctrl2comp_dequeue_end(cur_pid,
-					curr_ts, id);
+					curr_ts, id, sf_buf_id);
 		}
 		break;
 	default:
@@ -587,15 +637,14 @@ int fpsgo_notify_qudeq(int qudeq,
 
 	return FPSGO_VERSION_CODE;
 }
+
 void fpsgo_notify_connect(int pid,
 		int connectedAPI, unsigned long long id)
 {
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
-
-	FPSGO_LOGI(
-		"[FPSGO_CTRL] connect pid %d, id %llu, API %d\n",
-		pid, id, connectedAPI);
-
+       FPSGO_LOGI(
+               "[FPSGO_CTRL] connect pid %d, id %llu, API %d\n",
+               pid, id, connectedAPI);
 	vpPush =
 		(struct FPSGO_NOTIFIER_PUSH_TAG *)
 		fpsgo_alloc_atomic(sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
@@ -735,6 +784,13 @@ void fpsgo_notify_vsync_period(unsigned long long period)
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
 
 	FPSGO_LOGI("[FPSGO_CTRL] vsync period\n");
+// MIUI ADD: Performance_Kscene
+#if IS_ENABLED(CONFIG_MI_KSCENE)
+    if (NULL != notify_vsync_period_func) {
+        notify_vsync_period_func(period);
+    }
+#endif
+// END Performance_Kscene
 
 	if (!fpsgo_is_enable())
 		return;
@@ -795,6 +851,17 @@ void fpsgo_notify_sbe_rescue(int pid, int start, int enhance,
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
 
 	FPSGO_LOGI("[FPSGO_CTRL] sbe_rescue\n");
+
+// MIUI ADD: Performance_Kscene
+#if IS_ENABLED(CONFIG_MI_KSCENE)
+	if (start == 0 && enhance == 0) {
+		if (notify_render_end_func != NULL) {
+			int tgid = task_tgid_nr(current);
+			notify_render_end_func(tgid, pid, frameID);
+		}
+	}
+#endif
+// END Performance_Kscene
 
 	if (!fpsgo_is_enable())
 		return;
@@ -1039,6 +1106,13 @@ int fpsgo_notify_ux_buffer_count(int pid, int count, int maxCount)
 {
 	struct FPSGO_NOTIFIER_PUSH_TAG *vpPush;
 
+// MIUI ADD: Performance_Kscene
+#if IS_ENABLED(CONFIG_MI_KSCENE)
+    if (NULL != nofify_ux_buffer_cnt_func) {
+        nofify_ux_buffer_cnt_func(pid, count, maxCount);
+    }
+#endif
+// END Performance_Kscene
 	if (!fpsgo_is_enable())
 		return -EINVAL;
 
@@ -1447,8 +1521,10 @@ static int __init fpsgo_init(void)
 	fpsgo_sysfs_init();
 
 	kfpsgo_tsk = kthread_create(kfpsgo, NULL, "kfps");
-	if (kfpsgo_tsk == NULL)
+	if (IS_ERR(kfpsgo_tsk)) {
+		kfpsgo_tsk = NULL;
 		return -EFAULT;
+	}
 	wake_up_process(kfpsgo_tsk);
 
 #if FPSGO_DYNAMIC_WL
@@ -1496,6 +1572,7 @@ static int __init fpsgo_init(void)
 	magt2fpsgo_get_fpsgo_frame_info = get_fpsgo_frame_info;
 #endif
 	fpsgo_get_lr_pair_fp = fpsgo_get_lr_pair;
+	fpsgo_get_now_logic_head_fp = fpsgo_get_now_logic_head;
 	fpsgo_set_rl_l2q_enable_fp = fpsgo_set_rl_l2q_enable;
 	fpsgo_set_rl_expected_l2q_us_fp = fpsgo_set_expected_l2q_us;
 

@@ -19,8 +19,13 @@
 #include "mtk_drm_crtc.h"
 #include "mtk_drm_ddp_comp.h"
 #include "mtk_drm_drv.h"
+#include "mtk_dump.h"
 
 #define DISP_REG_SPLITTER_CTL 0x00
+#define SPLITTER_ENABLE BIT(0)
+#define SPLITTER_OUT1_DIS BIT(12)
+#define SPLITTER_CONFIG_OUT_TH BIT(16)
+
 #define DISP_REG_SPLITTER_SRC_SIZE 0x04
 #define DISP_REG_SPLITTER_OUT0_OFFSET 0x10
 #define DISP_REG_SPLITTER_OUT0_SIZE 0x14
@@ -44,8 +49,7 @@ static void mtk_splitter_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handl
 		DDPPR_ERR("find comp fail\n");
 		return;
 	}
-	cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_REG_SPLITTER_CTL, 0x1, 0x1);
+	mtk_ddp_write_mask(comp, 0x1, DISP_REG_SPLITTER_CTL, 0x1,  handle);
 }
 
 static void mtk_splitter_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -58,6 +62,20 @@ static void mtk_splitter_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle
 	}
 	cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_REG_SPLITTER_CTL, 0x0, 0x1);
+}
+void mtk_splitter_dump(struct mtk_ddp_comp *comp)
+{
+	void __iomem *baddr = comp->regs;
+	int i;
+
+	if (!baddr) {
+		DDPDUMP("%s, %s is NULL!\n", __func__, mtk_dump_comp_str(comp));
+		return;
+	}
+	DDPDUMP("== DISP %s REGS:0x%pa ==\n", mtk_dump_comp_str(comp), &comp->regs_pa);
+
+	for (i = 0x0; i < 0x60; i += 0x10)
+		mtk_cust_dump_reg(baddr, i, i + 0x4, i + 0x8, i + 0xc);
 }
 
 static void
@@ -80,6 +98,43 @@ mtk_splitter_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg, struc
 	cmdq_pkt_write(handle, comp->cmdq_base,	comp->regs_pa + DISP_REG_SPLITTER_CTL,
 		       0x10000, ~0);
 }
+static void
+mtk_splitter_bif_write_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	int width = cfg->w;
+	int height = cfg->h;
+	int value = 0;
+	int offset = comp->mtk_crtc->bif_info->wdma_offset;
+
+	DDPINFO("%s,comp:%s,(%dx%d)offset:%d\n", __func__, mtk_dump_comp_str(comp), width, height, offset);
+
+	value = SPLITTER_ENABLE | SPLITTER_CONFIG_OUT_TH;
+	mtk_ddp_write_mask(comp, value, DISP_REG_SPLITTER_CTL, value,  handle);
+
+	value = (height << 16) | width;
+	mtk_ddp_write_relaxed(comp, value, DISP_REG_SPLITTER_SRC_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, value, DISP_REG_SPLITTER_OUT0_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, 0, DISP_REG_SPLITTER_OUT0_OFFSET, handle);
+	value = width - offset;
+	mtk_ddp_write_relaxed(comp, value, DISP_REG_SPLITTER_OUT1_OFFSET, handle);
+	value = (height << 16) | offset;
+	mtk_ddp_write_relaxed(comp, value, DISP_REG_SPLITTER_OUT1_SIZE, handle);
+}
+static void
+mtk_splitter_bif_read_config(struct mtk_ddp_comp *comp, struct mtk_ddp_config *cfg, struct cmdq_pkt *handle)
+{
+	int width = cfg->w/3;
+	int height = cfg->h;
+	int offset = comp->mtk_crtc->bif_info->wdma_offset;
+
+	DDPINFO("%s,comp:%s,(%dx%d)offset:%d\n", __func__, mtk_dump_comp_str(comp), width, height, offset);
+
+	mtk_ddp_write_mask(comp,SPLITTER_ENABLE | SPLITTER_OUT1_DIS, DISP_REG_SPLITTER_CTL,
+			SPLITTER_ENABLE | SPLITTER_OUT1_DIS,  handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | (width + offset), DISP_REG_SPLITTER_SRC_SIZE, handle);
+	mtk_ddp_write_relaxed(comp, 0, DISP_REG_SPLITTER_OUT0_OFFSET, handle);
+	mtk_ddp_write_relaxed(comp, (height << 16) | width, DISP_REG_SPLITTER_OUT0_SIZE, handle);
+}
 
 static void mtk_splitter_prepare(struct mtk_ddp_comp *comp)
 {
@@ -97,6 +152,8 @@ static const struct mtk_ddp_comp_funcs mtk_disp_splitter_funcs = {
 	.start = mtk_splitter_start,
 	.stop = mtk_splitter_stop,
 	.config = mtk_splitter_config,
+	.bif_write_config = mtk_splitter_bif_write_config,
+	.bif_read_config = mtk_splitter_bif_read_config,
 	.prepare = mtk_splitter_prepare,
 	.unprepare = mtk_splitter_unprepare,
 };
@@ -183,6 +240,7 @@ static int mtk_disp_splitter_remove(struct platform_device *pdev)
 
 static const struct of_device_id mtk_disp_splitter_driver_dt_match[] = {
 	{.compatible = "mediatek,mt6991-disp-splitter", },
+	{.compatible = "mediatek,mt6899-disp-splitter", },
 	{},
 };
 MODULE_DEVICE_TABLE(of, mtk_disp_splitter_driver_dt_match);

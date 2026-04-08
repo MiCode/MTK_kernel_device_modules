@@ -40,6 +40,10 @@ static unsigned int pool_refill_low_water[NUM_ORDERS] = {40, 40, 0};
 
 static unsigned long total_high_wmark_pages;
 
+// MIUI ADD: Performance_PerformanceEnhance
+static bool perf_dis_refill = false;
+// END Performance_PerformanceEnhance
+
 int mtk_refill_order(unsigned int order, int value)
 {
 	if (order >= NUM_ORDERS)
@@ -113,6 +117,20 @@ bool mtk_pool_above_refill_high_double(struct mtk_dmabuf_page_pool *pool)
 	return mtk_dmabuf_page_pool_total(pool, true) >> (20 - PAGE_SHIFT) >=
 			pool_refill_high_water[pool->order_index] * 2;
 }
+
+// MIUI ADD: Performance_PerformanceEnhance
+bool get_perf_dis_refill(void)
+{
+	return perf_dis_refill;
+}
+EXPORT_SYMBOL_GPL(get_perf_dis_refill);
+
+void set_perf_dis_refill(bool dis)
+{
+	perf_dis_refill = dis;
+}
+EXPORT_SYMBOL_GPL(set_perf_dis_refill);
+// END Performance_PerformanceEnhance
 
 bool mtk_pool_below_refill_low(struct mtk_dmabuf_page_pool *pool)
 {

@@ -133,6 +133,8 @@ static int __gpufreq_init_pmic(struct platform_device *pdev);
 static int __gpufreq_init_platform_info(struct platform_device *pdev);
 static int __gpufreq_pdrv_probe(struct platform_device *pdev);
 static int __gpufreq_pdrv_remove(struct platform_device *pdev);
+static void __gpufreq_set_timestamp(void);
+static void __gpufreq_check_bus_idle(void);
 
 //thermal
 static void __mt_update_gpufreqs_power_table(void);
@@ -688,9 +690,13 @@ int __gpufreq_power_control(enum gpufreq_power_state power)
 		}
 		__gpufreq_footprint_power_step(0x04);
 
+		__gpufreq_set_timestamp();
+
 		/* free DVFS when power on */
 		g_dvfs_state &= ~DVFS_POWEROFF;
 	} else if (power == GPU_PWR_OFF && g_gpu.power_count == 0) {
+		/* check all transaction complete before power off */
+		__gpufreq_check_bus_idle();
 		__gpufreq_footprint_power_step(0x05);
 
 		/* freeze DVFS when power off */

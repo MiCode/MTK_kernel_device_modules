@@ -221,6 +221,7 @@ struct fbt_boost_info {
 	unsigned int last_normal_blc_m;
 	unsigned int sbe_rescue;
 	unsigned long long sbe_rescue_target_time;
+	unsigned int ai_boost;
 
 	/* adjust loading */
 	int loading_weight;
@@ -302,6 +303,9 @@ struct fpsgo_boost_attr {
 	/* boost LR */
 	int boost_lr_by_pid;
 
+	/* L3 cache policy */
+	int set_l3_cache_ct_by_pid;
+
 	/* set idle prefer */
 	int set_ls_by_pid;
 	int ls_groupmask_by_pid;
@@ -340,6 +344,8 @@ struct fpsgo_boost_attr {
 	int bm_th_by_pid;
 	int ml_th_by_pid;
 	int tp_policy_by_pid;
+	int tp_strict_middle_by_pid;
+	int tp_strict_little_by_pid;
 
 	/* QUOTA */
 	int qr_enable_by_pid;
@@ -392,6 +398,8 @@ struct fbt_powerRL_limit {
 };
 
 struct FSTB_FRAME_L2Q_INFO {
+	int pid;
+	unsigned long long buf_id;
 	unsigned long long sf_buf_id;
 	unsigned long long queue_end_ns;
 	unsigned long long logic_head_ts;
@@ -439,6 +447,7 @@ struct render_info {
 	unsigned long long enqueue_length_real;
 	unsigned long long dequeue_length;
 	unsigned long long prev_t_enqueue_end;
+	unsigned long long prev_t_dequeue_end;
 	unsigned long long Q2Q_time;
 	unsigned long long running_time;
 	unsigned long long raw_runtime;
@@ -468,6 +477,7 @@ struct render_info {
 	int buffer_count_filter;
 	int rescue_more_count;
 	struct ux_rescue_check *ux_rchk;
+	int ai_boost;
 
 	/*fbt*/
 	int linger;
@@ -498,6 +508,9 @@ struct render_info {
 	/* touch latency */
 	struct FSTB_FRAME_L2Q_INFO l2q_info[MAX_SF_BUFFER_SIZE];
 	int l2q_index;
+	unsigned long long logic_head_ts;
+	int has_logic_head;
+	int is_logic_valid;
 
 	int target_fps_origin;
 };

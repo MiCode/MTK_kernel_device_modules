@@ -150,5 +150,6 @@ extern int base_ops_volt_2_eem(struct eemsn_det *det, int volt);
 extern int base_ops_pmic_2_volt(struct eemsn_det *det, int pmic_val);
 extern int base_ops_eem_2_pmic(struct eemsn_det *det, int eev_val);
 extern unsigned int detid_to_dvfsid(struct eemsn_det *det);
+extern int efuse_get_value_by_offset(unsigned int offset, size_t size, void *buf);
 
 #endif

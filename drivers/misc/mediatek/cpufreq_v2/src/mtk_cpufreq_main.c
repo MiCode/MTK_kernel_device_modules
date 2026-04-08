@@ -75,6 +75,7 @@ struct mt_cpu_dvfs *id_to_cpu_dvfs(enum mt_cpu_dvfs_id id)
 {
 	return (id < NR_MT_CPU_DVFS) ? &cpu_dvfs[id] : NULL;
 }
+EXPORT_SYMBOL(id_to_cpu_dvfs);
 
 struct buck_ctrl_t *id_to_buck_ctrl(enum mt_cpu_dvfs_buck_id id)
 {
@@ -130,6 +131,7 @@ int _search_available_freq_idx(struct mt_cpu_dvfs *p, unsigned int target_khz,
 
 	return new_opp_idx;
 }
+EXPORT_SYMBOL(_search_available_freq_idx);
 
 int get_cur_volt_wrapper(struct mt_cpu_dvfs *p, struct buck_ctrl_t *volt_p)
 {

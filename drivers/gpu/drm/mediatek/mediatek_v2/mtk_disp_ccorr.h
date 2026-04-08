@@ -6,7 +6,16 @@
 #ifndef __MTK_DISP_CCORR_H__
 #define __MTK_DISP_CCORR_H__
 
-#include <uapi/drm/mediatek_drm.h>
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+#ifndef DRM_CMDQ_DISABLE
+#include <linux/soc/mediatek/mtk-cmdq-ext.h>
+#else
+#include "mtk-cmdq-ext.h"
+#endif
+#include "mtk_drm_ddp_comp.h"
+
+extern struct mtk_drm_crtc *global_r2y_mtk_crtc[2];
+#endif
 
 struct mtk_disp_ccorr_data {
 	bool support_shadow;
@@ -85,6 +94,10 @@ void disp_ccorr_regdump(struct mtk_ddp_comp *comp);
 int disp_ccorr_act_get_irq(struct mtk_ddp_comp *comp, void *data);
 // for displayPQ update to swpm tppa
 unsigned int disp_ccorr_bypass_info(struct mtk_drm_crtc *mtk_crtc);
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+int disp_ccorr_r2y_enable(int enable, int id);
+bool disp_r2y_relay_other_engines(struct mtk_ddp_comp *comp, uint32_t engine);
+#endif
 
 #endif
 

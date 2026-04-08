@@ -252,7 +252,6 @@ static const struct resource mt6359p_regulators_resources[] = {
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VCN13_OC, "VCN13"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VCN18_OC, "VCN18"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VA09_OC, "VA09"),
-	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VCAMIO_OC, "VCAMIO"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VA12_OC, "VA12"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VAUX18_OC, "VAUX18"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VAUD18_OC, "VAUD18"),
@@ -262,13 +261,9 @@ static const struct resource mt6359p_regulators_resources[] = {
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VSRAM_OTHERS_OC, "VSRAM_OTHERS"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VSRAM_MD_OC, "VSRAM_MD"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VEMC_OC, "VEMC"),
-	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VSIM1_OC, "VSIM1"),
-	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VSIM2_OC, "VSIM2"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VUSB_OC, "VUSB"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VRFCK_OC, "VRFCK"),
-	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VBBCK_OC, "VBBCK"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VBIF28_OC, "VBIF28"),
-	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VIBR_OC, "VIBR"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VIO28_OC, "VIO28"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VM18_OC, "VM18"),
 	DEFINE_RES_IRQ_NAMED(MT6359P_IRQ_VUFS_OC, "VUFS"),
@@ -465,6 +460,9 @@ static const struct mfd_cell mt6357_devs[] = {
 	},{
 		.name = "mtk-clock-buffer",
 		.of_compatible = "mediatek,mt6357-clkbuf",
+	},{
+		.name = "mtk-clock-buffer-tb",
+		.of_compatible = "mediatek,mt6357-tb-clkbuf",
 	},
 };
 
@@ -622,6 +620,9 @@ static const struct mfd_cell mt6359p_devs[] = {
 	}, {
 		.name = "mtk-clock-buffer",
 		.of_compatible = "mediatek,mt6359p-clkbuf",
+	}, {
+		.name = "mtk-clock-buffer-tb",
+		.of_compatible = "mediatek,mt6359p-tb-clkbuf",
 	}
 };
 

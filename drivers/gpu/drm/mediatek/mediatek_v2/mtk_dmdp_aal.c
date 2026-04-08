@@ -143,13 +143,19 @@ static void disp_mdp_aal_config_overhead(struct mtk_ddp_comp *comp,
 	struct mtk_ddp_config *cfg)
 {
 	struct mtk_dmdp_aal *data = comp_to_dmdp_aal(comp);
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 
 	DDPINFO("line: %d\n", __LINE__);
 
 	if (cfg->tile_overhead.is_support) {
 		/*set component overhead*/
 		if (!data->is_right_pipe) {
-			data->tile_overhead.comp_overhead = 0;
+			if (priv->data->mmsys_id == MMSYS_MT6991)
+				data->tile_overhead.comp_overhead = 8;
+			else
+				data->tile_overhead.comp_overhead = 0;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.left_overhead +=
 				data->tile_overhead.comp_overhead;
@@ -159,7 +165,10 @@ static void disp_mdp_aal_config_overhead(struct mtk_ddp_comp *comp,
 			data->tile_overhead.width =
 				cfg->tile_overhead.left_in_width;
 		} else {
-			data->tile_overhead.comp_overhead = 0;
+			if (priv->data->mmsys_id == MMSYS_MT6991)
+				data->tile_overhead.comp_overhead = 8;
+			else
+				data->tile_overhead.comp_overhead = 0;
 			/*add component overhead on total overhead*/
 			cfg->tile_overhead.right_overhead +=
 				data->tile_overhead.comp_overhead;

@@ -60,6 +60,11 @@
 #define PIN_OUT_SIZE_SCP_NPU		 4
 #define PIN_OUT_SIZE_HOST_SCP_CHRE	 2
 #define PIN_IN_SIZE_SCP_HOST_CHRE	 2
+#define PIN_IN_SIZE_ELLIPTIC_ULTRA_0     10
+#define PIN_OUT_SIZE_ELLIPTIC_ULTRA_0    10
+
+#define PIN_OUT_SIZE_SCP_TP			4 /* the following will use mbox 1 */
+#define PIN_IN_SIZE_SCP_TP			3 /* the following will use mbox 1 */
 
 /* scp Core ID definition */
 enum scp_core_id {
@@ -121,6 +126,10 @@ enum {
 	IPI_IN_KASAN_CHECK	  = 49,
 	IPI_OUT_CAMFE_SCP_CAMBE   = 50,
 	IPI_IN_SCP_CAMBE_CAMFE    = 51,
+	IPI_OUT_ELLIPTIC_ULTRA_0   = 52,
+	IPI_IN_ELLIPTIC_ULTRA_0    = 53,
+	IPI_OUT_SCP_TP           = 54,
+	IPI_IN_SCP_TP            = 55,
 	SCP_IPI_COUNT
 };
 
@@ -200,6 +209,8 @@ enum scp_reserve_mem_id_t {
 	SCP_CHRE_TO_MEM_ID,
 	SCP_LOW_PWR_DBG_MEM_ID,
 	SCP_DBI_MEM_ID = 20,
+	SCP_ELLIPTIC_DEBUG_MEM,
+	SCP_THP_MEM_ID,
 	NUMS_MEM_ID,
 };
 
@@ -221,7 +232,8 @@ enum feature_id {
 	ULTRA_FEATURE_ID = 13,
 	RVSPKPROCESS_FEATURE_ID = 14,
 	RVVOICE_CALL_FEATURE_ID = 15,
-	NUM_FEATURE_ID = 16,
+	ELLIPTIC_FUSION_ID = 16,
+	NUM_FEATURE_ID = 17,
 };
 
 enum SCP_THERMAL_TYPE {

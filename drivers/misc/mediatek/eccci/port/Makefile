@@ -41,7 +41,8 @@ ccci_port-y := port_cfg.o \
 		port_rpc.o \
 		port_smem.o \
 		port_sysmsg.o \
-		ccci_swtp.o
+		ccci_swtp.o \
+		ccci_mbrain.o
 
 endif
 

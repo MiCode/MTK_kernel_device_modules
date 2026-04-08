@@ -314,14 +314,15 @@ struct mml_submit {
 	struct mml_job *job;
 	struct mml_frame_info info;
 	struct mml_frame_buffer buffer;
-	struct mml_rect layer;
+	struct mml_frame_size max_size;
+	struct mml_frame_size layer;
 	struct mml_rect dl_out[MML_PIPE_CNT];
 	struct timeval_t {
 		uint64_t sec;
 		uint64_t nsec;
 	} end;
 	struct mml_pq_param *pq_param[MML_MAX_OUTPUTS];
-	bool update;
+	bool disp_vdo;
 };
 
 #endif	/* __MTK_MML_H__ */

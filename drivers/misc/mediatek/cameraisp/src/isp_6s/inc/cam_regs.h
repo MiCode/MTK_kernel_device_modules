@@ -373,6 +373,17 @@ enum{
 #define CAM_REG_CTL_RAW_INT6_STATUS(module)     (isp_devs[module].regs + 0x0154)
 #define CAM_REG_CTL_RAW_INT6_STATUSX(module)    (isp_devs[module].regs + 0x0158)
 
+#define CAM_REG_CTL_CAMCTL_CCU_INT_EN(module)		(isp_devs[module].regs + 0x0180)
+#define CAM_REG_CTL_CAMCTL_CCU_INT_STATUS(module)	(isp_devs[module].regs + 0x0184)
+#define CAM_REG_CTL_CAMCTL_CCU_INT2_EN(module)		(isp_devs[module].regs + 0x0188)
+#define CAM_REG_CTL_CAMCTL_CCU_INT2_STATUS(module)	(isp_devs[module].regs + 0x018C)
+#define CAM_REG_CTL_CAMCTL_CCU_INT3_EN(module)		(isp_devs[module].regs + 0x0190)
+#define CAM_REG_CTL_CAMCTL_CCU_INT3_STATUS(module)	(isp_devs[module].regs + 0x0194)
+#define CAM_REG_CTL_CAMCTL_CCU_INT6_EN(module)		(isp_devs[module].regs + 0x01A8)
+#define CAM_REG_CTL_CAMCTL_CCU_INT6_STATUS(module)	(isp_devs[module].regs + 0x01AC)
+#define CAM_REG_CTL_CAMSV_CCU_INT_EN(module)		(isp_devs[module].regs + 0x0050)
+#define CAM_REG_CTL_CAMSV_CCU_INT_STATUS(module)	(isp_devs[module].regs + 0x0054)
+
 #define CAM_REG_CTL_SW_CTL(module)              (isp_devs[module].regs + 0x007C)
 #define CAM_REG_CTL_CD_DONE_SEL(module)         (isp_devs[module].regs + 0x0058)
 #define CAM_REG_CTL_TWIN_STATUS(module)         (isp_devs[module].regs + 0x00A8)
@@ -503,6 +514,11 @@ enum{
 #define CAM_REG_FLKO_BASE_ADDR(module)         (isp_devs[module].regs + 0x4580)
 #define CAM_REG_LTMSO_BASE_ADDR(module)        (isp_devs[module].regs + 0x45F0)
 #define CAM_REG_TSFSO_BASE_ADDR(module)        (isp_devs[module].regs + 0x43C0)
+#define CAM_REG_LCESHO_BASE_ADDR(module)       (isp_devs[module].regs + 0x46D0)
+
+#define CAM_REG_FLKO_XSIZE(module)             (isp_devs[module].regs + 0x458C)
+#define CAM_REG_FLKO_YSIZE(module)             (isp_devs[module].regs + 0x4590)
+#define CAM_REG_FLKO_STRIDE(module)            (isp_devs[module].regs + 0x4594)
 
 #define CAM_REG_IMGO_DRS(module)                (isp_devs[module].regs + 0x4828)
 #define CAM_REG_IMGO_CON(module)                (isp_devs[module].regs + 0x4838)

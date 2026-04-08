@@ -360,6 +360,22 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 					str, string, ##args);			\
 		DDPPR_ERR("[DDP Fatal Error]" string, ##args);			\
 	} while (0)
+
+/* TRACE_TOP is keyword for aee dump CSTRACE_BIN or not */
+#define DDPAEE_TRACE_TOP(string, args...)					\
+	do {									\
+		char str[200];							\
+		int r;	\
+		r = snprintf(str, 199, "[TRACE_TOP]DDP:" string, ##args);	\
+		if (r < 0) {	\
+			pr_err("snprintf error\n");			\
+		}	\
+		aee_kernel_exception_api(__FILE__, __LINE__,			\
+					DB_OPT_DEFAULT | DB_OPT_FTRACE |	\
+					DB_OPT_MMPROFILE_BUFFER,		\
+					str, string, ##args);			\
+		DDPPR_ERR("[DDP Trace Error]" string, ##args);			\
+	} while (0)
 #else /* !CONFIG_MTK_AEE_FEATURE */
 #define DDPAEE(string, args...)                                                \
 	do {                                                                   \
@@ -381,6 +397,18 @@ int mtk_dprec_logger_pr(unsigned int type, char *fmt, ...);
 			pr_err("snprintf error\n"); \
 		}	\
 		pr_err("[DDP Fatal Error]" string, ##args);				\
+	} while (0)
+
+/* TRACE_TOP is keyword for aee dump CSTRACE_BIN or not */
+#define DDPAEE_TRACE_TOP(string, args...)					\
+	do {									\
+		char str[200];							\
+		int r;	\
+		r = snprintf(str, 199, "[TRACE_TOP]DDP:" string, ##args);	\
+		if (r < 0) {	\
+			pr_err("snprintf error\n"); \
+		}	\
+		pr_err("[DDP Trace Error]" string, ##args);		\
 	} while (0)
 #endif /* CONFIG_MTK_AEE_FEATURE */
 

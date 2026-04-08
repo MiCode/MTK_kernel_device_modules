@@ -16,6 +16,9 @@
 #include <linux/swap.h>
 #include <linux/sched/signal.h>
 
+#define TRY_LOCK_RS_INTERVAL		(10 * HZ)
+#define TRY_LOCK_RS_BURST			(1)
+
 /* page types we track in the pool */
 enum {
 	POOL_LOWPAGE,      /* Clean lowmem pages */
@@ -236,6 +239,8 @@ static int dmabuf_page_pool_do_shrink(struct dmabuf_page_pool *pool, gfp_t gfp_m
 
 static int dmabuf_page_pool_shrink(gfp_t gfp_mask, int nr_to_scan)
 {
+	static DEFINE_RATELIMIT_STATE(dbg_rs, TRY_LOCK_RS_INTERVAL,
+								  TRY_LOCK_RS_BURST);
 	struct dmabuf_page_pool *pool;
 	int nr_total = 0;
 	int nr_freed;
@@ -244,7 +249,12 @@ static int dmabuf_page_pool_shrink(gfp_t gfp_mask, int nr_to_scan)
 	if (!nr_to_scan)
 		only_scan = 1;
 
-	mutex_lock(&pool_list_lock);
+	if (mutex_trylock(&pool_list_lock) == 0) {
+		if (__ratelimit(&dbg_rs))
+			pr_info("%s: mutex_trylock busy\n", __func__);
+		return 0;
+	}
+
 	list_for_each_entry(pool, &pool_list, list) {
 		if (only_scan) {
 			nr_total += dmabuf_page_pool_do_shrink(pool,

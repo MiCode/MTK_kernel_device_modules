@@ -206,6 +206,12 @@ bool mml_drm_query_hw_support(const struct mml_frame_info *info)
 			goto not_support;
 		}
 
+		if ((destw > crop_srcw && desth < crop_srch) ||
+		    (destw < crop_srcw && desth > crop_srch)) {
+			mml_err("[drm]not support shrink and expand h/v ratio at the same time");
+			goto not_support;
+		}
+
 		if ((dest->compose.width || dest->compose.height) &&
 			(dest->compose.width != dest->data.width ||
 			dest->compose.height != dest->data.height)) {
@@ -1113,42 +1119,44 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 {
 	static const char * const threads[] = {
 		"mml_drm_done", "mml_destroy",
-		"mml_work0", "mml_work1",
+		NULL, "mml_work1",
 	};
-	struct mml_drm_ctx *ctx;
+	struct mml_drm_ctx *dctx;
 	int ret;
 
 	mml_msg("[drm]%s on dev %p", __func__, mml);
 
-	ctx = kzalloc(sizeof(*ctx), GFP_KERNEL);
-	if (!ctx)
+	dctx = kzalloc(sizeof(*dctx), GFP_KERNEL);
+	if (!dctx)
 		return ERR_PTR(-ENOMEM);
 
-	ret = mml_ctx_init(&ctx->ctx, mml, threads);
+	dctx->ctx.kt_config[0] = mml_dev_get_config_worker(mml);
+
+	ret = mml_ctx_init(&dctx->ctx, mml, threads);
 	if (ret) {
-		kfree(ctx);
+		kfree(dctx);
 		return ERR_PTR(ret);
 	}
 
-	ctx->ctx.task_ops = &drm_task_ops;
-	ctx->ctx.cfg_ops = &drm_config_ops;
-	ctx->ctx.disp_dual = disp->dual;
-	ctx->ctx.disp_vdo = disp->vdo_mode;
-	ctx->ctx.submit_cb = disp->submit_cb;
-	ctx->ddren_cb = disp->ddren_cb;
-	ctx->disp_crtc = disp->disp_crtc;
-	ctx->dispen_cb = disp->dispen_cb;
-	ctx->dispen_param = disp->dispen_param;
-	ctx->panel_width = MML_DEFAULT_PANEL_W;
-	ctx->panel_height = MML_DEFAULT_PANEL_H;
+	dctx->ctx.task_ops = &drm_task_ops;
+	dctx->ctx.cfg_ops = &drm_config_ops;
+	dctx->ctx.disp_dual = disp->dual;
+	dctx->ctx.disp_vdo = disp->vdo_mode;
+	dctx->ctx.submit_cb = disp->submit_cb;
+	dctx->ddren_cb = disp->ddren_cb;
+	dctx->disp_crtc = disp->disp_crtc;
+	dctx->dispen_cb = disp->dispen_cb;
+	dctx->dispen_param = disp->dispen_param;
+	dctx->panel_width = MML_DEFAULT_PANEL_W;
+	dctx->panel_height = MML_DEFAULT_PANEL_H;
 
 #ifndef MML_FPGA
-	ctx->timeline = mtk_sync_timeline_create("mml_timeline");
+	dctx->timeline = mtk_sync_timeline_create("mml_timeline");
 #endif
-	if (!ctx->timeline)
+	if (!dctx->timeline)
 		mml_err("[drm]fail to create timeline");
 	else
-		mml_msg("[drm]timeline for mml %p", ctx->timeline);
+		mml_msg("[drm]timeline for mml %p", dctx->timeline);
 
 	/* return info to display */
 	disp->racing_height = mml_sram_get_racing_height(mml);
@@ -1157,9 +1165,9 @@ static struct mml_drm_ctx *drm_ctx_create(struct mml_dev *mml,
 	mml_pw_set_kick_cb(mml, disp->kick_idle_cb, disp->disp_crtc);
 
 	/* idle complete event to prevent display ignore put context */
-	init_completion(&ctx->idle);
+	init_completion(&dctx->idle);
 
-	return ctx;
+	return dctx;
 }
 
 struct mml_drm_ctx *mml_drm_get_context(struct platform_device *pdev,
@@ -1208,6 +1216,7 @@ static void drm_ctx_release(struct mml_drm_ctx *dctx)
 
 	mml_msg("[drm]%s on ctx %p", __func__, ctx);
 
+	ctx->kt_config[0] = NULL;	/* clear kthread from mml driver */
 	mml_ctx_deinit(ctx);
 	for (i = 0; i < ARRAY_SIZE(ctx->tile_cache); i++)
 		if (ctx->tile_cache[i].tiles)
@@ -1272,7 +1281,7 @@ void mml_drm_set_panel_pixel(struct mml_drm_ctx *dctx, u32 panel_width, u32 pane
 }
 EXPORT_SYMBOL_GPL(mml_drm_set_panel_pixel);
 
-s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
+s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt, bool first_frame)
 {
 	struct mml_ctx *ctx = &dctx->ctx;
 	struct cmdq_operand lhs, rhs;
@@ -1284,7 +1293,7 @@ s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3,
 		atomic_read(&ctx->job_serial) << 16);
 
-	if (ctx->disp_vdo && event_target) {
+	if (ctx->disp_vdo && event_target && !first_frame) {
 		/* non-racing to racing case, force clear target line
 		 * to make sure next racing begin from target line to sof
 		 */
@@ -1325,7 +1334,7 @@ s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 	/* debug current task idx */
 	cmdq_pkt_assign_command(pkt, CMDQ_THR_SPR_IDX3, jobid << 16);
 
-	mml_mmp(racing_stop_sync, MMPROFILE_FLAG_START, jobid, 0);
+	mml_mmp(racing_stop_sync, MMPROFILE_FLAG_PULSE, jobid, 0);
 
 	/* set NEXT bit on, to let mml know should jump next */
 	lhs.reg = true;
@@ -1340,13 +1349,13 @@ s32 mml_drm_racing_stop_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt)
 	rhs.value = ~(u16)MML_NEXTSPR_NEXT;
 	cmdq_pkt_logic_command(pkt, CMDQ_LOGIC_AND, MML_CMDQ_NEXT_SPR, &lhs, &rhs);
 
+	mml_mmp(racing_stop_sync, MMPROFILE_FLAG_START, jobid, 0);
 	tp_path = mml_drm_query_dl_path(dctx, NULL, 0);
 	if (tp_path)
 		cmdq_check_thread_complete(tp_path->clt->chan);
 	tp_path = mml_drm_query_dl_path(dctx, NULL, 1);
 	if (tp_path)
 		cmdq_check_thread_complete(tp_path->clt->chan);
-
 	mml_mmp(racing_stop_sync, MMPROFILE_FLAG_END, 0, 0);
 
 	return 0;
@@ -1411,6 +1420,7 @@ static void mml_drm_split_info_racing(struct mml_submit *submit, struct mml_subm
 	for (i = 0; i < MML_MAX_OUTPUTS; i++)
 		if (submit_pq->pq_param[i] && submit->pq_param[i])
 			*submit_pq->pq_param[i] = *submit->pq_param[i];
+	submit_pq->disp_vdo = submit->disp_vdo;
 
 	if (dest->rotate == MML_ROT_0 ||
 	    dest->rotate == MML_ROT_180) {
@@ -1527,6 +1537,10 @@ static void mml_drm_split_info_racing(struct mml_submit *submit, struct mml_subm
 	submit_pq->buffer.src.cnt = 0;
 	submit_pq->buffer.dest[0].cnt = 0;
 
+	/* cache max size for throughput calc */
+	submit->max_size.width = max_t(u32, info_pq->dest[0].data.width, info_pq->src.width);
+	submit->max_size.height = max_t(u32, info_pq->dest[0].data.height, info_pq->src.height);
+
 	submit->buffer.seg_map.cnt = 0;
 	submit->buffer.dest_cnt = 1;
 	submit->buffer.dest[1].cnt = 0;
@@ -1548,6 +1562,7 @@ static void mml_drm_split_info_dl(struct mml_submit *submit, struct mml_submit *
 		if (submit_pq->pq_param[i] && submit->pq_param[i])
 			*submit_pq->pq_param[i] = *submit->pq_param[i];
 	submit_pq->info.mode = MML_MODE_DIRECT_LINK;
+	submit_pq->disp_vdo = submit->disp_vdo;
 
 	/* display layer pixel */
 	if (!submit->layer.width || !submit->layer.height) {

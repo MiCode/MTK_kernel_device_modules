@@ -15,3 +15,5 @@ source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/typec/tcpc/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/typec/mux/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/typec/tcpc_aw/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/typec/tcpc_aw/aw35615/Kconfig"

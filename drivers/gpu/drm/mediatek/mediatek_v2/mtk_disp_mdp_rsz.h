@@ -15,6 +15,7 @@ struct mtk_disp_mdp_rsz_data {
 	unsigned int in_max_height;
 	bool support_shadow;
 	bool need_bypass_shadow;
+	bool is_for_wb_path;
 };
 
 struct mdp_rect {

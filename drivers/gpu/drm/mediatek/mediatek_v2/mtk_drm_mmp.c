@@ -92,12 +92,18 @@ void init_drm_mmp_event(void)
 		mmprofile_register_event(g_DRM_MMP_Events.aal, "AAL0");
 	g_DRM_MMP_Events.aal1 =
 		mmprofile_register_event(g_DRM_MMP_Events.aal, "AAL1");
+	g_DRM_MMP_Events.chist =
+		mmprofile_register_event(g_DRM_MMP_Events.IRQ, "CHIST");
+	g_DRM_MMP_Events.chist0 =
+		mmprofile_register_event(g_DRM_MMP_Events.chist, "CHIST0");
 	g_DRM_MMP_Events.pmqos =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "PMQOS");
 	g_DRM_MMP_Events.ostdl =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "OSTDL");
 	g_DRM_MMP_Events.channel_bw =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "CHANNEL_BW");
+	g_DRM_MMP_Events.channel_write_bw =
+		mmprofile_register_event(g_DRM_MMP_Events.drm, "CHANNEL_WRITE_BW");
 	g_DRM_MMP_Events.hrt_bw =
 		mmprofile_register_event(g_DRM_MMP_Events.drm, "HRT_BW");
 	g_DRM_MMP_Events.mutex_lock =
@@ -224,8 +230,6 @@ void init_crtc_mmp_event(void)
 			mmprofile_register_event(crtc_mmp_root, "ESD check");
 		g_CRTC_MMP_Events[i].esd_recovery =
 			mmprofile_register_event(crtc_mmp_root, "ESD recovery");
-		g_CRTC_MMP_Events[i].target_time =
-			mmprofile_register_event(crtc_mmp_root, "target_time");
 		g_CRTC_MMP_Events[i].idle_async = mmprofile_register_event(
 			crtc_mmp_root, "idle_async");
 		g_CRTC_MMP_Events[i].idle_async_cb = mmprofile_register_event(
@@ -262,6 +266,8 @@ void init_crtc_mmp_event(void)
 			crtc_mmp_root, "pu_ddic_cmd");
 		g_CRTC_MMP_Events[i].pu_final_roi = mmprofile_register_event(
 			crtc_mmp_root, "pu_final_roi");
+		g_CRTC_MMP_Events[i].pu_status_err = mmprofile_register_event(
+			crtc_mmp_root, "pu_status_err");
 		g_CRTC_MMP_Events[i].user_cmd_cb =
 			mmprofile_register_event(crtc_mmp_root, "user_cmd_cb");
 		g_CRTC_MMP_Events[i].bl_cb =
@@ -382,6 +388,8 @@ void init_crtc_mmp_event(void)
 			mmprofile_register_event(crtc_mmp_root, "dsi_ltpo_vsync");
 		g_CRTC_MMP_Events[i].arp_te =
 			mmprofile_register_event(crtc_mmp_root, "arp_te");
+		g_CRTC_MMP_Events[i].bif_src_ctrl = mmprofile_register_event(
+					crtc_mmp_root, "bif_src_ctrl");
 		g_CRTC_MMP_Events[i].enter_idle = mmprofile_register_event(
 			crtc_mmp_root, "enter_HS_idle");
 		g_CRTC_MMP_Events[i].leave_idle = mmprofile_register_event(

@@ -420,6 +420,11 @@ static int mt6360_regmap_read(void *context, const void *reg, size_t reg_size,
 	u8 crc;
 	int ret;
 
+	if (bank == MT6360_SLAVE_TCPC) {
+		dev_info(ddata->dev, "%s: can't access typec part\n", __func__);
+		return -EINVAL;
+	}
+
 	//pr_info("%s: bank:%d, addr:0x%x\n", __func__, bank, reg_addr);
 	if (bank == MT6360_SLAVE_PMIC || bank == MT6360_SLAVE_LDO) {
 		crc_needed = true;
@@ -470,6 +475,11 @@ static int mt6360_regmap_write(void *context, const void *val, size_t val_size)
 	int buf_len = MT6360_ALLOC_WRITE_SIZE(val_size);
 	int write_size = val_size - MT6360_REGMAP_REG_BYTE_SIZE;
 	int ret;
+
+	if (bank == MT6360_SLAVE_TCPC) {
+		dev_info(ddata->dev, "%s: can't access typec part\n", __func__);
+		return -EINVAL;
+	}
 
 	//pr_info("%s: bank:%d, addr:0x%x\n", __func__, bank, reg_addr);
 	if (bank == MT6360_SLAVE_PMIC || bank == MT6360_SLAVE_LDO) {

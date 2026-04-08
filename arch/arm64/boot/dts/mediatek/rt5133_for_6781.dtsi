@@ -8,7 +8,7 @@
 	};
 
 	rt5133_gpio1: rt5133-gpio1 {
-		/* compatible = "regulator-fixed"; */
+		compatible = "regulator-fixed";
 		regulator-name = "rt5133-gpio1";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
@@ -18,7 +18,7 @@
 	};
 
 	rt5133_gpio2: rt5133-gpio2 {
-		/* compatible = "regulator-fixed"; */
+		compatible = "regulator-fixed";
 		regulator-name = "rt5133-gpio2";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
@@ -28,7 +28,7 @@
 	};
 
 	rt5133_gpio3: rt5133-gpio3 {
-		/* compatible = "regulator-fixed"; */
+		compatible = "regulator-fixed";
 		regulator-name = "rt5133-gpio3";
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
@@ -46,7 +46,7 @@
 		compatible = "richtek,rt5133";
 		reg = <0x18>;
 		wakeup-source;
-		interrupts-extended = <&pio 11 0>;
+		interrupts-extended = <&pio 11 IRQ_TYPE_EDGE_FALLING>;
 		enable-gpio = <&pio 25 0x0>;
 		gpio-supply = <&rt5133_ldo1>;
 		gpio-controller;

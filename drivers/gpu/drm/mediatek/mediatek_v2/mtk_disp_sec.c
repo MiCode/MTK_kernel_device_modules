@@ -354,10 +354,16 @@ int mtk_disp_mtee_cmdq_secure_start(int value, struct cmdq_pkt *cmdq_handle,
 
 	if (crtc_id == 0) {
 		/*TODO need to adapt new chip with sec_disp_port = 0*/
-		if (priv && priv->data->mmsys_id == MMSYS_MT6768)
-			sec_disp_port = 1LL << CMDQ_SEC_DISP_OVL0;
+		if (priv && priv->data->mmsys_id == MMSYS_MT6768) {
+			if (priv->secure_static_path_switch)
+				sec_disp_port = 1LL << CMDQ_SEC_DISP_OVL0;
+			else
+				sec_disp_port = ((1LL << CMDQ_SEC_DISP_2L_OVL0) | (1LL << CMDQ_SEC_DISP_OVL0));
+		}
 		else if (priv && priv->data->mmsys_id == MMSYS_MT6765)
-			sec_disp_port = 1LL << CMDQ_SEC_DISP_2L_OVL0;
+			sec_disp_port = ((1LL << CMDQ_SEC_DISP_2L_OVL0) | (1LL << CMDQ_SEC_DISP_OVL0));
+		else if (priv && priv->data->mmsys_id == MMSYS_MT6771)
+			sec_disp_port = 1LL << CMDQ_SEC_DISP_OVL0;
 		else
 			sec_disp_port = 0;
 		sec_disp_dapc = 0;

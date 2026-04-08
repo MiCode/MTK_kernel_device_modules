@@ -16,6 +16,14 @@
 #include "fpsgo_base.h"
 #include "fbt_cpu_platform.h"
 #include <common.h>
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+#if IS_ENABLED(CONFIG_MTK_PMQOS)
+#include "mtk-pm-qos.h"
+static struct mtk_pm_qos_request fpsgo_dram_opp_request;
+#else
+#include "mtk_vcorefs_manager.h"
+#endif
+#endif
 
 static int mask_int[FPSGO_PREFER_TOTAL];
 static struct cpumask mask[FPSGO_PREFER_TOTAL];
@@ -35,6 +43,24 @@ static int generate_sbe_rescue_enable(void);
 static int generate_dram_boost_enable(void);
 static int generate_ux_scroll_general_policy(void);
 static int generate_smart_launch_enable(void);
+
+// MIUI ADD: Performance_Kscene
+#if IS_ENABLED(CONFIG_MI_KSCENE)
+typedef void (*notify_kscene_set_cap)(int pid, int min_cap);
+
+static notify_kscene_set_cap notify_kscene_set_cap_func = NULL;
+
+void register_notify_kscene_set_cap_func(notify_kscene_set_cap func) {
+	notify_kscene_set_cap_func = func;
+}
+EXPORT_SYMBOL_GPL(register_notify_kscene_set_cap_func);
+
+void unregister_notify_kscene_set_cap_func(void) {
+	notify_kscene_set_cap_func = NULL;
+}
+EXPORT_SYMBOL_GPL(unregister_notify_kscene_set_cap_func);
+#endif
+
 static int platform_fpsgo_probe(struct platform_device *pdev)
 {
 	int ret = 0, retval = 0;
@@ -52,6 +78,9 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 #if IS_ENABLED(CONFIG_MTK_DVFSRC)
 		peak_bw = dvfsrc_get_required_opp_peak_bw(node, 0);
 #endif /* CONFIG_MTK_DVFSRC */
+#if IS_ENABLED(CONFIG_MTK_SPM_V4) && IS_ENABLED(CONFIG_MTK_PMQOS)
+		mtk_pm_qos_add_request(&fpsgo_dram_opp_request, MTK_PM_QOS_DDR_OPP, MTK_PM_QOS_DDR_OPP_DEFAULT_VALUE);
+#endif
 
 	ret = of_property_read_u32(node,
 			 "gcc-enable", &retval);
@@ -77,6 +106,9 @@ static int platform_fpsgo_probe(struct platform_device *pdev)
 static int platform_fpsgo_remove(struct platform_device *pdev)
 {
 	icc_put(bw_path);
+#if IS_ENABLED(CONFIG_MTK_SPM_V4) && IS_ENABLED(CONFIG_MTK_PMQOS)
+	mtk_pm_qos_remove_request(&fpsgo_dram_opp_request);
+#endif
 
 	return 0;
 }
@@ -140,10 +172,17 @@ void fbt_boost_dram(int boost)
 
 #if IS_ENABLED(CONFIG_MTK_SPM_V4)
 	if (plat_dram_boost_enable == 1) {
+#if IS_ENABLED(CONFIG_MTK_PMQOS)
+		if (boost)
+			mtk_pm_qos_update_request(&fpsgo_dram_opp_request, 0);
+		else
+			mtk_pm_qos_update_request(&fpsgo_dram_opp_request, MTK_PM_QOS_DDR_OPP_DEFAULT_VALUE);
+#else
 		if (boost)
 			vcorefs_request_dvfs_opp(KIR_FBT, 0);
 		else
 			vcorefs_request_dvfs_opp(KIR_FBT, -1);
+#endif
 	}
 #endif
 	fpsgo_systrace_c_fbt_debug(-100, 0, boost, "boost_dram");
@@ -211,6 +250,17 @@ void fbt_set_per_task_cap(int pid, unsigned int min_blc,
 			attr.sched_policy = p->policy;
 		if (rt_policy(p->policy))
 			attr.sched_priority = p->rt_priority;
+		// MIUI ADD: Performance_PerformanceEnhance
+		if (strcmp(p->comm, "RenderThread") == 0) {
+			if (p->group_leader != NULL) {
+				if (strcmp(p->group_leader->comm, "com.miui.home") == 0 ||
+				    strcmp(p->group_leader->comm, "ndroid.systemui") == 0) {
+					if (!p->sched_reset_on_fork)
+						attr.sched_flags &= ~SCHED_FLAG_RESET_ON_FORK;
+				}
+			}
+		}
+        // END Performance_PerformanceEnhance
 		ret = sched_setattr_nocheck(p, &attr);
 		}
 		put_task_struct(p);
@@ -222,6 +272,12 @@ out:
 		fpsgo_systrace_c_fbt(pid, 0, 0, "uclamp fail");
 		return;
 	}
+
+#if IS_ENABLED(CONFIG_MI_KSCENE)
+    if (NULL != notify_kscene_set_cap_func) {
+        notify_kscene_set_cap_func(pid, min_blc_1024);
+    }
+#endif
 
 	fpsgo_systrace_c_fbt_debug(pid, 0, attr.sched_util_min, "min_cap");
 	fpsgo_systrace_c_fbt_debug(pid, 0, attr.sched_util_max, "max_cap");

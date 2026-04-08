@@ -8,7 +8,7 @@
 
 #include <linux/async.h>
 #include <scsi/scsi_cmnd.h>
-#include <ufs/ufshcd.h>
+#include "xiaomi/include/ufshcd.h"
 #include "ufs-mediatek.h"
 #include "ufs-mediatek-sysfs.h"
 #include <mt-plat/mtk_blocktag.h>

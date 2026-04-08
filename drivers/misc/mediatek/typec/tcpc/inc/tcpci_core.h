@@ -6,20 +6,22 @@
 #ifndef __LINUX_RT_TCPCI_CORE_H
 #define __LINUX_RT_TCPCI_CORE_H
 
+#include <linux/alarmtimer.h>
 #include <linux/device.h>
 #include <linux/hrtimer.h>
-#include <linux/alarmtimer.h>
-#include <linux/workqueue.h>
-#include <linux/pm_wakeup.h>
 #include <linux/notifier.h>
+#include <linux/platform_device.h>
+#include <linux/pm_wakeup.h>
 #include <linux/sched.h>
 #include <linux/semaphore.h>
 #include <linux/spinlock.h>
+#include <linux/workqueue.h>
 #include <uapi/linux/sched/types.h>
 
 #include "tcpm.h"
 #include "tcpci_timer.h"
 #include "tcpci_config.h"
+#include "std_tcpci_v10.h"
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 #include "pd_core.h"
@@ -38,15 +40,14 @@
 #define TCPC_DBG_ENABLE		0
 #define TCPC_DBG2_ENABLE	0
 #define DPM_INFO_ENABLE		1
-#define DPM_INFO2_ENABLE	1
+#define DPM_INFO2_ENABLE	0
 #define DPM_DBG_ENABLE		0
 #define PD_ERR_ENABLE		1
 #define PE_DBG_ENABLE		0
 #define TYPEC_DBG_ENABLE	0
 
-
 #define DP_INFO_ENABLE		1
-#define DP_DBG_ENABLE		1
+#define DP_DBG_ENABLE		0
 
 #define TCPM_DBG_ENABLE		1
 
@@ -63,9 +64,8 @@
 /* Disable VDM DBG Msg */
 #define PE_STATE_INFO_VDM_DIS	0
 #define PE_EVT_INFO_VDM_DIS	0
-#define PE_DBG_RESET_VDM_DIS	1
 
-#define PD_BUG_ON(x)	WARN_ON(x)
+#define PD_WARN_ON(x)	WARN_ON(x)
 
 struct tcpc_device;
 
@@ -76,8 +76,8 @@ struct tcpc_desc {
 	const char *name;
 	bool en_wd;
 	bool en_wd_dual_port;
-	bool en_ctd;
 	bool en_fod;
+	bool en_ctd;
 	bool en_typec_otp;
 	bool en_floatgnd;
 	bool en_vbus_short_cc;
@@ -105,15 +105,14 @@ struct tcpc_desc {
 #define CONFIG_TYPEC_NOTIFY_ATTACHWAIT 1
 #endif	/* CONFIG_TYPEC_NOTIFY_ATTACHWAIT_SRC */
 
-
-#if CONFIG_TCPC_FORCE_DISCHARGE_EXT
-#define CONFIG_TCPC_EXT_DISCHARGE 1
-#endif	/* CONFIG_TCPC_FORCE_DISCHARGE_EXT */
 /*---------------------------------------------------------------------------*/
 
 /* TCPC Alert Register Define */
 #define TCPC_REG_ALERT_EXT_VBUS_80		(1<<(16+1))
 #define TCPC_REG_ALERT_EXT_WAKEUP		(1<<(16+0))
+#define TCPC_REG_POWER_STATUS_VBUS_PRES		(1<<2)
+#define TCPC_REG_POWER_STATUS_EXT_VSAFE0V	(1<<15)	/* extend */
+#define TCPC_FLAGS_LPM_WAKEUP_WATCHDOG		(1<<3)
 
 #define TCPC_REG_ALERT_VBUS_DISCNCT (1<<11)
 #define TCPC_REG_ALERT_RX_BUF_OVF   (1<<10)
@@ -127,7 +126,9 @@ struct tcpc_desc {
 #define TCPC_REG_ALERT_RX_STATUS    (1<<2)
 #define TCPC_REG_ALERT_POWER_STATUS (1<<1)
 #define TCPC_REG_ALERT_CC_STATUS    (1<<0)
-
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+#define TCPC_FLAGS_WATCHDOG_EN		(1<<13)
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #define TCPC_REG_ALERT_RX_MASK	\
 	(TCPC_REG_ALERT_RX_STATUS | TCPC_REG_ALERT_RX_BUF_OVF)
 
@@ -197,6 +198,11 @@ struct tcpc_ops {
 	int (*alert_status_clear)(struct tcpc_device *tcpc, uint32_t mask);
 	int (*fault_status_clear)(struct tcpc_device *tcpc, uint8_t status);
 	int (*set_alert_mask)(struct tcpc_device *tcpc, uint32_t mask);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int (*get_chip_id)(struct tcpc_device *tcpc,uint32_t *chip_id);
+	int (*get_chip_pid)(struct tcpc_device *tcpc,uint32_t *chip_pid);
+	int (*get_chip_vid)(struct tcpc_device *tcpc,uint32_t *chip_vid);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	int (*get_alert_mask)(struct tcpc_device *tcpc, uint32_t *mask);
 	int (*get_alert_status_and_mask)(struct tcpc_device *tcpc, uint32_t *alert, uint32_t *mask);
 	int (*get_power_status)(struct tcpc_device *tcpc);
@@ -216,21 +222,17 @@ struct tcpc_ops {
 	int (*set_cc_hidet)(struct tcpc_device *tcpc, bool en);
 	int (*get_cc_hi)(struct tcpc_device *tcpc);
 
-	int (*set_vbus_short_cc_en)(struct tcpc_device *tcpc, bool cc1, bool cc2);
+	int (*set_vbus_short_cc)(struct tcpc_device *tcpc, bool cc1, bool cc2);
 
 	int (*set_low_power_mode)(struct tcpc_device *tcpc, bool en, int pull);
-
-#if CONFIG_TYPEC_CAP_AUTO_DISCHARGE
-#if CONFIG_TCPC_AUTO_DISCHARGE_IC
-	int (*set_auto_discharge)(struct tcpc_device *tcpc, bool en);
-#endif	/* CONFIG_TCPC_AUTO_DISCHARGE_IC */
-#endif	/* CONFIG_TYPEC_CAP_AUTO_DISCHARGE */
+	int (*set_watchdog)(struct tcpc_device *tcpc, bool en);
 
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
-#if CONFIG_TCPC_FORCE_DISCHARGE_IC
 	int (*set_force_discharge)(struct tcpc_device *tcpc, bool en, int mv);
-#endif	/* CONFIG_TCPC_FORCE_DISCHARGE_IC */
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
+
+	int (*enable_io_boost)(struct tcpc_device *tcpc, bool en);
+	void (*set_command)(struct tcpc_device *tcpc, u8 cmd);
 
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	int (*set_msg_header)(struct tcpc_device *tcpc,
@@ -243,7 +245,6 @@ struct tcpc_ops {
 			enum tcpm_transmit_type type,
 			uint16_t header, const uint32_t *data);
 	int (*set_bist_test_mode)(struct tcpc_device *tcpc, bool en);
-	int (*set_bist_carrier_mode)(struct tcpc_device *tcpc, uint8_t pattern);
 
 #if CONFIG_USB_PD_RETRY_CRC_DISCARD
 	int (*retransmit)(struct tcpc_device *tcpc);
@@ -263,6 +264,7 @@ struct tcpc_managed_res;
 struct tcpc_timer {
 	struct alarm alarm;
 	struct tcpc_device *tcpc;
+	bool en;
 };
 
 /*
@@ -274,9 +276,6 @@ struct tcpc_device {
 	void *drv_data;
 	struct tcpc_desc desc;
 	struct device dev;
-	uint8_t wake_lock_pd;
-	struct wakeup_source *attach_wake_lock;
-	struct wakeup_source *detach_wake_lock;
 
 	struct tcpc_timer tcpc_timer[PD_TIMER_NR];
 
@@ -288,9 +287,11 @@ struct tcpc_device {
 	spinlock_t timer_tick_lock;
 	atomic_t pending_event;
 	atomic_t suspend_pending;
+	atomic_t is_suspended;
 	uint64_t timer_tick;
 	wait_queue_head_t event_wait_que;
 	wait_queue_head_t timer_wait_que;
+	wait_queue_head_t resume_wait_que;
 	struct task_struct *event_task;
 	struct task_struct *timer_task;
 
@@ -299,6 +300,10 @@ struct tcpc_device {
 	struct srcu_notifier_head evt_nh[TCP_NOTIFY_IDX_NR];
 	struct tcpc_managed_res *mr_head;
 	struct mutex mr_lock;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int recv_msg_cnt;
+	int int_invaild_cnt;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 	/* For TCPC TypeC */
 	uint8_t typec_state;
@@ -322,21 +327,15 @@ struct tcpc_device {
 	uint8_t typec_during_role_swap;
 #endif	/* CONFIG_TYPEC_CAP_ROLE_SWAP */
 
-#if CONFIG_TYPEC_CAP_AUTO_DISCHARGE
-#if CONFIG_TCPC_AUTO_DISCHARGE_IC
-	bool typec_auto_discharge;
-#endif	/* CONFIG_TCPC_AUTO_DISCHARGE_IC */
-#endif	/* CONFIG_TYPEC_CAP_AUTO_DISCHARGE */
+	bool typec_auto_dischg_discnt;
 
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
-#if CONFIG_TCPC_FORCE_DISCHARGE_IC
 	bool typec_force_discharge;
-#endif	/* CONFIG_TCPC_FORCE_DISCHARGE_IC */
 #endif	/* CONFIG_TYPEC_CAP_FORCE_DISCHARGE */
 
-#if CONFIG_TCPC_EXT_DISCHARGE
+#if CONFIG_TYPEC_CAP_EXT_DISCHARGE
 	bool typec_ext_discharge;
-#endif	/* CONFIG_TCPC_EXT_DISCHARGE */
+#endif	/* CONFIG_TYPEC_CAP_EXT_DISCHARGE */
 
 	uint8_t tcpc_vconn_supply;
 	bool tcpc_source_vconn;
@@ -414,6 +413,7 @@ struct tcpc_device {
 	struct mutex rxbuf_lock;
 #endif /* CONFIG_USB_POWER_DELIVERY */
 	u8 vbus_level:2;
+	bool ps_changed;
 	bool vbus_safe0v;
 	bool vbus_present;
 	u8 pd_inited_flag:1;
@@ -423,19 +423,21 @@ struct tcpc_device {
 	uint8_t sink_vbus_type;
 
 	int bootmode;
-#if CONFIG_CABLE_TYPE_DETECTION
-	enum tcpc_cable_type typec_cable_type;
-#endif /* CONFIG_CABLE_TYPE_DETECTION */
-
-	/* TypeC Shield Protection */
 #if CONFIG_WATER_DETECTION
 	bool wd_in_kpoc;
 #endif /* CONFIG_WATER_DETECTION */
 	enum tcpc_fod_status typec_fod;
+#if CONFIG_CABLE_TYPE_DETECTION
+	enum tcpc_cable_type typec_cable_type;
+#endif /* CONFIG_CABLE_TYPE_DETECTION */
 	bool typec_otp;
-	bool typec_vbus_to_cc_en;
+	int vbus_short_cc;
+	int vsc_status;
 	bool cc_hidet_en;
 	int cc_hi;
+
+	struct ratelimit_state alert_rs;
+	bool alert_ratelimited;
 };
 
 #define to_tcpc_device(obj) container_of(obj, struct tcpc_device, dev)
@@ -445,17 +447,13 @@ static inline uint8_t pd_get_rev(struct pd_port *pd_port, uint8_t sop_type)
 {
 	uint8_t pd_rev = PD_REV20;
 #if CONFIG_USB_PD_REV30
-	struct pe_data *pe_data = &pd_port->pe_data;
 	struct tcpc_device *tcpc = pd_port->tcpc;
 
-	if (sop_type == TCPC_TX_SOP) {
-		pd_rev = pd_port->pd_revision[0];
-	} else {
-		if (pe_data->explicit_contract || pe_data->cable_rev_discovered)
-			pd_rev = pd_port->pd_revision[1];
-		else if (tcpc->tcpc_flags & TCPC_FLAGS_PD_REV30)
+	if (sop_type >= ARRAY_SIZE(pd_port->pd_revision)) {
+		if (tcpc->tcpc_flags & TCPC_FLAGS_PD_REV30)
 			pd_rev = PD_REV30;
-	}
+	} else
+		pd_rev = pd_port->pd_revision[sop_type];
 #endif	/* CONFIG_USB_PD_REV30 */
 
 	return pd_rev;

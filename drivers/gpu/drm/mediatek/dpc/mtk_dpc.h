@@ -14,6 +14,7 @@
 
 /* NOTE: user 0 to 7 is reserved for genpd notifier enum disp_pd_id { ... } */
 enum mtk_vidle_voter_user {
+	DISP_VIDLE_USER_DISP_VCORE = 0,
 	DISP_VIDLE_USER_TOP_CLK_ISR = 15,
 	DISP_VIDLE_USER_CRTC = 16,
 	DISP_VIDLE_USER_PQ,
@@ -64,10 +65,10 @@ enum mtk_dpc_version {
 
 enum mtk_dpc_subsys {
 	DPC_SUBSYS_DISP = 0,
-	DPC_SUBSYS_DIS1 = 0,
-	DPC_SUBSYS_DIS0 = 1,
-	DPC_SUBSYS_OVL1 = 2,
-	DPC_SUBSYS_OVL0 = 3,
+	DPC_SUBSYS_DIS0 = 0,
+	DPC_SUBSYS_DIS1 = 1,
+	DPC_SUBSYS_OVL0 = 2,
+	DPC_SUBSYS_OVL1 = 3,
 	DPC_SUBSYS_MML = 4,
 	DPC_SUBSYS_MML1 = 4,
 	DPC_SUBSYS_MML0 = 5,
@@ -135,6 +136,9 @@ struct dpc_funcs {
 	void (*dpc_hrt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 	void (*dpc_srt_bw_set)(const enum mtk_dpc_subsys subsys, const u32 bw_in_mb, bool force);
 
+	/* check dpc vdisp level and pll mux, [0]: the same, [level]: dpc setting */
+	u8 (*dpc_check_pll)(void);
+
 	/* vdisp dvfs
 	 * @update_level: [TRUE]: update stored level, [FALSE]: only trigger dvfs
 	 */
@@ -151,6 +155,8 @@ struct dpc_funcs {
 	void (*dpc_analysis)(void);
 	void (*dpc_pm_analysis)(void);
 	void (*dpc_debug_cmd)(const char *opt);
+
+	void (*dpc_apsrc_set)(const bool en, struct cmdq_pkt *pkt);
 
 	/* V1 ONLY */
 	void (*dpc_dc_force_enable)(const bool en);

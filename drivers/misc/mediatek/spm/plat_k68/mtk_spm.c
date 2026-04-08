@@ -117,6 +117,19 @@ static DEVICE_ATTR_RW(debug_log);
 static int spm_probe(struct platform_device *pdev)
 {
 	int ret __maybe_unused;
+#if IS_ENABLED(CONFIG_MTK_IDLE_BOOST)
+	static unsigned int times;
+
+	if(times){
+		pr_info("##@# %s:%d: [SPM] already init!\n", __func__, __LINE__);
+		return 0;
+	}
+
+	ret = mtk_spm_regulator_map(pdev);
+	if (ret < 0)
+		pr_info("%s:%d: [SPM] regulator map failed!\n", __func__, __LINE__);
+	times++;
+#endif
 
 	ret = device_create_file(&(pdev->dev), &dev_attr_debug_log);
 

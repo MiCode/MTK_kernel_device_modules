@@ -68,23 +68,21 @@ obj-$(CONFIG_SND_SOC_MTK_BTCVSD) += common/
 subdir-ccflags-y += -DAUDIO_USING_WRAP_DRIVER
 subdir-ccflags-y += -D_MT_IDLE_HEADER
 subdir-ccflags-y += -D_REG_SYNC_WRITE
-# PMIC include path
-ifeq ($(CONFIG_MTK_SND_SOC_NEW_ARCH),y)
-subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/codec
-# AP include path
 subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common_int
-
-ifeq ($(CONFIG_SND_SOC_MT6739),m)
-subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/mt6739
-else
-subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/mt6765
-endif
-
 subdir-ccflags-y += -Wno-incompatible-pointer-types
-endif
-# Update pmic built flow to avoid codec init later than codec probe
-obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += codec/
-obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += common_int/
+# PMIC include path
+ifeq ($(CONFIG_SND_SOC_MT6771),m)
+subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/mt6771
+subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/codec/mt6358
+obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += codec/mt6358/
+obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += mt6771/
+else
+subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/codec/mt6357
+subdir-ccflags-y += -Werror -I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/mt6765
+obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += codec/mt6357/
 obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += mt6765/
 obj-$(CONFIG_SND_SOC_AW87519)   += aw87519/
+endif
+# Update pmic built flow to avoid codec init later than codec probe
+obj-$(CONFIG_MTK_SND_SOC_NEW_ARCH_COMMON) += common_int/
 endif

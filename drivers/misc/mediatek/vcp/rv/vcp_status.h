@@ -28,6 +28,7 @@ typedef struct mtk_ipi_device *(*get_ipidev_fp)(enum feature_id id);
 typedef struct device *(*vcp_get_io_device_fp)(enum VCP_IOMMU_DEV io_num);
 typedef int (*vcp_register_mminfra_cb_fp)(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 	mminfra_dump_ptr mminfra_dump_func);
+typedef int (*vcp_mminfra_on_off_cb_fp)(bool on);
 
 struct vcp_status_fp {
 	vcp_get_reserve_mem_phys_fp vcp_get_reserve_mem_phys;
@@ -47,6 +48,7 @@ struct vcp_status_fp {
 	get_ipidev_fp               get_ipidev;
 	vcp_get_io_device_fp        vcp_get_io_device;
 	vcp_register_mminfra_cb_fp  vcp_register_mminfra_cb;
+	vcp_mminfra_on_off_cb_fp    vcp_mminfra_on_off_cb;
 };
 
 
@@ -68,6 +70,6 @@ unsigned int is_vcp_suspending_ex(void);
 unsigned int is_vcp_ao_ex(void);
 int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 	mminfra_dump_ptr mminfra_dump_func);
+int vcp_mminfra_on_off_cb_ex(bool on);
 struct device *vcp_get_io_device_ex(enum VCP_IOMMU_DEV io_num);
-
 #endif

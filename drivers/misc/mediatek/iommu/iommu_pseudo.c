@@ -39,6 +39,9 @@ static bool m4u_gz_en[SEC_ID_COUNT];
 static int iommu_on_mtee = STATE_UNINITIALIZED;
 static struct iommu_pseudo_data *iommu_data;
 
+static const char *IOMMU_MTEE_PA_MODE_NAME = "iommu_mtee_pa_mode";
+static const char *IOMMU_MTEE_PA_MODE_NAME_V2 = "iommu-mtee-pa-mode";
+
 static int __m4u_gz_sec_init(int mtk_iommu_sec_id)
 {
 	int ret, i, count = 0;
@@ -136,10 +139,8 @@ EXPORT_SYMBOL_GPL(mtk_iommu_sec_init);
 
 bool is_disable_map_sec(void)
 {
-	struct device_node *iommu_mtee_pa_mode;
-
-	iommu_mtee_pa_mode = of_find_node_by_name(NULL, "iommu_mtee_pa_mode");
-	if (iommu_mtee_pa_mode) {
+	if (of_find_node_by_name(NULL, IOMMU_MTEE_PA_MODE_NAME) ||
+	    of_find_node_by_name(NULL, IOMMU_MTEE_PA_MODE_NAME_V2)) {
 		pr_info("%s iommu_sec_pa_mode, return true\n", __func__);
 		return true;
 	} else {

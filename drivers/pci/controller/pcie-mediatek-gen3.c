@@ -1337,6 +1337,10 @@ static void mtk_pcie_irq_handler(struct irq_desc *desc)
 		if (port->port_num == 0)
 			mtk_pcie_disable_data_trans(port->port_num);
 
+		int_enable = readl_relaxed(port->base + PCIE_INT_ENABLE_REG);
+		int_enable &= ~PCIE_AXI_POST_ERR_ENABLE;
+		writel_relaxed(int_enable, port->base + PCIE_INT_ENABLE_REG);
+
 		writel_relaxed(PCIE_AXI_POST_ERR_EVT, port->base + PCIE_INT_STATUS_REG);
 		dev_info(port->dev, "PCIe error %#lx detected\n", status);
 	}
@@ -1982,11 +1986,25 @@ static void mtk_pcie_monitor_mac(struct mtk_pcie_port *port)
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x5, 0x5, 0x5, 0x5));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x08, 0x09, 0x0a, 0x0b));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x0c, 0x0d, 0x0e, 0x0f));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x7, 0x7, 0x7, 0x7));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x8, 0xa, 0xb, 0xe));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xf, 0x13, 0x14, 0xe));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x9, 0x9, 0x9, 0x9));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x25, 0x26, 0xb6, 0xb7));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xb8, 0xb9, 0xba, 0xbb));
 		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0xc, 0xc, 0xc, 0xc));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x45, 0x47, 0x48, 0x49));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x4a, 0x4b, 0x4c, 0x4d));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x46, 0x51, 0x52, 0x0));
 		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0x5c, 0x5d, 0x5e, 0x0));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x7, 0x7, 0x7, 0x9));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xb, 0x13, 0x14, 0xb6));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x7, 0x8, 0x9, 0x9));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xf, 0x3, 0x98, 0xb6));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x9, 0x9, 0x9, 0x9));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xb4, 0xb5, 0x52, 0x53));
+		mtk_pcie_mac_dbg_set_partition(port, PCIE_DEBUG_SEL_PARTITION(0x9, 0xc, 0x7, 0x8));
+		mtk_pcie_mac_dbg_read_bus(port, PCIE_DEBUG_SEL_BUS(0xb0, 0x4e, 0x0d, 0x40));
 	}
 
 	pr_info("Port%d, ltssm reg:%#x, link sta:%#x, power sta:%#x, LP ctrl:%#x, IP basic sta:%#x, int sta:%#x, msi set0 sta: %#x, msi set1 sta: %#x, axi err add:%#x, axi err info:%#x, spm res ack=%#x, adt pending sta:=%#x, err addr_l=%#x, err addr_h=%#x, err info=%#x, IF_CTRL=%#x, phy err=%#x\n",
@@ -2507,6 +2525,10 @@ static int mtk_pcie_control_vote_v2(struct mtk_pcie_port *port, bool hw_mode_en,
 	int err = 0;
 	u32 val;
 
+	/* 6991 RC no need vote */
+	if (!who)
+		return 0;
+
 	spin_lock_irqsave(&port->vote_lock, flags);
 
 	if (who)
@@ -2969,10 +2991,6 @@ int mtk_pcie_soft_on(struct pci_bus *bus)
 	mtk_pcie_irq_restore(port);
 	mtk_pcie_save_restore_cfg(port, false);
 
-	/* The detection range is AER enable to soft on done */
-	if (port->port_num == 0)
-		port->aer_detect = false;
-
 	dev_info(port->dev, "mtk pcie soft on done\n");
 
 	return ret;
@@ -3198,8 +3216,6 @@ static int mtk_pcie_pre_init_6991(struct mtk_pcie_port *port)
 		val = readl_relaxed(port->base + PCIE_AXI_IF_CTRL);
 		val |= SW_CPLTO_DATA_SEL;
 		writel_relaxed(val, port->base + PCIE_AXI_IF_CTRL);
-		/* Detect Completion timeout before wifi on */
-		port->aer_detect = true;
 	}
 
 	/* bypass PMRC signal */

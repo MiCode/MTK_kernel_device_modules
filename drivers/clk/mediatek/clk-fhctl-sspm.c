@@ -15,6 +15,8 @@ static bool ipi_inited;
 #endif
 #include "clk-fhctl-util.h"
 
+static bool fhctl_debug;
+
 #define FHCTL_D_LEN  9
 #define MAX_SSC_RATE 8
 #define FHCTL_TARGET FHCTL_SSPM
@@ -69,7 +71,8 @@ static int fhctl_to_sspm_command(unsigned int cmd,
 {
 	int ret = 0;
 
-	pr_debug("send ipi command %x", cmd);
+	if (fhctl_debug)
+		pr_debug("send ipi command %x", cmd);
 
 	switch (cmd) {
 	case FH_DCTL_CMD_SSC_ENABLE:
@@ -92,7 +95,8 @@ static int fhctl_to_sspm_command(unsigned int cmd,
 		break;
 	} /* switch */
 
-	pr_debug("send ipi command %x, response: ack_data: %d",
+	if (fhctl_debug)
+		pr_debug("send ipi command %x, response: ack_data: %d",
 			cmd, ack_data);
 
 	return ack_data;
@@ -103,7 +107,8 @@ static int fhctl_to_sspm_command(unsigned int cmd,
 {
 	int ret = 0;
 
-	pr_debug("send ipi command %x", cmd);
+	if (fhctl_debug)
+		pr_debug("send ipi command %x", cmd);
 
 	switch (cmd) {
 	case FH_DCTL_CMD_SSC_ENABLE:
@@ -126,7 +131,8 @@ static int fhctl_to_sspm_command(unsigned int cmd,
 		break;
 	} /* switch */
 
-	pr_debug("send ipi command %x, response: ack_data: %d",
+	if (fhctl_debug)
+		pr_debug("send ipi command %x, response: ack_data: %d",
 			cmd, ack_data);
 
 	return ack_data;
@@ -274,7 +280,8 @@ static int sspm_hopping_v1(void *priv_data, char *domain_name, unsigned int fh_i
 
 	cmd_id = FH_DCTL_CMD_GENERAL_DFS;
 
-	pr_info("[Hopping] PLL_ID:%d NEW_DDS:0x%x postdiv:%d",
+	if (fhctl_debug)
+		pr_info("[Hopping] PLL_ID:%d NEW_DDS:0x%x postdiv:%d",
 					pll_id, new_dds, postdiv);
 
 	memset(&ipi_data, 0, sizeof(struct fhctl_ipi_data));
@@ -294,6 +301,12 @@ static struct fh_operation sspm_ops_v1 = {
 };
 static struct fh_hdlr sspm_hdlr_v1 = {
 	.ops = &sspm_ops_v1,
+};
+
+static struct match mt6771_match = {
+	.name = "mediatek,mt6771-fhctl",
+	.hdlr = &sspm_hdlr_v1,
+	.init = &sspm_init_v1,
 };
 
 static struct match mt6765_match = {
@@ -321,6 +334,7 @@ static struct match mt6781_match = {
 };
 
 static struct match *matches[] = {
+	&mt6771_match,
 	&mt6765_match,
 	&mt6761_match,
 	&mt6768_match,

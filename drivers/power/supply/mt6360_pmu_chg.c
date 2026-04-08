@@ -25,6 +25,7 @@
 #if IS_ENABLED(CONFIG_MTK_CHARGER)
 #include "charger_class.h"
 #include "mtk_charger.h"
+#include "mtk_chg_type_det.h"
 #endif
 #include <tcpm.h>
 
@@ -229,7 +230,7 @@ static const struct linear_range mt6360_chg_range[MT6360_RANGE_MAX] = {
 	MT6360_LINEAR_RANGE(MT6360_RANGE_IRCMP_R, 0, 0, 0x07, 25000),
 	MT6360_LINEAR_RANGE(MT6360_RANGE_VCLAMP, 0, 0, 0x07, 32000),
 	MT6360_LINEAR_RANGE(MT6360_RANGE_PUMPX20, 5500000, 0, 0x1D, 500000),
-	MT6360_LINEAR_RANGE(MT6360_RANGE_AICC_VTH, 3900000, 0, 0x51, 10000),
+	MT6360_LINEAR_RANGE(MT6360_RANGE_AICC_VTH, 3900000, 0, 0x5F, 100000),
 };
 
 #define PHY_MODE_BC11_SET 1
@@ -304,7 +305,7 @@ struct mt6360_chg_info {
 
 	/* Charger type detection */
 	struct mutex chgdet_lock;
-	bool attach;
+	int attach;
 	bool pwr_rdy;
 	bool bc12_en;
 	int psy_usb_type;
@@ -787,7 +788,7 @@ static int mt6360_enable_usbchgen(struct mt6360_chg_info *mci, bool en)
 
 static int mt6360_chgdet_pre_process(struct mt6360_chg_info *mci)
 {
-	bool attach = false;
+	int attach = ATTACH_TYPE_NONE;
 
 	if (IS_ENABLED(CONFIG_TCPC_CLASS))
 		attach = atomic_read(&mci->tcpc_attach);
@@ -802,14 +803,34 @@ static int mt6360_chgdet_pre_process(struct mt6360_chg_info *mci)
 		mci->psy_usb_type = POWER_SUPPLY_USB_TYPE_SDP;
 		power_supply_changed(mci->psy);
 		return 0;
+	} else if (attach > ATTACH_TYPE_PD) {
+		dev_notice(mci->dev, "%s: PD Attach\n", __func__);
+		mci->attach = attach;
+		switch (attach) {
+		case ATTACH_TYPE_PD_SDP:
+			mci->psy_desc.type = POWER_SUPPLY_TYPE_USB;
+			mci->psy_usb_type = POWER_SUPPLY_USB_TYPE_SDP;
+			break;
+		case ATTACH_TYPE_PD_DCP:
+			mci->psy_desc.type = POWER_SUPPLY_TYPE_USB_DCP;
+			mci->psy_usb_type = POWER_SUPPLY_USB_TYPE_DCP;
+			break;
+		case ATTACH_TYPE_PD_NONSTD:
+		default:
+			mci->psy_desc.type = POWER_SUPPLY_TYPE_USB;
+			mci->psy_usb_type = POWER_SUPPLY_USB_TYPE_DCP;
+			break;
+		}
+		power_supply_changed(mci->psy);
+		return 0;
 	}
 	return __mt6360_enable_usbchgen(mci, attach);
 }
 
 static int mt6360_chgdet_post_process(struct mt6360_chg_info *mci)
 {
-	int ret = 0;
-	bool attach = false, inform_psy = true;
+	int ret = 0, attach = ATTACH_TYPE_NONE;
+	bool inform_psy = true;
 	u8 usb_status = MT6360_CHG_TYPE_NOVBUS;
 	unsigned int regval;
 
@@ -1116,25 +1137,25 @@ static int __mt6360_get_adc(struct mt6360_chg_info *mci,
 	return 0;
 }
 
-static int __mt6360_enable_chg_type_det(struct mt6360_chg_info *mci, bool en)
+static int __mt6360_enable_chg_type_det(struct mt6360_chg_info *mci, int attach)
 {
 	int ret = 0;
 	struct mt6360_chg_platform_data *pdata = dev_get_platdata(mci->dev);
 
-	dev_info(mci->dev, "%s: en = %d\n", __func__, en);
+	dev_info(mci->dev, "%s: attach = %d\n", __func__, attach);
 
 	if (!IS_ENABLED(CONFIG_TCPC_CLASS) || pdata->bc12_sel != 0)
 		return ret;
 
 	mutex_lock(&mci->chgdet_lock);
-	if (atomic_read(&mci->tcpc_attach) == en) {
+	if (atomic_read(&mci->tcpc_attach) == attach) {
 		dev_info(mci->dev, "%s attach(%d) is the same\n",
 			 __func__, atomic_read(&mci->tcpc_attach));
 		goto out;
 	}
-	atomic_set(&mci->tcpc_attach, en);
-	ret = (en ? mt6360_chgdet_pre_process :
-		    mt6360_chgdet_post_process)(mci);
+	atomic_set(&mci->tcpc_attach, attach);
+	ret = (attach ? mt6360_chgdet_pre_process :
+			mt6360_chgdet_post_process)(mci);
 out:
 	mutex_unlock(&mci->chgdet_lock);
 	return ret;
@@ -1316,8 +1337,7 @@ static int mt6360_set_ieoc(struct charger_device *chg_dev, u32 uA)
 static int mt6360_set_mivr(struct charger_device *chg_dev, u32 uV)
 {
 	struct mt6360_chg_info *mci = charger_get_data(chg_dev);
-	u32 aicc_vth = 0, data = 0;
-	u8 aicc_vth_sel = 0;
+	u32 data = 0;
 	int ret = 0;
 
 	mt_dbg(mci->dev, "%s: mivr = %d\n", __func__, uV);
@@ -1327,13 +1347,12 @@ static int mt6360_set_mivr(struct charger_device *chg_dev, u32 uV)
 		return -EINVAL;
 	}
 
-	aicc_vth = uV + 200000;
 	linear_range_get_selector_within(
-		&mt6360_chg_range[MT6360_RANGE_AICC_VTH], aicc_vth, &data);
+		&mt6360_chg_range[MT6360_RANGE_AICC_VTH], uV + 200000, &data);
 	ret = regmap_update_bits(mci->regmap,
 				 MT6360_PMU_CHG_CTRL16,
 				 MT6360_AICC_VTH_MASK,
-				 aicc_vth_sel << MT6360_AICC_VTH_SHFT);
+				 data << MT6360_AICC_VTH_SHFT);
 	if (ret < 0)
 		return ret;
 
@@ -1509,7 +1528,7 @@ static inline int mt6360_post_aicc_measure(struct charger_device *chg_dev,
 
 	mt_dbg(mci->dev,
 		"%s: post_aicc = (%d, %d, %d)\n", __func__, start, stop, step);
-	for (cur = start; cur < (stop + step); cur += step) {
+	for (cur = start; cur < stop; cur += step) {
 		/* set_aicr to cur */
 		ret = mt6360_set_aicr(chg_dev, cur + step);
 		if (ret < 0)
@@ -2856,25 +2875,22 @@ static const DEVICE_ATTR_WO(shipping_mode);
 /* ======================= */
 /* MT6360 Power Supply Ops */
 /* ======================= */
-static int mt6360_charger_get_online(struct mt6360_chg_info *mci,
-				     bool *val)
+static int mt6360_charger_get_online(struct mt6360_chg_info *mci, int *val)
 {
 	int ret;
-	bool pwr_rdy;
 
 	if (IS_ENABLED(CONFIG_TCPC_CLASS)) {
-		pwr_rdy = atomic_read(&mci->tcpc_attach);
+		*val = atomic_read(&mci->tcpc_attach);
 	} else {
 		/*uvp_d_stat=true => vbus_on=1*/
-		ret = mt6360_get_chrdet_ext_stat(mci, &pwr_rdy);
+		ret = mt6360_get_chrdet_ext_stat(mci, (bool *)val);
 		if (ret < 0) {
 			dev_notice(mci->dev,
 				"%s: read uvp_d_stat fail\n", __func__);
 			return ret;
 		}
 	}
-	dev_info(mci->dev, "%s: online = %d\n", __func__, pwr_rdy);
-	*val = pwr_rdy;
+	dev_info(mci->dev, "%s: online = %d\n", __func__, *val);
 	return 0;
 }
 
@@ -2890,14 +2906,14 @@ static int mt6360_charger_get_property(struct power_supply *psy,
 {
 	struct mt6360_chg_info *mci = power_supply_get_drvdata(psy);
 	enum mt6360_charging_status chg_stat = MT6360_CHG_STATUS_MAX;
-	int ret = 0;
-	bool pwr_rdy = false, chg_en = false;
+	int ret = 0, attach = ATTACH_TYPE_NONE;
+	bool chg_en = false;
 
 	dev_dbg(mci->dev, "%s: prop = %d\n", __func__, psp);
 	switch (psp) {
 	case POWER_SUPPLY_PROP_ONLINE:
-		ret = mt6360_charger_get_online(mci, &pwr_rdy);
-		val->intval = pwr_rdy;
+		ret = mt6360_charger_get_online(mci, &attach);
+		val->intval = attach;
 		break;
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = mci->psy_desc.type;
@@ -2910,12 +2926,12 @@ static int mt6360_charger_get_property(struct power_supply *psy,
 			val->intval = 500000;
 		break;
 	case POWER_SUPPLY_PROP_STATUS:
-		ret = mt6360_charger_get_online(mci, &pwr_rdy);
+		ret = mt6360_charger_get_online(mci, &attach);
 		ret |= __mt6360_is_enabled(mci, &chg_en);
 		ret |= mt6360_get_charging_status(mci, &chg_stat);
 		if (ret < 0)
 			return ret;
-		if (!pwr_rdy) {
+		if (!attach) {
 			val->intval = POWER_SUPPLY_STATUS_NOT_CHARGING;
 			return ret;
 		}
@@ -3165,7 +3181,7 @@ static int mt6360_pmu_chg_probe(struct platform_device *pdev)
 	mci->tchg = 0;
 	mci->ichg = 2000000;
 	mci->ichg_dis_chg = 2000000;
-	mci->attach = false;
+	mci->attach = ATTACH_TYPE_NONE;
 	g_mci = mci;
 	init_completion(&mci->aicc_done);
 	init_completion(&mci->pumpx_done);

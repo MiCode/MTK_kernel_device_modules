@@ -182,6 +182,9 @@ enum pd_pe_state {
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	PE_SRC_GIVE_SOURCE_CAP_EXT,
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	PE_SRC_GIVE_SINK_CAP_EXT,
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #if CONFIG_USB_PD_REV30_STATUS_LOCAL
 	PE_SRC_GIVE_SOURCE_STATUS,
 #endif	/* CONFIG_USB_PD_REV30_STATUS_LOCAL */
@@ -524,6 +527,10 @@ void pe_src_sink_alert_received_entry(
 void pe_src_give_source_cap_ext_entry(
 	struct pd_port *pd_port);
 #endif	/* CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL */
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+void pe_src_give_sink_cap_ext_entry(
+    struct pd_port *pd_port);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #if CONFIG_USB_PD_REV30_STATUS_LOCAL
 void pe_src_give_source_status_entry(
 	struct pd_port *pd_port);

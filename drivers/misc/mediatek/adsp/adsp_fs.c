@@ -9,6 +9,7 @@
 #include <linux/debugfs.h>
 #include <linux/poll.h>
 #include <linux/uaccess.h>
+#include <linux/vmalloc.h>      /* needed by vmalloc */
 #include <linux/soc/mediatek/mtk-mbox.h>
 #include "adsp_reserved_mem.h"
 #include "adsp_feature_define.h"
@@ -380,6 +381,123 @@ const struct file_operations adsp_trace_ops = {
 	.poll = adsp_trace_poll,
 	.llseek = noop_llseek,
 };
+
+/* ---------------------------- mbrain fs ----------------------------------- */
+#define ADSP_MBRAIN_SIZE   (1024) /* 1024 bytes: from MBrain requested size, Must align firmware */
+static audio_adsp_mbrain_notify_callback adsp_mbrain_notify_cbk;
+static uint8_t *adsp_mbrain_vbuf;
+
+void set_adsp_mbrain_cbk(audio_adsp_mbrain_notify_callback mbrain_cbk)
+{
+	adsp_mbrain_notify_cbk = mbrain_cbk;
+}
+
+static void adsp_mbrain_notify_dump(int id, void *buf, unsigned int len)
+{
+	struct adsp_priv *pdata = NULL;
+	u32 *data = (u32 *)buf;
+	unsigned int cid, size, flag, count;
+	int ret;
+
+	if (!buf)
+		return;
+
+	if (!adsp_mbrain_vbuf)
+		return;
+
+	cid = data[0];
+	size = data[1];
+	flag = data[2];
+
+	pdata = get_adsp_core_by_id(cid);
+	if (!pdata)
+		return;
+
+	pdata->mbrainfifo.kfifo.in += size;
+
+	pr_debug("%s(), size:%u, len:%d, avail:%d", __func__, size,
+				 kfifo_len(&pdata->mbrainfifo),
+				 kfifo_avail(&pdata->mbrainfifo));
+
+	/* MBRAIN_UPDATE, MBRAIN_FLUSH with event data */
+	if (flag || kfifo_len(&pdata->mbrainfifo)) {
+		/* Get data from kfifo and trigger MBrain notify callback  */
+		ret = kfifo_out(&pdata->mbrainfifo, adsp_mbrain_vbuf, size);
+		if (ret <= 0) {
+			memset(adsp_mbrain_vbuf, 0, size);
+			return;
+		}
+
+		if (adsp_mbrain_notify_cbk) {
+			count = ret / sizeof(struct adsp_mbrain_t);
+			adsp_mbrain_notify_cbk(adsp_mbrain_vbuf, count);
+		}
+
+		memset(adsp_mbrain_vbuf, 0, size);
+	}
+
+	pr_debug("%s(), return size:+%d, len:%d, avail:%d", __func__, size,
+		 kfifo_len(&pdata->mbrainfifo),
+		 kfifo_avail(&pdata->mbrainfifo));
+}
+
+int adsp_mbrain_enable(struct adsp_priv *pdata)
+{
+	char *buffer = NULL;
+	uint64_t info[2] = {0};
+	uint64_t addr;
+	size_t size;
+	unsigned int memid;
+
+	if (!pdata)
+		return -ENODEV;
+
+	if (!kfifo_initialized(&pdata->mbrainfifo)) {
+		/* mbrain kfifo initialize, use bottom of debug memory */
+		if (pdata->id == ADSP_A_ID)
+			memid = ADSP_A_MBRAIN_MEM_ID;
+		else
+			memid = ADSP_B_MBRAIN_MEM_ID;
+
+		buffer = adsp_get_reserve_mem_virt(memid);
+		addr = adsp_get_reserve_mem_phys(memid);
+		size = adsp_get_reserve_mem_size(memid);
+
+		if (!buffer || !addr || size < ADSP_MBRAIN_SIZE)
+			return -ENOMEM;
+
+		adsp_mbrain_vbuf = vmalloc(ADSP_MBRAIN_SIZE);
+		if (!adsp_mbrain_vbuf)
+			return -ENOMEM;
+
+		kfifo_init(&pdata->mbrainfifo, buffer, size);
+
+		info[0] = addr;
+		info[1] = size;
+		pr_info("%s(), rsv mem addr:%llx, size:%llu", __func__, info[0], info[1]);
+
+		/* register MBrain callback */
+		adsp_ipi_registration(ADSP_IPI_MBRAIN_DONE,
+				      adsp_mbrain_notify_dump, "mbrain_notify_dump");
+
+		/* enable ADSP MBrain */
+		kfifo_reset(&pdata->mbrainfifo);
+
+		pr_info("%s(), send info to adsp kfifo:%d/%d", __func__,
+			kfifo_avail(&pdata->mbrainfifo),
+			kfifo_size(&pdata->mbrainfifo));
+
+		if (_adsp_register_feature(pdata->id, SYSTEM_FEATURE_ID, 0) == 0) {
+			adsp_push_message(ADSP_IPI_MBRAIN_ENABLE, info, sizeof(info), 0, pdata->id);
+			_adsp_deregister_feature(pdata->id, SYSTEM_FEATURE_ID, 0);
+		}
+
+		pr_debug("%s(), init done %d, %p, %zu", __func__,
+			 kfifo_initialized(&pdata->mbrainfifo), buffer, size);
+	}
+
+	return 0;
+}
 
 /* ------------------------------ misc device ----------------------------- */
 /*==============================================================================

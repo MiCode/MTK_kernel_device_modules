@@ -6,14 +6,12 @@
 #ifndef PD_CORE_H_
 #define PD_CORE_H_
 
-#include <linux/platform_device.h>
-#include <linux/pm_wakeup.h>
 #include "tcpci_timer.h"
 #include "tcpci_event.h"
 #include "pd_dbg_info.h"
 #include "tcpm.h"
 
-#define PD_BUG_ON(x)	WARN_ON(x)
+#define PD_WARN_ON(x)	WARN_ON(x)
 
 #define PD_SOP_NR	3
 
@@ -816,6 +814,8 @@ struct pd_port {
 
 	struct dpm_pdo_info_t last_sink_pdo_info;
 	uint32_t last_rdo;
+	uint32_t last_src_pdo;
+	uint32_t prev_src_pdo;
 
 	uint8_t id_vdo_nr;
 	uint32_t id_vdos[VDO_MAX_NR];
@@ -850,6 +850,7 @@ struct pd_port {
 	uint16_t cable_mode_svid;
 	uint8_t cable_mode_obj_pos;
 	uint16_t cable_svid_to_discover;
+	bool dp_v21;
 
 	uint32_t dpm_caps;
 
@@ -884,10 +885,12 @@ struct pd_port {
 	int tcpm_bk_ret;
 	bool tcpm_bk_done;
 	uint8_t tcpm_bk_event_id;
+	uint8_t tcpm_bk_event_serial;
 	struct mutex tcpm_bk_lock;
 	wait_queue_head_t tcpm_bk_wait_que;
 #endif	/* CONFIG_USB_PD_BLOCK_TCPM */
 
+	/* XM customize */
 	/* curr_event info */
 	bool curr_is_vdm_evt;
 	struct pd_event curr_pd_event;
@@ -907,6 +910,10 @@ struct pd_port {
 	uint8_t	curr_sreset_state;
 
 	bool curr_unsupported_msg;
+
+	bool support_quick_revchg;
+	bool rev_quick_chg;
+	bool support_revcable;
 
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	struct pd_source_cap_ext src_cap_ext;
@@ -1057,7 +1064,7 @@ static inline int pd_is_support_modal_operation(struct pd_port *pd_port)
 	return pd_port->svid_data_cnt > 0;
 }
 
-static inline int pd_is_source_support_apdo(struct pd_port *pd_port)
+static inline bool pd_is_source_support_apdo(struct pd_port *pd_port)
 {
 #if CONFIG_USB_PD_REV30_PPS_SINK
 	uint8_t i;
@@ -1079,15 +1086,13 @@ static inline int pd_is_source_support_apdo(struct pd_port *pd_port)
 #define PD_RX_CAP_PE_DISABLE			(TCPC_RX_CAP_HARD_RESET)
 #define PD_RX_CAP_PE_STARTUP			(TCPC_RX_CAP_HARD_RESET)
 #define PD_RX_CAP_PE_HARDRESET			(0)
-#define PD_RX_CAP_PE_SWAP	\
-	(TCPC_RX_CAP_HARD_RESET|TCPC_RX_CAP_SOP)
 #define PD_RX_CAP_PE_SEND_WAIT_CAP	\
 	(TCPC_RX_CAP_HARD_RESET|TCPC_RX_CAP_SOP)
 #define PD_RX_CAP_PE_DISCOVER_CABLE	\
 	(TCPC_RX_CAP_HARD_RESET|TCPC_RX_CAP_SOP_PRIME)
-#define PD_RX_CAP_PE_READY_UFP	\
+#define PD_RX_CAP_PE_READY	\
 	(TCPC_RX_CAP_HARD_RESET|TCPC_RX_CAP_SOP)
-#define PD_RX_CAP_PE_READY_DFP	\
+#define PD_RX_CAP_PE_READY_CABLE	\
 	(TCPC_RX_CAP_HARD_RESET|TCPC_RX_CAP_SOP|TCPC_RX_CAP_SOP_PRIME)
 
 enum {
@@ -1143,7 +1148,7 @@ extern void pd_notify_pe_error_recovery(struct pd_port *pd_port);
 extern void pd_notify_pe_execute_pr_swap(struct pd_port *pd_port);
 extern void pd_notify_pe_reset_protocol(struct pd_port *pd_port);
 extern void pd_notify_pe_cancel_pr_swap(struct pd_port *pd_port);
-extern void pd_noitfy_pe_bist_mode(struct pd_port *pd_port, uint8_t mode);
+extern void pd_notify_pe_bist_mode(struct pd_port *pd_port, uint8_t mode);
 extern void pd_notify_pe_pr_changed(struct pd_port *pd_port);
 extern void pd_notify_pe_snk_explicit_contract(struct pd_port *pd_port);
 extern void pd_notify_pe_src_explicit_contract(struct pd_port *pd_port);
@@ -1160,7 +1165,9 @@ extern void pd_notify_tcp_event_2nd_result(struct pd_port *pd_port, int ret);
 extern void pd_notify_tcp_vdm_event_2nd_result(
 		struct pd_port *pd_port, uint8_t ret);
 
+#if CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG
 extern bool pd_is_pe_wait_pd_transmit_done(struct pd_port *pd_port);
+#endif	/* CONFIG_USB_PD_DISCARD_AND_UNEXPECT_MSG */
 
 /* ---- pd_timer ---- */
 
@@ -1375,7 +1382,7 @@ int pd_send_ext_msg(struct pd_port *pd_port,
 static inline int pd_send_sop_ext_msg(struct pd_port *pd_port,
 	uint8_t msg, uint8_t size, const void *data)
 {
-	PD_BUG_ON(size > MAX_EXTENDED_MSG_LEGACY_LEN);
+	PD_WARN_ON(size > MAX_EXTENDED_MSG_LEGACY_LEN);
 
 	/* TODO: chunking */
 
@@ -1389,7 +1396,6 @@ int pd_send_soft_reset(struct pd_port *pd_port);
 int pd_send_hard_reset(struct pd_port *pd_port);
 
 int pd_send_bist_mode2(struct pd_port *pd_port);
-int pd_disable_bist_mode2(struct pd_port *pd_port);
 
 
 /* ---- Send / Reply SVDM Command ----*/
@@ -1518,5 +1524,10 @@ static inline uint8_t pd_get_swap_battery_nr(struct pd_port *pd_port)
 struct pd_battery_info *pd_get_battery_info(
 	struct pd_port *pd_port, enum pd_battery_reference ref);
 #endif	/* CONFIG_USB_PD_REV30 */
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+void pd_add_miss_msg(struct pd_port *pd_port,struct pd_event *pd_event,
+				uint8_t msg);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 #endif /* PD_CORE_H_ */

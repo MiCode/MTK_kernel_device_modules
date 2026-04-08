@@ -46,14 +46,12 @@
 #include <linux/of.h>
 
 #if IS_ENABLED(CONFIG_OF)
-	#include <linux/cpu.h>
-	#include <linux/of.h>
-	#include <linux/of_irq.h>
-	#include <linux/of_address.h>
-	#include <linux/of_fdt.h>
-
+#include <linux/cpu.h>
+#include <linux/of.h>
+#include <linux/of_irq.h>
+#include <linux/of_address.h>
+#include <linux/of_fdt.h>
 #endif
-
 
 #if IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
 #include "mach/mtk_thermal.h"
@@ -64,7 +62,6 @@
 #include "mtk_eem.h"
 #include "mtk_defeem.h"
 #include "mtk_eem_internal_ap.h"
-
 
 #include "mtk_eem_internal.h"
 #if IS_ENABLED(CONFIG_MTK_GPU_SUPPORT)
@@ -88,11 +85,6 @@
 #include "mcupm_driver.h"
 #include "mtk_tinysys_ipi.h"
 #endif
-
-//#if SUPPORT_PICACHU
-//#include "mtk_picachu.h"
-//#include "mtk_picachu_reservedmem.h"
-//#endif
 
 /****************************************
  * define variables for legacy and eem
@@ -145,8 +137,8 @@ static unsigned int record_tbl_locked[NR_FREQ];
 #define EEM_PHY_TEMPSPARE0		0x11278F20
 #define EEM_PHY_TEMPSPARE1		0x11278F24
 #define EEM_PHY_TEMPSPARE2		0x11278F28
-
 #endif
+
 /******************************************
  * common variables for legacy ptp
  *******************************************
@@ -171,7 +163,6 @@ static char *cpu_name[3] = {
 	"BIG",
 	"CCI"
 };
-
 
 #if IS_ENABLED(CONFIG_OF)
 void __iomem *eem_base;
@@ -211,8 +202,6 @@ static enum hrtimer_restart eem_init_check_timer_func(struct hrtimer *timer)
 	return ret;
 }
 #endif
-
-
 
 static unsigned int eem_to_cputoeb(unsigned int cmd,
 	struct eem_ipi_data *eem_data)
@@ -270,7 +259,11 @@ static void get_picachu_efuse(void)
 	/* val = (int *)&eem_devinfo; */
 
 	picachu_mem_size = 0x80000;
-	spare1phys = ioremap(EEM_PHY_TEMPSPARE0, 0);
+	spare1phys = ioremap(EEM_PHY_TEMPSPARE0, 4);
+	if (!spare1phys) {
+		eem_error("EEM_PHY_TEMPSPARE0 ioremap failed\n");
+		return;
+	}
 	picachu_mem_base_phys = eem_read(spare1phys);
 	if ((void __iomem *)picachu_mem_base_phys != NULL)
 		picachu_mem_base_virt =
@@ -297,34 +290,18 @@ static void get_picachu_efuse(void)
 }
 #endif
 
-
-/* Read efuse values from given cell name defined in dts
- * Input  : Takes cell name to read data from
- * Output : Return pointer to the data buffer
- */
-
-int efuse_get_value_by_offset(unsigned int offset, size_t size, void *buf);
-
 static int get_devinfo(void)
 {
 
-
 	int ret = 0, i = 0;
 	int *val;
-	//u32 *efuse_buf = NULL;
 	unsigned int safeEfuse = 0, sn_safeEfuse = 0;
 
 	FUNC_ENTER(FUNC_LV_HELP);
 
 
-
 	val = (int *)&eem_devinfo;
-	//efuse_buf = read_mtk_efuse_cell("ptpod_1_cell");
-	//efuse_get_value_by_offset(DEVINFO_IDX_0, sizeof(__u32), &val[0]);
-	//if (!efuse_buf) {
-	//	safeEfuse = 1;
-	//	eem_error("No EFUSE , use safe efuse\n");
-	//} else {
+
 	/* FTPGM */
 		efuse_get_value_by_offset(DEVINFO_IDX_0, sizeof(__u32), &val[0]);
 		efuse_get_value_by_offset(DEVINFO_IDX_1, sizeof(__u32), &val[1]);
@@ -350,16 +327,6 @@ static int get_devinfo(void)
 		efuse_get_value_by_offset(DEVINFO_IDX_24, sizeof(__u32), &val[21]);
 		efuse_get_value_by_offset(DEVINFO_IDX_25, sizeof(__u32), &val[22]);
 		efuse_get_value_by_offset(DEVINFO_IDX_27, sizeof(__u32), &val[23]);
-
-		//kfree(efuse_buf);
-	//}
-//	efuse_buf = read_mtk_efuse_cell("ptpod_2_cell");
-//	efuse_get_value_by_offset(DEVINFO_IDX_21, sizeof(__u32), &val[24]);
-//	if (!efuse_buf) {
-//		safeEfuse = 1;
-//		eem_error("No EFUSE , use safe efuse\n");
-//	} else {
-
 
 #if EEM_FAKE_EFUSE
 	/* for verification */
@@ -393,7 +360,6 @@ static int get_devinfo(void)
 	for (i = 0; i < NR_HW_RES_FOR_BANK; i++)
 		eem_debug("[PTP_DUMP] RES%d: 0x%X\n",
 			i, val[i]);
-
 
 
 	for (i = 1; i < IDX_HW_RES_SN; i++) {
@@ -552,7 +518,6 @@ static void inherit_base_det(struct eemsn_det *det)
 			if (ops->func == NULL)				\
 				ops->func = eem_det_base_ops.func;	\
 		} while (0)
-
 	INIT_OP(det->ops, get_temp);
 
 	INIT_OP(det->ops, volt_2_pmic);
@@ -596,14 +561,12 @@ static void eem_update_init2_volt_to_upower
 		volt_tbl[i] = det->ops->pmic_2_volt(det, pmic_volt[i]);
 
 	bank = transfer_ptp_to_upower_bank(det_to_id(det));
-
 	if (bank < NR_UPOWER_BANK) {
 		upower_update_volt_by_eem(bank, volt_tbl, NR_FREQ);
 		 eem_debug
 		  ("volt to upower (id: %d upower, pmic_volt[0] :0x%x)\n",
 		  det->det_id, pmic_volt[0]);
 	}
-
 }
 
 #endif
@@ -650,7 +613,6 @@ static void eem_dconfig_set_det(struct eemsn_det *det, struct device_node *node)
 		eem_debug("[%s]: Unknown det_id %d\n", __func__, det_id);
 		break;
 	}
-
 	if ((!rc1) && (doe_initmon != 0xFF)) {
 		if (det->features != doe_initmon) {
 			det->features = doe_initmon;
@@ -767,14 +729,11 @@ static int eem_probe(struct platform_device *pdev)
 #endif
 
 
-
-
 	for_each_det(det)
 		inherit_base_det(det);
 
 	/* for slow idle */
 	ptp_data[0] = 0xffffffff;
-
 
 #if SUPPORT_DCONFIG
 	for_each_det(det)
@@ -962,9 +921,6 @@ EXPORT_SYMBOL(mt_eem_opp_freq);
  * ===============================================
  */
 
-/*
- * show current EEM stauts
- */
 static int eem_debug_proc_show(struct seq_file *m, void *v)
 {
 	struct eemsn_det *det = (struct eemsn_det *)m->private;
@@ -982,9 +938,6 @@ static int eem_debug_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-/*
- * set EEM status by procfs interface
- */
 static ssize_t eem_debug_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -1036,9 +989,6 @@ out:
 	return (ret < 0) ? ret : count;
 }
 #if IS_ENABLED(CONFIG_MTK_PTPOD_ENG_DEBUG)
-/*
- * show current aging margin
- */
 static int eem_setmargin_proc_show(struct seq_file *m, void *v)
 {
 	struct eemsn_det *det = (struct eemsn_det *)m->private;
@@ -1055,9 +1005,6 @@ static int eem_setmargin_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-/*
- * remove aging margin
- */
 static ssize_t eem_setmargin_proc_write(struct file *file,
 			const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -1205,7 +1152,6 @@ static int eem_dump_proc_show(struct seq_file *m, void *v)
 	seq_printf(m, "ipi_ret:%d\n", ipi_ret);
 
 	/* Print initial data */
-	seq_printf(m, "ctrl_agingload_enable=%d\n", ctrl_agingload_enable);
 	eem_aging_dump_proc_show(m, v);
 
 	seq_printf(m, "[%d]========Start sn_trigger_sensing!\n", seq++);
@@ -1552,8 +1498,6 @@ static int eem_mar_proc_show(struct seq_file *m, void *v)
 
 static int eem_cur_volt_proc_show(struct seq_file *m, void *v)
 {
-	struct eem_ipi_data eem_data;
-	unsigned int ipi_ret = 0;
 	struct eemsn_det *det = (struct eemsn_det *)m->private;
 	u32 rdata = 0, i;
 
@@ -1566,16 +1510,10 @@ static int eem_cur_volt_proc_show(struct seq_file *m, void *v)
 	else
 		seq_printf(m, "EEM[%s] read current voltage fail\n", det->name);
 
-	/* update volt_tbl_pmic info from mcupm */
-	memset(&eem_data, 0, sizeof(struct eem_ipi_data));
-	ipi_ret = eem_to_cputoeb(IPI_EEMSN_PULL_DATA, &eem_data);
-	seq_printf(m, "ret:%d\n", ipi_ret);
-
 	if (det->features != 0) {
 		for (i = 0; i < NR_FREQ; i++)
-			seq_printf(m, "[%d],freq = [%u], eem = [%x], pmic = [%x], volt = [%d]\n",
+			seq_printf(m, "[%d],eem = [%x], pmic = [%x], volt = [%d]\n",
 			i,
-			det->freq_tbl[i],
 			eemsn_log->det_log[det->det_id].volt_tbl_init2[i],
 			eemsn_log->det_log[det->det_id].volt_tbl_pmic[i],
 			det->ops->pmic_2_volt(det,
@@ -1586,9 +1524,6 @@ static int eem_cur_volt_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-/*
- * show current EEM status
- */
 static int eem_status_proc_show(struct seq_file *m, void *v)
 {
 	int i;
@@ -1612,9 +1547,6 @@ static int eem_status_proc_show(struct seq_file *m, void *v)
 
 	return 0;
 }
-/*
- * set EEM log enable by procfs interface
- */
 
 static int eem_log_en_proc_show(struct seq_file *m, void *v)
 {
@@ -1863,9 +1795,6 @@ static int eem_pull_data_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-/*
- * show EEM offset
- */
 static int eem_offset_proc_show(struct seq_file *m, void *v)
 {
 	struct eemsn_det *det = (struct eemsn_det *)m->private;
@@ -1879,9 +1808,6 @@ static int eem_offset_proc_show(struct seq_file *m, void *v)
 	return 0;
 }
 
-/*
- * set EEM offset by procfs
- */
 static ssize_t eem_offset_proc_write(struct file *file,
 	const char __user *buffer, size_t count, loff_t *pos)
 {
@@ -2087,13 +2013,10 @@ unsigned int get_efuse_status(void)
 	return eem_checkEfuse;
 }
 #endif
-/*
- * Module driver
- */
+
 static int eem_init(void)
 {
 #if EN_EEM
-//	u32 *efuse_buf = NULL;
 	unsigned int tmp;
 
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_MCUPM_SUPPORT)
@@ -2132,10 +2055,6 @@ static int eem_init(void)
 
 #if SUPPORT_PI_LOG_AREA
 	spare2phys = ioremap(EEM_PHY_TEMPSPARE2, 0);
-	if(spare2phys == NULL){
-		pr_info("spare2phys is NULL\n");
-		return ;
-	}
 	if ((void __iomem *)spare2phys != NULL)
 		picachu_sn_mem_base_phys =
 		(eem_read(spare2_phys)
@@ -2152,10 +2071,8 @@ static int eem_init(void)
 #endif
 	memcpy(&(eemsn_log->efuse_devinfo), &eem_devinfo,
 		sizeof(struct eemsn_devinfo));
-
 	efuse_get_value_by_offset(DEVINFO_SEG_IDX, sizeof(__u32), &tmp);
 	eemsn_log->segCode = tmp & 0xFF;
-	eem_info("Segment Code : 0x%x", eemsn_log->segCode);
 	/* eemsn_log->efuse_sv = eem_read(EEM_TEMPSPARE1); */
 
 #if SUPPORT_PICACHU
@@ -2228,7 +2145,6 @@ static int eem_init(void)
 		FUNC_EXIT(FUNC_LV_MODULE);
 		return err;
 	}
-	pr_info("EEM INIT DONE\n");
 #endif /* EN_EEM */
 	return 0;
 }
@@ -2237,6 +2153,12 @@ static void  eem_exit(void)
 {
 #if EN_EEM
 	FUNC_ENTER(FUNC_LV_MODULE);
+
+#if SUPPORT_PICACHU
+	if (eem_base)
+		iounmap(eem_base);
+#endif
+
 	eem_debug("eem de-initialization\n");
 	FUNC_EXIT(FUNC_LV_MODULE);
 #endif /* EN_EEM */

@@ -1202,7 +1202,7 @@ static ssize_t gtp_dofwupdate_store(struct device *dev,
 exit:
 	return retval;
 }
-static DEVICE_ATTR(dofwupdate, 0664, NULL, gtp_dofwupdate_store);
+static DEVICE_ATTR_WO(dofwupdate);
 #endif
 
 static ssize_t gtp_productinfo_show(struct device *dev,
@@ -1210,7 +1210,7 @@ static ssize_t gtp_productinfo_show(struct device *dev,
 {
 	struct goodix_ts_data *data = dev_get_drvdata(dev);
 	struct goodix_fw_info *fw_info = &data->fw_info;
-	
+
 	return scnprintf(buf, PAGE_SIZE, "GT%s_%x_%d\n",
 			 fw_info->pid, fw_info->version, fw_info->sensor_id);
 }
@@ -1256,7 +1256,7 @@ static ssize_t gtp_drv_irq_show(struct device *dev,
 			 test_bit(WORK_THREAD_ENABLED, &data->flags)
 			 ? "enabled" : "disabled");
 }
-static DEVICE_ATTR(drv_irq, 0664, gtp_drv_irq_show, gtp_drv_irq_store);
+static DEVICE_ATTR(drv_irq, 0660, gtp_drv_irq_show, gtp_drv_irq_store);
 
 static ssize_t gtp_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -1298,7 +1298,7 @@ static int gtp_create_file(struct goodix_ts_data *ts)
 
 	/*  Create proc file system */
 	gtp_config_proc = NULL;
-	gtp_config_proc = proc_create(ts->pdata->touch_proc, 0664,
+	gtp_config_proc = proc_create(ts->pdata->touch_proc, 0660,
 				      NULL, &config_proc_ops);
 	if (!gtp_config_proc)
 		dev_dbg(&client->dev, "create_proc_entry %s failed\n",

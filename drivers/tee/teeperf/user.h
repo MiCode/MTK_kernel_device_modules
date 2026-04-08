@@ -22,6 +22,8 @@
 
 extern u32 cpu_type;
 extern u32 cpu_map;
+extern u32 cpu_hint_mode;
+extern u32 cpu_uclamp_min;
 
 enum teeperf_cpu_type {
 	CPU_V9_TYPE = 1,
@@ -37,6 +39,12 @@ enum teeperf_cpu_group {
 	CPU_SUPER_GROUP = 1,
 	CPU_BIG_GROUP = 2,
 	CPU_LITTLE_GROUP = 3
+};
+
+enum teeperf_cpu_hint_mode {
+	CPU_UNSUPPORT = 0,
+	CPU_UCLAMP_MODE = 1,
+	CPU_GRP_AWARE_MODE = 2,
 };
 
 int teeperf_user_init(struct cdev *cdev);

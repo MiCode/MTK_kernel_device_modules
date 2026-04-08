@@ -12,6 +12,9 @@ void *mmdvfs_get_mmup_base(phys_addr_t *pa);
 void *mmdvfs_get_vcp_base(phys_addr_t *pa);
 bool mmdvfs_get_mmup_sram_enable(void);
 void __iomem *mmdvfs_get_mmup_sram(void);
+bool mmdvfs_get_mux_cb_sram_enable(void);
+void __iomem *mmdvfs_get_mux_cb_time_sram(void);
+void __iomem *mmdvfs_get_mux_cb_val_sram(void);
 bool mmdvfs_get_mmup_enable(void);
 bool mmdvfs_is_init_done(void);
 #else
@@ -29,6 +32,9 @@ static inline void *mmdvfs_get_vcp_base(phys_addr_t *pa)
 }
 static inline bool mmdvfs_get_mmup_sram_enable(void) { return false; }
 static inline void __iomem *mmdvfs_get_mmup_sram(void) { return NULL; }
+static inline bool mmdvfs_get_mux_cb_sram_enable(void) { return false; }
+static inline void __iomem *mmdvfs_get_mux_cb_time_sram(void) { return NULL; }
+static inline void __iomem *mmdvfs_get_mux_cb_val_sram(void) { return NULL; }
 static inline bool mmdvfs_get_mmup_enable(void) { return false; }
 static inline bool mmdvfs_is_init_done(void) { return false; }
 #endif
@@ -96,6 +102,14 @@ static inline bool mmdvfs_is_init_done(void) { return false; }
 
 #define MEM_CEIL_LEVEL(x)		(MEM_BASE + 0x598 + 0x4 * (x)) // POWER_NUM(3)
 /* next start: 0x5A4 */
+
+#define SRAM_MUX_CB_CNT		(10)
+#define MEM_SRAM_MUX_CB_TIME_OFS	(MEM_BASE + 0x7D4)
+#define MEM_SRAM_MUX_CB_VAL_OFS		(MEM_BASE + 0x7D8)
+#define SRAM_MUX_CB_TIME_BASE		mmdvfs_get_mux_cb_time_sram()
+#define SRAM_MUX_CB_VAL_BASE		mmdvfs_get_mux_cb_val_sram()
+#define SRAM_MUX_CB_TIME(x)			(SRAM_MUX_CB_TIME_BASE + 8 * (x))
+#define SRAM_MUX_CB_VAL(x)			(SRAM_MUX_CB_VAL_BASE + 4 * (x))
 
 #define MEM_REC_CNT_MAX		16
 

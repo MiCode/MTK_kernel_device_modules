@@ -38,8 +38,9 @@
 #include <gpu_bm.h>
 #endif /* MTK_GPU_BM_2 */
 
-#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
-//#include "thermal_interface.h"
+#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL) && !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781) && \
+	!IS_ENABLED(CONFIG_MTK_GPU_MT6771_SUPPORT)
+#include "thermal_interface.h"
 #endif
 #define MTK_DEFER_DVFS_WORK_MS          10000
 #define MTK_DVFS_SWITCH_INTERVAL_MS     50
@@ -140,6 +141,10 @@ unsigned int gpu_block;
 unsigned int gpu_idle;
 atomic_t g_gpu_loading_log = ATOMIC_INIT(0);
 unsigned long g_um_gpu_tar_freq;
+
+atomic_t g_gpu_loading_avg_log = ATOMIC_INIT(0);
+unsigned int gpu_loading_avg;
+#define GPU_LOADING_AVG_WINDOW_SIZE 16
 
 spinlock_t g_sSpinLock;
 /* calculate loading reset time stamp */
@@ -320,6 +325,9 @@ static int g_last_commit_type;
 static int g_last_commit_api_flag;
 static unsigned long g_last_commit_before_api_boost;
 static unsigned int g_last_api_boost_counter;
+static unsigned int g_is_gpu_uncomplete;
+static unsigned long long g_ns_gpu_api_boost_end_ts;
+static unsigned long long g_ns_gpu_api_boost_interval;
 
 static void ged_dvfs_early_force_fallback(struct GpuUtilization_Ex *Util_Ex)
 {
@@ -908,10 +916,15 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 	unsigned int cur_opp_idx = 0;
 	u32 opp_loading = 0;
 
+	unsigned int window_size_us = GPU_LOADING_AVG_WINDOW_SIZE*1000;
+	static unsigned long long sum_delta_time;	 // unit: us
+	static unsigned long long sum_loading ;   // unit: % * us
+	unsigned long long delta_time;
+
 	if (ged_dvfs_cal_gpu_utilization_ex_fp != NULL) {
 		ged_dvfs_cal_gpu_utilization_ex_fp(pui32Loading, pui32Block,
 			pui32Idle, (void *) Util_Ex);
-		Util_Ex->freq = ged_get_cur_freq();
+		Util_Ex->freq = ged_get_cur_stack_freq();
 
 		gpu_util_history_update(Util_Ex);
 
@@ -935,6 +948,24 @@ bool ged_dvfs_cal_gpu_utilization_ex(unsigned int *pui32Loading,
 				ged_dvfs_early_force_fallback(Util_Ex);
 			else
 				early_force_fallback = 0 ;
+
+			delta_time = Util_Ex->delta_time / 1000;
+			gpu_loading_avg = *pui32Loading;
+			sum_loading += gpu_loading_avg * delta_time;
+			sum_delta_time += delta_time;
+
+			if (sum_delta_time >= window_size_us) {
+				if (sum_delta_time != 0)
+					gpu_loading_avg = sum_loading / sum_delta_time;
+
+				if (gpu_loading_avg > 100)
+					gpu_loading_avg = 100;
+
+				atomic_set(&g_gpu_loading_avg_log, gpu_loading_avg);
+				trace_tracing_mark_write(5566, "avg-loading", gpu_loading_avg);
+				sum_loading = 0;
+				sum_delta_time = 0;
+			}
 
 			gpu_av_loading = *pui32Loading;
 			atomic_set(&g_gpu_loading_log, gpu_av_loading);
@@ -1283,11 +1314,14 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 		}
 
 		// record commit freq ID if api boost disable
-		if (policy_api_sync_flag == 0)
+		if (policy_api_sync_flag == 0 && g_is_gpu_uncomplete == 0)
 			g_last_commit_before_api_boost = ui32NewFreqID;
 
 		trace_tracing_mark_write(5566, "gpu_freq",
 			(long long) div_u64(ged_get_cur_stack_freq(), 1000));
+		// MIUI ADD: Performance
+		trace_gpu_frequency_mtk("gpu_freq", (long long) div_u64(ged_get_cur_stack_freq(), 1000), 0);
+		// MIUI END
 
 		sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
 			ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
@@ -1304,6 +1338,9 @@ bool ged_dvfs_gpu_freq_commit(unsigned long ui32NewFreqID,
 			(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
 		trace_tracing_mark_write(5566, "gpu_freq_floor",
 			(long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000));
+		// MIUI ADD: Performance
+		trace_gpu_frequency_mtk("gpu_freq_floor", (long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000), 0);
+		// MIUI END
 		trace_tracing_mark_write(5566, "limitter_ceil",
 			ged_get_cur_limiter_ceil());
 		trace_tracing_mark_write(5566, "limitter_floor",
@@ -1448,11 +1485,14 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 	}
 
 	// record commit freq ID if api boost disable
-	if (policy_api_sync_flag == 0)
+	if (policy_api_sync_flag == 0 && g_is_gpu_uncomplete == 0)
 		g_last_commit_before_api_boost = stackNewFreqID;
 
 	trace_tracing_mark_write(5566, "gpu_freq",
 		(long long) div_u64(ged_get_cur_stack_freq(), 1000));
+	// MIUI ADD: Performance
+	trace_gpu_frequency_mtk("gpu_freq", (long long) div_u64(ged_get_cur_stack_freq(), 1000), 0);
+	// MIUI END
 
 	sc_freq_diff = ged_get_cur_stack_out_freq() > 0 ?
 		ged_get_cur_stack_out_freq() - ged_get_cur_real_stack_freq() : 0;
@@ -1467,6 +1507,9 @@ bool ged_dvfs_gpu_freq_dual_commit(unsigned long stackNewFreqID,
 		(long long) div_u64(ged_get_freq_by_idx(ui32CeilingID), 1000));
 	trace_tracing_mark_write(5566, "gpu_freq_floor",
 		(long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000));
+	// MIUI ADD: Performance
+	trace_gpu_frequency_mtk("gpu_freq_floor", (long long) div_u64(ged_get_freq_by_idx(ui32FloorID), 1000), 0);
+	// MIUI END
 	trace_tracing_mark_write(5566, "limitter_ceil",
 		ged_get_cur_limiter_ceil());
 	trace_tracing_mark_write(5566, "limitter_floor",
@@ -2259,6 +2302,7 @@ static int ged_dvfs_fb_gpu_dvfs(int t_gpu, int t_gpu_target,
 	}
 	// reset if not in fallback mode
 	g_fallback_idle = 0;
+	g_is_gpu_uncomplete = 0;
 
 	spin_lock_irqsave(&gsGpuUtilLock, ui32IRQFlags);
 	if (is_fallback_mode_triggered)
@@ -2561,10 +2605,29 @@ int get_api_sync_flag(void)
 }
 EXPORT_SYMBOL(get_api_sync_flag);
 
+unsigned long long ged_get_api_boost_end_ts(void)
+{
+	return g_latest_api_sync_done_ts_us;
+}
+EXPORT_SYMBOL(ged_get_api_boost_end_ts);
+
+unsigned long long ged_get_api_boost_interval(void)
+{
+	return g_ns_gpu_api_boost_interval;
+}
+EXPORT_SYMBOL(ged_get_api_boost_interval);
+
+void ged_reset_api_boost_interval(void)
+{
+	g_ns_gpu_api_boost_interval = 0;
+}
+EXPORT_SYMBOL(ged_reset_api_boost_interval);
+
 void set_api_sync_flag(int flag)
 {
 	unsigned int tmp_sysram_val = 0;
 	unsigned long long cur_ts_us = div_u64(ged_get_time(), 1000);
+	unsigned long long cur_ts_ns = cur_ts_us * 1000;
 
 	if (flag == 1 || flag == 0) {
 		// update counter when api sync finish (1 => 0)
@@ -2579,10 +2642,15 @@ void set_api_sync_flag(int flag)
 		tmp_sysram_val = api_sync_flag << COMMON_LOW_BIT;
 		tmp_sysram_val += api_sync_counter << COMMON_MID_BIT;
 		ged_eb_dvfs_task(EB_UPDATE_API_BOOST, tmp_sysram_val);
-		if (flag)
+		if (flag) {
+			if (g_ns_gpu_api_boost_end_ts > 0)
+				g_ns_gpu_api_boost_interval = cur_ts_ns - g_ns_gpu_api_boost_end_ts;
+
 			g_latest_api_sync_ts_ms = div_u64(cur_ts_us, 1000);
-		else
+		} else {
 			g_latest_api_sync_done_ts_us = cur_ts_us;
+			g_ns_gpu_api_boost_end_ts = cur_ts_ns;
+		}
 	} else if (flag == 2) {
 		dcs_set_fix_num(0);
 		cancel_mewtwo_timer();
@@ -2598,35 +2666,33 @@ void set_api_sync_flag(int flag)
 	} else if (flag == 6) {
 		dcs_set_fix_num(2);
 		start_mewtwo_timer();
-	} else if (((flag & 0xFFFF0000) == 0x60000) || ((flag & 0xFFFF0000) == 0x70000)) {
+	} else if (((flag & 0xFFFF0000) == 0x60000) || ((flag & 0xFFFF0000) == 0x70000) ||
+		((flag & 0xFF000000) == 0x39000000)) {
 		if (api_sync_flag != flag)
 			api_sync_flag = flag;
 	} else if (flag == 8) {
 		MTKGPUQoS_mode_ratio(0);
 	} else if (flag == 9) {
 		MTKGPUQoS_mode_ratio(6080);
-#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL)
-	} else if ((flag & 0xFFFF0000) == 0x55660000) {
+#if !IS_ENABLED(CONFIG_MTK_LEGACY_THERMAL) && !IS_ENABLED(CONFIG_MTK_PLAT_POWER_6781) && \
+	!IS_ENABLED(CONFIG_MTK_GPU_MT6771_SUPPORT)
+	} else if ((flag & 0xFFF00000) == 0x55600000) {
 		// pre-throttle cases
 		if ((flag & 0x0000FFFF) == 0xFFFF) {
-			// reset default
-			//set_gpu_pre_throttle(0x27BC86AA);
-			//set_gpu_pre_throttle_opp(0x27BC86AA);
+			set_gpu_pre_throttle(0x27BC86AA, (flag & 0x000F0000) >> 16);
+			set_gpu_pre_throttle_opp(0x27BC86AA, (flag & 0x000F0000) >> 16);
 		} else {
 			if ((flag & 0x0000FF00) > 0) {
 				// set preferred temp.
-				//set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000);
+				set_gpu_pre_throttle(((flag & 0x0000FF00)>>8)*1000, (flag & 0x000F0000) >> 16);
 			}
 
 			if ((flag & 0x000000FF) > 0) {
 				// set preferred opp.
-				//set_gpu_pre_throttle_opp((flag & 0x000000FF)-1);
+				set_gpu_pre_throttle_opp((flag & 0x000000FF)-1, (flag & 0x000F0000) >> 16);
 			}
 		}
-		GED_LOGE("new gpu_pre_throttle temp");
-		//GED_LOGE("%s@%d (0x%08x)new gpu_pre_throttle temp: %d / opp: %d",
-		//	__func__, __LINE__, (flag & 0x0000FFFF),
-		//	get_gpu_pre_throttle_temp(), get_gpu_pre_throttle_opp());
+		GED_LOGI("GPT: 0x%08x", (flag & 0x000FFFFF));
 #endif
 	}
 }
@@ -2793,6 +2859,7 @@ static bool ged_dvfs_policy(
 		int ultra_low = 0;
 		int pid = 0;
 		int q = 0;
+		unsigned int is_enter_set_cur_freq_back = 0; // debug
 
 		/* set t_gpu via risky BQ analysis */
 		ged_kpi_update_t_gpu_latest_uncompleted();
@@ -2965,13 +3032,21 @@ static bool ged_dvfs_policy(
 		trace_tracing_mark_write(5566, "t_gpu_target", t_gpu_target);
 
 		policy_api_sync_counter = api_sync_counter;
-		// set cur freq back to before api boost
-		if ((g_last_commit_api_flag == 1 && policy_api_sync_flag == 0) ||
+		// set cur freq back to before api boost (for GPU not in overdue state)
+		if (uncomplete_flag)
+			g_is_gpu_uncomplete = 1;
+		else
+			g_is_gpu_uncomplete = 0;
+
+		if (((g_last_commit_api_flag == 1 && policy_api_sync_flag == 0) ||
 			(g_last_commit_api_flag == 1 && policy_api_sync_flag == 1 &&
-			g_last_api_boost_counter != policy_api_sync_counter)) {
+			g_last_api_boost_counter != policy_api_sync_counter)) &&
+			g_is_gpu_uncomplete == 0) {
 			ui32GPUFreq = g_last_commit_before_api_boost;
 			i32NewFreqID = ui32GPUFreq;
+			is_enter_set_cur_freq_back = 1; // debug
 		}
+		trace_tracing_mark_write(5566, "dbg_set_f_back", is_enter_set_cur_freq_back); // debug
 
 		/* bound update */
 		if (init == 0) {
@@ -3793,6 +3868,18 @@ unsigned int ged_dvfs_get_gpu_loading(void)
 	return loading;
 }
 
+unsigned int ged_dvfs_get_gpu_loading_avg(void)
+{
+	unsigned int loading = 0;
+
+	loading = (unsigned int)atomic_read(&g_gpu_loading_avg_log);
+
+	if (g_curr_pwr_state != GED_POWER_ON)
+		loading = 0;
+
+	return loading;
+}
+
 unsigned int ged_dvfs_get_gpu_blocking(void)
 {
 	return gpu_block;
@@ -4193,6 +4280,7 @@ GED_ERROR ged_dvfs_system_init(void)
 	mtk_custom_boost_gpu_freq_fp = ged_dvfs_custom_boost_gpu_freq;
 	mtk_custom_upbound_gpu_freq_fp = ged_dvfs_custom_ceiling_gpu_freq;
 	mtk_get_gpu_loading_fp = ged_dvfs_get_gpu_loading;
+	mtk_get_gpu_loading_avg_fp = ged_dvfs_get_gpu_loading_avg;
 	mtk_get_gpu_block_fp = ged_dvfs_get_gpu_blocking;
 	mtk_get_gpu_idle_fp = ged_dvfs_get_gpu_idle;
 

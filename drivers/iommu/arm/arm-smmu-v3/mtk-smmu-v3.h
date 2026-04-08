@@ -11,6 +11,7 @@
 #include <linux/io-pgtable.h>
 #include <linux/of_device.h>
 #include <linux/interrupt.h>
+#include <linux/suspend.h>
 #include <soc/mediatek/smi.h>
 
 #include <dt-bindings/memory/mtk-memory-port.h>
@@ -127,6 +128,11 @@
 #define AXSLC_SPECULATIVE		F_BIT_SET(7)
 #define AXSLC_SET			(AXSLC_CACHE | AXSLC_ALLOCATE | AXSLC_SPECULATIVE)
 #define SLC_SB_ONLY_EN			F_BIT_SET(1)
+
+/* SMMU connect to DVM mi for tlbi broadcast */
+#define SMMU_TCU_CTL4_DVM		(0x210)
+#define DVM_EN_REQ			F_BIT_SET(0)
+#define DVM_EN_ACK			F_BIT_SET(1)
 
 /* SMMU TCU latency meters control registers
  * TCU_MON_ID: The monitoring AXI ID if needed, default monitor all
@@ -527,6 +533,9 @@ struct mtk_smmu_data {
 	u32				irq_cnt;
 	unsigned long			irq_first_jiffies;
 	struct timer_list		irq_pause_timer;
+	bool				dvm_support;
+	bool				power_awake;
+	struct wakeup_source		*suspend_lock;
 };
 
 enum mtk_smmu_tfm_type {

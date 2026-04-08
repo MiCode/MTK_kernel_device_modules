@@ -13,3 +13,11 @@ config MTK_SPM_V0
 	  for MT6765 & 61, this spm driver will support idle and
 	  suspend flow
 	  If unsure, say N.
+
+config MTK_IDLE_BOOST
+	tristate "MTK IDLE BOOST"
+	help
+	  This kernel config can be used to boost vcore to 0.7v when
+	  entering idle for MT6768, enhancing system stability.
+	  Useful for frequent idle transitions.
+	  If unsure, say N.

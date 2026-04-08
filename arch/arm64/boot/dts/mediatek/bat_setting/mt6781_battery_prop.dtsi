@@ -3,8 +3,7 @@
  * Copyright (C) 2016 MediaTek Inc.
  */
 
-bat_gm30: battery{
-	compatible = "mediatek,bat_gm30";
+&mtk_gauge {
 	difference-fullocv-ith = <(200)>;
 /*	Charging termination current*/
 	shutdown-1-time = <(30)>;

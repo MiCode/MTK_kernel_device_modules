@@ -43,7 +43,6 @@ struct pd_event {
 void pd_postpone_vdm_event_timeout(struct tcpc_device *tcpc);
 struct pd_msg *pd_alloc_msg(struct tcpc_device *tcpc);
 void pd_free_msg(struct tcpc_device *tcpc, struct pd_msg *pd_msg);
-bool pd_is_msg_empty(struct tcpc_device *tcpc);
 
 bool pd_get_event(struct tcpc_device *tcpc, struct pd_event *pd_event);
 bool pd_put_event(struct tcpc_device *tcpc,
@@ -121,6 +120,9 @@ enum pd_msg_type {
 	PD_CTRL_GET_COUNTRY_CODE = 0x10 + 5,
 	PD_CTRL_GET_SINK_CAP_EXT = 0x10 + 6,
 	PD_CTRL_GET_REVISION = 0x10 + 8,
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	PD_CTRL_GET_SOURCE_INFO = 0x10 + 9,
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #endif	/* CONFIG_USB_PD_REV30 */
 	/* 22-31 Reserved */
 	PD_CTRL_MSG_NR,

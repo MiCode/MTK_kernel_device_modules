@@ -23,3 +23,9 @@ mtk_cpuhp-y += mtk_cpuhp_platform.o
 ifneq ($(strip $(CONFIG_MTK_PPM_V3)),)
 mtk_cpuhp-y += mtk_cpuhp_ppm.o
 endif
+
+# mt8788 hotplug
+ifneq ($(strip $(CONFIG_MT8788_CPUHOTPLUG)),)
+ccflags-$(CONFIG_MT8788_CPUHOTPLUG) += -I$(srctree)/drivers/clk/mediatek
+mtk_cpuhp-y += mtk_cpuhp_mt6771.o
+endif

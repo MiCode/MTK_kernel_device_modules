@@ -11,6 +11,8 @@ struct mtk_extcon_info {
 	struct workqueue_struct *extcon_wq;
 	struct regulator *vbus;
 	unsigned int vbus_vol;
+	unsigned int vbus_vol_request;
+	unsigned int vbus_vol_max;
 	unsigned int vbus_cur;
 	bool vbus_on;
 	struct power_supply *usb_psy;
@@ -29,6 +31,11 @@ struct mtk_extcon_info {
 	struct delayed_work wq_detcable;
 	unsigned int vbus_limit_cur;
 	bool vbus_cur_inlimit;
+	int vdd_boost_en_gpio_a;
+	int vdd_boost_en_gpio_b;
+	bool support_quick_revchg;
+	bool apple_delay_50ms;
+	int otg_boost_src;
 };
 
 struct usb_role_info {
@@ -47,6 +54,13 @@ enum {
 	DUAL_PROP_PR_SRC = 0,
 	DUAL_PROP_PR_SNK,
 	DUAL_PROP_PR_NONE,
+};
+
+enum otg_src_cfg {
+	BOOST_SRC_CHARGER,
+	BOOST_SRC_HBOOST,
+	BOOST_SRC_EXTERNAL,
+	BOOST_SRC_INVALID,
 };
 
 #define USB_GPIO_DEB_US	(2000)

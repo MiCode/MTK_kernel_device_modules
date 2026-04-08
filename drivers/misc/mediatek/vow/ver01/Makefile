@@ -11,10 +11,13 @@
 # See http://www.gnu.org/licenses/gpl-2.0.html for more details.
 #
 
-ifeq ($(CONFIG_MTK_TINYSYS_SCP_SUPPORT),y)
+ifneq ($(CONFIG_MTK_TINYSYS_SCP_SUPPORT),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp
 endif
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vow
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/cm4
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/audio_ipi/include
 
 mtk-vow-objs := \
 	vow.o \

@@ -77,6 +77,7 @@
 
 #define MT6991_OVLSYS0_GCE_FRAME_DONE_SEL0_WDMA1			(21)
 #define MT6991_OVLSYS0_GCE_FRAME_DONE_SEL0_WDMA0			(22)
+#define MT6991_OVLSYS0_GCE_FRAME_DONE_SEL2_EXDMA0			(20)
 
 #define MT6991_OVLSYS1_GCE_FRAME_DONE_SEL0_WDMA0			(22)
 
@@ -128,6 +129,8 @@
 #define MT6991_DISP1_GCE_FRAME_DONE_SEL4_WDMA1_FRAME_DONE	(11)
 #define MT6991_DISP1_GCE_FRAME_DONE_SEL5_WDMA3_FRAME_DONE	(9)
 #define MT6991_DISP1_GCE_FRAME_DONE_SEL6_DSI2_FRAME_DONE	(27)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL7_WDMA4_FRAME_DONE	(8)
+#define MT6991_DISP1_GCE_FRAME_DONE_SEL6_WDMA2_FRAME_DONE	(10)
 
 enum mtk_ddp_mutex_sof_id {
 	DDP_MUTEX_SOF_SINGLE_MODE,
@@ -298,6 +301,7 @@ void ovlsys_config_dump_reg_mt6985(void __iomem *config_regs);
 void mmsys_config_dump_reg_mt6897(void __iomem *config_regs);
 void ovlsys_config_dump_reg_mt6897(void __iomem *config_regs);
 void mmsys_config_dump_reg_mt6895(void __iomem *config_regs);
+void mmsys_config_dump_analysis_mt6771(void __iomem *config_regs);
 void mmsys_config_dump_analysis_mt6983(void __iomem *config_regs);
 void mmsys_config_dump_analysis_mt6985(void __iomem *config_regs);
 void ovlsys_config_dump_analysis_mt6985(void __iomem *config_regs);
@@ -320,6 +324,7 @@ void mutex_dump_analysis_mt6761(struct mtk_disp_mutex *mutex);
 void mmsys_config_dump_analysis_mt6765(void __iomem *config_regs);
 void mutex_dump_analysis_mt6765(struct mtk_disp_mutex *mutex);
 
+void mutex_dump_reg_mt6771(struct mtk_disp_mutex *mutex);
 void mutex_dump_reg_mt6991(struct mtk_disp_mutex *mutex);
 void mutex_ovlsys_dump_reg_mt6991(struct mtk_disp_mutex *mutex);
 void mutex_ovlsys_dump_analysis_mt6991(struct mtk_disp_mutex *mutex);
@@ -327,7 +332,8 @@ void mutex_dump_analysis_mt6991(struct mtk_disp_mutex *mutex);
 void mmsys_config_dump_reg_mt6991(void __iomem *config_regs);
 void ovlsys_config_dump_reg_mt6991(void __iomem *config_regs);
 void mmsys_config_dump_analysis_mt6991(void __iomem *config_regs, int sys_id);
-void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs);
+void ovlsys_config_dump_analysis_mt6991(void __iomem *config_regs, bool rg_dump);
+void mtk_crtc_dump_bif_info(struct mtk_drm_crtc *mtk_crtc, void __iomem *config_regs);
 void mtk_ddp_insert_dsc_prim_MT6885(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 void mtk_ddp_remove_dsc_prim_MT6885(struct mtk_drm_crtc *mtk_crtc,
@@ -418,6 +424,9 @@ void mtk_ddp_insert_dsc_prim_MT6877(struct mtk_drm_crtc *mtk_crtc,
 void mtk_ddp_remove_dsc_prim_MT6877(struct mtk_drm_crtc *mtk_crtc,
 	struct cmdq_pkt *handle);
 
+void mmsys_cofig_dump_reg_mt6771(void __iomem *config_regs);
+void mutex_dump_analysis_mt6771(struct mtk_disp_mutex *mutex);
+
 void mmsys_config_dump_analysis_mt6879(void __iomem *config_regs);
 void mutex_dump_analysis_mt6879(struct mtk_disp_mutex *mutex);
 
@@ -449,4 +458,11 @@ int mtk_ddp_exdma_mout_reset_MT6991(enum mtk_ddp_comp_type type, int *offset,
 
 void mtk_gce_event_config_MT6991(struct drm_device *drm);
 
+void mtk_disp_bif_racing_config_MT6991(struct cmdq_pkt *handle, struct mtk_drm_crtc *mtk_crtc, bool racing);
+void mtk_disp_bif_keep_read_mutex_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_ddp_insert_bif_racing_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_ddp_remove_bif_racing_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_ddp_insert_bif_for_all_scn_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_ddp_remove_bif_for_all_scn_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+void mtk_ddp_insert_addon_bif_for_all_scn_MT6991(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle, bool connect);
 #endif /* MTK_DRM_DDP_H */

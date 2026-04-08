@@ -665,7 +665,7 @@ cpus {
 		reserve-memory-scp_share {
 			compatible = "mediatek,reserve-memory-scp_share";
 			no-map;
-			size = <0 0x00320000>; /*3MB + 128K share mem size */
+			size = <0 0x003c0000>; /*3MB + 128K share mem size */
 			alignment = <0 0x1000000>;
 			alloc-ranges = <0 0x50000000 0 0x40000000>;
 		};
@@ -714,6 +714,22 @@ cpus {
 			reg = <0 0x50000000 0 0x1000>;
 			alignment = <0 0x1000>;
 			no-map;
+		};
+
+
+		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
+			compatible = "mediatek,dpmaif-resv-cache-mem";
+			size = <0 0x00190000>; /* 1638400 Bytes for 1rxq */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
+
+		dpmaif_resv_nocache_mem: ccci-dpmaif-nocache-memory {
+			compatible = "mediatek,dpmaif-resv-nocache-mem";
+			no-map;
+			size = <0 0x0050000>; /* 327680 Bytes */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
 		};
 	};
 
@@ -1592,7 +1608,7 @@ cpus {
 				<0 0x1022e000 0 0x1000>; /*SRAM*/
 			interrupts = <GIC_SPI 209 IRQ_TYPE_LEVEL_HIGH 0>;
 			mediatek,dpmaif-ver = <2>;
-			mediatek,dpmaif-cap = <0x4>;
+			mediatek,dpmaif-cap = <0x0000004a>;
 			mediatek,plat-info = <6893>;
 			clocks = <&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
 				<&infracfg_ao_clk CLK_IFRAO_DPMAIF>;
@@ -2239,7 +2255,7 @@ cpus {
 
                         scp-mem-key = "mediatek,reserve-memory-scp_share";
 			scp-mem-tbl = <0 0x0 0x0>, /* secure dump, its size is in secure_dump_size */
-					<1 0x4a700 0x0>, /* vow */
+					<1 0xCA700 0x0>, /* vow */
 					<2 0x100000 0x0>, /* sensor main*/
 					<3 0x180000 0x0>, /* logger */
 					<4 0x19000 0x0>, /* audio */
@@ -2589,7 +2605,7 @@ cpus {
 
 		disp_pwm: pwm@1100e000 {
 			compatible = "mediatek,disp_pwm0",
-					"mediatek,mt6873-disp-pwm";
+					"mediatek,mt6885-disp-pwm";
 			reg = <0 0x1100e000 0 0x1000>;
 			interrupts = <GIC_SPI 151 IRQ_TYPE_LEVEL_HIGH 0>;
 			#pwm-cells = <2>;
@@ -4733,8 +4749,8 @@ cpus {
 			<859189832 0 597 597>, /* H.263 */
 			<875967048 0 262 262>, /* H.264 */
 			<826496577 0 262 262>, /* H.264 */
-			<1129727304 0 185 185>, /* HEVC */
-			<892744264 0 185 185>, /* H.265 */
+			<1129727304 0 215 215>, /* HEVC */
+			<892744264 0 215 215>, /* H.265 */
 			<1179206984 0 262 262>, /* HEIF */
 			<808996950 0 597 597>, /* VP8 */
 			<809062486 0 262 262>, /* VP9 */

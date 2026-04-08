@@ -5,12 +5,15 @@
 
 #include "cmdq_mmp.h"
 
+
+#if IS_ENABLED(CONFIG_MMPROFILE)
 static struct MDP_MMP_events_t mdp_mmp_events;
 
 struct MDP_MMP_events_t *mdp_mmp_get_event(void)
 {
 	return &mdp_mmp_events;
 }
+#endif
 
 void mdp_mmp_init(void)
 {

@@ -78,6 +78,17 @@ config MTK_FLASHLIGHT_LM3644
 
 	  Say M here if you want to compile this driver as a module.
 
+config MTK_FLASHLIGHT_SYWT78
+	tristate "Mediatek flashlight sywt78 gpio driver"
+	depends on MTK_FLASHLIGHT
+	help
+	  This is flashlight sywt78 gpio driver for camera.
+
+	  Say Y here if you want a driver IC with GPIO interface.
+	  Select this only if your board has this IC.
+
+	  Say M here if you want to compile this driver as a module.
+
 config MTK_FLASHLIGHT_RT4505
 	tristate "Mediatek flashlight with driver IC (Richtek RT4505)"
 	depends on MTK_FLASHLIGHT
@@ -194,6 +205,16 @@ config MTK_FLASHLIGHT_DLPT
 	  Dynamic low power throttling is a mechanism to monitor
 	  the current of battary dynamicly. It will start by request
 	  and notice user by kernel notifier.
+config MTK_FLASHLIGHT_OCP81375
+	tristate "Mediatek flashlight with driver IC (OCS OCP81375)"
+	depends on MTK_FLASHLIGHT
+	help
+	  This is for the flashlight driver IC (OCS OCP81375).
+
+	  Say Y here if you want a flashlight driver IC OCP81375.
+	  Select this only if your board has this IC.
+
+	  Say M here if you want to compile this driver as a module.
 
 config MTK_FLASHLIGHT_PPB
 	bool "Mediatek flashlight config for controlling the ppb API switch"

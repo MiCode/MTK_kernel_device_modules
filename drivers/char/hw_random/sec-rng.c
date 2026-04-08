@@ -16,7 +16,7 @@
 #define MT67XX_RNG_MAGIC	0x74726e67
 
 #define HWRNG_SMC_FAST_CALL_VAL(func_num) \
-	ARM_SMCCC_CALL_VAL(ARM_SMCCC_FAST_CALL, ARM_SMCCC_SMC_32, \
+	ARM_SMCCC_CALL_VAL(ARM_SMCCC_FAST_CALL, ARM_SMCCC_SMC_64, \
 			   ARM_SMCCC_OWNER_SIP, (func_num))
 
 #define to_sec_rng(p)	container_of(p, struct sec_rng_priv, rng)

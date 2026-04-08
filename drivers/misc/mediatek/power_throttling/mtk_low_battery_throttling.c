@@ -63,6 +63,7 @@ struct tag_bootmode {
 struct lbat_thl_priv {
 	struct tag_bootmode *tag;
 	bool notify_flag;
+	bool extreme_cold_chg_flag;
 	struct wait_queue_head notify_waiter;
 	struct timer_list notify_timer;
 	struct task_struct *notify_thread;
@@ -75,6 +76,7 @@ struct lbat_thl_priv {
 	unsigned int ppb_mode;
 	unsigned int hpt_mode;
 	unsigned int pt_shutdown_en;
+	unsigned int extreme_cold_chg_volt;
 	struct work_struct psy_work;
 	struct power_supply *psy;
 	int *temp_thd;
@@ -112,6 +114,8 @@ static struct lbat_thl_priv *lbat_data;
 static struct low_battery_callback_table lbcb_tb[LBCB_MAX_NUM] = { {0}, {0} };
 static low_battery_mbrain_callback lb_mbrain_cb;
 static DEFINE_MUTEX(exe_thr_lock);
+
+static int g_lbat_legacy_proj;
 
 static int rearrange_volt(struct lbat_intr_tbl *intr_info, unsigned int *volt_l, unsigned int *volt_h,
 	unsigned int num)
@@ -244,6 +248,13 @@ void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsig
 		return;
 	}
 
+	if (lbat_data->extreme_cold_chg_flag == true && thl_level > 1) {
+		lbat_data->cur_thl_lv = thl_level;
+		lbat_data->extreme_cold_chg_volt = thd_volt;
+		pr_info("[%s] extreme_cold_chg thl_level can't above level1\n", __func__);
+		return;
+	}
+
 	if (user == HPT && thl_level != lbat_data->cur_thl_lv) {
 		for (i = 0; i <= LOW_BATTERY_PRIO_GPU; i++) {
 			if (lbcb_tb[i].lbcb)
@@ -265,6 +276,7 @@ void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsig
 	lbat_data->lbat_mbrain_info.level = thl_level;
 	lbat_data->lbat_mbrain_info.thd_volt = thd_volt;
 	lbat_data->cur_thl_lv = thl_level;
+	lbat_data->extreme_cold_chg_volt = thd_volt;
 
 	for (i = 0; i < ARRAY_SIZE(lbcb_tb); i++) {
 		if (lbcb_tb[i].lbcb) {
@@ -286,6 +298,28 @@ void exec_throttle(unsigned int thl_level, enum LOW_BATTERY_USER_TAG user, unsig
 	pr_info("[%s] [decide_and_throttle] user=%d input=%d thl_lv=%d, volt=%d cur_thl_lv/cg_thl_lv=%d, %d\n",
 		__func__, user, input, thl_level, thd_volt, lbat_data->cur_thl_lv, lbat_data->cur_cg_thl_lv);
 }
+EXPORT_SYMBOL(exec_throttle);
+
+void exec_throttle_level_get(unsigned int *level)
+{
+	*level = lbat_data->cur_thl_lv;
+	pr_info("[%s] get low_battery_level = %d\n", __func__, lbat_data->cur_thl_lv);
+}
+EXPORT_SYMBOL(exec_throttle_level_get);
+
+void exec_throttle_volt_get(unsigned int *volt)
+{
+	*volt = lbat_data->extreme_cold_chg_volt;
+	pr_info("[%s] get low_battery_volt = %d\n", __func__, lbat_data->extreme_cold_chg_volt);
+}
+EXPORT_SYMBOL(exec_throttle_volt_get);
+
+void exec_throttle_set_extreme_cold_chg(bool flag)
+{
+	lbat_data->extreme_cold_chg_flag = flag;
+	pr_info("[%s] set extreme_cold_chg_flag = %d\n", __func__, flag);
+}
+EXPORT_SYMBOL(exec_throttle_set_extreme_cold_chg);
 
 static unsigned int convert_to_thl_lv(enum LOW_BATTERY_USER_TAG intr_type, unsigned int temp_stage,
 	unsigned int input_lv)
@@ -487,6 +521,9 @@ void exec_low_battery_callback(unsigned int thd)
 	if (lbat_lv == -1)
 		return;
 
+	if (g_lbat_legacy_proj && lbat_lv >= 3)
+		return;
+
 	decide_and_throttle(LBAT_INTR_1, lbat_lv, thd);
 }
 
@@ -501,6 +538,9 @@ void exec_dual_low_battery_callback(unsigned int thd)
 
 	lbat_lv = lbat_thd_to_lv(thd, lbat_data->temp_reg_stage, LBAT_INTR_2);
 	if (lbat_lv == -1)
+		return;
+
+	if (g_lbat_legacy_proj && lbat_lv >= 3)
 		return;
 
 	decide_and_throttle(LBAT_INTR_2, lbat_lv, thd);
@@ -784,8 +824,34 @@ static int __used pt_check_power_off(void)
 		pt_power_off_cnt = 0;
 
 	if (pt_power_off_cnt >= 4) {
-		pr_info("Powering off by PT.\n");
-		kernel_power_off();
+		// pr_info("Powering off by PT.\n");
+		// kernel_power_off();
+	}
+
+	return ret;
+}
+
+static int __used pt_check_power_off_legacy(void)
+{
+	int ret = 0, pt_power_off_lv = 2;
+	static int pt_power_off_cnt;
+
+	if (!lbat_data)
+		return 0;
+
+	if (lbat_data->cur_thl_lv == pt_power_off_lv) {
+		if (pt_power_off_cnt == 0)
+			ret = 0;
+		else
+			ret = 1;
+		pt_power_off_cnt++;
+		pr_info("[%s] %d ret:%d\n", __func__, pt_power_off_cnt, ret);
+	} else
+		pt_power_off_cnt = 0;
+
+	if (pt_power_off_cnt >= 4) {
+		// pr_info("Powering off by PT.\n");
+		// kernel_power_off();
 	}
 
 	return ret;
@@ -821,11 +887,17 @@ static void __used pt_set_shutdown_condition(void)
 
 static int pt_notify_handler(void *unused)
 {
+	int pt_power_off = 0;
 	do {
 		wait_event_interruptible(lbat_data->notify_waiter,
 			(lbat_data->notify_flag == true));
 
-		if (pt_check_power_off()) {
+		if (g_lbat_legacy_proj)
+			pt_power_off = pt_check_power_off_legacy();
+		else
+			pt_power_off = pt_check_power_off();
+
+		if (pt_power_off) {
 			/* notify battery driver to power off by SOC=0 */
 			pt_set_shutdown_condition();
 			pr_info("[PT] notify battery SOC=0 to power off.\n");
@@ -1333,7 +1405,7 @@ static int low_battery_register_setting(struct platform_device *pdev,
 static int low_battery_throttling_probe(struct platform_device *pdev)
 {
 	int ret, i;
-	int lvsys_thd_enable, vbat_thd_enable;
+	int lvsys_thd_enable, lbat_legacy_proj, vbat_thd_enable;
 	struct lbat_thl_priv *priv;
 	struct device_node *np = pdev->dev.of_node;
 
@@ -1350,6 +1422,14 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 			"[%s] failed to get lvsys-thd-enable ret=%d\n", __func__, ret);
 		lvsys_thd_enable = 0;
 	}
+
+	ret = of_property_read_u32(np, "lbat-legacy-proj", &lbat_legacy_proj);
+	if (ret) {
+		dev_notice(&pdev->dev,
+			"[%s] failed to get lbat_legacy_proj ret=%d\n", __func__, ret);
+		lbat_legacy_proj = 0;
+	}
+	g_lbat_legacy_proj = lbat_legacy_proj;
 
 	ret = of_property_read_u32(np, "vbat-thd-enable", &vbat_thd_enable);
 	if (ret) {
@@ -1431,6 +1511,8 @@ static int low_battery_throttling_probe(struct platform_device *pdev)
 
 	priv->dev = &pdev->dev;
 	lbat_data = priv;
+	lbat_data->extreme_cold_chg_flag = false;
+	lbat_data->extreme_cold_chg_volt = 0;
 	if (priv->pt_shutdown_en)
 		pt_notify_init(pdev);
 

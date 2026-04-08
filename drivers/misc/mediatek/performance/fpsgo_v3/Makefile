@@ -24,6 +24,7 @@ ccflags-y += \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
         -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cache-auditor/cpuqos_v3/  \
 
 subdir-ccflags-y += \
         -I$(srctree)/include/ \
@@ -40,6 +41,15 @@ subdir-ccflags-y += \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/ \
         -I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/ \
         -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl/ \
+        -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cache-auditor/cpuqos_v3/  \
+
+ifneq ($(strip $(CONFIG_MTK_SPM_V4)),)
+  ifneq ($(strip $(CONFIG_MTK_PMQOS)),)
+    ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/helio-dvfsrc/
+  else
+    ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/vcorefs_v3/
+  endif
+endif
 
 #fpsgo_main
 MTK_FPSGO_MAIN += fpsgo_main.o

@@ -377,16 +377,16 @@ u32 match_avail_freq(struct mtk_vcodec_dev *dev, int codec_type, u64 freq)
  * dev: device
  * Return: hz
  */
-u32 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
+u64 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 {
 	struct vcodec_perf *perf;
 	u32 dflt_op_rate;
-	u32 freq = 0;
+	u64 freq = 0;
 
 	perf = find_perf(inst, dev);
 	if (inst->codec_type == MTK_INST_DECODER) {
 		if (perf != 0) {
-			freq = inst->width * inst->height / 256 * inst->op_rate *
+			freq = (u64)inst->width * inst->height / 256 * inst->op_rate *
 				perf->cy_per_mb_1;
 
 			mtk_v4l2_debug(6, "[VDVFS] VDEC w:%u x h:%u / 256 x oprate: %d x mb %u",
@@ -414,16 +414,16 @@ u32 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 			mtk_v4l2_debug(6, "[VDVFS] VDEC w:%u x h:%u priority %d, new oprate %u",
 				inst->width, inst->height, inst->priority, inst->op_rate);
 
-			freq = inst->width * inst->height / 256 * inst->op_rate *
+			freq = (u64)inst->width * inst->height / 256 * inst->op_rate *
 				perf->cy_per_mb_1;
 
-			mtk_v4l2_debug(6, "[VDVFS] VDEC priority:%d oprate:%d, set freq = %u",
+			mtk_v4l2_debug(6, "[VDVFS] VDEC priority:%d oprate:%d, set freq = %llu",
 					inst->priority, inst->op_rate, freq);
 		}
 	} else if (inst->codec_type == MTK_INST_ENCODER) {
 		if (perf != 0) {
 			inst->op_rate = MAX(MAX(inst->op_rate_user, inst->op_rate_adaptive), inst->fps);
-			freq = inst->width * inst->height / 256 * inst->op_rate;
+			freq = (u64)inst->width * inst->height / 256 * inst->op_rate;
 			if (inst->b_frame == 0)
 				freq = freq * perf->cy_per_mb_1;
 			else
@@ -439,7 +439,7 @@ u32 calc_freq(struct vcodec_inst *inst, struct mtk_vcodec_dev *dev)
 			freq = 100000000;
 	}
 
-	mtk_v4l2_debug(6, "[VDVFS] freq = %u", freq);
+	mtk_v4l2_debug(6, "[VDVFS] freq = %llu", freq);
 	return freq;
 }
 
@@ -531,7 +531,7 @@ void update_freq(struct mtk_vcodec_dev *dev, int codec_type)
 {
 	struct list_head *item;
 	struct vcodec_inst *inst;
-	u32 freq = 0;
+	u64 freq = 0;
 	u64 freq_sum = 0;
 	u32 op_rate_sum = 0;
 	u32 target_bw_factor;
@@ -730,3 +730,9 @@ void mtk_vcodec_cpu_adaptive_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
 	}
 
 }
+
+void mtk_vcodec_cpu_pf_ctrl(struct mtk_vcodec_ctx *ctx, int enable)
+{
+
+}
+

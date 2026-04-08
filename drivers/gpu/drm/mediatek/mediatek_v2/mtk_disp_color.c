@@ -843,6 +843,9 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 	struct mtk_disp_color *color = comp_to_color(comp);
 	struct mtk_disp_color_primary *primary_data = color->primary_data;
 	struct DISP_AAL_DRECOLOR_PARAM *drecolor = &primary_data->drecolor_param;
+	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
+	struct drm_crtc *crtc = &mtk_crtc->base;
+	struct mtk_drm_private *priv = crtc->dev->dev_private;
 	unsigned int width;
 	unsigned int overhead_v;
 
@@ -877,15 +880,16 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 			comp->regs_pa + DISP_COLOR_HEIGHT(color), color->roi_height + overhead_v * 2, ~0);
 	}
 	// set color_8bit_switch register
-	if (cfg->source_bpc == 8)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN, (0x1 << 25), (0x1 << 25));
-	else if (cfg->source_bpc == 10)
-		cmdq_pkt_write(handle, comp->cmdq_base,
-			comp->regs_pa + DISP_COLOR_CFG_MAIN, (0x0 << 25), (0x1 << 25));
-	else
-		DDPINFO("Disp COLOR's bit is : %u\n", cfg->bpc);
-
+	if (priv->data->mmsys_id != MMSYS_MT6771) {
+		if (cfg->source_bpc == 8)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_COLOR_CFG_MAIN, (0x1 << 25), (0x1 << 25));
+		else if (cfg->source_bpc == 10)
+			cmdq_pkt_write(handle, comp->cmdq_base,
+				comp->regs_pa + DISP_COLOR_CFG_MAIN, (0x0 << 25), (0x1 << 25));
+		else
+			DDPINFO("Disp COLOR's bit is : %u\n", cfg->bpc);
+	}
 	if (color->data->need_bypass_shadow)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_SHADOW_CTRL, (0x1 << 0), (0x1 << 0));
@@ -906,6 +910,14 @@ static void disp_color_config(struct mtk_ddp_comp *comp,
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_COLOR_CFG_MAIN, COLOR_BYPASS_ALL, COLOR_BYPASS_ALL);
 	mutex_unlock(&primary_data->data_lock);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if(global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc) {
+		cmdq_pkt_write(handle, comp->cmdq_base,
+				   comp->regs_pa + DISP_COLOR_CFG_MAIN,
+				   COLOR_BYPASS_ALL | COLOR_SEQ_SEL, ~0);
+	}
+#endif
 }
 
 int disp_color_act_set_pqindex(struct mtk_ddp_comp *comp, void *data)
@@ -1001,6 +1013,11 @@ void disp_color_bypass(struct mtk_ddp_comp *comp, int bypass, int caller,
 
 	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
 		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+		if (global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc)
+			bypass = 1;
+#endif
 
 	mutex_lock(&primary_data->data_lock);
 	if (bypass == 1) {
@@ -1537,6 +1554,15 @@ static const struct mtk_disp_color_data mt6768_color_driver_data = {
 	.need_bypass_shadow = false,
 };
 
+static const struct mtk_disp_color_data mt6771_color_driver_data = {
+	.color_offset = DISP_COLOR_START_REG,
+	.support_color21 = false,
+	.support_color30 = false,
+	.color_window = 0x40185E57,
+	.support_shadow = false,
+	.need_bypass_shadow = false,
+};
+
 static const struct mtk_disp_color_data mt8173_color_driver_data = {
 	.color_offset = DISP_COLOR_START_REG,
 	.support_color21 = false,
@@ -1690,6 +1716,8 @@ static const struct of_device_id mtk_disp_color_driver_dt_match[] = {
 	 .data = &mt6765_color_driver_data},
 	{.compatible = "mediatek,mt6768-disp-color",
 	 .data = &mt6768_color_driver_data},
+	{.compatible = "mediatek,mt6771-disp-color",
+	 .data = &mt6771_color_driver_data},
 	{.compatible = "mediatek,mt6885-disp-color",
 	 .data = &mt6885_color_driver_data},
 	{.compatible = "mediatek,mt6877-disp-color",

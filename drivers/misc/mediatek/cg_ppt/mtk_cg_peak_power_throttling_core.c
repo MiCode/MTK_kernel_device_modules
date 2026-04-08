@@ -1387,6 +1387,22 @@ static int cgppt_get_cg_budget(void)
 	return value;
 }
 
+static int cgppt_get_cg_freq(u32 *cb_lf, u32 *cm_lf, u32 *cl_lf, u32 *g_lf)
+{
+	struct ThermalCsramCtrlBlock *ThermalCsramCtrlBlock_ptr =
+			thermal_csram_ctrl_block_get();
+
+	if (ThermalCsramCtrlBlock_ptr) {
+		*cb_lf = ioread32(&ThermalCsramCtrlBlock_ptr->g2c_b_pp_lmt_freq)*1000;
+		*cm_lf = ioread32(&ThermalCsramCtrlBlock_ptr->g2c_m_pp_lmt_freq)*1000;
+		*cl_lf = ioread32(&ThermalCsramCtrlBlock_ptr->g2c_l_pp_lmt_freq)*1000;
+	}
+
+	if (g_dlpt_sram_layout_ptr)
+		*g_lf = ioread32(&g_dlpt_sram_layout_ptr->gswrun_info.gpu_limit_freq_m)*1000;
+
+	return 0;
+}
 
 /*
  * ========================================================
@@ -1466,7 +1482,9 @@ static struct platform_data *get_platform_data(int seg_id)
 			ret_platform_data.peak_power_combo_table_cpu = peak_power_combo_table_cpu_mt6989_89t;
 		else if (seg_id == 15) //mt6989_89tt
 			ret_platform_data.peak_power_combo_table_cpu = peak_power_combo_table_cpu_mt6989_89tt;
-	}
+	} else if (strncmp(match->compatible, "mediatek,MT6991", sizeof("mediatek,MT6991")) == 0)
+		if (seg_id == 5) //mt6991_91t
+			ret_platform_data.peak_power_combo_table_cpu = peak_power_combo_table_cpu_mt6991_91t;
 
 	return &ret_platform_data;
 
@@ -1510,6 +1528,7 @@ static struct ppb_cgppt_dbg_operation cgppt_dbg_op_t = {
 	.get_cpucb_cnt = cgppt_get_cpu_combo_usage_count,
 	.get_gpucb_cnt = cgppt_get_gpu_combo_usage_count,
 	.get_cg_bgt = cgppt_get_cg_budget,
+	.get_cg_freq = cgppt_get_cg_freq,
 };
 
 /*

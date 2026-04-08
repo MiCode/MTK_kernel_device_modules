@@ -10,6 +10,7 @@
 #include <linux/usb/role.h>
 #include <linux/of_platform.h>
 #include <linux/iopoll.h>
+#include <linux/regmap.h>
 
 #include "mtu3.h"
 #include "mtu3_dr.h"
@@ -19,6 +20,9 @@
 #define USB3_PORT 3
 
 #define SSUSB_SUSPEND_RESUME_TIMEOUT (HZ) /* 1s */
+
+#define MTK_POLL_DELAY_US		10
+#define MTK_POLL_TIMEOUT		USEC_PER_SEC
 
 static inline struct ssusb_mtk *otg_sx_to_ssusb(struct otg_switch_mtk *otg_sx)
 {
@@ -108,20 +112,75 @@ static void ssusb_ip_sleep(struct ssusb_mtk *ssusb)
 
 static void switch_port_to_on(struct ssusb_mtk *ssusb, enum phy_mode mode)
 {
-
 	dev_info(ssusb->dev, "port on (%d)\n", mode);
 
 	pm_runtime_get(ssusb->dev);
+
+	if (ssusb->bus_protect)
+		regmap_write(ssusb->bus_protect, ssusb->bus_protect_clr_oft,
+						ssusb->bus_protect_mask);
 
 	ssusb_clks_enable(ssusb);
 
 	/* reset USB MAC/PHY */
 	ssusb_reset(ssusb);
 
+	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 	ssusb_vsvoter_set(ssusb);
 	ssusb_phy_power_on(ssusb);
 	ssusb_phy_set_mode(ssusb, mode);
 	ssusb_ip_sw_reset(ssusb);
+}
+
+static void ssusb_bp_check(struct ssusb_mtk *ssusb)
+{
+	int ret = 0;
+	int retry = 0;
+	u32 val = 0;
+	u32 set_oft = 0;
+	u32 en_oft = 0;
+	u32 sta_oft = 0;
+	u32 ack_mask = 0;
+
+	if (IS_ERR_OR_NULL(ssusb->bus_protect))
+		return;
+
+	set_oft = ssusb->bus_protect_set_oft;
+	en_oft = ssusb->bus_protect_en_oft;
+	sta_oft = ssusb->bus_protect_sta_oft;
+	ack_mask = ssusb->bus_protect_mask;
+
+	/* enable bus protect */
+	while (retry <= 10) {
+		if (set_oft)
+			regmap_write(ssusb->bus_protect, set_oft, ack_mask);
+		else
+			regmap_update_bits(ssusb->bus_protect, en_oft, ack_mask, ack_mask);
+
+		/* check bus protect enable setting */
+		regmap_read(ssusb->bus_protect, en_oft, &val);
+		if ((val & ack_mask) == ack_mask)
+			break;
+
+		retry++;
+	}
+
+	/* polling ACK bit */
+	ret = regmap_read_poll_timeout_atomic(ssusb->bus_protect, sta_oft,
+					val, (val & ack_mask) == ack_mask,
+					MTK_POLL_DELAY_US, MTK_POLL_TIMEOUT);
+
+	dev_info(ssusb->dev, "val=0x%x, mask=0x%x, (val & mask)=0x%x, sta_oft=0x%x\n",
+				val, ack_mask, (val & ack_mask), sta_oft);
+
+	if (ssusb->usb_bus_busy == true && ret < 0)
+		dev_info(ssusb->dev, "[WARNING] USB bus not idle, protect bit not ack\n");
+
+	if (ssusb->usb_bus_busy == false && ret < 0) {
+		dev_info(ssusb->dev, "[WARNING] USB bus is idle, but protect bit not ack\n");
+		WARN_ON(1);
+	}
+
 }
 
 static void switch_port_to_off(struct ssusb_mtk *ssusb)
@@ -133,7 +192,16 @@ static void switch_port_to_off(struct ssusb_mtk *ssusb)
 	ssusb_phy_set_mode(ssusb, PHY_MODE_INVALID);
 	ssusb_phy_power_off(ssusb);
 	ssusb_vsvoter_clr(ssusb);
+	ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
+	/* reset usb if bus is busy */
+	if (ssusb->usb_bus_busy) {
+		ssusb_reset(ssusb);
+		mdelay(100);
+		dev_info(ssusb->dev, "[WARNING] USB bus not idle, reset ssusb\n");
+	}
 	ssusb_clks_disable(ssusb);
+
+	ssusb_bp_check(ssusb);
 
 	pm_runtime_put(ssusb->dev);
 }
@@ -261,7 +329,7 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		mdelay(50);
 		/* unregister host driver */
 		ssusb_host_register(ssusb, false);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
+		ssusb_wait_power_state(ssusb, MTU3_STATE_POWER_OFF);            
 		ssusb_host_disable(ssusb);
 		switch_port_to_off(ssusb);
 		/* wait for hw to complete host off */
@@ -283,7 +351,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 			pm_runtime_put(ssusb->dev);
 		}
 		spin_unlock_irqrestore(&mtu->lock, flags);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_OFF);
 		mtu3_device_disable(mtu);
 		switch_port_to_off(ssusb);
 		pm_relax(ssusb->dev);
@@ -299,7 +366,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 	case USB_ROLE_HOST:
 		switch_port_to_on(ssusb, PHY_MODE_USB_HOST);
 		ssusb_host_enable(ssusb);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 		ssusb_set_force_mode(ssusb, MTU3_DR_FORCE_HOST);
 		/* register host driver */
 		ssusb_host_register(ssusb, true);
@@ -315,7 +381,6 @@ static void ssusb_mode_sw_work_v2(struct work_struct *work)
 		pm_stay_awake(ssusb->dev);
 		switch_port_to_on(ssusb, PHY_MODE_USB_DEVICE);
 		mtu3_device_enable(mtu);
-		ssusb_set_power_state(ssusb, MTU3_STATE_POWER_ON);
 		ssusb_set_force_mode(ssusb, MTU3_DR_FORCE_DEVICE);
 		mtu3_start(mtu);
 		break;

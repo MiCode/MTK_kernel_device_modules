@@ -22,6 +22,11 @@ int mtk_dmaheap_unregister_slc_callback(void);
 int dma_buf_set_gid(struct dma_buf *dmabuf, int gid);
 int dma_buf_get_gid(struct dma_buf *dmabuf);
 
+// MIUI ADD: Performance_PerformanceEnhance
+bool get_perf_dis_refill(void);
+void set_perf_dis_refill(bool enable);
+// END Performance_PerformanceEnhance
+
 /* return 0 means error */
 u64 dmabuf_to_secure_handle(const struct dma_buf *dmabuf);
 
@@ -60,6 +65,11 @@ int dmabuf_to_tmem_type(const struct dma_buf *dmabuf, u32 *sec_hdl);
 #endif
 
 void dma_heap_pool_prefill(unsigned long size, const char *heap_name);
+
+// MIUI ADD: Performance_PerformanceEnhance
+void mtk_heap_refill_enable(bool enable);
+// END Performance_PerformanceEnhance
+
 /*
  * in 32bit project compile the arithmetic division, the "/" will
  * cause the __aeabi_uldivmod error.

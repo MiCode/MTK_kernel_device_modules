@@ -70,6 +70,11 @@ struct mtu3_request;
 #define DP_SWITCH_MSK 1
 
 #define U2_LPM_LOCK_TIMEOUT 500
+#define U2_LPM_LOCK_INIT_TIMEOUT 3000
+
+/* quirks for U2 LPM flow control */
+#define MTU3_U2_LPM_DELAY		BIT(0)
+#define MTU3_U2_LPM_SW_MODE		BIT(1)
 
 /**
  * IP TRUNK version
@@ -172,6 +177,7 @@ enum mtu3_u2_lpm_mode {
 	MTU3_U2_LPM_DEFAULT = 0,
 	MTU3_U2_LPM_REJECT,
 	MTU3_U2_LPM_ACCEPT,
+	MTU3_U2_LPM_ACCEPT_ONCE,
 };
 
 enum mtu3_plat_type {
@@ -371,6 +377,16 @@ struct ssusb_mtk {
 	/* clkgate */
 	struct regmap *clkgate;
 	u32 clkgate_oft;
+	/* usb bus related address */
+	struct regmap *usb_mbist;
+	struct regmap *bus_protect;
+	u32 bus_protect_set_oft;
+	u32 bus_protect_clr_oft;
+	u32 bus_protect_en_oft;
+	u32 bus_protect_sta_oft;
+	u32 bus_protect_mask;
+	/* usb bus state */
+	bool usb_bus_busy;
 	/* usb power domain */
 	struct device *genpd_u2;
 	struct device *genpd_u3;
@@ -495,6 +511,8 @@ struct mtu3 {
 
 	unsigned u3_lpm:1;
 	unsigned u3_u1gou2:1;
+	unsigned int u2_lpm_quirks;
+
 	enum mtu3_u2_lpm_mode u2_lpm_reject;
 	struct timer_list lpm_timer;
 
@@ -502,10 +520,16 @@ struct mtu3 {
 	struct power_supply *usb_psy;
 	struct work_struct draw_work;
 	unsigned int vbus_draw;
+	bool lpm_timer_active;
+	spinlock_t lpm_lock;
 
 	const char *typec_name;
 	const char *typec_port_name;
 	struct typec_port *typec_port;
+#if defined(CONFIG_PDTEST_MODE)
+	bool usb_pd;
+	bool gadget_suspend;
+#endif
 };
 
 /* struct ssusb_offload */
@@ -574,6 +598,7 @@ int ssusb_clks_enable(struct ssusb_mtk *ssusb);
 void ssusb_clks_disable(struct ssusb_mtk *ssusb);
 void ssusb_ip_sw_reset(struct ssusb_mtk *ssusb);
 void ssusb_set_power_state(struct ssusb_mtk *ssusb, enum mtu3_power_state);
+int ssusb_wait_power_state(struct ssusb_mtk *ssusb, enum mtu3_power_state);
 void ssusb_set_ux_exit_lfps(struct ssusb_mtk *ssusb);
 void ssusb_set_polling_scdlfps_time(struct ssusb_mtk *ssusb);
 void ssusb_set_txdeemph(struct ssusb_mtk *ssusb);
@@ -607,6 +632,8 @@ void mtu3_gadget_disconnect(struct mtu3 *mtu);
 
 int mtu3_gadget_vbus_draw(struct usb_gadget *g, unsigned int mA);
 int mtu3_is_usb_pd(struct mtu3 *mtu);
+void mtu3_gadget_u2_lpm_lock_init(struct mtu3 *mtu);
+void mtu3_gadget_u2_lpm_lock_deinit(struct mtu3 *mtu);
 void mtu3_gadget_u2_lpm_lock(struct mtu3 *mtu, unsigned int timeout_ms);
 
 int mtu3_device_enable(struct mtu3 *mtu);
@@ -617,5 +644,10 @@ extern const struct usb_ep_ops mtu3_ep0_ops;
 
 int get_dp_switch_status(struct ssusb_mtk *ssusb);
 void ssusb_parse_toggle_vbus(struct ssusb_mtk *ssusb, struct device_node *nd);
+
+#if IS_ENABLED(CONFIG_MTK_SPM_V4)
+void register_slp_set_infra_on_func(void (*slp_set_infra_on_func)(bool infra_on));
+void register_spm_resource_req_func(bool (*spm_resource_req_func)(unsigned int user, unsigned int req_mask));
+#endif
 
 #endif

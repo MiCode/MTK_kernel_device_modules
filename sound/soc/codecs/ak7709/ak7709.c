@@ -51771,6 +51771,8 @@ static int ak7709_read_register(void *context,
 
 	regBlock = ((0xFF0000 & reg) >> 16);
 
+	rx[0] = 0;
+
 	tx[0] = (unsigned char)(CTRLIF_FORMAT_NORMAL_2BYTE);
 	tx[1] = (unsigned char)(regBlock);
 	tx[2] = (unsigned char)(reg >> 8);

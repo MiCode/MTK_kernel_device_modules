@@ -1146,6 +1146,8 @@ static u32 get_pd_pwr_status(int pd_id)
 		return 0;
 
 	for (i = 0; i < ARRAY_SIZE(pd_pwr_sta); i++) {
+		if (pd_pwr_sta[i].base == mmpc)
+			continue;
 		if (pd_id == pd_pwr_sta[i].pd_id) {
 			val = get_mt6991_reg_value(pd_pwr_sta[i].base, pd_pwr_sta[i].ofs);
 			if ((val & pd_pwr_sta[i].msk) == pd_pwr_sta[i].msk)
@@ -1159,9 +1161,11 @@ static u32 get_pd_pwr_status(int pd_id)
 }
 
 static int off_mtcmos_id[] = {
+#if !IS_ENABLED(CONFIG_COMMON_CLK_MT6991_IVI)
 	MT6991_CHK_PD_SSUSB_P1,
 	MT6991_CHK_PD_SSUSB_P23,
 	MT6991_CHK_PD_SSUSB_PHY_P2,
+#endif
 	MT6991_CHK_PD_MM_PROC,
 	MT6991_CHK_PD_ISP_TRAW,
 	MT6991_CHK_PD_ISP_DIP,
@@ -1210,8 +1214,10 @@ static int off_mtcmos_id[] = {
 static int notice_mtcmos_id[] = {
 	MT6991_CHK_PD_MD1,
 	MT6991_CHK_PD_CONN,
+#if !IS_ENABLED(CONFIG_COMMON_CLK_MT6991_IVI)
 	MT6991_CHK_PD_SSUSB_DP_PHY_P0,
 	MT6991_CHK_PD_SSUSB_P0,
+#endif
 	MT6991_CHK_PD_PEXTP_MAC0,
 	MT6991_CHK_PD_PEXTP_MAC1,
 	MT6991_CHK_PD_PEXTP_MAC2,

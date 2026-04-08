@@ -305,6 +305,7 @@ extern unsigned int is_vcp_suspending(void);
 extern unsigned int is_vcp_ao(void);
 extern int vcp_register_mminfra_cb(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 	mminfra_dump_ptr mminfra_dump_func);
+extern int vcp_mminfra_on_off_cb(bool on);
 
 /*extern vcp notify*/
 extern void vcp_send_reset_wq(enum VCP_RESET_TYPE type);

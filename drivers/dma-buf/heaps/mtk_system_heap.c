@@ -814,6 +814,9 @@ static void system_heap_buf_free(struct mtk_deferred_freelist_item *item,
 		struct mtk_dmabuf_page_pool *pool = page_pools[0];
 
 		if (pool->refill_kthread && !pool->recycling &&
+#if IS_ENABLED(CONFIG_MTK_DMABUF_HEAPS_RESERVE_POOL)
+			reserve_extend_info.scene != 1 &&
+#endif
 		    pool->need_recycle && pool->need_recycle(pool))
 			wake_up_process(pool->refill_kthread);
 	}

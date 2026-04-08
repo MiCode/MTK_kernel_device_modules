@@ -1461,6 +1461,9 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	if (of_property_read_bool(dev->of_node, "no-pm-runtime"))
 		no_pm_runtime = true;
 
+	if (dbg_version == SMI_DBG_VER_2)
+		spin_lock_init(&smi->v2.lock);
+
 	if ((dbg_version == SMI_DBG_VER_2) &&
 			!of_property_read_u32(dev->of_node, "vcodec-pwr-sta-rg", &tmp)) {
 		vcodec_dbg_data.pwr_sta_rg = ioremap(tmp, 0x4);
@@ -1480,8 +1483,6 @@ static int mtk_smi_dbg_probe(struct platform_device *dbg_pdev)
 	else
 		dev_notice(dev, "smmu not support or hwccf support\n");
 #endif
-	if (dbg_version == SMI_DBG_VER_2)
-		spin_lock_init(&smi->v2.lock);
 
 	of_property_read_u64_index(dev->of_node, "smi-mminfra-skip-rpm", 0,
 				&smi->subsys[SMI_MMINFRA].larb_skip_rpm);
@@ -2356,7 +2357,10 @@ s32 smi_monitor_start(struct device *dev, u32 common_id, u32 commonlarb_id[MAX_M
 		pr_notice("%s already shutdown, no start monitor\n", __func__);
 		return -EAGAIN;
 	}
-
+	if (common_id >= MTK_SMI_NR_MAX) {
+		pr_notice("%s invalid common_id %d\n", __func__, common_id);
+		return -EINVAL;
+	}
 	comm_base = smi->comm[common_id].va;
 	if (!comm_base) {
 		pr_notice("[smi]%s: failed to monitor comm%d\n", __func__, common_id);
@@ -2418,7 +2422,10 @@ s32 smi_monitor_stop(struct device *dev, u32 common_id, u32 *bw, enum smi_mon_id
 		pr_notice("%s already shutdown, no stop monitor\n", __func__);
 		return -EAGAIN;
 	}
-
+	if (common_id >= MTK_SMI_NR_MAX) {
+		pr_notice("%s invalid common_id %d\n", __func__, common_id);
+		return -EINVAL;
+	}
 	comm_base = smi->comm[common_id].va;
 	if (!comm_base) {
 		pr_notice("[smi]%s: failed to monitor comm%d\n", __func__, common_id);

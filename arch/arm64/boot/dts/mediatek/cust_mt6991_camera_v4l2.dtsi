@@ -97,7 +97,6 @@
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		enable-active-high;
-		gpio = <&pio 213 0x0>;
 	};
 	camera_common_avdd2: camera-common-avdd2 {
 		compatible = "regulator-fixed";
@@ -113,7 +112,6 @@
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		enable-active-high;
-		gpio = <&pio 113 0x0>;
 	};
 };
 
@@ -424,16 +422,10 @@
 	};
 	camera_pins_cam4_rst_0: cam4@0 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO193__FUNC_GPIO193>;
-			slew-rate = <1>;
-			output-low;
 		};
 	};
 	camera_pins_cam4_rst_1: cam4@1 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO193__FUNC_GPIO193>;
-			slew-rate = <1>;
-			output-high;
 		};
 	};
 	camera_pins_cam4_dvdd_0: cam4@2 {
@@ -452,16 +444,16 @@
 	};
 	camera_pins_cam4_oisen_0: cam4@4 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO212__FUNC_GPIO212>;
-			slew-rate = <1>;
-			output-low;
+			//pinmux = <PINMUX_GPIO212__FUNC_GPIO212>;
+			//slew-rate = <1>;
+			//output-low;
 		};
 	};
 	camera_pins_cam4_oisen_1: cam4@5 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO212__FUNC_GPIO212>;
-			slew-rate = <1>;
-			output-high;
+			//pinmux = <PINMUX_GPIO212__FUNC_GPIO212>;
+			//slew-rate = <1>;
+			//output-high;
 		};
 	};
 	camera_pins_cam6_mclk_off: camera-pins-cam6-mclk-off {
@@ -524,16 +516,16 @@
 	};
 	camera_pins_cam6_oisen_0: cam0@10 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO185__FUNC_GPIO185>;
-			slew-rate = <1>;
-			output-low;
+			//pinmux = <PINMUX_GPIO185__FUNC_GPIO185>;
+			//slew-rate = <1>;
+			//output-low;
 		};
 	};
 	camera_pins_cam6_oisen_1: cam0@11 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO185__FUNC_GPIO185>;
-			slew-rate = <1>;
-			output-high;
+			//pinmux = <PINMUX_GPIO185__FUNC_GPIO185>;
+			//slew-rate = <1>;
+			//output-high;
 		};
 	};
 	camera_pins_default: camdefault {
@@ -654,7 +646,7 @@
 	};
 };
 
-&i2c4 {
+&i2c14 {
 	compatible = "mediatek,mt6991-i3c";
 	#address-cells = <1>;
 	#size-cells = <2>;
@@ -926,99 +918,6 @@
 	};
 };
 
-&i2c7 {
-	status = "okay";
-	clock-frequency = <1000000>;
-
-	camera-af-main-two@b {
-		compatible = "mediatek,main2_vcm";
-		reg = <0x0b>;
-		vin-supply = <&rt5133_ldo2>;
-		port {
-			main_af_cam1: endpoint {
-				remote-endpoint = <&main_af_cam1_endpoint>;
-			};
-		};
-	};
-
-	sensor4: sensor4@10 {
-		compatible = "mediatek,imgsensor";
-		sensor-names = "imx758_mipi_raw",
-					"imx858_mipi_raw";
-		reg = <0x10>;
-		maximum-pmic-delay = <4000>;
-
-		#thermal-sensor-cells = <0>;
-
-		pinctrl-names = "mclk_off",
-				"mclk_2mA",
-				"mclk_4mA",
-				"mclk_6mA",
-				"mclk_8mA",
-				"rst_low",
-				"rst_high",
-				"dvdd_off",
-				"dvdd_on",
-				"oisen_off",
-				"oisen_on";
-		pinctrl-0 = <&camera_pins_cam4_mclk_off>;
-		pinctrl-1 = <&camera_pins_cam4_mclk_2ma>;
-		pinctrl-2 = <&camera_pins_cam4_mclk_4ma>;
-		pinctrl-3 = <&camera_pins_cam4_mclk_6ma>;
-		pinctrl-4 = <&camera_pins_cam4_mclk_8ma>;
-		pinctrl-5 = <&camera_pins_cam4_rst_0>;
-		pinctrl-6 = <&camera_pins_cam4_rst_1>;
-		pinctrl-7 = <&camera_pins_cam4_dvdd_0>;
-		pinctrl-8 = <&camera_pins_cam4_dvdd_1>;
-		pinctrl-9 = <&camera_pins_cam4_oisen_0>;
-		pinctrl-10 = <&camera_pins_cam4_oisen_1>;
-
-		avdd-supply = <&rt5133_ldo3>;
-		afvdd-supply = <&rt5133_ldo2>;
-		dovdd-supply = <&camera_common_dovdd>;
-		oisvdd-supply = <&rt5133_ldo1>;
-		base-supply = <&rt5133_base>;
-
-		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
-			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
-			<&cksys_clk CLK_CK_F26M_CK_D2>,
-			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
-			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
-			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
-			<&cksys_clk CLK_CK_OSC3>,
-			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
-			<&vlp_cksys_clk CLK_VLP_CK_CAMTG2_SEL>;
-		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
-
-		status = "okay";
-		port {
-			sensor4_out: endpoint {
-				remote-endpoint = <&seninf_csi_port_2_in>;
-			};
-		};
-	};
-
-	mtk_camera_eeprom4:camera-eeprom4@56 {
-		compatible = "mediatek,camera_eeprom";
-		reg = <0x56>;
-		names = "imx758_cust_eeprom";
-		status = "okay";
-	};
-
-	/* ois */
-	camera-ois-main@e {
-		compatible = "mediatek,dw9781c";
-		reg = <0x0e>;
-		vdd-supply = <&rt5133_ldo1>;
-		rst-supply = <&camera_common_dovdd>;
-		port {
-			main_ois_cam1: endpoint {
-				remote-endpoint = <&main_ois_cam1_endpoint>;
-			};
-		};
-	};
-};
-
 &i2c8 {
 	status = "okay";
 	clock-frequency = <1000000>;
@@ -1106,6 +1005,94 @@
 		port {
 			main_ois_cam2: endpoint {
 				remote-endpoint = <&main_ois_cam2_endpoint>;
+			};
+		};
+	};
+
+	camera-af-main-two@b {
+		compatible = "mediatek,main2_vcm";
+		reg = <0x0b>;
+		vin-supply = <&rt5133_ldo2>;
+		port {
+			main_af_cam1: endpoint {
+				remote-endpoint = <&main_af_cam1_endpoint>;
+			};
+		};
+	};
+
+	sensor4: sensor4@10 {
+		compatible = "mediatek,imgsensor";
+		sensor-names = "imx758_mipi_raw",
+					"imx858_mipi_raw";
+		reg = <0x10>;
+		maximum-pmic-delay = <4000>;
+
+		#thermal-sensor-cells = <0>;
+
+		pinctrl-names = "mclk_off",
+				"mclk_2mA",
+				"mclk_4mA",
+				"mclk_6mA",
+				"mclk_8mA",
+				"rst_low",
+				"rst_high",
+				"dvdd_off",
+				"dvdd_on",
+				"oisen_off",
+				"oisen_on";
+		pinctrl-0 = <&camera_pins_cam4_mclk_off>;
+		pinctrl-1 = <&camera_pins_cam4_mclk_2ma>;
+		pinctrl-2 = <&camera_pins_cam4_mclk_4ma>;
+		pinctrl-3 = <&camera_pins_cam4_mclk_6ma>;
+		pinctrl-4 = <&camera_pins_cam4_mclk_8ma>;
+		pinctrl-5 = <&camera_pins_cam4_rst_0>;
+		pinctrl-6 = <&camera_pins_cam4_rst_1>;
+		pinctrl-7 = <&camera_pins_cam4_dvdd_0>;
+		pinctrl-8 = <&camera_pins_cam4_dvdd_1>;
+		pinctrl-9 = <&camera_pins_cam4_oisen_0>;
+		pinctrl-10 = <&camera_pins_cam4_oisen_1>;
+
+		avdd-supply = <&rt5133_ldo3>;
+		afvdd-supply = <&rt5133_ldo2>;
+		dovdd-supply = <&camera_common_dovdd>;
+		oisvdd-supply = <&rt5133_ldo1>;
+		base-supply = <&rt5133_base>;
+
+		clocks = <&cksys_clk CLK_CK_UNIVPLL_192M_D32>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D16>,
+			<&cksys_clk CLK_CK_F26M_CK_D2>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D10>,
+			<&cksys_clk CLK_CK_UNIVPLL_192M_D8>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D16>,
+			<&cksys_clk CLK_CK_OSC3>,
+			<&cksys_clk CLK_CK_UNIVPLL_D6_D8>,
+			<&vlp_cksys_clk CLK_VLP_CK_CAMTG2_SEL>;
+		clock-names = "6", "12", "13", "19.2", "24", "26", "26_ulposc", "52", "mclk";
+
+		status = "okay";
+		port {
+			sensor4_out: endpoint {
+				remote-endpoint = <&seninf_csi_port_2_in>;
+			};
+		};
+	};
+
+	mtk_camera_eeprom4:camera-eeprom4@56 {
+		compatible = "mediatek,camera_eeprom";
+		reg = <0x56>;
+		names = "imx758_cust_eeprom";
+		status = "okay";
+	};
+
+	/* ois */
+	camera-ois-main@e {
+		compatible = "mediatek,dw9781c";
+		reg = <0x0e>;
+		vdd-supply = <&rt5133_ldo1>;
+		rst-supply = <&camera_common_dovdd>;
+		port {
+			main_ois_cam1: endpoint {
+				remote-endpoint = <&main_ois_cam1_endpoint>;
 			};
 		};
 	};

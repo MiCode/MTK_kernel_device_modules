@@ -181,6 +181,10 @@ struct STRUCT_CAM_CAL_SINGLE_2A_STRUCT {
 struct STRUCT_CAM_CAL_PDAF_STRUCT {
 	unsigned int Size_of_PDAF;
 	unsigned char Data[CAM_CAL_PDAF_SIZE];
+#ifdef __XIAOMI_CAMERA__
+	unsigned int mtk_Size_of_PDAF;
+	unsigned int qcomflag[6];
+#endif
 };
 
 /** @brief This enum defines the CAM_CAL Table.  */

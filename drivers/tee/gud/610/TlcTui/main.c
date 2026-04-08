@@ -74,6 +74,8 @@ static long tui_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		/* Write command id to user */
 		tui_dev_devel("IOCTL: sending command %d to user.", tui_cmd.id);
 
+		if (!uarg)
+			return -EFAULT;
 		if (copy_to_user(uarg, &tui_cmd, sizeof(
 						struct tlc_tui_command_t)))
 			ret = -EFAULT;
@@ -90,6 +92,8 @@ static long tui_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		tui_dev_devel("TUI_IO_ACK");
 
 		/* Read user response */
+		if (!uarg)
+			return -EFAULT;
 		if (copy_from_user(&rsp_id, uarg, sizeof(rsp_id)))
 			return -EFAULT;
 
@@ -123,6 +127,8 @@ static long tui_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		get_buffer_info(&buff_info);
 
 		/* Fill in return struct */
+		if (!uarg)
+			return -EFAULT;
 		if (copy_to_user(uarg, &buff_info, sizeof(buff_info)))
 			ret = -EFAULT;
 		else
@@ -137,6 +143,8 @@ static long tui_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 		tui_dev_devel("TUI_IO_GET_ION_FD");
 
 		/* Get the back buffer id (in the dci, from DrTui) */
+		if (!dci)
+			return -EFAULT;
 		u32 buff_id = dci->buff_id;
 
 		/* Get the fd of the ion buffer */
@@ -148,6 +156,8 @@ static long tui_ioctl(struct file *f, unsigned int cmd, unsigned long arg)
 			ion.buffer_fd = (*fptr_get_fd)(buff_id);
 
 		/* Fill in return struct */
+		if (!uarg)
+			return -EFAULT;
 		if (copy_to_user(uarg, &ion, sizeof(ion))) {
 			ret = -EFAULT;
 			break;

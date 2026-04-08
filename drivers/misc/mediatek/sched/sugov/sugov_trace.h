@@ -700,6 +700,56 @@ TRACE_EVENT(sugov_ext_util_debug,
 		__entry->scale_irq,
 		__entry->bw_dl)
 );
+
+TRACE_EVENT(sched_cpu_util_total,
+	TP_PROTO(int cpu, int cpu_util_tal, int cpu_util_mgn,
+		int cpu_util_eff, int cpu_util_cfs, int flt_util,
+		unsigned long *min, unsigned long *max, int dst_cpu, struct task_struct *p,
+		int runnable_boost),
+	TP_ARGS(cpu, cpu_util_tal, cpu_util_mgn, cpu_util_eff, cpu_util_cfs,
+		flt_util, min, max, dst_cpu, p, runnable_boost),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(int, cpu_util_tal)
+		__field(int, cpu_util_mgn)
+		__field(int, cpu_util_eff)
+		__field(int, cpu_util_cfs)
+		__field(int, flt_util)
+		__field(int, min)
+		__field(int, max)
+		__field(int, dst_cpu)
+		__field(int, pid)
+		__field(int, runnable_boost)
+		),
+
+	TP_fast_assign(
+		__entry->cpu             = cpu;
+		__entry->cpu_util_tal    = cpu_util_tal;
+		__entry->cpu_util_mgn    = cpu_util_mgn;
+		__entry->cpu_util_eff    = cpu_util_eff;
+		__entry->cpu_util_cfs    = cpu_util_cfs;
+		__entry->flt_util		= flt_util;
+		__entry->min             = min ? (int)*min : -1;
+		__entry->max             = max ? (int)*max : -1;
+		__entry->dst_cpu         = dst_cpu;
+		__entry->pid             = p ? p->pid : -1;
+		__entry->runnable_boost  = runnable_boost;
+		),
+
+	TP_printk("cpu=%1d cpu_util_tal=%4d cpu_util_mgn=%4d cpu_util_eff=%4d cpu_util_cfs=%4d flt_util=%4d rq_min_clamp=%4d rq_max_clamp=%4d dst_cpu=%1d pid=%5d runnable_boost=%d",
+		__entry->cpu,
+		__entry->cpu_util_tal,
+		__entry->cpu_util_mgn,
+		__entry->cpu_util_eff,
+		__entry->cpu_util_cfs,
+		__entry->flt_util,
+		__entry->min,
+		__entry->max,
+		__entry->dst_cpu,
+		__entry->pid,
+		__entry->runnable_boost)
+);
 #endif /* _TRACE_SCHEDULER_H */
 
 #undef TRACE_INCLUDE_PATH

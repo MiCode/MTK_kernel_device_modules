@@ -169,7 +169,7 @@ bool mddp_f_dev_add_lan_dev(char *dev_name, int netif_id)
 		return false;
 
 	/* Set LAN device entry */
-	strlcpy(mddp_f_lan_dev[i].dev_name, dev_name, IFNAMSIZ);
+	strscpy(mddp_f_lan_dev[i].dev_name, dev_name, IFNAMSIZ);
 	mddp_f_lan_dev[i].netdev = dev;
 	mddp_f_lan_dev[i].ifindex = dev->ifindex;
 	mddp_f_lan_dev[i].netif_id = netif_id;
@@ -208,7 +208,7 @@ bool mddp_f_dev_add_wan_dev(char *dev_name)
 	mddp_f_wan_netdev_set(dev);
 
 	/* Set WAN device entry */
-	strlcpy(mddp_f_wan_dev[i].dev_name, dev_name, IFNAMSIZ);
+	strscpy(mddp_f_wan_dev[i].dev_name, dev_name, IFNAMSIZ);
 	mddp_f_wan_dev[i].netdev = dev;
 	mddp_f_wan_dev[i].ifindex = dev->ifindex;
 	mddp_f_wan_dev[i].netif_id = mddp_f_dev_get_netif_id(dev_name);

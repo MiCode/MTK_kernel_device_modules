@@ -47,6 +47,8 @@
 #define LBAT_SERVICE_DBG	0
 #define LBAT_SERVICE_SYSFS	1
 
+#define THD_VOLT_ARRAY_SIZE	20
+
 struct lbat_thd_t {
 	bool is_dirty;
 	unsigned int thd_volt;
@@ -91,6 +93,8 @@ struct lbat_regs_t {
 	struct reg_t min_en;
 	struct reg_t volt_min;
 	struct reg_t adc_out;
+	struct reg_t preuv_en;
+	struct reg_t preuv_lvl;
 	int volt_full;
 };
 
@@ -178,6 +182,8 @@ struct lbat_regs_t mt6377_lbat_regs = {
 
 #define MT6379_RG_CORE_CTRL0		0x001
 #define MT6379_MASK_CELL_COUNT		BIT(7)
+#define MT6379_REG_PREUV_EN		0x43
+#define MT6379_REG_PREUV_LVL		0x210
 #define MT6379_BAT1_AUXADC_LBAT0	0x9AD
 #define MT6379_BAT1_AUXADC_LBAT1	0x9AE
 #define MT6379_BAT1_AUXADC_LBAT2	0x9AF
@@ -197,6 +203,8 @@ static struct lbat_regs_t mt6379_lbat1_regs = {
 	.min_en = { MT6379_BAT1_AUXADC_LBAT5, GENMASK(1, 0), 1 },
 	.volt_min = { MT6379_BAT1_AUXADC_LBAT6, GENMASK(11, 0), 2 },
 	.adc_out = { MT6379_BAT1_AUXADC_ADC_OUT_LBAT, GENMASK(11, 0), 2 },
+	.preuv_en = { MT6379_REG_PREUV_EN, BIT(7), 1 },
+	.preuv_lvl = { MT6379_REG_PREUV_LVL, GENMASK(2, 0), 1 },
 	.r_ratio_node_name = "lbat-service-1",
 	.volt_full = 1840,
 };
@@ -419,13 +427,14 @@ static ssize_t lbat_user_modify_thd_ext_store(struct device *dev,
 					  const char *buf, size_t size)
 {
 	char *sepstr, *substr;
-	unsigned int thd_volt[20] = {0};
+	unsigned int thd_volt[THD_VOLT_ARRAY_SIZE] = {0};
 	int i, thd_volt_size, ret = -1;
 
 	sepstr = (char *)buf;
 	while (*sepstr) {
 		if (*sepstr <= '9' && *sepstr >= '0') {
-			*(sepstr-1) = '\0';
+			if (sepstr != buf)
+				*(sepstr-1) = '\0';
 			break;
 		}
 		++sepstr;
@@ -434,6 +443,10 @@ static ssize_t lbat_user_modify_thd_ext_store(struct device *dev,
 	i = 0;
 	substr = strsep(&sepstr, " ");
 	while (substr != NULL) {
+		if (i >= THD_VOLT_ARRAY_SIZE) {
+			dev_notice(dev, "THD_VOLT_ARRAY_SIZE exceeded\n");
+			break;
+		}
 		ret = kstrtouint(substr, 10, &thd_volt[i++]);
 		if (ret < 0)
 			dev_notice(dev, "failed to use kstrtouint\n");
@@ -442,8 +455,11 @@ static ssize_t lbat_user_modify_thd_ext_store(struct device *dev,
 
 	dev_info(dev, "input thd_volt array: ");
 	thd_volt_size = 0;
-	while (thd_volt[thd_volt_size] != 0)
+	while (thd_volt[thd_volt_size] != 0) {
 		dev_info(dev, "%d ", thd_volt[thd_volt_size++]);
+		if (thd_volt_size >= THD_VOLT_ARRAY_SIZE)
+			break;
+	}
 
 	for (i = 0; i < user_count; i++) {
 		if (!strcmp(lbat_user_table[i]->name, buf))
@@ -976,6 +992,38 @@ unsigned int lbat_read_volt(void)
 	return (raw_data * lbat_regs->volt_full * r_ratio[0] / r_ratio[1]) >> LBAT_RES;
 }
 EXPORT_SYMBOL(lbat_read_volt);
+
+int lbat_set_preuv_lvl(u8 lvl)
+{
+	if (lbat_regs && lbat_regs->preuv_lvl.addr)
+		return __regmap_update_bits(regmap, &lbat_regs->preuv_lvl, lvl);
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(lbat_set_preuv_lvl);
+
+int lbat_get_preuv_lvl(u8 *lvl)
+{
+	int ret = 0;
+	unsigned int val = 0;
+
+	if (lbat_regs && lbat_regs->preuv_lvl.addr) {
+		ret = __regmap_read(regmap, &lbat_regs->preuv_lvl, &val);
+		if (ret)
+			return -EIO;
+		*lvl = (val & lbat_regs->preuv_lvl.mask) >> (ffs(lbat_regs->preuv_lvl.mask) - 1);
+		return 0;
+	}
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(lbat_get_preuv_lvl);
+
+int lbat_set_preuv_en(u8 en)
+{
+	if (lbat_regs && lbat_regs->preuv_en.addr)
+		return __regmap_update_bits(regmap, &lbat_regs->preuv_en, en);
+	return -EOPNOTSUPP;
+}
+EXPORT_SYMBOL(lbat_set_preuv_en);
 
 static irqreturn_t bat_h_int_handler(int irq, void *data)
 {

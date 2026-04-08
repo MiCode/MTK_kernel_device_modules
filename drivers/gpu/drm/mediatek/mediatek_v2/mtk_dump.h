@@ -29,6 +29,7 @@ void disp_dither_dump(struct mtk_ddp_comp *comp);
 void disp_aal_dump(struct mtk_ddp_comp *comp);
 void disp_mdp_aal_dump(struct mtk_ddp_comp *comp);
 void disp_gamma_dump(struct mtk_ddp_comp *comp);
+void mtk_splitter_dump(struct mtk_ddp_comp *comp);
 void mtk_dsc_dump(struct mtk_ddp_comp *comp);
 void mtk_merge_dump(struct mtk_ddp_comp *comp);
 void mtk_cm_dump(struct mtk_ddp_comp *comp);
@@ -71,6 +72,7 @@ int mtk_oddmr_analysis(struct mtk_ddp_comp *comp);
 
 void mtk_dump_cur_pos(struct mtk_ddp_comp *comp);
 void mtk_ovl_cur_pos_dump(struct mtk_ddp_comp *comp);
+void mtk_ovl_blender_cur_pos_dump(struct mtk_ddp_comp *comp);
 void mtk_dsi_cur_pos_dump(struct mtk_ddp_comp *comp);
 
 int mtk_dump_reg(struct mtk_ddp_comp *comp);

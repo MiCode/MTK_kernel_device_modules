@@ -3,6 +3,7 @@
  * Copyright (c) 2020 MediaTek Inc.
  */
 
+#if IS_ENABLED(CONFIG_TCPC_CLASS)
 #include <linux/kthread.h>
 
 #include "inc/tcpci.h"
@@ -69,12 +70,15 @@ static const struct tcpc_timer_desc tcpc_timer_desc[PD_TIMER_NR] = {
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_DISCOVER_ID, 40, 50),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_BIST_CONT_MODE, 30, 60),
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_HARD_RESET_COMPLETE, 4, 5),
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_NO_RESPONSE, 4500, 5500),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_HARD_RESET, 25, 35),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_SOURCE_OFF, 750, 920),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_SOURCE_ON, 390, 480),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_PS_TRANSITION, 450, 550),
-DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SENDER_RESPONSE, 27, 30),
+DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SENDER_RESPONSE, 27, 27),
 DECL_TCPC_TIMEOUT(PD_TIMER_SINK_REQUEST, 100),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SINK_WAIT_CAP, 310, 620),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SOURCE_CAPABILITY, 100, 200),
@@ -85,13 +89,13 @@ DECL_TCPC_TIMEOUT(PD_TIMER_VCONN_STABLE, 50),
 #endif	/* CONFIG_USB_PD_VCONN_STABLE_DELAY */
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_VDM_MODE_ENTRY, 40, 50),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_VDM_MODE_EXIT, 40, 50),
-DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_VDM_RESPONSE, 24, 30),
+DECL_TCPC_TIMEOUT(PD_TIMER_VDM_RESPONSE, 24),
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SOURCE_TRANSITION, 25, 35),
 DECL_TCPC_TIMEOUT(PD_TIMER_SOURCE_SWAP_STANDBY, 650),
 DECL_TCPC_TIMEOUT(PD_TIMER_SRC_RECOVER, 900 - CONFIG_USB_PD_SAFE0V_DELAY),
 #if CONFIG_USB_PD_REV30
 DECL_TCPC_TIMEOUT(PD_TIMER_CK_NOT_SUPPORTED, 40),
-DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SINK_TX, 16, 20),
+DECL_TCPC_TIMEOUT(PD_TIMER_SINK_TX, 20),
 #if CONFIG_USB_PD_REV30_PPS_SOURCE
 DECL_TCPC_TIMEOUT_RANGE(PD_TIMER_SOURCE_PPS_TOUT, 12000, 15000),
 #endif	/* CONFIG_USB_PD_REV30_PPS_SOURCE */
@@ -121,7 +125,7 @@ DECL_TCPC_TIMEOUT(PD_TIMER_CVDM_RESPONSE, CONFIG_USB_PD_CUSTOM_VDM_TOUT),
 DECL_TCPC_TIMEOUT(PD_TIMER_DFP_FLOW_DELAY, CONFIG_USB_PD_DFP_FLOW_DLY),
 DECL_TCPC_TIMEOUT(PD_TIMER_UFP_FLOW_DELAY, CONFIG_USB_PD_UFP_FLOW_DLY),
 DECL_TCPC_TIMEOUT(PD_TIMER_VCONN_READY, CONFIG_USB_PD_VCONN_READY_TOUT),
-DECL_TCPC_TIMEOUT(PD_PE_VDM_POSTPONE, 3),
+DECL_TCPC_TIMEOUT(PD_PE_VDM_POSTPONE, 1),
 #if CONFIG_USB_PD_REV30
 DECL_TCPC_TIMEOUT(PD_TIMER_DEFERRED_EVT, 5000),
 #if CONFIG_USB_PD_REV30_SNK_FLOW_DELAY_STARTUP
@@ -132,6 +136,9 @@ DECL_TCPC_TIMEOUT(PD_TIMER_PPS_REQUEST, CONFIG_USB_PD_PPS_REQUEST_INTERVAL),
 #endif	/* CONFIG_USB_PD_REV30_PPS_SINK */
 #endif	/* CONFIG_USB_PD_REV30 */
 DECL_TCPC_TIMEOUT(PD_TIMER_PE_IDLE_TOUT, 10),
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+DECL_TCPC_TIMEOUT(PD_TIMER_INT_INVAILD, 100),
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #endif /* CONFIG_USB_POWER_DELIVERY */
 
 /* TYPEC_RT_TIMER (out of spec) */
@@ -173,6 +180,10 @@ static inline void on_pe_timer_timeout(
 		struct tcpc_device *tcpc, uint32_t timer_id)
 {
 	struct pd_event pd_event = {0};
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    int rv = 0;
+    uint32_t chip_vid = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	int ret = 0;
 
 	pd_event.event_type = PD_EVT_TIMER_MSG;
@@ -236,6 +247,19 @@ static inline void on_pe_timer_timeout(
 		TCPC_INFO("pe_idle tout\n");
 		pd_put_pe_event(&tcpc->pd_port, PD_PE_IDLE);
 		break;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    case PD_TIMER_HARD_RESET_COMPLETE:
+        rv = tcpci_get_chip_vid(tcpc, &chip_vid);
+        if (!rv &&  SOUTHCHIP_PD_VID == chip_vid) {
+            pd_put_sent_hard_reset_event(tcpc);
+        }
+        break;
+
+    case PD_TIMER_INT_INVAILD:
+        tcpc->recv_msg_cnt = 0;
+        pd_put_event(tcpc, &pd_event, false);
+        break;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 	default:
 		pd_put_event(tcpc, &pd_event, false);
@@ -267,27 +291,26 @@ void tcpc_enable_lpm_timer(struct tcpc_device *tcpc, bool en)
 {
 	struct alarm *alarm =
 		&tcpc->tcpc_timer[TYPEC_RT_TIMER_LOW_POWER_MODE].alarm;
-	uint32_t r = 0, mod = 0, tout =
-		tcpc_timer_desc[TYPEC_RT_TIMER_LOW_POWER_MODE].tout;
-
-	TCPC_TIMER_DBG("%s en = %d\n", __func__, en);
+	uint32_t r = 0, mod = 0, tout = tcpc->typec_lpm_tout;
 
 	mutex_lock(&tcpc->timer_lock);
 
 	if (en) {
-		tout += tcpc->typec_lpm_tout;
-		if (tout > 300 * USEC_PER_SEC)
-			tout = 300 * USEC_PER_SEC;
-		tcpc->typec_lpm_tout = tout;
 		TCPC_TIMER_DBG("%s tout = %dms\n", __func__,
 						   tout / USEC_PER_MSEC);
 		r = tout / USEC_PER_SEC;
 		mod = tout % USEC_PER_SEC;
 		alarm_start_relative(alarm, ktime_set(r, mod * NSEC_PER_USEC));
+		tout += tcpc_timer_desc[TYPEC_RT_TIMER_LOW_POWER_MODE].tout;
+		if (tout > 300 * USEC_PER_SEC)
+			tout = 300 * USEC_PER_SEC;
+		tcpc->typec_lpm_tout = tout;
 	} else {
+		TCPC_TIMER_DBG("%s dis\n", __func__);
 		alarm_try_to_cancel(alarm);
 		tcpc->typec_lpm_tout = 0;
 	}
+	tcpc->tcpc_timer[TYPEC_RT_TIMER_LOW_POWER_MODE].en = en;
 
 	mutex_unlock(&tcpc->timer_lock);
 }
@@ -314,10 +337,12 @@ static inline void tcpc_reset_timer_range(
 {
 	int i;
 
-	for (i = start; i < end; i++)
+	for (i = start; i < end; i++) {
 		/* the timer was canceled */
 		if (alarm_try_to_cancel(&tcpc->tcpc_timer[i].alarm) == 1)
 			atomic_dec_if_positive(&tcpc->suspend_pending);
+		tcpc->tcpc_timer[i].en = false;
+	}
 }
 
 void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
@@ -325,25 +350,49 @@ void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 	uint32_t r, mod, tout;
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	int locked = 0;
+	struct pd_port *pd_port = &tcpc->pd_port;
 #endif	/* CONFIG_USB_POWER_DELIVERY */
 
 	if (timer_id >= PD_TIMER_NR) {
-		PD_BUG_ON(1);
+		PD_WARN_ON(1);
 		return;
 	}
 
-	TCPC_TIMER_DBG("Enable %s\n", tcpc_timer_desc[timer_id].name);
-
 	tout = tcpc_timer_desc[timer_id].tout;
+
+	TCPC_TIMER_DBG("Enable %s tout = %dms\n",
+			tcpc_timer_desc[timer_id].name,
+			tout / USEC_PER_MSEC);
+
+	if (timer_id == PD_TIMER_VBUS_STABLE && tcpc->pd_port.rev_quick_chg)
+	{
+		tout = 350 * USEC_PER_MSEC;
+		TCPC_TIMER_DBG("rev_quick_chg %d, Enable %s tout = %dms\n",
+			tcpc->pd_port.rev_quick_chg,
+			tcpc_timer_desc[timer_id].name,
+			tout / USEC_PER_MSEC);
+	}
+
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	locked = mutex_trylock(&tcpc->access_lock);
-	if (timer_id == PD_TIMER_SENDER_RESPONSE ||
-	    timer_id == PD_TIMER_VDM_RESPONSE) {
+	switch (timer_id) {
+	case PD_TIMER_SENDER_RESPONSE:
+		/* tSenderResponse:
+		 *	PD2.0: 24ms~30ms
+		 *	PD3.2: 27ms~33ms
+		 */
+		if (pd_check_rev30(pd_port))
+			tout += 3000;
+		fallthrough;
+	case PD_TIMER_VDM_RESPONSE:
 		if (tout > tcpc->io_time_diff)
 			tout -= tcpc->io_time_diff;
 		else
 			tout = 0;
 		tcpc->io_time_diff = 0;
+		break;
+	default:
+		break;
 	}
 	if (locked)
 		mutex_unlock(&tcpc->access_lock);
@@ -361,6 +410,7 @@ void tcpc_enable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 		atomic_inc(&tcpc->suspend_pending);
 	alarm_start_relative(&tcpc->tcpc_timer[timer_id].alarm,
 			     ktime_set(r, mod * NSEC_PER_USEC));
+	tcpc->tcpc_timer[timer_id].en = true;
 	mutex_unlock(&tcpc->timer_lock);
 }
 
@@ -369,7 +419,7 @@ int tcpc_disable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 	int ret = 0;
 
 	if (timer_id >= PD_TIMER_NR) {
-		PD_BUG_ON(1);
+		PD_WARN_ON(1);
 		return ret;
 	}
 	mutex_lock(&tcpc->timer_lock);
@@ -377,6 +427,7 @@ int tcpc_disable_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 	/* the timer was canceled */
 	if (ret == 1)
 		atomic_dec_if_positive(&tcpc->suspend_pending);
+	tcpc->tcpc_timer[timer_id].en = false;
 	mutex_unlock(&tcpc->timer_lock);
 	return ret;
 }
@@ -390,8 +441,22 @@ void tcpc_restart_timer(struct tcpc_device *tcpc, uint32_t timer_id)
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 void tcpc_reset_pe_timer(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    uint32_t chip_pid;
+    int rv = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	mutex_lock(&tcpc->timer_lock);
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    rv = tcpci_get_chip_pid(tcpc, &chip_pid);
+    if (!rv &&  SC660X_PID == chip_pid) {
+        tcpc_reset_timer_range(tcpc, 0, PD_TIMER_INT_INVAILD);
+    } else {
+        tcpc_reset_timer_range(tcpc, 0, PD_PE_TIMER_END_ID);
+    }
+#else
 	tcpc_reset_timer_range(tcpc, 0, PD_PE_TIMER_END_ID);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	mutex_unlock(&tcpc->timer_lock);
 }
 #endif /* CONFIG_USB_POWER_DELIVERY */
@@ -419,23 +484,29 @@ static void tcpc_handle_timer_triggered(struct tcpc_device *tcpc)
 	atomic_inc(&tcpc->suspend_pending);
 	tick = tcpc_get_and_clear_all_timer_tick(tcpc);
 
-#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
-	for (i = 0; i < PD_PE_TIMER_END_ID; i++) {
-		if (tick & RT_MASK64(i)) {
-			TCPC_TIMER_DBG("Trigger %s\n", tcpc_timer_desc[i].name);
-			on_pe_timer_timeout(tcpc, i);
-		}
-	}
-#endif /* CONFIG_USB_POWER_DELIVERY */
-
 	tcpci_lock_typec(tcpc);
-	for (; i < PD_TIMER_NR; i++) {
-		if (tick & RT_MASK64(i)) {
-			TCPC_TIMER_DBG("Trigger %s\n", tcpc_timer_desc[i].name);
-			tcpc_typec_handle_timeout(tcpc, i);
-		}
+	for (i = TYPEC_RT_TIMER_START_ID; i < PD_TIMER_NR; i++) {
+		if (!(tick & RT_MASK64(i)))
+			continue;
+		TCPC_TIMER_DBG("Trigger %s, en = %d\n", tcpc_timer_desc[i].name,
+			       tcpc->tcpc_timer[i].en);
+		if (!tcpc->tcpc_timer[i].en)
+			continue;
+		tcpc_typec_handle_timeout(tcpc, i);
 	}
 	tcpci_unlock_typec(tcpc);
+
+#if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
+	for (i = 0; i < PD_PE_TIMER_END_ID; i++) {
+		if (!(tick & RT_MASK64(i)))
+			continue;
+		TCPC_TIMER_DBG("Trigger %s, en = %d\n", tcpc_timer_desc[i].name,
+			       tcpc->tcpc_timer[i].en);
+		if (!tcpc->tcpc_timer[i].en)
+			continue;
+		on_pe_timer_timeout(tcpc, i);
+	}
+#endif /* CONFIG_USB_POWER_DELIVERY */
 
 	atomic_dec_if_positive(&tcpc->suspend_pending);
 }
@@ -475,6 +546,7 @@ int tcpci_timer_init(struct tcpc_device *tcpc)
 		alarm_init(&tcpc->tcpc_timer[i].alarm,
 			   ALARM_REALTIME, tcpc_timer_call);
 		tcpc->tcpc_timer[i].tcpc = tcpc;
+		tcpc->tcpc_timer[i].en = false;
 	}
 
 	pr_info("%s : init OK\n", __func__);
@@ -491,3 +563,4 @@ int tcpci_timer_deinit(struct tcpc_device *tcpc)
 	pr_info("%s : de init OK\n", __func__);
 	return 0;
 }
+#endif	/* CONFIG_TCPC_CLASS */

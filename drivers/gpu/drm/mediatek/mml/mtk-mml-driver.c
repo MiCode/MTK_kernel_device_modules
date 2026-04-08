@@ -18,6 +18,7 @@
 #include <linux/debugfs.h>
 #include <linux/minmax.h>
 #include <linux/dma-mapping.h>
+#include <uapi/linux/sched/types.h>
 
 #include <mtk-smmu-v3.h>
 
@@ -147,6 +148,7 @@ struct mml_dev {
 	struct cmdq_base *cmdq_base;
 	struct cmdq_client *cmdq_clts[MML_MAX_CMDQ_CLTS];
 	u8 cmdq_clt_cnt;
+	struct kthread_worker *kt_config;
 
 	u32 sw_ver;
 	atomic_t drm_cnt;
@@ -442,7 +444,7 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bo
 		if (!tp->path_clts[i].sys_en_ref[sysid])
 			continue;
 		/* select max one across clients */
-		tput = max(tput, tp->path_clts[i].throughput);
+		tput = max(tput, tp->path_clts[i].throughput[dpc]);
 	}
 
 	for (i = 0; i < sysqos->opp_cnt; i++) {
@@ -458,13 +460,14 @@ u32 mml_qos_update_tput(struct mml_dev *mml, bool dpc, enum mml_sys_id sysid, bo
 	if (!dpc && sysqos->dvfs_clk && enable)
 		mml_dvfs_vcp_enable(mml, sysid);
 
-	if (sysqos->current_volt == volt)	/* skip for better performance */
+	if (sysqos->current_volt[dpc] == volt)	/* skip for better performance */
 		goto done;
-	sysqos->current_level = i;
+	sysqos->current_level[dpc] = i;
 
-	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)by tput %u",
-		__func__, sysid, tp->qos[sysid].current_volt, volt, sysqos->opp_speeds[i], tput);
-	tp->qos[sysid].current_volt = volt;
+	mml_msg_qos("%s sys %u dvfs update %u to %u(%u)by tput %u dpc %u",
+		__func__, sysid, tp->qos[sysid].current_volt[dpc], volt, sysqos->opp_speeds[i],
+		tput, dpc);
+	tp->qos[sysid].current_volt[dpc] = volt;
 	mml_trace_begin("mml_volt_%u", volt);
 
 #ifndef MML_FPGA
@@ -668,6 +671,11 @@ struct mml_m2m_ctx *mml_dev_create_m2m_ctx(struct mml_dev *mml,
 exit:
 	mutex_unlock(&mml->ctx_mutex);
 	return ctx;
+}
+
+struct kthread_worker *mml_dev_get_config_worker(struct mml_dev *mml)
+{
+	return mml->kt_config;
 }
 
 struct mml_v4l2_dev *mml_get_v4l2_dev(struct mml_dev *mml)
@@ -916,6 +924,12 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	struct of_phandle_args larb_args;
 	struct resource res;
 
+	mml_log("%s comp %u", __func__, comp->id);
+
+	/* parse larb node and port from dts */
+	if (of_property_read_u8(dev->of_node, "larb-idx", &comp->larb_idx))
+		comp->larb_idx = U8_MAX;
+
 	/* parse larb node and port from dts */
 	if (of_parse_phandle_with_fixed_args(dev->of_node, "mediatek,larb",
 		1, 0, &larb_args)) {
@@ -927,6 +941,9 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 	comp->larb_port = larb_args.args[0];
 	if (!of_address_to_resource(larb_args.np, 0, &res))
 		comp->larb_base = res.start;
+
+	if (!of_property_read_u8(dev->of_node, "stash-port", &comp->larb_port_stash))
+		mml_log("%s stash port %u", __func__, comp->larb_port_stash);
 
 	larb_pdev = of_find_device_by_node(larb_args.np);
 	of_node_put(larb_args.np);
@@ -969,6 +986,73 @@ s32 mml_comp_init_larb(struct mml_comp *comp, struct device *dev)
 #endif
 
 	return 0;
+}
+
+static void mml_comp_init_path_ultra(struct mml_topology_path *path)
+{
+	u32 i, idx;
+	struct mml_comp *comp;
+
+	for (i = 0; i < path->node_cnt; i++) {
+		comp = path->nodes[i].comp;
+		if (!comp->larb_base || !comp->icc_path ||
+			comp == path->mmlsys || comp == path->mutex ||
+			comp == path->mmlsys2 || comp == path->mutex2)
+			continue;
+
+		idx = comp->larb_idx;
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+		if (idx >= ARRAY_SIZE(path->larbs)) {
+			mml_err("%s path %u comp %u larb idx %u out of range",
+				__func__, path->path_id, comp->id, comp->larb_idx);
+			return;
+		}
+#endif
+
+		path->larbs[idx].ultra_mask |= BIT(comp->larb_port);
+		/* note: in current hw arch, stash port never put port 0,
+		 * so here check larb port stash in tricky way.
+		 */
+		if (comp->larb_port_stash)
+			path->larbs[idx].ultra_mask |= BIT(comp->larb_port_stash);
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+		if (path->larbs[idx].larb_base && path->larbs[idx].larb_base != comp->larb_base)
+			mml_err("larb conflict %#010x <> %#010x",
+				(u32)path->larbs[idx].larb_base, (u32)comp->larb_base);
+#endif
+		path->larbs[idx].larb_base = comp->larb_base;
+	}
+
+#if IS_ENABLED(CONFIG_MTK_MML_DEBUG)
+	for (i = 0; i < ARRAY_SIZE(path->larbs); i++)
+		if (path->larbs[i].larb_base)
+			mml_msg("%s path %u larb idx %u base %#010x ultra %#010x",
+				__func__, path->path_id, i,
+				(u32)path->larbs[i].larb_base, path->larbs[i].ultra_mask);
+#endif
+}
+
+void mml_comp_init_larb_idx(struct mml_dev *mml, struct mml_topology_cache *cache)
+{
+	u32 i;
+
+	for (i = 1; i < ARRAY_SIZE(mml->comps); i++) {
+		struct mml_comp *comp;
+
+		if (!mml->comps[i])
+			break;
+		comp = mml->comps[i];
+		if (comp->larb_idx == U8_MAX)
+			comp->larb_idx = comp->sysid;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(cache->paths); i++) {
+		if (!cache->paths[i].clt)
+			break;
+
+		mml_comp_init_path_ultra(&cache->paths[i]);
+	}
 }
 
 s32 mml_comp_pw_enable(struct mml_comp *comp, const s8 mode)
@@ -1313,6 +1397,7 @@ void mml_comp_qos_calc(struct mml_comp *comp, struct mml_task *task,
 	const struct mml_frame_dest *dest = &cfg->info.dest[0];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	u32 datasize, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw;
+	struct mml_comp_bw *bw = &comp->bw[cfg->dpc];
 	bool hrt;
 
 	datasize = comp->hw_ops->qos_datasize_get(task, ccfg);
@@ -1365,10 +1450,10 @@ void mml_comp_qos_calc(struct mml_comp *comp, struct mml_task *task,
 	/* store for debug log */
 	task->pipe[ccfg->pipe].bandwidth = max(srt_bw, task->pipe[ccfg->pipe].bandwidth);
 
-	comp->srt_bw = max_t(u32, comp->srt_bw, srt_bw);
-	comp->hrt_bw = max_t(u32, comp->hrt_bw, hrt_bw);
-	comp->stash_srt_bw = max_t(u32, comp->stash_srt_bw, stash_srt_bw);
-	comp->stash_hrt_bw = max_t(u32, comp->stash_hrt_bw, stash_hrt_bw);
+	bw->srt_bw = max_t(u32, bw->srt_bw, srt_bw);
+	bw->hrt_bw = max_t(u32, bw->hrt_bw, hrt_bw);
+	bw->stash_srt_bw = max_t(u32, bw->stash_srt_bw, stash_srt_bw);
+	bw->stash_hrt_bw = max_t(u32, bw->stash_hrt_bw, stash_hrt_bw);
 
 	mml_msg("%s comp %u bw %u %u stash %u %u tput %u%s",
 		__func__, comp->id, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw, throughput,
@@ -1380,14 +1465,17 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 {
 	struct mml_frame_config *cfg = task->config;
 	struct mml_dev *mml = cfg->mml;
+	const struct mml_frame_info *info = &cfg->info;
+	const struct mml_frame_dest *dest = &info->dest[0];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
-	const u32 srt_bw = comp->srt_bw, hrt_bw = comp->hrt_bw;
-	const u32 stash_srt_bw = comp->stash_srt_bw, stash_hrt_bw = comp->stash_hrt_bw;
+	struct mml_comp_bw *bw = &comp->bw[cfg->dpc];
+	u32 srt_bw = bw->srt_bw, hrt_bw = bw->hrt_bw;
+	u32 stash_srt_bw = bw->stash_srt_bw, stash_hrt_bw = bw->stash_hrt_bw;
 	bool hrt = cfg->info.mode == MML_MODE_RACING || cfg->info.mode == MML_MODE_DIRECT_LINK;
 	bool updated = false;
 
 	/* store for debug log */
-	task->pipe[ccfg->pipe].bandwidth = max(comp->srt_bw, task->pipe[ccfg->pipe].bandwidth);
+	task->pipe[ccfg->pipe].bandwidth = max(srt_bw, task->pipe[ccfg->pipe].bandwidth);
 	if (srt_bw == mml->port_srt_bw[comp->sysid][comp->larb_port] &&
 		hrt_bw == mml->port_hrt_bw[comp->sysid][comp->larb_port])
 		goto skip_update;
@@ -1418,11 +1506,35 @@ void mml_comp_qos_set(struct mml_comp *comp, struct mml_task *task,
 			hrt_icc = MBps_to_icc(hrt_bw);
 		}
 
+		if (dest->rotate != MML_ROT_0 && !MML_FMT_COMPRESS(info->src.format) &&
+			info->mode == MML_MODE_DIRECT_LINK) {
+			mml_msg_qos("org srt:%d hrt:%d stash_srt_bw:%d stash_hrt_bw:%d",
+				srt_icc, hrt_icc, stash_srt_bw, stash_hrt_bw);
+			srt_icc += 512;
+			hrt_icc = hrt_icc ? hrt_icc + 512 : 0;
+			stash_srt_bw = stash_srt_bw * 2;
+			stash_hrt_bw = stash_hrt_bw * 2;
+			mml_msg_qos("final srt:%d hrt:%d stash_srt_bw:%d stash_hrt_bw:%d",
+				srt_icc, hrt_icc, stash_srt_bw, stash_hrt_bw);
+		}
+
 		mtk_icc_set_bw(comp->icc_dpc_path, srt_icc, hrt_icc);
 		if (comp->icc_stash_path)
 			mtk_icc_set_bw(comp->icc_dpc_stash_path,
 				MBps_to_icc(stash_srt_bw), MBps_to_icc(stash_hrt_bw));
 	} else {
+		if (dest->rotate != MML_ROT_0 && !MML_FMT_COMPRESS(info->src.format) &&
+			info->mode == MML_MODE_DIRECT_LINK) {
+			mml_msg_qos("org srt:%d hrt:%d stash_srt_bw:%d stash_hrt_bw:%d",
+				srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw);
+			srt_bw += 512;
+			hrt_bw = hrt_bw ? hrt_bw + 512 : 0;
+			stash_srt_bw = stash_srt_bw * 2;
+			stash_hrt_bw = stash_hrt_bw * 2;
+			mml_msg_qos("final srt:%d hrt:%d stash_srt_bw:%d stash_hrt_bw:%d",
+				srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw);
+		}
+
 		mtk_icc_set_bw(comp->icc_path,
 			MBps_to_icc(srt_bw), MBps_to_icc(hrt_bw));
 		if (comp->icc_stash_path)
@@ -1443,7 +1555,7 @@ skip_update:
 		task->dpc_hrt_write_bw[comp->sysid] += stash_hrt_bw;
 	}
 
-	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, (comp->srt_bw << 16) | comp->hrt_bw);
+	mml_mmp(bandwidth, MMPROFILE_FLAG_PULSE, comp->id, ((u32)bw->srt_bw << 16) | bw->hrt_bw);
 
 	mml_msg_qos("%s comp %u %s bw %u %u stash %u %u by throughput %u pixel %u%s%s dpc %u hrtmode %d",
 		__func__, comp->id, comp->name, srt_bw, hrt_bw, stash_srt_bw, stash_hrt_bw,
@@ -1455,6 +1567,7 @@ skip_update:
 void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc)
 {
 	struct mml_dev *mml = task->config->mml;
+	struct mml_comp_bw *bw = &comp->bw[dpc];
 
 #ifndef MML_FPGA
 	if (dpc) {
@@ -1467,10 +1580,10 @@ void mml_comp_qos_clear(struct mml_comp *comp, struct mml_task *task, bool dpc)
 			mtk_icc_set_bw(comp->icc_stash_path, 0, 0);
 	}
 #endif
-	comp->srt_bw = 0;
-	comp->hrt_bw = 0;
-	comp->stash_srt_bw = 0;
-	comp->stash_hrt_bw = 0;
+	bw->srt_bw = 0;
+	bw->hrt_bw = 0;
+	bw->stash_srt_bw = 0;
+	bw->stash_hrt_bw = 0;
 	mml->port_srt_bw[comp->sysid][comp->larb_port] = 0;
 	mml->port_hrt_bw[comp->sysid][comp->larb_port] = 0;
 
@@ -2246,6 +2359,18 @@ static int mml_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, mml);
 
+	mml->kt_config = kthread_create_worker(0, "mml_work0");
+	if (IS_ERR(mml->kt_config)) {
+		ret = PTR_ERR(mml->kt_config);
+		mml_log("%s create thread fail %d", __func__, ret);
+		goto err_sys_add;
+	} else {
+		struct sched_param kt_param = { .sched_priority = MAX_RT_PRIO - 1 };
+
+		ret = sched_setscheduler(mml->kt_config->task, SCHED_FIFO, &kt_param);
+		mml_log("%s thread work0 ret %d", __func__, ret);
+	}
+
 	mml->pdev = pdev;
 	mutex_init(&mml->sys_state_mutex);
 	mutex_init(&mml->ctx_mutex);
@@ -2298,11 +2423,11 @@ static int mml_probe(struct platform_device *pdev)
 	if (mml->dpc_disable)
 		mml_log("dpc disable by project");
 
-#if defined(MML_IR_SUPPORT)
+//#if defined(MML_IR_SUPPORT)
 	mml->racing_en = of_property_read_bool(dev->of_node, "racing-enable");
 	if (mml->racing_en)
 		mml_log("IR mode enable");
-#endif
+//#endif
 
 	if (of_property_read_u8(dev->of_node, "mml-max-layer", &mml->max_layer))
 		mml->max_layer = MML_MAX_LAYER;
@@ -2413,6 +2538,11 @@ static int mml_remove(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct mml_dev *mml = platform_get_drvdata(pdev);
+
+	if (mml->kt_config) {
+		kthread_destroy_worker(mml->kt_config);
+		mml->kt_config = NULL;
+	}
 
 #ifdef MML_DEBUG_PROC
 	proc_remove(mml->dbg_procfs);

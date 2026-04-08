@@ -9,7 +9,7 @@
 #include <linux/delay.h>
 #include <linux/soc/mediatek/mtk_ise_lpm.h>
 #include <linux/soc/mediatek/mtk-ise-mbox.h>
-#include <ufs/ufshcd.h>
+#include "xiaomi/include/ufshcd.h"
 #include <ufshcd-priv.h>
 
 #include "ufs-mediatek-dbg.h"

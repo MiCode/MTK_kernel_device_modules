@@ -21,7 +21,7 @@
 #include <linux/power_supply.h>
 #include "mtk_disp_notify.h"
 #include <linux/fb.h>
-
+#include "mtk_disp_notify.h"
 
 static int cl_bcct_klog_on;
 
@@ -1080,28 +1080,27 @@ static void bcct_lcmoff_switch(int onoff)
 static int bcct_lcmoff_fb_notifier_callback(
 struct notifier_block *self, unsigned long event, void *data)
 {
-	struct fb_event *evdata = data;
 	int blank;
 
 	/* skip if it's not a blank event */
-	if ((event != FB_EVENT_BLANK) || (data == NULL))
+	if ((event != MTK_DISP_EVENT_BLANK) || (data == NULL))
 		return 0;
 
 	/* skip if policy is not enable */
 	if (!chrlmt_lcmoff_policy_enable)
 		return 0;
 	pr_info("enter bcct lcmoff fb!\n");
-	blank = *(int *)evdata->data;
+	blank = *(int *)data;
 	mtk_cooler_bcct_dprintk("%s: blank = %d, event = %lu\n",
 						__func__, blank, event);
 
 	switch (blank) {
 	/* LCM ON */
-	case FB_BLANK_UNBLANK:
+	case MTK_DISP_BLANK_UNBLANK:
 		bcct_lcmoff_switch(1);
 		break;
 		/* LCM OFF */
-	case FB_BLANK_POWERDOWN:
+	case MTK_DISP_BLANK_POWERDOWN:
 		bcct_lcmoff_switch(0);
 		break;
 	default:

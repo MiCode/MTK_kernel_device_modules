@@ -365,6 +365,76 @@ TRACE_EVENT(turbo_vip,
 		__entry->enf_mask)
 );
 
+TRACE_EVENT(vip_loom,
+	TP_PROTO(const char *desc, int val, const char *caller),
+	TP_ARGS(desc, val, caller),
+	TP_STRUCT__entry(
+		__string(desc, desc)
+		__field(int, val)
+		__string(caller, caller)
+	),
+
+	TP_fast_assign(
+		__assign_str(desc, desc);
+		__entry->val = val;
+		__assign_str(caller, caller);
+	),
+
+	TP_printk("desc=%s val=%d caller=%s",
+		__get_str(desc),
+		__entry->val,
+		__get_str(caller))
+);
+
+TRACE_EVENT(loom_bind_to_specify_cpu,
+
+	TP_PROTO(unsigned int loom_affinity_enable, int *pid, int *aff_cpu, int dup_set, int ret),
+	TP_ARGS(loom_affinity_enable, pid, aff_cpu, dup_set, ret),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, loom_affinity_enable)
+		__array(int, pid, 4)
+		__array(int, aff_cpu, 4)
+		__field(int, dup_set)
+		__field(int, ret)
+	),
+
+	TP_fast_assign(
+		__entry->loom_affinity_enable = loom_affinity_enable;
+		memcpy(__entry->pid, pid, sizeof(int)*4);
+		memcpy(__entry->aff_cpu, aff_cpu, sizeof(int)*4);
+		__entry->dup_set = dup_set;
+		__entry->ret = ret;
+	),
+
+	TP_printk("enable=%u, pid=%d|%d|%d|%d, aff_cpu=%d|%d|%d|%d, dup_set=%d, ret=%d",
+		__entry->loom_affinity_enable, __entry->pid[0], __entry->pid[1],
+		__entry->pid[2], __entry->pid[3], __entry->aff_cpu[0], __entry->aff_cpu[1],
+		__entry->aff_cpu[2], __entry->aff_cpu[3], __entry->dup_set, __entry->ret)
+);
+
+TRACE_EVENT(loom_affinity_ctl,
+	TP_PROTO(int parent_pid, int dedi_cpu, int child_pid, unsigned int child_aff),
+	TP_ARGS(parent_pid, dedi_cpu, child_pid, child_aff),
+
+	TP_STRUCT__entry(
+		__field(int, parent_pid)
+		__field(int, dedi_cpu)
+		__field(int, child_pid)
+		__field(unsigned int, child_aff)
+	),
+
+	TP_fast_assign(
+		__entry->parent_pid = parent_pid;
+		__entry->dedi_cpu = dedi_cpu;
+		__entry->child_pid = child_pid;
+		__entry->child_aff = child_aff;
+	),
+
+	TP_printk("parent_pid=%d, dedi_cpu=%d, child_pid=%d, child_aff=%x",
+		__entry->parent_pid, __entry->dedi_cpu, __entry->child_pid, __entry->child_aff)
+);
+
 #endif /*_TRACE_TASK_TURBO_H */
 
 #undef TRACE_INCLUDE_PATH

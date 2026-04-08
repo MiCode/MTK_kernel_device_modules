@@ -228,6 +228,7 @@ unsigned int clksys_get_reg(unsigned int offset)
 	return 0;
 #endif
 }
+EXPORT_SYMBOL(clksys_get_reg);
 
 void clksys_set_reg(unsigned int offset, unsigned int value, unsigned int mask)
 {

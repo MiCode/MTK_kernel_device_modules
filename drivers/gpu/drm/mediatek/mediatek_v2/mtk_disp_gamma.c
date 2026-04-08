@@ -30,6 +30,10 @@
 #include <linux/sched.h>
 #include <uapi/linux/sched/types.h>
 
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+#include "mtk_disp_ccorr.h"
+#endif
+
 #ifdef CONFIG_LEDS_MTK_MODULE
 #define CONFIG_LEDS_BRIGHTNESS_CHANGED
 #include <linux/leds-mtk.h>
@@ -112,13 +116,13 @@ static bool disp_gamma_clock_is_on(struct mtk_ddp_comp *comp)
 	struct mtk_disp_gamma *comp_gamma_data = NULL;
 
 	if (!comp->mtk_crtc->is_dual_pipe &&
-			atomic_read(&gamma_data->gamma_is_clock_on) == 1)
+			atomic_read(&gamma_data->is_clock_on) == 1)
 		return true;
 
 	if (comp->mtk_crtc->is_dual_pipe) {
 		comp_gamma_data = comp_to_gamma(gamma_data->companion);
-		if (atomic_read(&gamma_data->gamma_is_clock_on) == 1 &&
-			comp_gamma_data && atomic_read(&comp_gamma_data->gamma_is_clock_on) == 1)
+		if (atomic_read(&gamma_data->is_clock_on) == 1 &&
+			comp_gamma_data && atomic_read(&comp_gamma_data->is_clock_on) == 1)
 			return true;
 	}
 
@@ -134,6 +138,11 @@ static void disp_gamma_bypass(struct mtk_ddp_comp *comp, int bypass,
 
 	DDPINFO("%s: comp: %s, bypass: %d, caller: %d, relay_state: 0x%x\n",
 		__func__, mtk_dump_comp_str(comp), bypass, caller, primary_data->relay_state);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if (global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc)
+		bypass = 1;
+#endif
 
 	mutex_lock(&primary_data->data_lock);
 	if (bypass == 1) {
@@ -334,24 +343,24 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 	struct mtk_drm_crtc *mtk_crtc = comp->mtk_crtc;
 	struct DISP_GAMMA_12BIT_LUT_T *config = data;
 	struct mtk_ddp_comp *companion = gamma->companion;
-	int ret = -1;
+	int ret = -1, pm_ret = 0;
 
 	if (!data || !mtk_crtc) {
 		DDPPR_ERR("%s, invalid data or crtc!\n", __func__);
 		return ret;
 	}
 	// 1. kick idle
-	DDP_MUTEX_LOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_LOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 	if (!mtk_crtc->enabled) {
 		DDPMSG("%s:%d, slepted\n", __func__, __LINE__);
-		DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+		DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 		return 0;
 	}
 
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 
-	DDP_MUTEX_UNLOCK(&mtk_crtc->lock, __func__, __LINE__);
+	DDP_MUTEX_UNLOCK_CONDITION(&mtk_crtc->lock, __func__, __LINE__, false);
 
 	CRTC_MMP_EVENT_START(0, gamma_ioctl, 0, 0);
 	// 2. lock for protect crtc & power
@@ -364,17 +373,26 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 	}
 	memcpy(&primary_data->gamma_12b_lut, (struct DISP_GAMMA_12BIT_LUT_T *)data,
 			sizeof(struct DISP_GAMMA_12BIT_LUT_T));
+	pm_ret = mtk_vidle_pq_power_get(__func__);
+	if (pm_ret) {
+		DDPPR_ERR("%s pq_power_get failed %d, skip\n", __func__, pm_ret);
+		ret = -EFAULT;
+		goto _return;
+	}
 
+	mutex_lock(&primary_data->data_lock);
 	if (disp_gamma_write_sram(comp, 0, config) < 0) {
-		mutex_unlock(&primary_data->clk_lock);
 		DDPPR_ERR("%s: failed\n", __func__);
-		return -EFAULT;
+		ret = -EFAULT;
+		mutex_unlock(&primary_data->data_lock);
+		goto _return;
 	}
 	if ((comp->mtk_crtc != NULL) && comp->mtk_crtc->is_dual_pipe) {
 		if (disp_gamma_write_sram(gamma->companion, 0, config) < 0) {
-			mutex_unlock(&primary_data->clk_lock);
 			DDPPR_ERR("%s: comp_gamma1 failed\n", __func__);
-			return -EFAULT;
+			ret = -EFAULT;
+			mutex_unlock(&primary_data->data_lock);
+			goto _return;
 		}
 	}
 
@@ -382,15 +400,18 @@ static int disp_gamma_cfg_set_12bit_gammalut(struct mtk_ddp_comp *comp,
 	disp_gamma_flip_sram(comp, handle);
 	if (comp->mtk_crtc->is_dual_pipe && companion)
 		disp_gamma_flip_sram(companion, handle);
+	mutex_unlock(&primary_data->data_lock);
 
 	if (!atomic_read(&primary_data->gamma_sram_hw_init)) {
 		atomic_set(&primary_data->gamma_sram_hw_init, 1);
 		disp_gamma_bypass(comp, 0, PQ_FEATURE_DEFAULT, handle);
 		DDPINFO("%s, set gamma unrelay\n", __func__);
 	}
-
-	CRTC_MMP_EVENT_END(0, gamma_ioctl, 0, 1);
+_return:
+	if (!pm_ret)
+		mtk_vidle_pq_power_put(__func__);
 	mutex_unlock(&primary_data->clk_lock);
+	CRTC_MMP_EVENT_END(0, gamma_ioctl, 0, 1);
 
 	return ret;
 }
@@ -399,7 +420,6 @@ static int disp_gamma_set_lut(struct mtk_ddp_comp *comp,
 	struct cmdq_pkt *handle, int lock, struct DISP_GAMMA_LUT_T *user_gamma_lut)
 {
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
-	struct mtk_disp_gamma_primary *primary_data = gamma->primary_data;
 	int i, ret = 0;
 
 	DDPINFO("%s: Set module(%d) lut\n", __func__, comp->id);
@@ -741,12 +761,17 @@ static void disp_gamma_config(struct mtk_ddp_comp *comp,
 			disp_gamma_flip_sram(comp, handle);
 		}
 	}
-
 	if (primary_data->relay_state != 0)
 		cmdq_pkt_write(handle, comp->cmdq_base,
 			comp->regs_pa + DISP_GAMMA_CFG, GAMMA_RELAY_MODE, GAMMA_RELAY_MODE);
 
 	mutex_unlock(&primary_data->data_lock);
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO) && IS_ENABLED(CONFIG_DRM_MTK_R2Y)
+	if(global_r2y_mtk_crtc[0] == comp->mtk_crtc || global_r2y_mtk_crtc[1] == comp->mtk_crtc)
+		disp_gamma_bypass(comp, 1, 0, handle);
+#endif
+
 }
 
 static void disp_gamma_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
@@ -839,7 +864,7 @@ static void disp_gamma_prepare(struct mtk_ddp_comp *comp)
 	struct mtk_disp_gamma *gamma = comp_to_gamma(comp);
 
 	mtk_ddp_comp_clk_prepare(comp);
-	atomic_set(&gamma->gamma_is_clock_on, 1);
+	atomic_set(&gamma->is_clock_on, 1);
 }
 
 static void disp_gamma_unprepare(struct mtk_ddp_comp *comp)
@@ -849,7 +874,7 @@ static void disp_gamma_unprepare(struct mtk_ddp_comp *comp)
 
 	DDPINFO("%s: compid: %d\n", __func__, comp->id);
 	mutex_lock(&primary_data->clk_lock);
-	atomic_set(&gamma->gamma_is_clock_on, 0);
+	atomic_set(&gamma->is_clock_on, 0);
 	primary_data->need_refinalize = true;
 	mtk_ddp_comp_clk_unprepare(comp);
 	mutex_unlock(&primary_data->clk_lock);
@@ -1278,6 +1303,8 @@ static const struct of_device_id mtk_disp_gamma_driver_dt_match[] = {
 	  .data = &mt6989_driver_data,},
 	{ .compatible = "mediatek,mt6878-disp-gamma",
 	  .data = &mt6878_driver_data,},
+	{ .compatible = "mediatek,mt6771-disp-gamma",
+	  .data = &legacy_driver_data,},
 	{ .compatible = "mediatek,mt6991-disp-gamma",
 	  .data = &mt6991_driver_data,},
 	{ .compatible = "mediatek,mt6899-disp-gamma",

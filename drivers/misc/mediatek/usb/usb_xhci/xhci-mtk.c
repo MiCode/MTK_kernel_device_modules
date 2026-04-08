@@ -394,6 +394,8 @@ static void xhci_mtk_snd_disconnect(struct snd_usb_audio *chip)
 	if (!chip)
 		return;
 
+	xhci_mtk_deinit_snd_quirk(chip);
+
 	xhci = hcd_to_xhci(bus_to_hcd(chip->dev->bus));
 	ops = xhci_vendor_get_ops_(xhci);
 
@@ -844,6 +846,7 @@ static int xhci_mtk_probe(struct platform_device *pdev)
 
 	mtk->lpm_support = of_property_read_bool(node, "usb3-lpm-capable");
 	mtk->u2_lpm_disable = of_property_read_bool(node, "usb2-lpm-disable");
+	dev_err(dev, "u2 lpm is:%d\n", mtk->u2_lpm_disable);
 	/* optional property, ignore the error if it does not exist */
 	of_property_read_u32(node, "mediatek,u3p-dis-msk",
 			     &mtk->u3p_dis_msk);

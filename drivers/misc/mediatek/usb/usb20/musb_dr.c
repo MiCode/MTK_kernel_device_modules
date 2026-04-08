@@ -359,6 +359,7 @@ static int mt_usb_role_sw_register(struct otg_switch_mtk *otg_sx)
 	role_sx_desc.get = mt_usb_role_sx_get;
 	role_sx_desc.fwnode = dev_fwnode(glue->dev);
 	role_sx_desc.driver_data = glue;
+	role_sx_desc.allow_userspace_control = true;
 	otg_sx->role_sw = usb_role_switch_register(glue->dev, &role_sx_desc);
 
 	if (IS_ERR(otg_sx->role_sw))

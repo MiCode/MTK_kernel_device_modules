@@ -155,6 +155,15 @@ int vcp_register_mminfra_cb_ex(mminfra_pwr_ptr fpt_on, mminfra_pwr_ptr fpt_off,
 }
 EXPORT_SYMBOL_GPL(vcp_register_mminfra_cb_ex);
 
+int vcp_mminfra_on_off_cb_ex(bool on)
+{
+	if(!vcp_fp || !vcp_fp->vcp_mminfra_on_off_cb)
+		return -1;
+
+	return vcp_fp->vcp_mminfra_on_off_cb(on);
+}
+EXPORT_SYMBOL_GPL(vcp_mminfra_on_off_cb_ex);
+
 struct device *vcp_get_io_device_ex(enum VCP_IOMMU_DEV io_num)
 {
 	if (!vcp_fp || !vcp_fp->vcp_get_io_device)

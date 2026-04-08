@@ -5,6 +5,7 @@
  */
 
 #include <linux/component.h>
+#include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
@@ -17,7 +18,9 @@
 #include "mtk-mml-drm-adaptor.h"
 #include "mtk-mml-mmp.h"
 
-#define DISP_MUTEX_CFG	0x008
+#define MUTEX_INTEN	0x000
+#define MUTEX_INSTA	0x004
+#define MUTEX_CFG	0x008
 
 #define MUTEX_MAX_MOD_REGS	((MML_MAX_COMPONENTS + 31) >> 5)
 
@@ -26,12 +29,10 @@
 #define MUTEX_SHADOW_CTRL(id)	(0x24 + (id) * 0x20)
 #define MUTEX_MOD(id, offset)	((offset) + (id) * 0x20)
 #define MUTEX_SOF(id, offset)	((offset) + (id) * 0x20)
+#define MUTEX_RST(mux_id, offset)	((offset) + (mux_id) * 0x20)
 
-int mml_mutex_dl_sof;
+int mml_mutex_dl_sof = 0x8;
 module_param(mml_mutex_dl_sof, int, 0644);
-
-#define mutex_dl_perf_en	(mml_mutex_dl_sof & BIT(1))
-#define mutex_dl_perf_log	(mml_mutex_dl_sof & BIT(2))
 
 struct mutex_data {
 	/* Count of display mutex HWs */
@@ -39,11 +40,13 @@ struct mutex_data {
 	/* Offsets and count of MUTEX_MOD registers per mutex */
 	u32 mod_offsets[MUTEX_MAX_MOD_REGS];
 	u32 sof_offset;
+	u32 rst_offset;
 	u32 mod_cnt;
 	bool sofgrp_assign;
 	u8 gpr[MML_PIPE_CNT];
 
 	u32 (*get_mutex_sof)(struct mml_mutex_ctl *ctl);
+	irqreturn_t (*handler)(int irq, void *dev_id);
 };
 
 struct mutex_module {
@@ -58,7 +61,9 @@ struct mml_mutex {
 	struct mtk_ddp_comp ddp_comp;
 	struct mml_comp comp;
 	const struct mutex_data *data;
+	u32 idx;
 	bool ddp_bound;
+	bool irq;
 	atomic_t connect[MML_PIPE_CNT];
 	enum mml_mode connected_mode;
 
@@ -107,6 +112,9 @@ static s32 mutex_enable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 	if (mutex_id < 0)
 		return -EINVAL;
 
+	if (mml_irq && mutex->irq)
+		cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_INTEN, U32_MAX, U32_MAX);
+
 	/* Do config mutex mod only in dc mode.
 	 * For direct link mode, config from mml side (which mutex_sof is empty),
 	 * since mml flow has correct topology.
@@ -143,14 +151,21 @@ static s32 mutex_disable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 			 const struct mml_topology_path *path)
 {
 	const phys_addr_t base_pa = mutex->comp.base_pa;
+	const u32 rst_off = mutex->data->rst_offset;
 	s32 mutex_id = -1;
+	u32 offset;
 	u32 i;
 
-	for (i = 0; i < path->node_cnt; i++) {
-		struct mutex_module *mod = &mutex->modules[path->nodes[i].id];
+	if (mutex->data->sofgrp_assign) {
+		for (i = 0; i < path->node_cnt; i++) {
+			struct mutex_module *mod = &mutex->modules[path->nodes[i].id];
 
-		if (mod->select)
-			mutex_id = mod->mutex_id;
+			if (mod->select)
+				mutex_id = mod->mutex_id;
+		}
+	} else {
+		/* use mutex stream to trigger related sof group */
+		mutex_id = path->mux_group;
 	}
 
 	if (mutex_id < 0)
@@ -158,7 +173,16 @@ static s32 mutex_disable(struct mml_mutex *mutex, struct cmdq_pkt *pkt,
 
 	cmdq_pkt_write(pkt, NULL, base_pa + MUTEX_EN(mutex_id), 0x0, U32_MAX);
 
-	mml_mmp(mutex_dis, MMPROFILE_FLAG_PULSE, mutex_id, path->mux_group);
+	if (rst_off) {
+		offset = MUTEX_RST(mutex_id, rst_off);
+		cmdq_pkt_write(pkt, NULL, base_pa + offset, 1, U32_MAX);
+		cmdq_pkt_write(pkt, NULL, base_pa + offset, 0, U32_MAX);
+		mml_msg("%s comp %u mutex id %d src %#x path id %u",
+			__func__, mutex->comp.id,
+			offset, mutex_id, path->path_id);
+	}
+
+	mml_mmp(mutex_dis, MMPROFILE_FLAG_PULSE, mutex->comp.id, mutex_id);
 
 	return 0;
 }
@@ -175,17 +199,27 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 
 	/* DL mode and dpc off case, mutex sof control by dsi src */
 	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
-		if (mml_mutex_dl_sof) {
-			/* mutex en in disp pkt */
-			sof_en = false;
-		} else if (comp == path->mutex) {
-			/* wait pre-te in first mutex trigger */
-			cmdq_pkt_clear_event(pkt, mutex->event_prete);
-			cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
-		}
+		if (cfg->disp_vdo) {
+			if (mutex_dl_disp_sof_vdo) {
+				/* mutex en in disp pkt */
+				sof_en = false;
+			}
 
-		if (mutex_dl_perf_en && ccfg->pipe == 0 && comp == path->mutex)
-			cmdq_pkt_backup_stamp(pkt, &task->perf_prete);
+			if (mutex_dl_perf_en && ccfg->pipe == 0 && comp == path->mutex)
+				cmdq_pkt_backup_stamp(pkt, &task->perf_prete);
+		} else {
+			if (mutex_dl_disp_sof) {
+				/* mutex en in disp pkt */
+				sof_en = false;
+			} else if (comp == path->mutex) {
+				/* wait pre-te in first mutex trigger */
+				cmdq_pkt_clear_event(pkt, mutex->event_prete);
+				cmdq_pkt_wait_no_clear(pkt, mutex->event_prete);
+			}
+
+			if (mutex_dl_perf_en && ccfg->pipe == 0 && comp == path->mutex)
+				cmdq_pkt_backup_stamp(pkt, &task->perf_prete);
+		}
 	}
 
 	/* DL mode config sof only, other modes enable to trigger directly */
@@ -202,23 +236,24 @@ static s32 mutex_trigger(struct mml_comp *comp, struct mml_task *task,
 				cmdq_pkt_wfe(pkt, mutex->event_pipe1_mml);
 			}
 
-			cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(cfg->mml));
+			if (!cfg->disp_vdo || (cfg->disp_vdo && mutex_dl_disp_sof_vdo)) {
+				cmdq_pkt_set_event(pkt, mml_ir_get_mml_ready_event(cfg->mml));
 
-			if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE)) {
+				if (cfg->dpc && (mml_dl_dpc & MML_DPC_MUTEX_VOTE)) {
 #ifndef MML_FPGA
-				mml_dpc_power_release_gce(comp->sysid, pkt);
-				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
-				mml_dpc_power_keep_gce(comp->sysid, pkt,
-					mutex->data->gpr[ccfg->pipe],
-					&task->dpc_reuse_mutex);
-
+					mml_dpc_power_release_gce(comp->sysid, pkt);
+					cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
+					mml_dpc_power_keep_gce(comp->sysid, pkt,
+						mutex->data->gpr[ccfg->pipe],
+						&task->dpc_reuse_mutex);
 #endif
-			} else {
-				cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
-			}
+				} else {
+					cmdq_pkt_wfe(pkt, mml_ir_get_disp_ready_event(cfg->mml));
+				}
 
-			/* make sure mml wait disp frame done in current te */
-			cmdq_pkt_clear_event(pkt, cfg->info.disp_done_event);
+				/* make sure mml wait disp frame done in current te */
+				cmdq_pkt_clear_event(pkt, cfg->info.disp_done_event);
+			}
 
 			/* Note insert disp ready stamp after disp ready event in last mutex,
 			 * but update and retrieve data in first mutex.
@@ -249,7 +284,24 @@ static s32 mutex_wait_sof(struct mml_comp *comp, struct mml_task *task,
 				cmdq_pkt_backup_stamp(pkt, &task->perf_sof);
 		}
 
-		mutex_disable(mutex, pkt, path);
+		if (!cfg->disp_vdo)
+			mutex_disable(mutex, pkt, path);
+	}
+
+	return 0;
+}
+
+static s32 mutex_post(struct mml_comp *comp, struct mml_task *task,
+	struct mml_comp_config *ccfg)
+{
+	struct mml_mutex *mutex = comp_to_mutex(comp);
+	const struct mml_frame_config *cfg = task->config;
+	const struct mml_topology_path *path = cfg->path[ccfg->pipe];
+	struct cmdq_pkt *pkt = task->pkts[ccfg->pipe];
+
+	if (cfg->info.mode == MML_MODE_DIRECT_LINK) {
+		if (cfg->disp_vdo && !mutex_dl_disp_sof)
+			mutex_disable(mutex, pkt, path);
 	}
 
 	return 0;
@@ -273,8 +325,40 @@ static s32 mutex_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 static const struct mml_comp_config_ops mutex_config_ops = {
 	.mutex = mutex_trigger,
 	.wait_sof = mutex_wait_sof,
+	.post = mutex_post,
 	.reframe = mutex_reconfig_frame,
 };
+
+static s32 mutex_clk_disable(struct mml_comp *comp, bool dpc)
+{
+	struct mml_mutex *mutex = comp_to_mutex(comp);
+	u32 i;
+
+	comp->clk_cnt--;
+	if (comp->clk_cnt > 0)
+		return 0;
+	if (comp->clk_cnt < 0) {
+		mml_err("%s comp %u %s cnt %d",
+			__func__, comp->id, comp->name, comp->clk_cnt);
+		return -EINVAL;
+	}
+
+	if (mml_irq && mutex->irq) {
+		/* always clear irq status and irq en */
+		writel(0, comp->base + MUTEX_INTEN);
+		writel(0, comp->base + MUTEX_INSTA);
+	}
+
+	mml_mmp(clk_disable, MMPROFILE_FLAG_START, comp->id, (mml_irq && mutex->irq));
+	for (i = 0; i < ARRAY_SIZE(comp->clks); i++) {
+		if (IS_ERR_OR_NULL(comp->clks[i]))
+			break;
+		clk_disable_unprepare(comp->clks[i]);
+	}
+	mml_mmp(clk_disable, MMPROFILE_FLAG_END, comp->id, 0);
+
+	return 0;
+}
 
 static void mutex_taskdone(struct mml_comp *comp, struct mml_task *task,
 	struct mml_comp_config *ccfg)
@@ -322,7 +406,7 @@ static void mutex_taskdone(struct mml_comp *comp, struct mml_task *task,
 
 static const struct mml_comp_hw_ops mutex_hw_ops = {
 	.clk_enable = mml_comp_clk_enable,
-	.clk_disable = mml_comp_clk_disable,
+	.clk_disable = mutex_clk_disable,
 	.task_done = mutex_taskdone,
 };
 
@@ -335,8 +419,8 @@ static void mutex_debug_dump(struct mml_comp *comp)
 
 	mml_err("mutex component %u dump:", comp->id);
 
-	value = readl(base + DISP_MUTEX_CFG);
-	mml_err("DISP_MUTEX_CFG %#010x", value);
+	value = readl(base + MUTEX_CFG);
+	mml_err("MUTEX_CFG %#010x", value);
 
 	for (i = 0; i < mutex->data->mutex_cnt; i++) {
 		u32 en, sof;
@@ -508,25 +592,29 @@ static void mutex_addon_config_dl(struct mtk_ddp_comp *ddp_comp,
 		return;
 	}
 
+	if (!cfg->dual && cfg->submit.info.dl_pos == MML_DL_POS_RIGHT)
+		pipe = 1;
+
+	path = mml_drm_query_dl_path(cfg->ctx, &cfg->submit, pipe);
+	if (!path) {
+		mml_err("%s mml_drm_query_dl_path fail", __func__);
+		return;
+	}
+
+	/* this path does not use current mml mutex */
+	if (path->mutex != &mutex->comp && path->mutex2 != &mutex->comp) {
+		mml_err("%s no mutex in path %u", __func__, path->path_id);
+		return;
+	}
+
 	if (cfg->config_type.type == ADDON_CONNECT) {
-		if (!cfg->dual && cfg->submit.info.dl_pos == MML_DL_POS_RIGHT)
-			pipe = 1;
-
-		path = mml_drm_query_dl_path(cfg->ctx, &cfg->submit, pipe);
-		if (!path) {
-			mml_err("%s mml_drm_query_dl_path fail", __func__);
-			return;
-		}
-
-		/* this path does not use current mml mutex */
-		if (path->mutex != &mutex->comp && path->mutex2 != &mutex->comp) {
-			mml_err("%s no mutex in path %u", __func__, path->path_id);
-			return;
-		}
-
+		atomic_set(&mutex->connect[cfg->pipe], 1);
 		sof = mutex->data->get_mutex_sof(&cfg->mutex);
 		mutex_enable(mutex, pkt, path, sof, MML_MODE_DIRECT_LINK, false, true);
 		mutex->connected_mode = MML_MODE_DIRECT_LINK;
+	} else if (cfg->config_type.type == ADDON_DISCONNECT) {
+		if (!atomic_cmpxchg_acquire(&mutex->connect[cfg->pipe], 1, 0))
+			mml_err("%s disconnect without connect pipe %u", __func__, cfg->pipe);
 	}
 }
 
@@ -569,10 +657,12 @@ static void mutex_addon_config(struct mtk_ddp_comp *ddp_comp,
 {
 	struct mtk_addon_mml_config *cfg = &addon_config->addon_mml_config;
 	enum mml_mode mode = cfg->submit.info.mode;
+	bool disp_vdo = cfg->submit.disp_vdo;
+	struct mml_mutex *mutex = ddp_comp_to_mutex(ddp_comp);
+
+	mml_mmp(addon_addon_cfg_mutex, MMPROFILE_FLAG_PULSE, cfg->config_type.type, mode);
 
 	if (mode == MML_MODE_UNKNOWN) {
-		struct mml_mutex *mutex = ddp_comp_to_mutex(ddp_comp);
-
 		if (mutex->connected_mode == MML_MODE_UNKNOWN ||
 			!atomic_read(&mutex->connect[cfg->pipe])) {
 			/* no current connected mode, stop */
@@ -580,16 +670,44 @@ static void mutex_addon_config(struct mtk_ddp_comp *ddp_comp,
 		}
 
 		mode = mutex->connected_mode;
+		mml_log("%s change mode %d", __func__, mode);
 	}
 
 	if (mode == MML_MODE_DIRECT_LINK) {
 		/* in dpc enable case, mutex trigger by mml pkt directly */
-		if (mml_mutex_dl_sof)
+		if ((disp_vdo && mutex_dl_disp_sof_vdo) || (!disp_vdo && mutex_dl_disp_sof))
 			mutex_addon_config_dl(ddp_comp, prev, next, addon_config, pkt);
 	} else if (mode == MML_MODE_DDP_ADDON)
 		mutex_addon_config_addon(ddp_comp, prev, next, addon_config, pkt);
 	else
 		mml_err("%s not support mode %d(%d)", __func__, mode, cfg->submit.info.mode);
+}
+
+static irqreturn_t mml_mutex_irq_handler_mt6991(int irq, void *dev_id)
+{
+	struct mml_mutex *mutex = dev_id;
+	struct mml_comp *comp = &mutex->comp;
+	void __iomem *base = comp->base;
+	unsigned long irq_status = readl(base + MUTEX_INSTA);
+
+	mml_mmp(mutex, MMPROFILE_FLAG_PULSE, comp->id, irq_status);
+
+	if (!irq_status)
+		return IRQ_NONE;
+
+	writel(0, base + MUTEX_INSTA);
+
+	/* stream 1 for mml-frame dl mode,
+	 * mml1_rrot0 as rrot0, mml1_rrot1 as rrot1
+	 */
+	if (irq_status & BIT(1)) {
+		if (mutex->idx == 0)
+			mml_mmp(rrot1, MMPROFILE_FLAG_START, comp->id, 0);
+		else
+			mml_mmp(rrot0, MMPROFILE_FLAG_START, comp->id, 0);
+	}
+
+	return IRQ_HANDLED;
 }
 
 static const struct mtk_ddp_comp_funcs ddp_comp_funcs = {
@@ -609,6 +727,7 @@ static int probe(struct platform_device *pdev)
 	u32 mod[3], comp_id, mutex_id;
 	s32 id_count, i, ret;
 	bool add_ddp = true;
+	int irq;
 
 	priv = devm_kzalloc(dev, sizeof(*priv), GFP_KERNEL);
 	if (!priv)
@@ -621,6 +740,20 @@ static int probe(struct platform_device *pdev)
 	if (ret) {
 		dev_err(dev, "Failed to init mml component: %d\n", ret);
 		return ret;
+	}
+
+	/* get index of wrot by alias */
+	priv->idx = of_alias_get_id(dev->of_node, "mml-mutex");
+
+	irq = platform_get_irq(pdev, 0);
+	if (irq < 0)
+		mml_log("fail to get mutex%u irq %d", priv->idx, irq);
+	else {
+		ret = devm_request_irq(dev, irq, priv->data->handler,
+			IRQF_SHARED, dev_name(dev), priv);
+		priv->irq = true;
+		mml_log("register mutex%u irq %s %d irq %d",
+			priv->idx, ret ? "fail" : "success", ret, irq);
 	}
 
 	of_property_for_each_string(node, "mutex-comps", prop, name) {
@@ -721,18 +854,22 @@ static const struct mutex_data mt6991_mutex_data = {
 	.mutex_cnt = 16,
 	.mod_offsets = {0x34, 0x38},
 	.sof_offset = 0x30,
+	.rst_offset = 0x2c,
 	.mod_cnt = 2,
 	.get_mutex_sof = get_mutex_sof_mt6991,
 	.gpr = {CMDQ_GPR_R08, CMDQ_GPR_R10},
+	.handler = mml_mutex_irq_handler_mt6991,
 };
 
 static const struct mutex_data mt6991_mmlt_mutex_data = {
 	.mutex_cnt = 16,
 	.mod_offsets = {0x34, 0x38},
 	.sof_offset = 0x30,
+	.rst_offset = 0x2c,
 	.mod_cnt = 2,
 	.get_mutex_sof = get_mutex_sof_mt6991,
 	.gpr = {CMDQ_GPR_R12, CMDQ_GPR_R14},
+	.handler = mml_mutex_irq_handler_mt6991,
 };
 
 const struct of_device_id mml_mutex_driver_dt_match[] = {

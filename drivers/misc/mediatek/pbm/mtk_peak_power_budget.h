@@ -84,7 +84,9 @@ struct power_budget_t {
 	unsigned int version;
 	int hpt_max_lv;
 	int hpt_cur_lv;
-	int hpt_lv_t[10];
+	int hpt_ctrl_lv_t[10];
+	int hpt_volt_lv_t[10];
+	int ppb_mode_lv_t[10];
 	int soc;
 	int uisoc;
 	int combo0_uisoc;

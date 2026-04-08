@@ -288,6 +288,7 @@ static inline bool pd_process_ctrl_msg(
 
 	case PD_CTRL_NOT_SUPPORTED:
 		pd_cancel_dpm_reaction(pd_port);
+		pd_notify_pe_reset_protocol(pd_port);
 		pd_notify_tcp_event_2nd_result(
 				pd_port, TCP_DPM_RET_NOT_SUPPORT);
 
@@ -573,9 +574,6 @@ static inline bool pd_check_rx_pending(struct pd_port *pd_port)
 	if (mutex_is_locked(&tcpc->rxbuf_lock)) {
 		PE_INFO("rx_pending\n");
 		pending = true;
-	} else if (!pd_is_msg_empty(tcpc)) {
-		PE_INFO("rx_pending2\n");
-		pending = true;
 	}
 
 	if (pending)
@@ -589,7 +587,10 @@ static inline bool pd_process_timer_msg(
 	struct pd_port *pd_port, struct pd_event *pd_event)
 {
 	uint8_t ready_state = pe_get_curr_ready_state(pd_port);
-
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    int rv = 0;
+    uint32_t chip_pid = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	switch (pd_event->msg) {
 	case PD_TIMER_SENDER_RESPONSE:
 #if CONFIG_USB_PD_CHECK_RX_PENDING_IF_SRTOUT
@@ -656,6 +657,14 @@ static inline bool pd_process_timer_msg(
 			pd_port, TCP_DPM_RET_DROP_PE_BUSY);
 		break;
 #endif	/* CONFIG_USB_PD_REV30 */
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+    case PD_TIMER_INT_INVAILD:
+        rv = tcpci_get_chip_pid(pd_port->tcpc, &chip_pid);
+        if (!rv &&  SC660X_PID == chip_pid) {
+            pd_enable_timer(pd_port, PD_TIMER_INT_INVAILD);
+        }
+        break;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	default:
 		break;
 	}

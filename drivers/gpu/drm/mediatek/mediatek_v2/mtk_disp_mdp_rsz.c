@@ -1061,6 +1061,7 @@ static void mtk_mdp_rsz_addon_config(struct mtk_ddp_comp *comp,
 	u32 in_w = 0, in_h = 0, out_w = 0, out_h = 0;
 	unsigned int overhead_v;
 	u32 con3 = 0;
+	struct drm_crtc *crtc = &(comp->mtk_crtc->base);
 
 	if (!rsz_config) {
 		DDPPR_ERR("fail to create rsz_config!\n");
@@ -1101,10 +1102,19 @@ static void mtk_mdp_rsz_addon_config(struct mtk_ddp_comp *comp,
 
 	mtk_mdp_rsz_calc_tile_params(comp, rsz_config->frm_in_h, rsz_config->frm_out_h,
 				 tile_mode, rsz_config->th, false);
-	in_w = rsz_config->tw[tile_idx].in_len;
-	in_h = rsz_config->th[0].in_len;
-	out_w = rsz_config->tw[tile_idx].out_len;
-	out_h = rsz_config->th[0].out_len;
+	if (rsz->data->is_for_wb_path) {
+		// for wb path
+		in_w = crtc->mode.hdisplay;
+		in_h = crtc->mode.vdisplay;
+		out_w = crtc->mode.hdisplay;
+		out_h = crtc->mode.vdisplay;
+	} else {
+		// for RPO
+		in_w = rsz_config->tw[tile_idx].in_len;
+		in_h = rsz_config->th[0].in_len;
+		out_w = rsz_config->tw[tile_idx].out_len;
+		out_h = rsz_config->th[0].out_len;
+	}
 
 	if (in_w > out_w || in_h > out_h) {
 		DDPPR_ERR("DISP_RSZ only supports scale-up,(%ux%u)->(%ux%u)\n",
@@ -1210,10 +1220,13 @@ static void mtk_mdp_rsz_addon_config(struct mtk_ddp_comp *comp,
 static void mtk_mdp_rsz_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_drm_private *priv = comp->mtk_crtc->base.dev->dev_private;
-
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	if (priv->data->mmsys_id == MMSYS_MT6989 && comp->id == DDP_COMPONENT_RSZ1) {
+#else
 	if ((priv->data->mmsys_id == MMSYS_MT6989 && comp->id == DDP_COMPONENT_RSZ1) ||
 		(priv->data->mmsys_id == MMSYS_MT6899) ||
 		(priv->data->mmsys_id == MMSYS_MT6991 && comp->id == DDP_COMPONENT_MDP_RSZ1)) {
+#endif
 		cmdq_pkt_write(handle, comp->cmdq_base,
 		       comp->regs_pa + RSZ_ENABLE, 0, ~0);
 		return;
@@ -1648,6 +1661,7 @@ static const struct mtk_disp_mdp_rsz_data mt6899_mdp_rsz_driver_data = {
 	.tile_length = 1660, .in_max_height = 4096,
 	.support_shadow = false,
 	.need_bypass_shadow = true,
+	.is_for_wb_path = true,
 };
 
 static const struct mtk_disp_mdp_rsz_data mt6991_mdp_rsz_driver_data = {

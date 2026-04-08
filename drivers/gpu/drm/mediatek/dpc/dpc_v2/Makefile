@@ -23,6 +23,8 @@ endif
 
 ifeq ($(strip $(MGK_INTERNAL)),true)
 ccflags-y += -DDISP_VIDLE_ENABLE
+else ifneq ($(filter y m, $(CONFIG_VIDLE_ENABLE)),)
+ccflags-y += -DDISP_VIDLE_ENABLE
 endif
 
 obj-$(CONFIG_MTK_DPC) := mtk_dpc_v2.o

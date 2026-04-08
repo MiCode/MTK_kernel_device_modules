@@ -54,6 +54,7 @@ aliases {
 				label = "lcd-backlight";
 				max-brightness = <255>;
 				max-hw-brightness = <1023>;
+				min-hw-brightness = <4>;
 			};
 		};
 
@@ -1224,10 +1225,10 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		dvfsrc-opp-num = <3>;
 		dvfs-opp =
 		/*	vcore	vsram	uv	dvfsrc	spm	freq	mux */
-		<	0xff	0xff	0xff	0x0	0x0	250	0>,
-		<	0xff	0xff	0xff	0x0	0x0	273	3>,
-		<	0xff	0xff	0xff	0x2	0x8	330	5>,
-		<	0xff	0xff	0xff	0x3	0xC	416	6>;
+		<	650000	900000	0xff	0x0	0x0	250	0>,
+		<	650000	900000	0xff	0x0	0x0	273	3>,
+		<	700000	900000	0xff	0x2	0x8	330	5>,
+		<	800000	900000	0xff	0x3	0xC	416	6>;
 
 		pmic = <&main_pmic>;
 		pmic-feature = "pmic-vow-lp", "pmic-pmrc";
@@ -1240,6 +1241,10 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		gpio = <&gpio 1>;
 		gpio-feature = "gpio-mode";
 		gpio-feature-cfg = <0>;
+		dvfsrc-vscp-supply = <&dvfsrc_vscp>;
+		sshub-vcore-supply = <&mt_pmic_vcore_buck_reg>;
+		sshub-vsram-supply = <&mt_pmic_vsram_others_ldo_reg>;
+		legacy-support-v3;
 	};
 
 	sleep_reg_md@1000f000 {
@@ -1389,6 +1394,11 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	security_ao@1001a000 {
 		compatible = "mediatek,security_ao";
 		reg = <0 0x1001a000 0 0x1000>;
+	};
+
+	masp@1000a000 {
+		compatible = "mediatek,masp";
+		reg = <0 0x1000a000 0 0x1000>;
 	};
 
 	topckgen_ao@1001b000 {
@@ -1551,7 +1561,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	};
 
 	hwrng: hwrng {
-		compatible = "mediatek,mt67xx-rng";
+		compatible = "arm,sec-rng";
 		methods = "smc";
 		method-fid = /bits/ 16 <0x26a>;
 		quality = /bits/ 16 <900>;
@@ -3229,6 +3239,7 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	mdp_rdma0: mdp_rdma0@14004000 {
@@ -4081,24 +4092,36 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 
 	low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
-		thd-volts-l = <3250 3100 2700>;
-		thd-volts-h = <3400 3250 3100>;
 		lvsys-thd-enable = <0>;
-		vbat-thd-enable = <0>;
-	};
-
-	cpu_power_throttling: cpu-power-throttling {
-		compatible = "mediatek,cpu-power-throttling";
-		lbat-max-level = <2>;
-		lbat-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		lbat-limit-freq-lv2 = < 900000  900000 1300000>;
-
-		oc-max-level = <2>;
-		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		oc-limit-freq-lv2 = < 900000  900000 900000>;
-
-		soc-max-level = <1>;
-		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
+		lbat-legacy-proj = <1>;
+		vbat-thd-enable = <1>;
+		bat0-thd-volts-l = <
+			3250 3100 2700
+			3250 3100 2700
+			3250 3100 2700
+			3250 3100 2700>;
+		bat0-thd-volts-h = <
+			3400 3250 3100
+			3400 3250 3100
+			3400 3250 3100
+			3400 3250 3100>;
+		bat1-thd-volts-l = <
+			3250 3100 2700
+			3250 3100 2700
+			3250 3100 2700
+			3250 3100 2700>;
+		bat1-thd-volts-h = <
+			3400 3250 3100
+			3400 3250 3100
+			3400 3250 3100
+			3400 3250 3100>;
+		temperature-stage-threshold = <25 10 0>;
+		throttle-level = <0 1 2 3>,
+					<0 1 2 3>,
+					<0 1 2 3>,
+					<0 1 2 3>;
+		bootmode = <&chosen>;
+		gauge = <&mtk_gauge>;
 	};
 
 	md_power_throttling: md-power-throttling {
@@ -4288,3 +4311,4 @@ firmware_class.path=/vendor/firmware kvm-arm.mode=none";
 	interrupts = <11 IRQ_TYPE_LEVEL_LOW 11 0>; /*mt6370-irq gpio is gpio 11 for mt6761*/
 };
 
+/delete-node/ &mt_pmic_vpa_buck_reg;

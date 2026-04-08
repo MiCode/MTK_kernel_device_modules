@@ -14,10 +14,12 @@
 #include <linux/proc_fs.h>
 #include <linux/spinlock.h>
 #include <linux/timer.h>
+#include <linux/delay.h>
 #include "mtk_battery_oc_throttling.h"
 #include "mtk_low_battery_throttling.h"
 #include "mtk_bp_thl.h"
 #include "mtk_peak_power_budget_mbrain.h"
+#include "pmic_lbat_service.h"
 #include <linux/soc/mediatek/mtk_tinysys_ipi.h>
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 #include <include/gpueb_ipi.h>
@@ -32,7 +34,13 @@
 #define STR_SIZE 1024
 #define MAX_VALUE 0x7FFF
 #define MAX_POWER_DRAM 4000
-#define MAX_POWER_DISPLAY 2000
+#if defined(CONFIG_TARGET_PRODUCT_GOYA)
+#define MAX_POWER_DISPLAY 2876
+#elif defined(CONFIG_TARGET_PRODUCT_KLEE)
+#define MAX_POWER_DISPLAY 3196
+#else
+#define MAX_POWER_DISPLAY 4490
+#endif
 #define SOC_ERROR 3000
 #define BAT_CIRCUIT_DEFAULT_RDC 55
 #define BAT_PATH_DEFAULT_RDC 100
@@ -42,6 +50,8 @@
 #define MBRAIN_NOTIFY_BUDGET_THD    50000
 #define PPB_LOG_DURATION msecs_to_jiffies(20000)
 #define HPT_INIT_SETTING    7
+#define HPT_PREUV_VOLT_DEFAULT   2 //0(2.4V), 1(2.6V) 2(2.8V) 3(3.0V) 4(3.2V)
+#define PPB_MODE_DEFAULT         12
 #define DEFAULT_COMBO0_UISOC MAX_VALUE
 
 static bool mt_ppb_debug;
@@ -296,6 +306,7 @@ static void __used ppb_print_dbg_log(struct timer_list *timer)
 	unsigned int cpub_cnt, cpub_th_t, cpum_cnt, cpum_th_t, gpu_cnt, gpu_th_t;
 	int cpub_sf = 0, cpum_sf = 0, gpu_sf = 0, cg_pwr = 0, combo = 0, cb_cnt = 0, i, offset, ret;
 	char str[STR_SIZE];
+	u32 cb_freq = 0, cm_freq = 0, cl_freq = 0, gpu_freq = 0;
 
 	if (!ppb_ctrl.ppb_drv_done)
 		return;
@@ -374,6 +385,13 @@ static void __used ppb_print_dbg_log(struct timer_list *timer)
 		offset = offset + ret;
 
 	pr_info("%s\n", str);
+
+	if (cgppt_dbg_ops && cgppt_dbg_ops->get_combo)
+		cgppt_dbg_ops->get_cg_freq(&cb_freq, &cm_freq, &cl_freq, &gpu_freq);
+
+	pr_info("[PPB] throttle cpub_limit_freq=%d cpum_limit_freq=%d cpul_limit_freq=%d gpu_limit_freq=%d\n",
+		cb_freq, cm_freq, cl_freq, gpu_freq);
+
 	memcpy(&last_klog_xpu_dbg, &dbg_data, sizeof(struct xpu_dbg_t));
 	mod_timer(&ppb_dbg_timer, jiffies + PPB_LOG_DURATION);
 }
@@ -406,10 +424,9 @@ static int __used notify_gpueb(void)
 {
 	struct ppb_ipi_data ipi_data;
 	int ret;
-
+	
 	if (ppb_gpueb_ipi_init())
 		return -1;
-
 	ipi_data.cmd = 0;
 	ret = mtk_ipi_send_compl_to_gpueb(channel_id, IPI_SEND_WAIT, &ipi_data,
 			PPB_IPI_DATA_LEN, PPB_IPI_TIMEOUT_MS);
@@ -818,8 +835,15 @@ static void bat_handler(struct work_struct *work)
 	int ret = 0, soc, temp, volt, qmax, cycle, bat_rdc, uisoc, i, cb_idx;
 	bool loop;
 
-	if (!pb.psy)
+	if (!pb.psy) {
+		pr_info("%s: pb.psy null!!\n", __func__);
 		return;
+	}
+
+	if (strcmp(psy->desc->name, "battery") != 0) {
+		pr_info("%s: name not battery!!\n", __func__);
+		return;
+	}
 
 	psy_mtk = power_supply_get_by_name("mtk-gauge");
 	if (!psy_mtk || IS_ERR(psy_mtk)) {
@@ -830,29 +854,33 @@ static void bat_handler(struct work_struct *work)
 		}
 	}
 
-	ret = power_supply_get_property(psy_mtk, POWER_SUPPLY_PROP_ENERGY_NOW, &val);
-	if (ret)
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CAPACITY, &val);
+	if (ret) {
+		pr_info("%s: get energy now fail!!\n", __func__);
 		return;
+	}
 
-	soc = val.intval / 100;
-	if (soc == 0)
+	soc = val.intval;
+	if (soc == 0) {
+		pr_info("%s: sco == 0!!\n", __func__);
 		return;
+	}
 
-	ret = power_supply_get_property(psy_mtk, POWER_SUPPLY_PROP_ENERGY_FULL, &val);
+	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_CHARGE_FULL, &val);
 	if (ret)
 		qmax = 0;
 	else
-		qmax = val.intval;
-
-	if (strcmp(psy->desc->name, "battery") != 0)
-		return;
+		qmax = val.intval/100;
 
 	ret = power_supply_get_property(psy, POWER_SUPPLY_PROP_TEMP, &val);
-	if (ret)
+	if (ret) {
+		pr_info("%s: temp get fail!!\n", __func__);
 		return;
+	}
 
 	temp = val.intval / 10;
 	temp_stage = pb.temp_cur_stage;
+	pr_info("%s: soc=%d, temp=%d, qmax=%d, temp_stage=%d, ppb_mode=%d\n", __func__, soc, temp, qmax, temp_stage, ppb_ctrl.ppb_mode);
 
 	cycle = 0;
 	if (pb.aging_max_stage > 0) {
@@ -906,45 +934,36 @@ static void bat_handler(struct work_struct *work)
 		pb.uisoc_cur_stage = uisoc_stage;
 	}
 
-	if (pb.version >= 2) {
-		for (i = 0; i < pb.aging_max_stage; i++) {
-			if (cycle < pb.aging_thd[i])
-				break;
-		}
-		aging_stage = i;
+	for (i = 0; i < pb.aging_max_stage; i++) {
+		if (cycle < pb.aging_thd[i])
+			break;
 	}
+	aging_stage = i;
 
 	if (temp != last_temp || soc != last_soc || uisoc != last_uisoc || pb.combo0_uisoc != last_combo0_uisoc
 		|| aging_stage != last_aging_stage) {
-		if (timer_pending(&ppb_dbg_timer)) {
-			del_timer_sync(&ppb_dbg_timer);
-			ppb_print_dbg_log(NULL);
-		}
 
 		volt = soc_to_ocv(soc * 100, 0, pb.soc_err);
 		pb.ocv = volt / 10;
 
-		if (pb.version >= 2) {
-			bat_rdc = soc_to_rdc(soc * 100, 0) / 10;
+		bat_rdc = soc_to_rdc(soc * 100, 0) / 10;
 
-			if (aging_stage > 0 && aging_stage <= pb.aging_max_stage)
-				pb.aging_rdc = bat_rdc * pb.aging_multi[aging_stage-1] / 1000;
-			else
-				pb.aging_rdc = 0;
+		if (aging_stage > 0 && aging_stage <= pb.aging_max_stage)
+			pb.aging_rdc = bat_rdc * pb.aging_multi[aging_stage-1] / 1000;
+		else
+			pb.aging_rdc = 0;
 
-			pb.cur_rdc = bat_rdc + pb.circuit_rdc + pb.aging_rdc;
-		}
+		pb.cur_rdc = bat_rdc + pb.circuit_rdc + pb.aging_rdc;
 		pb.sys_power = get_sys_power_budget(pb.ocv, pb.cur_rdc, pb.cur_rac, pb.ocp, pb.uvlo);
 
 		volt = soc_to_ocv(soc * 100, 0, 0);
-		if (pb.version >= 2)
-			pb.cur_rdc = soc_to_rdc(soc * 100, 0) / 10 + pb.circuit_rdc + pb.aging_rdc;
+		pb.cur_rdc = soc_to_rdc(soc * 100, 0) / 10 + pb.circuit_rdc + pb.aging_rdc;
 
 		pb.ocv_noerr = volt / 10;
 
 		cb_idx = (pb.uisoc_max_stage + 1) * pb.temp_cur_stage + pb.uisoc_cur_stage;
-		if (pb.version >= 2 && (uisoc >= pb.combo0_uisoc ||
-			(pb.combo0_uisoc == DEFAULT_COMBO0_UISOC && pb.fix_combo0[cb_idx] > 0)) ) {
+		if (uisoc >= pb.combo0_uisoc ||
+			(pb.combo0_uisoc == DEFAULT_COMBO0_UISOC && pb.fix_combo0[cb_idx] > 0)) {
 			pb.sys_power_noerr = 100000;
 		} else
 			pb.sys_power_noerr = get_sys_power_budget(pb.ocv_noerr, pb.cur_rdc, pb.cur_rac, pb.ocp,
@@ -958,10 +977,16 @@ static void bat_handler(struct work_struct *work)
 #if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
 		notify_gpueb();
 #endif
+		msleep(20); //sleep for xpu update throttle status
 		pr_info("%s: update vsys-er[p,v]=%d,%d vsys[p,v]=%d,%d SOC[soc,ui,s]=%d,%d,%d R[C,A,dc,ac]=%d,%d,%d,%d T[t,s]=%d,%d A[c,s]=%d,%d\n",
 			__func__, pb.sys_power, pb.ocv, pb.sys_power_noerr,
 			pb.ocv_noerr, soc, uisoc, pb.temp_cur_stage, pb.circuit_rdc, pb.aging_rdc, pb.cur_rdc,
 			pb.cur_rac, temp, pb.temp_cur_stage, cycle, pb.aging_cur_stage);
+
+		if (timer_pending(&ppb_dbg_timer)) {
+			del_timer_sync(&ppb_dbg_timer);
+			ppb_print_dbg_log(NULL);
+		}
 
 		if (pb.sys_power_noerr <= MBRAIN_NOTIFY_BUDGET_THD && soc != last_soc && cb_func)
 			cb_func();
@@ -1076,6 +1101,10 @@ static int __used read_mtk_gauge_dts(struct platform_device *pdev)
 			read_dts_val_by_idx(np, str, j*num, &table_p->mah, 1);
 			read_dts_val_by_idx(np, str, j*num+1, &table_p->voltage, 1);
 			read_dts_val_by_idx(np, str, j*num+2, &table_p->rdc, 1);
+			if (j == 0 || j == info_p->ocv_table_size - 1)
+				pr_info("%s:%d: mah=%d, voltage=%d, rdc=%d\n", __func__, __LINE__,
+					table_p->mah, table_p->voltage, table_p->rdc);
+
 			if (info_p->ocv_table[j].dod == 0 && info_p->qmax > 0)
 				info_p->ocv_table[j].dod = info_p->ocv_table[j].mah * 1000 /
 					info_p->qmax;
@@ -1179,6 +1208,7 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 	int num, offset = 0;
 	struct device_node *np;
 	char str[STR_SIZE];
+	u8 lvl;
 
 	np = of_find_node_by_name(NULL, "mtk-gauge");
 	if (!np)
@@ -1235,37 +1265,59 @@ static int __used read_power_budget_dts(struct platform_device *pdev)
 	if (num > 0)
 		of_property_read_u32_array(np, "ppt-fix-cb0", &pb.fix_combo0[0], num);
 
-	if (pb.version >= 2) {
-		if (read_dts_val(np, "battery-circult-rdc", &pb.circuit_rdc, 1))
-			pb.circuit_rdc = BAT_CIRCUIT_DEFAULT_RDC;
+	if (read_dts_val(np, "battery-circult-rdc", &pb.circuit_rdc, 1))
+		pb.circuit_rdc = BAT_CIRCUIT_DEFAULT_RDC;
 
-		if (read_dts_val(np, "soc-max-level", &pb.hpt_max_lv, 1))
-			pb.hpt_max_lv = 0;
+	if (read_dts_val(np, "soc-max-level", &pb.hpt_max_lv, 1))
+		pb.hpt_max_lv = 0;
 
-		if (pb.hpt_max_lv >= BATTERY_PERCENT_LEVEL_NUM)
-			pb.hpt_max_lv = BATTERY_PERCENT_LEVEL_NUM - 1;
+	if (pb.hpt_max_lv >= BATTERY_PERCENT_LEVEL_NUM)
+		pb.hpt_max_lv = BATTERY_PERCENT_LEVEL_NUM - 1;
 
-		pb.hpt_lv_t[0] = HPT_INIT_SETTING;
-		for (i = 1; i <= pb.hpt_max_lv; i++) {
-			ret = snprintf(str, STR_SIZE, "%s%d", "soc-hpt-ctrl-lv", i);
-			if (ret < 0) {
-				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
-				break;
-			}
-			if (read_dts_val(np, str, &pb.hpt_lv_t[i], 1))
-				pb.hpt_lv_t[i] = HPT_INIT_SETTING;
+	pb.hpt_ctrl_lv_t[0] = HPT_INIT_SETTING;
+	for (i = 1; i <= pb.hpt_max_lv; i++) {
+		ret = snprintf(str, STR_SIZE, "%s%d", "soc-hpt-ctrl-lv", i);
+		if (ret < 0) {
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+			break;
 		}
-	} else {
-		for (i = 0; i <= pb.temp_max_stage; i++) {
-			ret = snprintf(str, STR_SIZE, "battery%d-path-rdc-t%d", fg_data.bat_type,
-				i);
-			if (ret < 0) {
-				pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
-				break;
-			}
-			if (read_dts_val(np, str, &pb.rdc[i], 1))
-				pb.rdc[i] = BAT_PATH_DEFAULT_RDC;
+		if (read_dts_val(np, str, &pb.hpt_ctrl_lv_t[i], 1))
+			pb.hpt_ctrl_lv_t[i] = HPT_INIT_SETTING;
+	}
+
+	for (i = 0; i <= pb.hpt_max_lv; i++) {
+		ret = snprintf(str, STR_SIZE, "%s%d", "soc-hpt-volt-lv", i);
+		if (ret < 0) {
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+			break;
 		}
+		if (read_dts_val(np, str, &pb.hpt_volt_lv_t[i], 1)) {
+			if (lbat_get_preuv_lvl(&lvl) == 0)
+				pb.hpt_volt_lv_t[i] = lvl;
+			else
+				pb.hpt_volt_lv_t[i] = HPT_PREUV_VOLT_DEFAULT;
+		}
+	}
+
+	for (i = 0; i <= pb.hpt_max_lv; i++) {
+		ret = snprintf(str, STR_SIZE, "%s%d", "soc-ppb-mode-lv", i);
+		if (ret < 0) {
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+			break;
+		}
+		if (read_dts_val(np, str, &pb.ppb_mode_lv_t[i], 1))
+			pb.ppb_mode_lv_t[i] = PPB_MODE_DEFAULT;
+	}
+
+	for (i = 0; i <= pb.temp_max_stage; i++) {
+		ret = snprintf(str, STR_SIZE, "battery%d-path-rdc-t%d", fg_data.bat_type,
+			i);
+		if (ret < 0) {
+			pr_info("%s:%d: snprintf error %d\n", __func__, __LINE__, ret);
+			break;
+		}
+		if (read_dts_val(np, str, &pb.rdc[i], 1))
+			pb.rdc[i] = BAT_PATH_DEFAULT_RDC;
 	}
 
 	for (i = 0; i <= pb.temp_max_stage; i++) {
@@ -1647,8 +1699,16 @@ static ssize_t mt_peak_power_mode_proc_write
 
 	ppb_ctrl.ppb_mode = mode;
 	ppb_write_sram(mode, PPB_MODE);
-	lbat_set_ppb_mode(mode);
-	bat_oc_set_ppb_mode(mode);
+
+	if (pb.version == 1) {
+		lbat_set_ppb_mode(mode);
+		bat_oc_set_ppb_mode(mode);
+	} else if (pb.version == 2) {
+#if !IS_ENABLED(CONFIG_MTK_GPU_LEGACY)
+		pr_info("%s: start notify_gpueb set ppb_mode=%d\n", __func__, mode);
+		notify_gpueb();
+#endif
+	}
 
 	return count;
 }
@@ -1947,6 +2007,46 @@ static ssize_t mt_hpt_sf_setting_proc_write
 	return count;
 }
 
+static int mt_hpt_volt_setting_proc_show(struct seq_file *m, void *v)
+{
+	u8 lvl = 0;
+
+	if (lbat_get_preuv_lvl(&lvl) == 0)
+		seq_printf(m, "preuv_lv: %u\n", lvl);
+	else
+		seq_puts(m, "get preuv lv1 fail\n");
+	return 0;
+}
+
+static ssize_t mt_hpt_volt_setting_proc_write
+(struct file *file, const char __user *buffer, size_t count, loff_t *data)
+{
+	char desc[64], cmd[21];
+	unsigned int len = 0, val = 0;
+	int ret = 0;
+
+	len = (count < (sizeof(desc) - 1)) ? count : (sizeof(desc) - 1);
+	if (copy_from_user(desc, buffer, len))
+		return 0;
+	desc[len] = '\0';
+
+	if (sscanf(desc, "%20s %d", cmd, &val) != 2) {
+		pr_notice("parameter number not correct\n");
+		return -EPERM;
+	}
+
+	if (strncmp(cmd, "hpt_volt", 8))
+		return -EINVAL;
+
+	if (val <= 5) {
+		ret = lbat_set_preuv_lvl(val);
+		pr_notice("hpt set volt lv ret %d\n", ret);
+	} else
+		pr_notice("hpt volt lv should be 0 ~ 5\n");
+
+	return count;
+}
+
 static int mt_xpu_dbg_dump_proc_show(struct seq_file *m, void *v)
 {
 	struct xpu_dbg_t dbg_data;
@@ -2034,6 +2134,7 @@ PROC_FOPS_RW(hpt_ctrl);
 PROC_FOPS_RW(hpt_sf_setting);
 PROC_FOPS_RO(xpu_dbg_dump);
 PROC_FOPS_RW(combo0_uisoc);
+PROC_FOPS_RW(hpt_volt_setting);
 
 static int mt_ppb_create_procfs(void)
 {
@@ -2062,6 +2163,7 @@ static int mt_ppb_create_procfs(void)
 		PROC_ENTRY(hpt_sf_setting),
 		PROC_ENTRY(xpu_dbg_dump),
 		PROC_ENTRY(combo0_uisoc),
+		PROC_ENTRY(hpt_volt_setting),
 	};
 
 	dir = proc_mkdir("ppb", NULL);
@@ -2106,9 +2208,10 @@ static void __used get_md_dbm_info(void)
 static void hpt_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 {
 	int hpt_reg, hpt_enable = 0;
+	u8 lvl = 0;
 
 	if (level != pb.hpt_cur_lv && level < BATTERY_PERCENT_LEVEL_NUM) {
-		hpt_reg = pb.hpt_lv_t[level];
+		hpt_reg = pb.hpt_ctrl_lv_t[level];
 		if (hpt_reg)
 			hpt_enable = 1;
 
@@ -2122,7 +2225,21 @@ static void hpt_bp_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 		if (hpt_enable && pb.hpt_exclude_lbat_cg_thl)
 			lbat_set_hpt_mode(hpt_enable);
 
+		if (lbat_get_preuv_lvl(&lvl) == 0) {
+			if (pb.hpt_volt_lv_t[level] != lvl && pb.hpt_volt_lv_t[level] <= 5) {
+				lbat_set_preuv_lvl(pb.hpt_volt_lv_t[level]);
+				pr_info("%s: set preuv_lvl to %d\n", __func__, pb.hpt_volt_lv_t[level]);
+			}
+		}
+
+		if (ppb_ctrl.ppb_mode != pb.ppb_mode_lv_t[level]) {
+			ppb_ctrl.ppb_mode = pb.ppb_mode_lv_t[level];
+			ppb_write_sram(pb.ppb_mode_lv_t[level], PPB_MODE);
+			pr_info("%s: set ppb mode to %d\n", __func__, pb.ppb_mode_lv_t[level]);
+		}
+
 		pb.hpt_cur_lv = level;
+		pr_info("%s: hpt_reg=%d pb.hpt_cur_lv=%d\n", __func__, pb.hpt_ctrl_lv_t[level], pb.hpt_cur_lv);
 	}
 }
 
@@ -2204,8 +2321,10 @@ static int peak_power_budget_probe(struct platform_device *pdev)
 	get_md_dbm_info();
 	ppb_set_wifi_pwr_addr_by_dts();
 
-	if (pb.hpt_max_lv)
+	if (pb.hpt_max_lv) {
+		pb.hpt_cur_lv = -1;
 		register_bp_thl_notify(&hpt_bp_cb, BATTERY_PERCENT_PRIO_HPT);
+	}
 
 	timer_setup(&ppb_dbg_timer, ppb_print_dbg_log, TIMER_DEFERRABLE);
 	mod_timer(&ppb_dbg_timer, jiffies + PPB_LOG_DURATION);

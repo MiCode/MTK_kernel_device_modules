@@ -676,6 +676,20 @@
 			alloc-ranges = <0 0x40000000 0 0x80000000>;
 		};
 
+		dpmaif_resv_cache_mem: ccci-dpmaif-cache-memory {
+			compatible = "mediatek,dpmaif-resv-cache-mem";
+			size = <0 0x00190000>; /* 1638400 Bytes for 1rxq */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
+
+		dpmaif_resv_nocache_mem: ccci-dpmaif-nocache-memory {
+			compatible = "mediatek,dpmaif-resv-nocache-mem";
+			no-map;
+			size = <0 0x0050000>; /* 327680 Bytes */
+			alignment = <0 0x10000>;
+			alloc-ranges = <0 0x40000000 0 0xf0000000>;
+		};
 	};
 
 	aliases {
@@ -1990,9 +2004,9 @@
 				"path_larb4";
 			interconnect-num = <13>;
 			bandwidth-table =
-				<4 2 380>,
-				<4 0 10>,
-				<4 1 0>,
+				<4 5 380>,
+				<4 4 10>,
+				<4 3 159>,
 				<4 2 1>,
 				<4 2 1>,
 				<4 2 1>,
@@ -2000,7 +2014,7 @@
 				<4 0 33>,
 				<4 0 33>,
 				<4 2 64>,
-				<4 0 159>,
+				<4 4 159>,
 				<4 0 1>;
 		};
 
@@ -2467,6 +2481,7 @@
 	low_battery_throttling: low-battery-throttling {
 		compatible = "mediatek,low_battery_throttling";
 		lvsys-thd-enable = <0>;
+		lbat-legacy-proj = <1>;
 		vbat-thd-enable = <1>;
 		bat0-thd-volts-l = <
 			3250 3100 2700
@@ -2499,20 +2514,6 @@
 
 	pbm: pbm {
 		compatible = "mediatek,pbm";
-	};
-
-	cpu_power_throttling: cpu-power-throttling {
-		compatible = "mediatek,cpu-power-throttling";
-		lbat-max-level = <2>;
-		lbat-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		lbat-limit-freq-lv2 = < 900000  900000 1300000>;
-
-		oc-max-level = <2>;
-		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		oc-limit-freq-lv2 = < 900000  900000 900000>;
-
-		soc-max-level = <1>;
-		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 	};
 
 	md_power_throttling: md-power-throttling {
@@ -3673,7 +3674,7 @@
 			<0 0x1022E000 0 0x1000>; /*SRAM*/
 		interrupts = <GIC_SPI 253 IRQ_TYPE_LEVEL_HIGH 0>;
 		mediatek,dpmaif-ver = <2>;
-		mediatek,dpmaif-cap = <0x4>;
+		mediatek,dpmaif-cap = <0x4a>;
 		mediatek,plat-info = <6877>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_DPMAIF_MAIN>,
 			<&infracfg_ao_clk CLK_IFRAO_CLDMA_BCLK>;
@@ -5612,6 +5613,7 @@
 			"disp_wdma0_eof0",
 			"disp_token_stream_block0",
 			"disp_token_cabc_eof0",
+			"disp_token_vdo_cabc_eof0",
 			"disp_wdma0_eof2",
 			"disp_dsi0_sof0";
 
@@ -5626,6 +5628,7 @@
 			<&gce_mbox CMDQ_EVENT_DISP_WDMA0_FRAME_DONE>,
 			<&gce_mbox CMDQ_SYNC_TOKEN_STREAM_BLOCK>,
 			<&gce_mbox CMDQ_SYNC_TOKEN_CABC_EOF>,
+			<&gce_mbox CMDQ_SYNC_TOKEN_VDO_MODE_CABC_EOF>,
 			<&gce_mbox CMDQ_EVENT_DISP_WDMA0_FRAME_DONE>,
 			<&gce_mbox CMDQ_EVENT_DSI0_SOF>;
 
@@ -5924,6 +5927,7 @@
 				&smi_larb14 &smi_larb16 &smi_larb17 &smi_larb18
 				&smi_larb19 &smi_larb20>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	smi_larb4: smi-larb4@1602e000 {
@@ -6762,8 +6766,6 @@
 			<GIC_SPI 214 IRQ_TYPE_LEVEL_HIGH 0>;
 		clocks = <&infracfg_ao_clk CLK_IFRAO_THERM>;
 		clock-names = "lvts_clk";
-		resets = <&infracfg_rst 0>,
-				 <&infracfg_rst 1>;
 		nvmem-cells = <&lvts_e_data1 &lvts_e_data2>;
 		nvmem-cell-names = "e_data1","e_data2";
 	};
@@ -8024,6 +8026,7 @@
 		mediatek,gen2cp-unsupported;
 		mediatek,smc-req;
 		usb-role-switch;
+		mediatek,u2-lpm-quirks = <0x1>;
 		mediatek,syscon-wakeup = <&pericfg 0x420 101>;
 		wakeup-source;
 		cdp-block;
@@ -8546,7 +8549,6 @@
 		orientation-switch;
 		mode-switch;
 		accessory;
-		mediatek,inverse-orientation;
 		status = "okay";
 		port {
 			ssusb_mux: endpoint {
@@ -9156,10 +9158,6 @@
 		mt-tcpc,vconn-supply = <1>;
 		mt6360pd,intr-gpio = <&pio 5 0x0>;
 		mt6360pd,intr-gpio-num = <5>;
-		mt6360pd,pcb-gpio = <&pio 16 0x0>;
-		mt6360pd,pcb-gpio-num = <16>;
-		/* 0: gpio low as phone, 1: gpio high as phone */
-		mt6360pd,pcb-gpio-polarity = <0>;
 		interrupt-parent = <&subpmic_mtk>;
 		interrupts = <64 0>;
 		interrupt-names = "usbid_evt";
@@ -9195,7 +9193,7 @@
 			pd,sink-pdo-data = <0x000190c8>;
 
 			/*
-			 * No DP, host + device
+			 * No DP Sink capability
 			 *	pd,id-vdo-size = <6>;
 			 *	pd,id-vdo-data = <0xd14029cf 0x0 0x63600000
 						  0x61000000 0x0 0x41000000>;
@@ -9210,7 +9208,6 @@
 					  0x61000000 0x0 0x41000000>;
 
 			bat,nr = <1>;
-
 			bat-info0 {
 				bat,vid = <0x29cf>;
 				bat,pid = <0x6360>;
@@ -9337,3 +9334,4 @@
 };
 
 /delete-node/ &mt6315_6_vbuck4;
+/delete-node/ &mt6359p_vpa_reg;

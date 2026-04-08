@@ -43,8 +43,8 @@
 };
 
 &mt6360_typec {
-	mt6360pd,intr_gpio_num = <25>; /* direct defined GPIO num */
-	mt6360pd,intr_gpio = <&pio 25 0x0>;
+	mt6360pd,intr-gpio-num = <25>; /* direct defined GPIO num */
+	mt6360pd,intr-gpio = <&pio 25 0x0>;
 };
 
 &pio {

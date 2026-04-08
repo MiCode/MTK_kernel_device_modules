@@ -426,6 +426,7 @@ int32_t mddp_f_set_ct_value(uint8_t *buf, uint32_t buf_len)
 	return 0;
 }
 
+
 //------------------------------------------------------------------------------
 // Kernel functions.
 //------------------------------------------------------------------------------
@@ -487,8 +488,7 @@ static const struct net_device_ops mddp_wan_netdev_ops = {
 
 static int __net_init mddp_nf_register(struct net *net)
 {
-	return nf_register_net_hooks(net, mddp_nf_ops,
-					ARRAY_SIZE(mddp_nf_ops));
+	return nf_register_net_hooks(net, mddp_nf_ops, ARRAY_SIZE(mddp_nf_ops));
 }
 
 static void __net_exit mddp_nf_unregister(struct net *net)

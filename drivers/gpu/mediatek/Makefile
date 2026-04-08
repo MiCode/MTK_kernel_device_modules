@@ -36,6 +36,8 @@ else ifeq ($(MTK_PLATFORM),mt6761)
 subdir-ccflags-y += -DCONFIG_GPU_MT6761
 else ifeq ($(MTK_PLATFORM),mt6765)
 subdir-ccflags-y += -DCONFIG_GPU_MT6765
+else ifeq ($(MTK_PLATFORM),mt6771)
+subdir-ccflags-y += -DCONFIG_GPU_MT6771
 else ifeq ($(MTK_PLATFORM),mt6781)
 subdir-ccflags-y += -DCONFIG_GPU_MT6781
 else ifeq ($(MTK_PLATFORM),mt6853)

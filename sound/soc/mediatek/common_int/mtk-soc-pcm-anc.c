@@ -932,7 +932,7 @@ static int mtk_anc_trigger(struct snd_pcm_substream *substream, int cmd)
 }
 
 static int mtk_anc_copy(struct snd_pcm_substream *substream, int channel,
-			unsigned long pos, void __user *buf,
+			unsigned long pos, struct iov_iter *buf,
 			unsigned long bytes)
 {
 	return 0;

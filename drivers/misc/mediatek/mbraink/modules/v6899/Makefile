@@ -25,6 +25,9 @@ subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/spmi/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/regulator/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/regulator/
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/mfd/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/mfd/
+
 ifeq ($(CONFIG_MTK_GPU_SUPPORT),m)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
 subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include/
@@ -71,6 +74,15 @@ ifeq ($(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK),m)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/
 endif
 
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/adsp/include
+
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/
+subdir-ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc/
 
 subdir-ccflags-y += -Wformat
 

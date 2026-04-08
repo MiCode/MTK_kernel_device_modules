@@ -117,6 +117,7 @@ const char *name, void (*start_timer) (void), void (*cancel_timer) (void))
 		return -1;
 	}
 
+	spin_lock(&tTimer_lock);
 	if (tTimerArray.count == MAX_NUM) {
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
 		aee_kernel_warning_api(__FILE__, __LINE__,
@@ -124,8 +125,10 @@ const char *name, void (*start_timer) (void), void (*cancel_timer) (void))
 					"Array is full");
 #endif
 		mtkTTimer_dprintk("[%s] Array is full\n", __func__);
+		spin_unlock(&tTimer_lock);
 		return -1;
 	}
+	spin_unlock(&tTimer_lock);
 
 	index = mtkTTimer_getIndex(name);
 	if (index != -1) {

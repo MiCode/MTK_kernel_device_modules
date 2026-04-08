@@ -40,23 +40,41 @@ static int adsp_send_sys_event(struct adsp_sysevent_ctrl *ctrl,
 		return ADSP_IPI_BUSY;
 	}
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	if (adsp_mt_check_swirq_awake(ctrl->pdata->id)) {
+		mutex_unlock(&ctrl->lock);
+		return ADSP_IPI_BUSY;
+	}
+#else
 	if (adsp_mt_check_swirq(ctrl->pdata->id)) {
 		mutex_unlock(&ctrl->lock);
 		return ADSP_IPI_BUSY;
 	}
+#endif
 
 	adsp_copy_to_sharedmem(ctrl->pdata, ADSP_SHAREDMEM_WAKELOCK,
 				&event, sizeof(event));
-
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+	adsp_mt_set_swirq_awake(ctrl->pdata->id);
+#else
 	adsp_mt_set_swirq(ctrl->pdata->id);
+#endif
 
 	if (wait) {
 		start_time = ktime_get();
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+		while (adsp_mt_check_swirq_awake(ctrl->pdata->id)) {
+			time_ipc_us = ktime_us_delta(ktime_get(), start_time);
+			if (time_ipc_us > 1000) /* 1 ms */
+				break;
+		}
+#else
 		while (adsp_mt_check_swirq(ctrl->pdata->id)) {
 			time_ipc_us = ktime_us_delta(ktime_get(), start_time);
 			if (time_ipc_us > 1000) /* 1 ms */
 				break;
 		}
+#endif
 	}
 
 	mutex_unlock(&ctrl->lock);
@@ -231,4 +249,3 @@ ERROR:
 
 	return ret;
 }
-

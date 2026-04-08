@@ -1023,7 +1023,7 @@ int uarthub_init_default_apuart_config_mt6991(void)
 
 	for (i = 1; i < 4; i++) {
 		uarthub_dev_base = apuart_base_map_mt6991[i];
-		uarthub_config_baud_rate_m6991(uarthub_dev_base, baud_rate);
+		uarthub_config_baud_rate_mt6991(uarthub_dev_base, baud_rate);
 
 		/* 0x0c = 0x3,  byte length: 8 bit*/
 		UARTHUB_REG_WRITE(LCR_ADDR(uarthub_dev_base), 0x3);

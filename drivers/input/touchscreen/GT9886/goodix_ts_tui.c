@@ -24,7 +24,7 @@
 atomic_t gt9886_tui_flag = ATOMIC_INIT(0);
 EXPORT_SYMBOL(gt9886_tui_flag);
 
-#if IS_ENABLED(CONFIG_TOUCHSCREEN_MTK_TUI_COMMON_API)
+#if IS_ENABLED(CONFIG_TRUSTONIC_TRUSTED_UI)
 int gt9886_tpd_enter_tui(void)
 {
 	int ret = 0;

@@ -864,7 +864,6 @@ struct ISP_HOLD_INFO_STRUCT {
 };
 
 static signed int FirstUnusedIrqUserKey = 1;
-#define USERKEY_STR_LEN 128
 
 struct UserKeyInfo {
 	char userName[USERKEY_STR_LEN];
@@ -3023,8 +3022,13 @@ static inline void Disable_Unprepare_ccf_clock(void)
 	/* must keep this clk close order: CG_SCP_SYS_CAM ->
 	 * CG_SCP_SYS_DIS
 	 */
-	if (G_u4EnableClockCount == 0)
+	spin_lock(&(IspInfo.SpinLockClock));
+	if (G_u4EnableClockCount == 0) {
+		spin_unlock(&(IspInfo.SpinLockClock));
 		log_inf("+ pm runtime put_sync\n");
+	} else {
+		spin_unlock(&(IspInfo.SpinLockClock));
+	}
 
 	clk_disable_unprepare(isp_clk.CG_CAMSV1);
 	clk_disable_unprepare(isp_clk.CG_CAMSV0);
@@ -3054,8 +3058,10 @@ static void ISP_EnableClock(bool En)
 		spin_lock(&(IspInfo.SpinLockClock));
 		G_u4EnableClockCount++;
 		spin_unlock(&(IspInfo.SpinLockClock));
-		Prepare_Enable_ccf_clock();
+		Prepare_Enable_ccf_clock(); /* can't be used in spinlock! */
+		spin_lock(&(IspInfo.SpinLockClock));
 		if (G_u4EnableClockCount == 1) {
+			spin_unlock(&(IspInfo.SpinLockClock));
 			log_inf("enable_irq\n");
 			for (module = ISP_CAM0_IRQ_IDX; module < ISP_CAM_IRQ_IDX_NUM; module++) {
 				if (module == ISP_CAM0_IRQ_IDX ||
@@ -3064,12 +3070,14 @@ static void ISP_EnableClock(bool En)
 					enable_irq(cam_isp_devs->irq[module]);
 				}
 			}
+		} else {
+			spin_unlock(&(IspInfo.SpinLockClock));
 		}
 	} else { /* Disable clock. */
 		spin_lock(&(IspInfo.SpinLockClock));
 		G_u4EnableClockCount--;
-		spin_unlock(&(IspInfo.SpinLockClock));
 		if (G_u4EnableClockCount == 0) {
+			spin_unlock(&(IspInfo.SpinLockClock));
 			log_inf("disable_irq\n");
 			for (module = ISP_CAM0_IRQ_IDX; module < ISP_CAM_IRQ_IDX_NUM; module++) {
 				if (module == ISP_CAM0_IRQ_IDX ||
@@ -3078,8 +3086,10 @@ static void ISP_EnableClock(bool En)
 					disable_irq(cam_isp_devs->irq[module]);
 				}
 			}
+		} else {
+			spin_unlock(&(IspInfo.SpinLockClock));
 		}
-		Disable_Unprepare_ccf_clock();
+		Disable_Unprepare_ccf_clock(); /* can't be used in spinlock! */
 	}
 	log_dbg("- X. En: %d. G_u4EnableClockCount:%d.\n", En, G_u4EnableClockCount);
 }
@@ -7368,7 +7378,7 @@ static signed int ISP_DONE_Buf_Time(enum eISPIrq irqT, union CQ_RTBC_FBC *pFbc,
 				break;
 			}
 			/*      */
-			if (IspInfo.DebugMask & ISP_DBG_INT_2) {
+			if (i_dma == ch_imgo) {
 				IRQ_LOG_KEEPER(
 					irqT, m_CurrentPPB, _LOG_INF,
 					"[rtbc][DONE]:dma(%d),start(%d),empty(%d)\n",
@@ -8175,28 +8185,23 @@ static signed int ISP_REGISTER_IRQ_USERKEY(char *userName)
 
 	char m_UserName[USERKEY_STR_LEN];
 	/* local veriable for saving Username from user space */
-	bool bCopyFromUser = MTRUE;
 
 	if (userName == NULL) {
 		log_err(" [regUser] userName is NULL\n");
 	} else {
 		/*get UserName from user space */
-		length = strnlen_user(userName, USERKEY_STR_LEN);
+		length = strnlen(userName, USERKEY_STR_LEN);
+
 		if (length == 0) {
 			log_err(" [regUser] userName address is not valid\n");
 			return key;
 		}
 
-		/*user key len at most 128*/
+		/*user key len at most 32*/
 		length = (length > USERKEY_STR_LEN) ? USERKEY_STR_LEN : length;
 
+		strscpy(m_UserName, userName, length);
 
-		if (copy_from_user(m_UserName, (void *)(userName),
-				   length * sizeof(char)) != 0) {
-			bCopyFromUser = MFALSE;
-		}
-
-		if (bCopyFromUser == MTRUE) {
 			spin_lock((spinlock_t *)(&SpinLock_UserKey));
 			/*check String length, add end */
 			if (length == USERKEY_STR_LEN) {
@@ -8291,9 +8296,6 @@ static signed int ISP_REGISTER_IRQ_USERKEY(char *userName)
 				}
 			}
 			spin_unlock((spinlock_t *)(&SpinLock_UserKey));
-		} else {
-			log_err(" [regUser] copy_from_user failed (%d)\n", i);
-		}
 	}
 
 	log_inf("User(%s)key(%d)\n", m_UserName, key);

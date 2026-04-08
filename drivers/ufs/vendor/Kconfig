@@ -109,3 +109,12 @@ config UFS_MEDIATEK_MT6893
 	help
 	  Enable on MT6893 where implemented UFS related platform changes.
           This is to be in sync with the perf related changes into it
+
+config UFS_MEDIATEK_MT6771
+	bool "Mediatek Proprietary platform 6771 Support"
+	depends on SCSI_UFSHCD && DEVICE_MODULES_SCSI_UFS_MEDIATEK
+	help
+	  Enable support for the Mediatek MT6771 platform.
+          This configuration ensures compatibility with the atf crypto changes.
+          Enabling this option will enable FBE feature for MT6771&MT8788.
+          MT6771 need enter atf to program key.

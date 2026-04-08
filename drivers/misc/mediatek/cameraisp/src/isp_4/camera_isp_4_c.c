@@ -618,7 +618,6 @@ struct S_START_T {
  */
 static unsigned int g_regScen = 0xa5a5a5a5; /* remove later */
 
-static unsigned int g_virtual_cq_cnt[2] = {0, 0};
 static unsigned int g_virtual_cq_cnt_a;
 static unsigned int g_virtual_cq_cnt_b;
 
@@ -7487,23 +7486,26 @@ static long ISP_ioctl(struct file *pFile, unsigned int Cmd, unsigned long Param)
 			}
 		}
 		break;
-	case ISP_SET_VIR_CQCNT:
+	case ISP_SET_VIR_CQCNT: {
+		unsigned int g_virtual_cq_cnt[2] = {0};
+
 		if (copy_from_user(&g_virtual_cq_cnt, (void *)Param,
 			sizeof(unsigned int)*2) == 0) {
 			LOG_DBG("From hw_module:%d Virtual CQ count from user land : %d\n",
 				g_virtual_cq_cnt[0], g_virtual_cq_cnt[1]);
+			if (g_virtual_cq_cnt[0] == 0) {
+				g_virtual_cq_cnt_a = g_virtual_cq_cnt[1];
+				LOG_DBG("Update Virtual CQ cnt for hw_module:0\n");
+			} else if (g_virtual_cq_cnt[0] == 1) {
+				g_virtual_cq_cnt_b = g_virtual_cq_cnt[1];
+				LOG_DBG("Update Virtual CQ cnt for hw_module:1\n");
+			}
 		} else {
 			LOG_DBG(
 				"Virtual CQ count copy_from_user failed\n");
 			Ret = -EFAULT;
 		}
-		if (g_virtual_cq_cnt[0] == 0) {
-			g_virtual_cq_cnt_a = g_virtual_cq_cnt[1];
-			LOG_DBG("Update Virtual CQ cnt for hw_module:0\n");
-		} else if (g_virtual_cq_cnt[0] == 1) {
-			g_virtual_cq_cnt_b = g_virtual_cq_cnt[1];
-			LOG_DBG("Update Virtual CQ cnt for hw_module:1\n");
-		}
+	}
 		break;
 	default:
 	{
@@ -12929,7 +12931,7 @@ irqreturn_t ISP_Irq_CAM_A(signed int Irq, void *DeviceId)
 			#endif /* (TIMESTAMP_QUEUE_EN == 1) */
 
 			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
-				"CAMA P1_SOF_%d_%d(0x%x_0x%x,0x%x_0x%x,0x%x,0x%x,0x%x),int_us:%d,cq:0x%x\n",
+				"CAMA P1_SOF_%d_%d(0x%x_0x%x,0x%x_0x%x,0x%x,0x%x,0x%x), DMA(0x%x), int_us:%d,cq:0x%x\n",
 				   sof_count[module], cur_v_cnt,
 				   ISP_RD32(CAM_REG_FBC_IMGO_CTL1(reg_module)),
 				   ISP_RD32(CAM_REG_FBC_IMGO_CTL2(reg_module)),
@@ -12938,6 +12940,7 @@ irqreturn_t ISP_Irq_CAM_A(signed int Irq, void *DeviceId)
 				   ISP_RD32(CAM_REG_IMGO_BASE_ADDR(reg_module)),
 				   ISP_RD32(CAM_REG_RRZO_BASE_ADDR(reg_module)),
 				   magic_num,
+				   ISP_RD32(CAM_REG_CTL_DMA_EN(reg_module)),
 				   (unsigned int)((sec * 1000000 + usec) -
 					(1000000 * m_sec + m_usec)),
 				   ISP_RD32(
@@ -13545,7 +13548,7 @@ irqreturn_t ISP_Irq_CAM_B(signed int  Irq, void *DeviceId)
 			#endif /* (TIMESTAMP_QUEUE_EN == 1) */
 
 			IRQ_LOG_KEEPER(module, m_CurrentPPB, _LOG_INF,
-				"CAMB P1_SOF_%d_%d (0x%x_0x%x,0x%x_0x%x,0x%x,0x%x,0x%x), int_us:%d,cq:0x%x\n",
+				"CAMB P1_SOF_%d_%d(0x%x_0x%x,0x%x_0x%x,0x%x,0x%x,0x%x), DMA(0x%x), int_us:%d,cq:0x%x\n",
 				   sof_count[module], cur_v_cnt,
 				   ISP_RD32(CAM_REG_FBC_IMGO_CTL1(reg_module)),
 				   ISP_RD32(CAM_REG_FBC_IMGO_CTL2(reg_module)),
@@ -13554,6 +13557,7 @@ irqreturn_t ISP_Irq_CAM_B(signed int  Irq, void *DeviceId)
 				   ISP_RD32(CAM_REG_IMGO_BASE_ADDR(reg_module)),
 				   ISP_RD32(CAM_REG_RRZO_BASE_ADDR(reg_module)),
 				   magic_num,
+				   ISP_RD32(CAM_REG_CTL_DMA_EN(reg_module)),
 				   (unsigned int)((sec * 1000000 + usec) -
 					(1000000 * m_sec + m_usec)),
 				   ISP_RD32(CAM_REG_CQ_THR0_BASEADDR
@@ -13721,7 +13725,7 @@ static void SMI_INFO_DUMP(enum ISP_IRQ_TYPE_ENUM irq_module)
 	case ISP_IRQ_TYPE_INT_CAM_A_ST:
 	case ISP_IRQ_TYPE_INT_CAM_B_ST:
 		if (g_ISPIntErr_SMI[irq_module] &
-			(DMA_ERR_ST | INT_ST_MASK_CAM_WARN | CQ_VS_ERR_ST | TG_ERR_ST)) {
+			(DMA_ERR_ST | INT_ST_MASK_CAM_WARN | CQ_VS_ERR_ST | TG_ERR_ST | CQ_APB_ERR_ST)) {
 			pr_info("ERR:SMI_DUMP by module:%d\n", irq_module);
 			mtk_smi_dbg_hang_detect("camera_isp_cam");
 			g_ISPIntErr_SMI[irq_module] = 0;

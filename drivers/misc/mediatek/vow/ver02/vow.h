@@ -51,8 +51,8 @@
 #define VOW_VOICE_RECORD_BIG_THRESHOLD (8320) /* 260ms */
 #define VOW_IPI_SEND_CNT_TIMEOUT       (50) /* 50 loop */
 /* UBM_V1:0xA000, UBM_V2:0xDC00, UBM_V3: 2*0x11000, UBM_V4: 2*0x16800  */
-#define VOW_MODEL_SIZE_THRES           (0x2800)
-#define VOW_MODEL_SIZE                 (0x16800)
+#define VOW_MODEL_SIZE_THRES           (0x800)
+#define VOW_MODEL_SIZE                 (0x28000)
 #define VOW_VOICEDATA_OFFSET           (VOW_MODEL_SIZE * MAX_VOW_SPEAKER_MODEL)
 #define VOW_VOICEDATA_SIZE             (0x12C00) /* 74880 + 6*320, need over 2.3sec */
 #define VOW_NORMAL_REC_SIZE            (0x12480) /* 2.3sec(74880B) can be divided by 320byte */
@@ -149,7 +149,7 @@
 #define MAGIC_PROVIDER_NUMBER             (0xABCD)      /* set meaningless default value */
 #define MAGIC_IOCTL_NUMBER                (0xDEADBEEF)  /* set meaningless default value */
 
-#define REC_QUEUE_NUM                     (10)
+#define REC_QUEUE_NUM                     (20)
 
 enum { /* dump_data_t */
 	DUMP_AECOUT = 0,
@@ -176,7 +176,9 @@ enum vow_control_cmd_t {
 	VOWControlCmd_Mic_Single,
 	VOWControlCmd_Mic_Dual,
 	VOWControlCmd_Speaker_Single,
-	VOWControlCmd_Speaker_Dual
+	VOWControlCmd_Speaker_Dual,
+	VOWControlCmd_Oneshot_Enable,
+	VOWControlCmd_Oneshot_Disable
 };
 
 enum vow_ipi_msgid_t {
@@ -206,6 +208,7 @@ enum vow_ipi_msgid_t {
 	IPIMSG_VOW_HAL_REBOOT = 29,
 	//IPIMSG_VOW_FLUSH = 30,
 	IPIMSG_VOW_SCP_BARGE_IN_RESUME = 31,
+	IPIMSG_VOW_ONESHOT_SUPPORT = 32,
 	/*------ sound_soc-vow-kernel ------*/
 	IPIMSG_VOW_PCM_HWFREE = 100
 };

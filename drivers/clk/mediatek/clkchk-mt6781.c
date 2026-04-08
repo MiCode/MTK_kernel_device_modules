@@ -48,6 +48,8 @@ static bool clk_hw_is_enabled(const struct clk_hw *hw)
 
 #endif /* !CLKDBG_CCF_API_4_4 */
 
+static unsigned int suspend_cnt;
+
 /*
  * clkchk dump_regs
  */
@@ -326,6 +328,22 @@ static struct pvd_msk *get_pvd_pwr_mask(void)
  * init functions
  */
 
+static bool is_suspend_retry_stop(bool reset_cnt)
+{
+	if (reset_cnt == true) {
+		suspend_cnt = 0;
+		return true;
+	}
+
+	suspend_cnt++;
+	pr_notice("%s: suspend cnt: %d\n", __func__, suspend_cnt);
+
+	if (suspend_cnt < 2)
+		return false;
+
+	return true;
+}
+
 static struct clkchk_ops clkchk_mt6781_ops = {
 	.get_all_regnames = get_all_regnames,
 	.get_spm_pwr_status_array = get_spm_pwr_status_array,
@@ -337,10 +355,13 @@ static struct clkchk_ops clkchk_mt6781_ops = {
 #if IS_ENABLED(CONFIG_MTK_DEVAPC)
 	.devapc_dump = devapc_dump,
 #endif
+	.is_suspend_retry_stop = is_suspend_retry_stop,
 };
 
 static int clk_chk_mt6781_probe(struct platform_device *pdev)
 {
+	suspend_cnt = 0;
+
 	init_regbase();
 
 	set_clkchk_notify();

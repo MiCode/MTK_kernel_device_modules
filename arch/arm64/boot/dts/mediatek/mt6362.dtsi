@@ -398,9 +398,8 @@
 			tcpc-dual,supported-modes = <0>;
 			/* tcpc_device's name */
 			tcpc,name = "type_c_port0";
-			/* 0: SNK Only, 1: SRC Only, 2: DRP, */
-			/* 3: Try.SRC, 4: Try.SNK */
-			tcpc,role-def = <4>;
+			/* 0: Unknown, 1: SNK, 2: SRC, 3: DRP, 4: Try.SRC, 5: Try.SNK */
+			tcpc,role-def = <5>;
 			/* 0: Default, 1: 1.5, 2: 3.0 */
 			tcpc,rp-level = <0>;
 			/* 0: Never, 1: Always, 2: EMarkOnly, 3: StartOnly */
@@ -437,7 +436,7 @@
 				/* 0x0002d0c8 : 9V, 2A<0x04019032 0x04019064> */
 
 				/*
-				 * No DP, host + device
+				 * No DP Sink capability
 				 *	pd,id-vdo-size = <3>;
 				 *	pd,id-vdo-data =
 						<0xd00029cf 0x0 0x00010000>;

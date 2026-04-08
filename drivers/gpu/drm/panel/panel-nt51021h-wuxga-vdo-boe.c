@@ -392,15 +392,14 @@ static const struct drm_display_mode default_mode = {
 	.hsync_end = 1200 + 68 + 8,//HSA
 	.htotal = 1200 + 68 + 8 + 68,//HBP
 	.vdisplay = 1920,
-	.vsync_start = 1920 + 16,//VFP
-	.vsync_end = 1920 + 16 + 8,//VSA
-	.vtotal = 1920 + 16 + 8 + 30,//VBP
+	.vsync_start = 1920 + 30,//VFP
+	.vsync_end = 1920 + 30 + 8,//VSA
+	.vtotal = 1920 + 30 + 8 + 16,//VBP
 };
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 static struct mtk_panel_params ext_params = {
-	.pll_clk = 504,
-	.vfp_low_power = 112,
+	.pll_clk = 505,
 	.cust_esd_check = 0,
 	.esd_check_enable = 0,
 	.lcm_esd_check_table[0] = {
@@ -408,7 +407,7 @@ static struct mtk_panel_params ext_params = {
 	},
 	.ssc_enable = 0,
 	.lane_swap_en = 0,
-	.data_rate = 600,
+	.data_rate = 1010,
 	.physical_width = 800,
 	.physical_height = 1280,
 };
@@ -549,8 +548,7 @@ static int lcm_probe(struct mipi_dsi_device *dsi)
 	ctx->dev = dev;
 	dsi->lanes = 4;
 	dsi->format = MIPI_DSI_FMT_RGB888;
-	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE |
-		MIPI_DSI_CLOCK_NON_CONTINUOUS;
+	dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_SYNC_PULSE;
 
 	ret = of_property_read_u32(dev->of_node, "gate-ic", &value);
 	if (ret < 0)

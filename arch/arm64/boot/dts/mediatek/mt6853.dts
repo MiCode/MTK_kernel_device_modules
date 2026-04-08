@@ -134,6 +134,7 @@
 	low_battery_throttling {
 		compatible = "mediatek,low_battery_throttling";
 		lvsys-thd-enable = <0>;
+		lbat-legacy-proj = <1>;
 		vbat-thd-enable = <1>;
 		bat0-thd-volts-l = <
 			3250 3100 2700
@@ -166,20 +167,6 @@
 
 	pbm: pbm {
 		compatible = "mediatek,pbm";
-	};
-
-	cpu_power_throttling: cpu_power_throttling {
-		compatible = "mediatek,cpu-power-throttling";
-		lbat-max-level = <2>;
-		lbat-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		lbat-limit-freq-lv2 = < 900000  900000 1300000>;
-
-		oc-max-level = <2>;
-		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		oc-limit-freq-lv2 = < 900000  900000 900000>;
-
-		soc-max-level = <1>;
-		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 	};
 
 	md_power_throttling: md_power_throttling {
@@ -381,6 +368,9 @@
 		min_charger_voltage_1 = <4400000>;
 		min_charger_voltage_2 = <4200000>;
 		max_dmivr_charger_current = <1800000>;
+
+		/* fast charging algo support indicator */
+		enable-fast-charging-indicator;
 	};
 
 	/* Microtrust SW IRQ number 296(328) ~ 301(333) */
@@ -448,6 +438,7 @@
 
 	rt-pd-manager {
 		compatible = "mediatek,rt-pd-manager";
+		mediatek,not_support_u3;
 	};
 
 	typec_mux_switch: typec_mux_switch {
@@ -455,7 +446,6 @@
 		orientation-switch;
 		mode-switch;
 		accessory;
-		mediatek,inverse-orientation;
 		status = "okay";
 	};
 
@@ -688,6 +678,19 @@
 	regulator-max-microvolt = <3000000>;
 };
 
+&mt6359p_vsram_others_reg {
+	regulator-always-on;
+};
+
+&mt6359p_vbif28_reg {
+	regulator-always-on;
+};
+
+&mt6359p_vproc1_reg {
+	regulator-always-on;
+};
+
+
 &mt6359p_vproc2_reg {
 	regulator-always-on;
 };
@@ -727,8 +730,8 @@
 };
 
 &mddriver {
-	md_vdigrf-supply = <&mt6359p_vpu_reg>;
-
+	md-vdigrf-supply = <&mt6359p_vpu_reg>;
+	md-vdigrf = <700000 700000>;
 };
 &ssusb {
 	port {
@@ -738,3 +741,4 @@
 	};
 };
 
+/delete-node/ &mt6359p_vpa_reg;

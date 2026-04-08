@@ -12,11 +12,21 @@
 #include <mt-plat/aee.h>
 #endif
 #include <linux/iopoll.h>
-
+#include "musb_io.h"
 #if IS_ENABLED(CONFIG_MTK_UAC_POWER_SAVING)
 #define USB_AUDIO_DATA_OUT 0
 static struct TGPD *Tx_gpd_head_dram;
 static u64 Tx_gpd_Offset_dram;
+#endif
+
+#ifdef readl_poll_timeout_atomic
+#undef readl_poll_timeout_atomic
+#undef readx_poll_timeout_atomic
+
+#define readx_poll_timeout_atomic(op, base, addr, val, cond, delay_us, timeout_us) \
+		read_poll_timeout_atomic(op, val, cond, delay_us, timeout_us, false, base, addr)
+#define readl_poll_timeout_atomic(base, addr, val, cond, delay_us, timeout_us) \
+		readx_poll_timeout_atomic(musb_readl, base, addr, val, cond, delay_us, timeout_us)
 #endif
 
 static struct TGPD *Rx_gpd_head[MAX_QMU_EP + 1];
@@ -799,8 +809,7 @@ void mtk_qmu_stop(u8 ep_num, u8 isRx)
 				MGC_O_QMU_TQCSR(ep_num),
 				DQMU_QUE_STOP);
 			QMU_INFO("Stop TQ %d\n", ep_num);
-
-			ret = readl_poll_timeout_atomic(base+
+			ret = readl_poll_timeout_atomic(base,
 				MGC_O_QMU_TQCSR(ep_num), value,
 				!(value & DQMU_QUE_ACTIVE), 1, 1000);
 			if (ret)
@@ -816,7 +825,7 @@ void mtk_qmu_stop(u8 ep_num, u8 isRx)
 				DQMU_QUE_STOP);
 			QMU_INFO("Stop RQ %d\n", ep_num);
 
-			ret = readl_poll_timeout_atomic(base+
+			ret = readl_poll_timeout_atomic(base,
 				MGC_O_QMU_RQCSR(ep_num), value,
 				!(value & DQMU_QUE_ACTIVE), 1, 1000);
 			if (ret)

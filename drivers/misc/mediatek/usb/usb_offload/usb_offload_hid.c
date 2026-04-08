@@ -627,25 +627,13 @@ static void hid_reset(struct hid_ep_info *hid)
 	if (unlikely(!ring))
 		return;
 
-	/* inform dsp to stop hid offloading */
-	hid->wait_dsp = kmalloc(sizeof(struct completion), GFP_ATOMIC);
-	if (!hid->wait_dsp)
-		return;
-	init_completion(hid->wait_dsp);
-	usb_offload_prepare_send_urb_msg(hid, false, AUDIO_IPI_MSG_BYPASS_ACK);
-
-	/* wait dsp to send back last trb which was lastset queued */
-	ret = wait_for_completion_timeout(hid->wait_dsp, msecs_to_jiffies(5000));
-	kfree(hid->wait_dsp);
-	hid->wait_dsp = NULL;
-
 	hid_ring_lock(hid, "<HID Reset>");
 	xhci_stop_hid_ep(hid);
 
 	if (hid_tr_switch) {
 		xhci_realloc_hid_ring(hid, USB_OFFLOAD_MEM_DRAM_ID);
 	} else {
-		if (!ret || hid_direct_reset) {
+		if (hid_direct_reset) {
 			hid_info("reset whole ring, hid_direct_reset=%d\n", hid_direct_reset);
 			xhci_initialize_ring_info_(ring, 1);
 			hid->cur_enqueue = ring->enqueue;
@@ -656,6 +644,20 @@ static void hid_reset(struct hid_ep_info *hid)
 		xhci_hid_move_deq(hid, ring->enq_seg, ring->enqueue, ring->cycle_state);
 	}
 	hid_ring_unlock(hid, "<HID Reset>");
+
+	/* inform dsp to stop hid offloading */
+	hid->wait_dsp = kmalloc(sizeof(struct completion), GFP_ATOMIC);
+	if (!hid->wait_dsp)
+		return;
+	init_completion(hid->wait_dsp);
+	usb_offload_prepare_send_urb_msg(hid, false, AUDIO_IPI_MSG_BYPASS_ACK);
+
+	/* wait dsp to send back last trb which was lastset queued */
+	ret = wait_for_completion_timeout(hid->wait_dsp, msecs_to_jiffies(5000));
+	if (ret)
+		hid_info("wait_for_completion_timeout=%d\n", ret);
+	kfree(hid->wait_dsp);
+	hid->wait_dsp = NULL;
 
 	hid_clean_buf(hid->dir);
 	clear_bit(HID_ON_RESETING, &hid->sync_flag);
@@ -1010,7 +1012,7 @@ error:
 
 static int xhci_realloc_hid_ring(struct hid_ep_info *hid, enum usb_offload_mem_id type)
 {
-	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, type, false);
+	return xhci_mtk_realloc_transfer_ring(hid->slot_id, hid->ep_id, type, true);
 }
 
 static int xhci_get_ep_state(struct xhci_ep_ctx *ctx)

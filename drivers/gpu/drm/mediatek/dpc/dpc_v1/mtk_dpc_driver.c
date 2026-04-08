@@ -4845,12 +4845,12 @@ static void mtk_dpc_shutdown_v1(struct platform_device *pdev)
 {
 	struct mtk_dpc *priv = platform_get_drvdata(pdev);
 
-	if (priv) {
-		priv->skip_force_power = true;
-		DPCFUNC("skip_force_power:%d, vcp:%d,vlp pm mask:0x%x", priv->skip_force_power,
+	if (IS_ERR_OR_NULL(priv))
+		return;
+
+	DPCFUNC("skip_force_power:%d, vcp:%d,vlp pm mask:0x%x", priv->skip_force_power,
 			atomic_read(&priv->vcp_is_alive), g_vlp_pm_mask);
-	}
-	dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, 1);
+	dpc_mmp(skip_vote, MMPROFILE_FLAG_PULSE, U32_MAX, priv->skip_force_power);
 }
 
 struct platform_driver mtk_dpc_driver_v1 = {

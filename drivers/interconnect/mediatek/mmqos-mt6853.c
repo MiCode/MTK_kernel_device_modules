@@ -74,7 +74,7 @@ static const struct mtk_node_desc node_descs_mt6853[] = {
 	DEFINE_MNODE(hw_vdec_ufo_ext,
 		MASTER_LARB_PORT(M4U_PORT_L4_VDEC_UFO_EXT), 7, false, 0x2, SLAVE_LARB(4)),
 	DEFINE_MNODE(hw_vdec_pp_ext,
-		MASTER_LARB_PORT(M4U_PORT_L4_VDEC_PP_EXT), 8, true, 0x2, SLAVE_LARB(4)),
+		MASTER_LARB_PORT(M4U_PORT_L4_VDEC_PP_EXT), 7, true, 0x2, SLAVE_LARB(4)),
 	DEFINE_MNODE(hw_vdec_pred_rd_ext,
 		MASTER_LARB_PORT(M4U_PORT_L4_VDEC_PRED_RD_EXT), 7, false, 0x2, SLAVE_LARB(4)),
 	DEFINE_MNODE(hw_vdec_pred_wr_ext,
@@ -383,13 +383,21 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6853 = {
 	.comm_icc_hrt_path_names = comm_icc_hrt_path_names_mt6853,
 	.larb_icc_path_names = larb_icc_path_names_mt6853,
 	.max_ratio = 40,
+	.hrt = {
+		.hrt_bw = {3344, 0, 0},
+		.hrt_total_bw = 17064, /*Todo: Use DRAMC API 4266*2(channel)*2(io width)*/
+		.md_speech_bw = { 3344, 3344},
+		.hrt_ratio = {1000, 1000, 1000, 1000}, /* MD, CAM, DISP, MML */
+		.blocking = true,
+		.emi_ratio = 500,
+	},
 	.hrt_LPDDR4 = {
 		.hrt_bw = {3344, 0, 0},
-		.hrt_total_bw = 8532, /* Todo: Use DRAMC API */
-		.md_speech_bw = { 3344, 3344},
-		.hrt_ratio = {1000, 1000, 1000, 1000},
+		.hrt_total_bw = 17064, /*Todo: Use DRAMC API 4266*2(channel)*2(io width)*/
+		.md_speech_bw = {3344, 3344},
+		.hrt_ratio = {1000, 1000, 1000, 1000}, /* MD, CAM, DISP, MML */
 		.blocking = true,
-		.emi_ratio = 1000,
+		.emi_ratio = 500,
 	},
 	.comm_port_channels = {
 		{ 0x1, 0x2, 0x2, 0x1, 0x2, 0x2, 0x1, 0x2, 0x3 }
@@ -398,6 +406,7 @@ static const struct mtk_mmqos_desc mmqos_desc_mt6853 = {
 		{ HRT_MAX_BWL, HRT_MAX_BWL, HRT_NONE, HRT_NONE, HRT_NONE,
 			HRT_NONE, HRT_CAM, HRT_CAM, HRT_DISP },
 	},
+	.freq_mode = NO_MMINFRA,
 };
 static const struct of_device_id mtk_mmqos_mt6853_of_ids[] = {
 {

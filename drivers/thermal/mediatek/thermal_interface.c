@@ -127,6 +127,8 @@ static struct md_info md_info_data;
 static struct pid_info pid_info_data;
 static u32 bat_type;
 
+static DEFINE_MUTEX(pid_info_lock);
+
 #ifdef CONFIG_LEDS_BRIGHTNESS_CHANGED
 static inline int genl_msg_prepare_usr_msg(u8 cmd, size_t size, pid_t pid, struct sk_buff **skbp)
 {
@@ -1578,6 +1580,7 @@ static ssize_t vtskin_info_show(struct kobject *kobj,
 	len += snprintf(buf + len, PAGE_SIZE - len, "vtskin sensor total num=%d\n",
 			plat_vtskin_info->num_sensor);
 
+	mutex_lock(&plat_vtskin_info->lock);
 	for (i = 0; i < plat_vtskin_info->num_sensor; i++) {
 		param = &plat_vtskin_info->params[i];
 		len += snprintf(buf + len, PAGE_SIZE - len,
@@ -1590,6 +1593,7 @@ static ssize_t vtskin_info_show(struct kobject *kobj,
 		}
 		len += snprintf(buf + len, PAGE_SIZE - len, "\n");
 	}
+	mutex_unlock(&plat_vtskin_info->lock);
 
 	return len;
 }
@@ -1658,12 +1662,20 @@ static ssize_t vtskin_info_store(struct kobject *kobj,
 		coef[i].record_time = 0;
 	}
 
+	mutex_lock(&plat_vtskin_info->lock);
 	param = &plat_vtskin_info->params[skin_id];
 	param->operation = op;
 	param->ref_num = (unsigned int)ref_num;
 	memcpy(&param->vtskin_ref[0], &coef[0], sizeof(struct vtskin_coef) * MAX_VTSKIN_REF_NUM);
 	for (i = 0; i < MAX_VTSKIN_REF_NUM; i++)
 		param->tzd[i] = tzd[i];
+
+	param = &plat_vtskin_info->params[0];
+	for (i = 0; i < MAX_VTSKIN_REF_NUM; i++) {
+		param->vtskin_ref[i].record_temp = THERMAL_TEMP_INVALID;
+		param->vtskin_ref[i].record_time = 0;
+	}
+	mutex_unlock(&plat_vtskin_info->lock);
 
 	return count;
 }
@@ -1755,8 +1767,11 @@ static ssize_t pid_info_show(struct kobject *kobj,
 	int len = 0, i;
 	struct pid_term_info *pid_data;
 
+	mutex_lock(&pid_info_lock);
+
 	if (pid_info_data.pid_num <= 0) {
 		len += snprintf(buf + len, PAGE_SIZE - len, "\n");
+		mutex_unlock(&pid_info_lock);
 		return len;
 	}
 
@@ -1774,6 +1789,7 @@ static ssize_t pid_info_show(struct kobject *kobj,
 
 	len += snprintf(buf + len, PAGE_SIZE - len, "\n");
 
+	mutex_unlock(&pid_info_lock);
 	return len;
 }
 
@@ -1794,6 +1810,8 @@ static ssize_t pid_info_store(struct kobject *kobj,
 		return -EINVAL;
 	}
 
+	mutex_lock(&pid_info_lock);
+
 	pid_data = pid_info_data.pid_term_data;
 	if (pid_info_data.pid_num != num && pid_data != NULL) {
 		devm_kfree(tm_data.dev, pid_data);
@@ -1803,8 +1821,10 @@ static ssize_t pid_info_store(struct kobject *kobj,
 	if (!pid_data) {
 		pid_data = devm_kcalloc(tm_data.dev, num,
 			sizeof(struct pid_term_info), GFP_KERNEL);
-		if (!pid_data)
+		if (!pid_data) {
+			mutex_unlock(&pid_info_lock);
 			return -ENOMEM;
+		}
 
 		pid_info_data.pid_term_data = pid_data;
 		pid_info_data.pid_num = num;
@@ -1822,10 +1842,12 @@ static ssize_t pid_info_store(struct kobject *kobj,
 			pid_data[i].d = d_term;
 		} else {
 			pr_info("%s: wrong scan info type and num %s\n", __func__, buf);
+			mutex_unlock(&pid_info_lock);
 			return -EINVAL;
 		}
 	}
 
+	mutex_unlock(&pid_info_lock);
 	return count;
 }
 

@@ -656,9 +656,11 @@ static int dpmaif_init_clk(struct device *dev, struct dpmaif_clk_node *clk)
 	return 0;
 }
 
+static unsigned int clk_on_cnt, clk_off_cnt;
 static void dpmaif_set_clk(unsigned int on, struct dpmaif_clk_node *clk)
 {
 	int ret;
+	unsigned int reg_value = 0;
 
 	if (!clk) {
 		CCCI_ERROR_LOG(0, TAG,
@@ -683,10 +685,19 @@ static void dpmaif_set_clk(unsigned int on, struct dpmaif_clk_node *clk)
 					"[%s] error: prepare %s fail. %d\n",
 					__func__, clk->clk_name, ret);
 
-		} else
+			clk_on_cnt++;
+		} else {
 			clk_disable_unprepare(clk->clk_ref);
+			clk_off_cnt++;
+		}
 
 		clk += 1;
+	}
+	if (g_plat_inf == 6899) {
+		regmap_read(dpmaif_ctl->infra_ao_base, 0x90, &reg_value);
+		CCCI_NORMAL_LOG(0, TAG, "[%s] clk cnt: %u, %u, 0x%x\n",
+			__func__, clk_on_cnt, clk_off_cnt, reg_value);
+		udelay(500);
 	}
 }
 
@@ -2595,6 +2606,14 @@ static int dpmaif_start(unsigned char hif_id)
 	dpmaif_clear_traffic_data();
 	mod_timer(&dpmaif_ctl->traffic_monitor, jiffies + DPMAIF_TRAFFIC_MONITOR_INTERVAL * HZ);
 #endif
+
+	if (g_plat_inf == 6899)
+		CCCI_NORMAL_LOG(0, TAG, "%s end, ulq(0x%x, 0x%x, 0x%x, 0x%x)\n",
+			__func__,
+			DPMA_READ_AO_UL_SRAM(0x10),
+			DPMA_READ_AO_UL_SRAM(0x20),
+			DPMA_READ_AO_UL_SRAM(0x30),
+			DPMA_READ_AO_UL_SRAM(0x40));
 
 	return 0;
 }

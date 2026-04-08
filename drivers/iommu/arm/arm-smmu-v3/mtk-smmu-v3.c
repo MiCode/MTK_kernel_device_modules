@@ -993,6 +993,18 @@ static void mtk_smmu_device_reset(struct arm_smmu_device *smmu)
 	}
 }
 
+static void mtk_smmu_wakelock_get(struct mtk_smmu_data *data)
+{
+	if (data->power_awake)
+		__pm_stay_awake(data->suspend_lock);
+}
+
+static void mtk_smmu_wakelock_put(struct mtk_smmu_data *data)
+{
+	if (data->power_awake)
+		__pm_relax(data->suspend_lock);
+}
+
 static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
 {
 	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
@@ -1013,7 +1025,11 @@ static int mtk_smmu_power_get(struct arm_smmu_device *smmu)
 		}
 	}
 
+	mtk_smmu_wakelock_get(data);
+
 	ret = mtk_smmu_pm_get(plat_data->smmu_type);
+	if (ret)
+		mtk_smmu_wakelock_put(data);
 
 	return ret;
 }
@@ -1039,6 +1055,7 @@ static int mtk_smmu_power_put(struct arm_smmu_device *smmu)
 	}
 
 	ret = mtk_smmu_pm_put(plat_data->smmu_type);
+	mtk_smmu_wakelock_put(data);
 
 	return ret;
 }
@@ -2013,6 +2030,44 @@ static int hyp_smmu_debug_smc(u32 action_id, u32 ste_row, u64 reg,
 	return SMC_SMMU_SUCCESS;
 }
 
+static bool mtk_smmu_dvm_support(struct arm_smmu_device *smmu)
+{
+	struct mtk_smmu_data *data = to_mtk_smmu_data(smmu);
+
+	return data->dvm_support;
+}
+
+static inline bool mtk_smmu_dvm_connect_done(struct arm_smmu_device *smmu)
+{
+	unsigned int val;
+	void __iomem *wp_base = smmu->wp_base;
+
+	val = smmu_read_field(wp_base, SMMU_TCU_CTL4_DVM, (DVM_EN_ACK | DVM_EN_REQ));
+	return val == (DVM_EN_ACK | DVM_EN_REQ);
+}
+
+static void mtk_smmu_dvm_connect(struct arm_smmu_device *smmu)
+{
+	unsigned int attempts = 0;
+	void __iomem *wp_base = smmu->wp_base;
+
+	if (mtk_smmu_dvm_connect_done(smmu)) {
+		/* SMMU has already connected with DVM */
+		return;
+	}
+
+	/* SMMU connect with DVM MI */
+	smmu_write_field(wp_base, SMMU_TCU_CTL4_DVM, DVM_EN_REQ, DVM_EN_REQ);
+	while (attempts++ < SMMU_POLL_MAX_ATTEMPTS) {
+		if (mtk_smmu_dvm_connect_done(smmu)) {
+			/* SMMU has already connected with DVM */
+			return;
+		}
+	}
+
+	pr_info("%s, dvm connect timeout\n", __func__);
+}
+
 static int mtk_hyp_smmu_debug_dump(struct arm_smmu_device *smmu, u64 fault_ipa,
 				   u64 reg, u32 sid, u32 event_id, bool trans_s2)
 {
@@ -2052,11 +2107,16 @@ static int mtk_hyp_smmu_debug_dump(struct arm_smmu_device *smmu, u64 fault_ipa,
 		/* dump page table info */
 		if (!trans_s2)
 			break;
+
 		fault_ipa_32 = MTK_SMMU_ADDR(fault_ipa);
 		if (hyp_smmu_debug_smc(HYP_SMMU_TF_DUMP, 0, 0, smmu_type, sid,
 				       fault_ipa_32, &debug_info))
 			return SMC_SMMU_FAIL;
 		hyp_smmu_dump_s2_pgtable(debug_info);
+
+		if (mtk_smmu_dvm_support(smmu) && !mtk_smmu_dvm_connect_done(smmu))
+			pr_info("[%s] %s, This fault may be caused by DVM not connect\n",
+				HYP_SMMU_INFO_PREFIX, __func__);
 		break;
 	case HYP_SMMU_REG_DUMP_EVT:
 		/* dump smmu hw reg */
@@ -2481,6 +2541,8 @@ static const struct arm_smmu_impl mtk_smmu_impl = {
 	.alloc_io_pgtable_ops = mtk_alloc_io_pgtable_ops,
 	.free_io_pgtable_ops = mtk_free_io_pgtable_ops,
 	.smmu_mem_share = mtk_smmu_share_mem_to_hyp,
+	.smmu_dvm_support = mtk_smmu_dvm_support,
+	.smmu_dvm_connect = mtk_smmu_dvm_connect,
 };
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_MTK_SMI) && !IOMMU_BRING_UP
@@ -2531,6 +2593,23 @@ static const struct mtk_smmu_ops mtk_smmu_ops = {
 	.smmu_power_put		= mtk_smmu_power_put,
 };
 
+static void mtk_smmu_register_power_awake(struct mtk_smmu_data *data)
+{
+	struct arm_smmu_device *smmu = &data->smmu;
+
+	if (!data->power_awake)
+		return;
+
+	data->suspend_lock = wakeup_source_register(NULL, "smmu wakelock");
+	if (!data->suspend_lock) {
+		dev_info(smmu->dev, "wakeup_source_register failed\n");
+		data->power_awake = false;
+		return;
+	}
+
+	dev_info(smmu->dev, "register power awake\n");
+}
+
 static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 {
 	struct arm_smmu_device *smmu = &data->smmu;
@@ -2548,6 +2627,11 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 	if (of_property_read_bool(smmu->dev->of_node, "mediatek,axslc"))
 		data->axslc = true;
 
+	if (of_property_read_bool(smmu->dev->of_node, "mediatek,dvm")) {
+		dev_info(smmu->dev, "dvm_support\n");
+		data->dvm_support = true;
+	}
+
 	data->smi_com_base = kcalloc(SMI_COM_REGS_NUM, sizeof(u32), GFP_KERNEL);
 	ret = of_property_read_u32_array(smmu->dev->of_node, "smi-common-base",
 					 data->smi_com_base, SMI_COM_REGS_NUM);
@@ -2561,6 +2645,10 @@ static void mtk_smmu_parse_driver_properties(struct mtk_smmu_data *data)
 	} else {
 		data->irq_disable = false;
 	}
+
+	if (of_property_read_bool(smmu->dev->of_node, "mtk,power-awake") &&
+	    !MTK_SMMU_HAS_FLAG(data->plat_data, SMMU_CLK_AO_EN))
+		data->power_awake = true;
 }
 
 static int mtk_smmu_config_translation(struct mtk_smmu_data *data)
@@ -2677,6 +2765,8 @@ static int mtk_smmu_data_init(struct mtk_smmu_data *data)
 
 	mtk_smmu_register_hang_detect(data);
 
+	mtk_smmu_register_power_awake(data);
+
 	populate_iommu_groups(data, dev->of_node);
 
 	mtk_smmu_irq_pause_timer_init(data);
@@ -2756,7 +2846,7 @@ static const struct mtk_smmu_plat_data mt6991_data_mm = {
 	.smmu_plat		= SMMU_MT6991,
 	.smmu_type		= MM_SMMU,
 	.flags			= SMMU_DELAY_HW_INIT | SMMU_SEC_EN | SMMU_HYP_EN |
-				  SMMU_EXTRA_DCM_EN | SMMU_HANG_DETECT,
+				  SMMU_EXTRA_DCM_EN | SMMU_HANG_DETECT | SMMU_DIS_TCU_CH,
 };
 
 static const struct mtk_smmu_plat_data mt6991_data_apu = {
@@ -3169,9 +3259,9 @@ static void smmuwp_dump_dcm_en(struct arm_smmu_device *smmu)
 }
 
 #if IS_ENABLED(CONFIG_DEVICE_MODULES_ARM_SMMU_V3) && IS_ENABLED(CONFIG_MTK_IOMMU_DEBUG)
-void mtk_smmu_reg_dump(enum mtk_smmu_type type,
-		       struct device *master_dev,
-		       int sid)
+void smmu_reg_dump(enum mtk_smmu_type type,
+		   struct device *master_dev,
+		   int sid)
 {
 	static DEFINE_RATELIMIT_STATE(dbg_rs, SMMU_FAULT_RS_INTERVAL,
 				      SMMU_FAULT_RS_BURST);
@@ -3220,6 +3310,13 @@ void mtk_smmu_reg_dump(enum mtk_smmu_type type,
 	}
 
 	mtk_smmu_power_put(smmu);
+}
+
+void mtk_smmu_reg_dump(enum mtk_smmu_type type,
+		       struct device *master_dev,
+		       int sid)
+{
+	smmu_reg_dump(type, master_dev, sid);
 }
 EXPORT_SYMBOL_GPL(mtk_smmu_reg_dump);
 

@@ -803,8 +803,10 @@ static void cmdq_test_mbox_write(
 		cmdq_sec_pkt_set_data(pkt, 0, 0, CMDQ_SEC_DEBUG,
 			CMDQ_METAEX_NONE);
 #ifdef CMDQ_SECURE_MTEE_SUPPORT
-		if (!~secure)
+		if (secure) {
+			cmdq_msg("set mttee true");
 			cmdq_sec_pkt_set_mtee(pkt, true);
+		}
 #endif
 	}
 #endif
@@ -1577,7 +1579,8 @@ cmdq_test_trigger(struct cmdq_test *test, enum CMDQ_SECURE_STATE_ENUM sec,
 		return;
 	}
 #endif
-#ifndef CMDQ_GP_SUPPORT
+//#ifndef CMDQ_GP_SUPPORT
+#ifndef CMDQ_SECURE_SUPPORT
 	if (sec == CMDQ_TEE_STATE) {
 		cmdq_err("%s sec:%d, don't support cmdq tee driver", __func__, sec);
 		return;
@@ -1612,6 +1615,12 @@ cmdq_test_trigger(struct cmdq_test *test, enum CMDQ_SECURE_STATE_ENUM sec,
 		break;
 	case 1:
 		cmdq_test_mbox_write(test, sec, false);
+		cmdq_test_mbox_write(test, sec, true);
+		break;
+	case 100:
+		cmdq_test_mbox_write(test, sec, false);
+		break;
+	case 101:
 		cmdq_test_mbox_write(test, sec, true);
 		break;
 	case 2:

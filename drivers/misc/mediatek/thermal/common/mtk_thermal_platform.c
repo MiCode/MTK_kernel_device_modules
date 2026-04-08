@@ -467,7 +467,7 @@ int mtk_thermal_get_gpu_info(int *nocores, int **gpufreq, int **gpuloading)
 	if (gpuloading) {
 		unsigned int rd_gpu_loading = 0;
 
-		if (mtk_get_gpu_loading(&rd_gpu_loading)) {
+		if (mtk_get_gpu_loading_avg(&rd_gpu_loading)) {
 			gpuloadings[0] = (int)rd_gpu_loading;
 			*gpuloading = gpuloadings;
 		}

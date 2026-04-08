@@ -38,6 +38,12 @@
 #define DISP_C3D_SRAM_SIZE_17BIN (17 * 17 * 17)
 #define DISP_C3D_SRAM_SIZE_9BIN (9 * 9 * 9)
 
+enum C3D_CMDQ_TYPE {
+	C3D_USERSPACE = 0,
+	C3D_RESUME,
+	C3D_CMDQ_MAX,
+};
+
 struct DISP_C3D_REG_17BIN {
 	unsigned int lut3d_reg[C3D_3DLUT_SIZE_17BIN];
 };
@@ -74,7 +80,7 @@ struct mtk_disp_c3d_primary {
 	bool skip_update_sram;
 	struct mutex clk_lock;
 	struct mutex data_lock;
-	struct cmdq_pkt *sram_pkt;
+	struct cmdq_pkt *sram_pkt[C3D_CMDQ_MAX];
 	atomic_t c3d_sram_hw_init;
 	unsigned int relay_state;
 };
@@ -89,8 +95,9 @@ struct mtk_disp_c3d {
 	struct mtk_disp_c3d_primary *primary_data;
 	struct mtk_disp_c3d_tile_overhead tile_overhead;
 	struct mtk_disp_c3d_tile_overhead_v tile_overhead_v;
-	bool pkt_reused;
-	struct cmdq_reuse reuse_c3d[4913 * 2];
+	bool c3dlut_updated;
+	bool pkt_reused[C3D_CMDQ_MAX];
+	struct cmdq_reuse reuse_c3d[C3D_CMDQ_MAX][DISP_C3D_SRAM_SIZE_17BIN + 1];
 	atomic_t c3d_is_clock_on;
 	atomic_t c3d_force_sram_apb;
 	bool has_set_1dlut;

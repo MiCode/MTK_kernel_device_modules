@@ -212,7 +212,8 @@ static void mtkts_allts_cancel_timer(void)
 		if (down_trylock(&g_tsData[i].sem_mutex))
 			continue;
 
-		if (g_tsData[i].thz_dev) {
+		if (g_tsData[i].thz_dev && !IS_ERR(g_tsData[i].thz_dev)
+			&& g_tsData[i].isTimerCancelled == 0) {
 			cancel_delayed_work(&(g_tsData[i].thz_dev->poll_queue));
 			g_tsData[i].isTimerCancelled = 1;
 		}

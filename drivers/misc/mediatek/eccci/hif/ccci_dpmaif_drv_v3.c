@@ -1300,6 +1300,7 @@ static int drv3_suspend_noirq(struct device *dev)
 static int drv3_resume_noirq(struct device *dev)
 {
 	unsigned int L2RISAR0;
+	unsigned int reg_value = 0;
 
 	if (g_debug_flags & DEBUG_SUSPEND) {
 		struct debug_suspend_hdr hdr;
@@ -1332,6 +1333,16 @@ static int drv3_resume_noirq(struct device *dev)
 		/* use msk to clear dummy interrupt */
 		L2RISAR0 = mapping_rx_reg_from_mask_to_sts(AP_DL_L2INTR_LRO_En_Msk);
 		DPMA_WRITE_PD_MISC(DPMAIF_PD_AP_DL_L2TISAR0, ~L2RISAR0);
+	}
+	if (g_plat_inf == 6899) {
+		regmap_read(dpmaif_ctl->infra_ao_base, 0x90, &reg_value);
+		CCCI_NORMAL_LOG(0, TAG, "[%s], ulq(0x%x, 0x%x, 0x%x, 0x%x), clk(0x%x)\n",
+			__func__,
+			DPMA_READ_AO_UL_SRAM(DPMAIF_ULQSAR_n(0)),
+			DPMA_READ_AO_UL_SRAM(DPMAIF_ULQSAR_n(1)),
+			DPMA_READ_AO_UL_SRAM(DPMAIF_ULQSAR_n(2)),
+			DPMA_READ_AO_UL_SRAM(DPMAIF_ULQSAR_n(3)),
+			reg_value);
 	}
 
 	CCCI_NORMAL_LOG(0, TAG, "[%s] support LRO: %u; mask: dl=0x%x ul=0x%x\n",

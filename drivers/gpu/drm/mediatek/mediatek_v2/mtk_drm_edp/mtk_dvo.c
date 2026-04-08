@@ -27,15 +27,18 @@
 #include <drm/drm_edid.h>
 #include <drm/drm_of.h>
 #include <drm/drm_simple_kms_helper.h>
+#include <drm/mediatek_drm.h>
 
 #include "mtk_dvo_regs.h"
 #include "../mtk_drm_drv.h"
 #include "../mtk_drm_crtc.h"
 #include "../mtk_drm_ddp_comp.h"
+#include "mtk_drm_edp_api.h"
 #include "../mtk_disp_pmqos.h"
 #include "../mtk_dump.h"
 
 #define DVO_COLOR_BAR					0
+#define EDP_DVO_DEBUG_INFO				"[mtk_edp_dvo]"
 
 /* DVO INPUT default value is 1T2P */
 #define MTK_DVO_INPUT_MODE				2
@@ -199,6 +202,7 @@ struct mtk_dvo_conf {
 	u32 pixels_per_iter;
 	bool edge_cfg_in_mmsys;
 	bool has_commit;
+	enum mtk_mmsys_id mmsys_id;
 };
 
 static struct mtk_dvo *g_mtk_dvo;
@@ -234,21 +238,23 @@ static void mtk_dvo_irq_enable(struct mtk_dvo *dvo)
 static void mtk_dvo_config_pol(struct mtk_dvo *dvo,
 				struct mtk_dvo_polarities *dvo_pol)
 {
-	unsigned int pol;
-	unsigned int mask;
-
-	mask = HSYNC_POL | VSYNC_POL;
-	pol = (dvo_pol->hsync_pol == MTK_DVO_POLARITY_RISING ? 0 : HSYNC_POL) |
-			(dvo_pol->vsync_pol == MTK_DVO_POLARITY_RISING ? 0 : VSYNC_POL);
-
-	if (dvo->conf->is_ck_de_pol) {
-		mask |= CK_POL | DE_POL;
-		pol |= (dvo_pol->ck_pol == MTK_DVO_POLARITY_RISING ? 0 : CK_POL) |
-				(dvo_pol->de_pol == MTK_DVO_POLARITY_RISING ? 0 : DE_POL);
-	}
+/*
+ *	unsigned int pol;
+ *	unsigned int mask;
+ *
+ *	mask = HS_INV | VS_INV;
+ *	pol = (dvo_pol->hsync_pol == MTK_DVO_POLARITY_RISING ? 0 : HS_INV) |
+ *			(dvo_pol->vsync_pol == MTK_DVO_POLARITY_RISING ? 0 : VS_INV);
+ *
+ *	if (dvo->conf->is_ck_de_pol) {
+ *		mask |= CK_INV | DE_INV;
+ *		pol |= (dvo_pol->ck_pol == MTK_DVO_POLARITY_RISING ? 0 : CK_INV) |
+ *				(dvo_pol->de_pol == MTK_DVO_POLARITY_RISING ? 0 : DE_INV);
+ *	}
+ */
 
 	/* use default value for remain same */
-	mtk_dvo_mask(dvo, DVO_OUTPUT_SET, 0, mask);
+	mtk_dvo_mask(dvo, DVO_OUTPUT_SET, 0, OUTPUT_SET_MASK);
 }
 
 static void mtk_dvo_info_queue_start(struct mtk_dvo *dvo)
@@ -256,10 +262,58 @@ static void mtk_dvo_info_queue_start(struct mtk_dvo *dvo)
 	mtk_dvo_mask(dvo, DVO_TGEN_INFOQ_LATENCY, 0, INFOQ_START_LATENCY_MASK | INFOQ_END_LATENCY_MASK);
 }
 
-static void mtk_dvo_buffer_ctrl(struct mtk_dvo *dvo)
+static u8 mtk_get_dsi_buf_Bpp(struct mtk_dvo *dvo, enum mtk_dvo_out_color_format format)
 {
+	u8 dsi_buf_Bpp = 0x3;
+
+	if (format == MTK_DVO_COLOR_FORMAT_YCBCR_422)
+		dsi_buf_Bpp = 0x2;
+	else if (format == MTK_DVO_COLOR_FORMAT_RGB)
+		dsi_buf_Bpp = 0x3;
+	else
+		dsi_buf_Bpp = 0x3;
+
+	return dsi_buf_Bpp;
+}
+
+static void mtk_dvo_set_rw_times(struct mtk_dvo *dvo, enum mtk_dvo_out_color_format format,
+									u32 hactive, u32 vactive)
+{
+	u8 Bpp = 0x0;
+	u32 rw_times = 0;
+	u32 ps_wc = 0x0, in_width = 16;
+
+	Bpp = mtk_get_dsi_buf_Bpp(dvo, format);
+
+	if (dvo->color_depth == 10)
+		ps_wc = hactive * 30 / 8;
+	else if (dvo->color_depth == 8)
+		ps_wc = hactive *  Bpp;
+	else {
+		ps_wc = hactive *  Bpp;
+		pr_info("%s please check color depth: %d\n", EDP_DVO_DEBUG_INFO, dvo->color_depth);
+	}
+
+	if ((ps_wc * hactive % in_width) == 0)
+		rw_times = ps_wc * hactive / in_width;
+	else
+		rw_times = (ps_wc * hactive / in_width) + 1;
+
+	mtk_dvo_mask(dvo, DVO_BUF_RW_TIMES, rw_times, DISP_BUF_RW_TIMES_MASK);
+}
+
+static void mtk_dvo_buffer_ctrl(struct mtk_dvo *dvo, enum mtk_dvo_out_color_format format,
+								u32 hactive, u32 vactive)
+{
+	if (format == MTK_DVO_COLOR_FORMAT_YCBCR_422 && ((hactive - 6) % 12) == 0)
+		mtk_dvo_mask(dvo, DVO_BUF_CON0, 0, FIFO_UNDERFLOW_DONE_BLOCK);
+	else if (format != MTK_DVO_COLOR_FORMAT_YCBCR_422 && ((hactive - 4) % 8) == 0)
+		mtk_dvo_mask(dvo, DVO_BUF_CON0, 0, FIFO_UNDERFLOW_DONE_BLOCK);
+	else
+		mtk_dvo_mask(dvo, DVO_BUF_CON0, FIFO_UNDERFLOW_DONE_BLOCK, FIFO_UNDERFLOW_DONE_BLOCK);
+
+	mtk_dvo_set_rw_times(dvo, format, hactive, vactive);
 	mtk_dvo_mask(dvo, DVO_BUF_CON0, DISP_BUF_EN, DISP_BUF_EN);
-	mtk_dvo_mask(dvo, DVO_BUF_CON0, FIFO_UNDERFLOW_DONE_BLOCK, FIFO_UNDERFLOW_DONE_BLOCK);
 }
 
 static void mtk_dvo_pm_ctl(struct mtk_dvo *dvo, bool enable)
@@ -335,25 +389,25 @@ static void mtk_dvo_config_swap_input(struct mtk_dvo *dvo, bool enable)
 static void mtk_dvo_config_color_format(struct mtk_dvo *dvo,
 							enum mtk_dvo_out_color_format format)
 {
-	pr_info("[eDPTX] %s+\n", __func__);
+	pr_info("%s %s+\n", EDP_DVO_DEBUG_INFO, __func__);
 	mtk_dvo_config_channel_swap(dvo, MTK_DVO_OUT_CHANNEL_SWAP_RGB);
 
 	if (format == MTK_DVO_COLOR_FORMAT_YCBCR_422) {
 		mtk_dvo_config_csc_enable(dvo, true);
 		mtk_dvo_config_yuv422_enable(dvo, true);
-		pr_info("[eDPTX] support MTK_DVO_COLOR_FORMAT_YCBCR_422\n");
+		pr_info("%s support MTK_DVO_COLOR_FORMAT_YCBCR_422\n", EDP_DVO_DEBUG_INFO);
 	} else {
 		mtk_dvo_config_csc_enable(dvo, false);
 		mtk_dvo_config_yuv422_enable(dvo, false);
 		if (dvo->conf->swap_input_support)
 			mtk_dvo_config_swap_input(dvo, false);
 	}
-	pr_info("[eDPTX] %s-\n", __func__);
+	pr_info("%s %s-\n", EDP_DVO_DEBUG_INFO, __func__);
 }
 
 static void mtk_dvo_config_color_depth(struct mtk_dvo *dvo)
 {
-	pr_info("[eDPTX] %s+\n", __func__);
+	pr_info("%s %s+\n", EDP_DVO_DEBUG_INFO, __func__);
 	switch (dvo->color_depth) {
 	case 8:
 		mtk_dvo_mask(dvo, DVO_MATRIX_SET,
@@ -368,8 +422,8 @@ static void mtk_dvo_config_color_depth(struct mtk_dvo *dvo)
 			MATRIX_SEL_RGB_TO_BT709, INT_MTX_SEL_MASK);
 		break;
 	}
-	pr_info("[eDPTX] color depth:%u\n", dvo->color_depth);
-	pr_info("[eDPTX] %s-\n", __func__);
+	pr_info("%s color depth:%u\n", EDP_DVO_DEBUG_INFO, dvo->color_depth);
+	pr_info("%s %s-\n", EDP_DVO_DEBUG_INFO, __func__);
 }
 
 static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *mode)
@@ -380,16 +434,16 @@ static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *m
 	u64 fill_rate = 0, consume_rate = 0;
 	u64 dvo_fifo_size = 0, fifo_size = 0, total_bit = 0;
 	u64 sodi_high_rem = 0, sodi_low_rem = 0, tmp = 0;
-	u64 sodi_high = 0, sodi_low = 0;
+	u64 sodi_high = 0, sodi_low = 0, preultra_high = 0, preultra_low = 0;
+	u64 ultra_high = 0, ultra_low = 0, urgent_high = 0, urgent_low = 0;
 
 	mtk_drm_set_mmclk_by_pixclk(&dvo->ddp_comp.mtk_crtc->base,
 						mode->clock, __func__);
 	mmsys_clk = mtk_drm_get_mmclk(&dvo->ddp_comp.mtk_crtc->base, __func__) / 1000000;
 	if (!mmsys_clk) {
-		pr_info("[eDPTX] mmclk is zero, use default value\n");
+		pr_info("%s mmclk is zero, use default value\n", EDP_DVO_DEBUG_INFO);
 		mmsys_clk = 273;
 	}
-	dev_info(dvo->dev, "[eDPTX] get mmclk from display %d\n", mmsys_clk);
 
 	fill_rate = ((u64)mmsys_clk * MTK_DVO_INPUT_MODE * 30) / (32 * MTK_DISP_BUF_SRAM_UNIT_SIZE);
 	fill_rate = div64_u64_rem(mmsys_clk * MTK_DVO_INPUT_MODE * 30,
@@ -400,7 +454,6 @@ static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *m
 	/* consume_rate = data_rate *  MTK_BLANKING_RATIO * 30 /(8 * 32 * 1000000) */
 	consume_rate = div64_u64_rem(((data_rate * 30 * 5) / 4),
 					(u64)(8 * 32 * 1000000), &consume_rate_rem);
-	dev_info(dvo->dev, "[eDPTX] data_rate:%llu consume_rate_rem: %llu", data_rate, consume_rate_rem);
 	total_bit = (u64)MTK_DVO_EDP_MAX_CLK * MTK_DVO_OUTPUT_MODE * 30 * MTK_DISP_LINE_BUF_DVO_US;
 
 	fifo_size = total_bit / (MTK_DISP_BUF_SRAM_UNIT_SIZE * 30);
@@ -423,15 +476,49 @@ static void mtk_dvo_sodi_setting(struct mtk_dvo *dvo, struct drm_display_mode *m
 
 	/* sodi_high = ((dvo_fifo_size * 30) / 32 ) - (fill_rate - consume_rate) * TWAIT_SLEEP  + 1; */
 	sodi_high = ((dvo_fifo_size * 30 * 5) - (32 * 6 * (fill_rate - consume_rate)) -
-				sodi_high_rem + 5 * 32 - 1) / (5 * 32);
+				sodi_high_rem + (5 * 32 - 1)) / (5 * 32);
 	sodi_low_rem = (consume_rate_rem * (ULTRA_LOW_US + TWAKE_UP) + (u64)(8 * 32 * 1000000) - 1)
 					/ (u64)(8 * 32 * 1000000);
 	sodi_low = consume_rate * (ULTRA_LOW_US + TWAKE_UP) + sodi_low_rem;
+	preultra_high = consume_rate * PREULTRA_HIGH_US + ((consume_rate_rem * (PREULTRA_HIGH_US)
+					+ (u64)(8 * 32 * 1000000) - 1) / (u64)(8 * 32 * 1000000));
+	preultra_low = (consume_rate * PREULTRA_LOW_US) + ((consume_rate_rem * (PREULTRA_LOW_US)
+					+ (u64)(8 * 32 * 1000000) - 1) / (u64)(8 * 32 * 1000000));
+	ultra_high = (consume_rate * ULTRA_HIGH_US) + ((consume_rate_rem * (ULTRA_HIGH_US)
+					+ (u64)(8 * 32 * 1000000) - 1) / (u64)(8 * 32 * 1000000));
+	ultra_low = (consume_rate * ULTRA_LOW_US) + ((consume_rate_rem * (ULTRA_LOW_US)
+					+ (u64)(8 * 32 * 1000000) - 1) / (u64)(8 * 32 * 1000000));
+	urgent_high = (consume_rate * URGENT_HIGH_US) + ((consume_rate_rem * (URGENT_HIGH_US)
+					+ (u64)(8 * 32 * 1000000) - 1) / (u64)(8 * 32 * 1000000));
+	urgent_low = (consume_rate * URGENT_LOW_US) + ((consume_rate_rem * (URGENT_LOW_US)
+					+ (u64)(8 * 32 * 1000000) - 1) / (u64)(8 * 32 * 1000000));
 
-	dev_info(dvo->dev, "[eDPTX] SODI high:%llu SOHI low: %llu", sodi_high, sodi_low);
-
+#ifdef EDPTX_DEBUG
+	dev_info(dvo->dev, "%s get mmclk from display %d\n", EDP_DVO_DEBUG_INFO, mmsys_clk);
+	dev_info(dvo->dev, "%s data_rate:%llu consume_rate_rem: %llu",
+			EDP_DVO_DEBUG_INFO, data_rate, consume_rate_rem);
+	dev_info(dvo->dev, "%s fill_rate:%llu consume_rate: %llu",
+			EDP_DVO_DEBUG_INFO, fill_rate, consume_rate);
+	dev_info(dvo->dev, "%s dvo_fifo_size:%llu sodi_high_rem: %llu",
+			EDP_DVO_DEBUG_INFO, dvo_fifo_size, sodi_high_rem);
+	dev_info(dvo->dev, "%s sodi_high:%llu sodi_low: %llu",
+			EDP_DVO_DEBUG_INFO, sodi_high, sodi_low);
+	dev_info(dvo->dev, "%s preultra_high:%llu preultra_low: %llu",
+			EDP_DVO_DEBUG_INFO, preultra_high, preultra_low);
+	dev_info(dvo->dev, "%s ultra_high:%llu ultra_low: %llu",
+			EDP_DVO_DEBUG_INFO, ultra_high, ultra_low);
+	dev_info(dvo->dev, "%s urgent_high:%llu urgent_low: %llu",
+			EDP_DVO_DEBUG_INFO, urgent_high, urgent_low);
+#endif
 	mtk_dvo_mask(dvo, DVO_BUF_SODI_HIGHT, sodi_high, DVO_DISP_BUF_MASK);
 	mtk_dvo_mask(dvo, DVO_BUF_SODI_LOW, sodi_low, DVO_DISP_BUF_MASK);
+	mtk_dvo_mask(dvo, DVO_BUF_PREULTRA_HIGHT, preultra_high, DVO_DISP_BUF_MASK);
+	mtk_dvo_mask(dvo, DVO_BUF_PREULTRA_LOW, preultra_low, DVO_DISP_BUF_MASK);
+	mtk_dvo_mask(dvo, DVO_BUF_ULTRA_HIGHT, ultra_high, DVO_DISP_BUF_MASK);
+	mtk_dvo_mask(dvo, DVO_BUF_ULTRA_LOW, ultra_low, DVO_DISP_BUF_MASK);
+	mtk_dvo_mask(dvo, DVO_BUF_URGENT_HIGHT, urgent_high, DVO_DISP_BUF_MASK);
+	mtk_dvo_mask(dvo, DVO_BUF_URGENT_LOW, urgent_low, DVO_DISP_BUF_MASK);
+	mtk_dvo_mask(dvo, DVO_BUF_URGENT_LOW, urgent_low, DVO_DISP_BUF_MASK);
 }
 
 static void mtk_dvo_shadow_ctrl(struct mtk_dvo *dvo)
@@ -542,7 +629,7 @@ static void mtk_dvo_power_off(struct mtk_dvo *dvo)
 
 static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 {
-	int ret;
+	int ret = 0;
 
 	if (++dvo->refcount != 1)
 		return 0;
@@ -555,17 +642,21 @@ static int mtk_dvo_power_on(struct mtk_dvo *dvo)
 	}
 
 	/* set DVO switch 26Mhz crystal */
-	clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
+	ret = clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
+	if (ret)
+		pr_info("%s %s failed to set parent clock for pixel_clk\n",
+				EDP_DVO_DEBUG_INFO, __func__);
 
 	ret = clk_prepare_enable(dvo->tvd_clk);
 	if (ret) {
-		dev_info(dvo->dev, "[eDPTX] Failed to enable tvd_clk clock: %d\n", ret);
+		dev_info(dvo->dev, "%s Failed to enable tvd_clk clock: %d\n",
+				EDP_DVO_DEBUG_INFO, ret);
 		goto err_tvd;
 	}
 
 	ret = clk_prepare_enable(dvo->engine_clk);
 	if (ret) {
-		dev_info(dvo->dev, "[eDPTX] Failed to enable engine clock: %d\n", ret);
+		dev_info(dvo->dev, "%s Failed to enable engine clock: %d\n", EDP_DVO_DEBUG_INFO, ret);
 		goto err_refcount;
 	}
 
@@ -594,27 +685,27 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 	unsigned int factor = 0;
 	int ret = 0;
 
-	pr_info("[eDPTX] %s+\n", __func__);
+	pr_info("%s %s+\n", EDP_DVO_DEBUG_INFO, __func__);
 	mtk_dvo_enable(dvo, false);
 
 	/* let pll_rate can fix the valid range of tvdpll (1G~2GHz) */
 	factor = dvo->conf->cal_factor(mode->clock);
 	drm_display_mode_to_videomode(mode, &vm);
 
-	pr_notice("[eDPTX] vm.pixelclock=%lu\n", vm.pixelclock);
-	pr_notice("[eDPTX] vm.hactive=%d vm.hfront_porch=%d vm.hback_porch=%d vm.hsync_len=%d\n",
-			vm.hactive, vm.hfront_porch, vm.hback_porch, vm.hsync_len);
+	pr_notice("%s vm.pixelclock=%lu\n", EDP_DVO_DEBUG_INFO, vm.pixelclock);
+	pr_notice("%s vm.hactive=%d vm.hfront_porch=%d vm.hback_porch=%d vm.hsync_len=%d\n",
+			EDP_DVO_DEBUG_INFO, vm.hactive, vm.hfront_porch, vm.hback_porch, vm.hsync_len);
 
-	pr_notice("[eDPTX] vm.vactive=%d vm.vfront_porch=%d vm.vback_porch=%d vm.vsync_len=%d\n",
-			vm.vactive, vm.vfront_porch, vm.vback_porch, vm.vsync_len);
+	pr_notice("%s vm.vactive=%d vm.vfront_porch=%d vm.vback_porch=%d vm.vsync_len=%d\n",
+			EDP_DVO_DEBUG_INFO, vm.vactive, vm.vfront_porch, vm.vback_porch, vm.vsync_len);
 
 	pll_rate = vm.pixelclock * factor;
 
-	pr_info("[eDPTX] Want PLL %lu Hz, pixel clock %lu Hz\n", pll_rate, vm.pixelclock);
+	pr_info("%s Want PLL %lu Hz, pixel clock %lu Hz\n", EDP_DVO_DEBUG_INFO, pll_rate, vm.pixelclock);
 
 	ret = clk_set_rate(dvo->tvd_clk, pll_rate);
 	if (ret) {
-		pr_info("[eDPTX] Failed to set dvo->tvd_clk rate: %d\n", ret);
+		pr_info("%s Failed to set dvo->tvd_clk rate: %d\n", EDP_DVO_DEBUG_INFO, ret);
 		return ret;
 	}
 
@@ -638,14 +729,14 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 		ret = clk_set_parent(dvo->pixel_clk, dvo->pclk_src[2]);
 
 	if (ret) {
-		pr_info("[eDPTX] Failed to set pixel clock parent %d\n", ret);
+		pr_info("%s Failed to set pixel clock parent %d\n", EDP_DVO_DEBUG_INFO, ret);
 		return ret;
 	}
 
 	vm.pixelclock = clk_get_rate(dvo->pixel_clk);
 
-	pr_info("[eDPTX] Got  PLL %lu Hz, pixel clock %lu Hz\n",
-		pll_rate, vm.pixelclock);
+	pr_info("%s Got  PLL %lu Hz, pixel clock %lu Hz\n",
+		EDP_DVO_DEBUG_INFO, pll_rate, vm.pixelclock);
 
 	dvo_pol.ck_pol = MTK_DVO_POLARITY_FALLING;
 	dvo_pol.de_pol = MTK_DVO_POLARITY_RISING;
@@ -705,18 +796,17 @@ static int mtk_dvo_set_display_mode(struct mtk_dvo *dvo,
 		mtk_dvo_config_fb_size(dvo, vm.hactive, vm.vactive);
 
 	mtk_dvo_info_queue_start(dvo);
-	mtk_dvo_buffer_ctrl(dvo);
 	mtk_dvo_trailing_blank_setting(dvo);
 	mtk_dvo_config_color_format(dvo, dvo->color_format);
 	mtk_dvo_config_color_depth(dvo);
 	mtk_dvo_sodi_setting(dvo, mode);
+	mtk_dvo_buffer_ctrl(dvo, dvo->color_format, vm.hactive, vm.vactive);
 
 	if (dvo->conf->pixels_per_iter)
 		mtk_dvo_shadow_ctrl(dvo);
 
 	mtk_dvo_sw_reset(dvo, false);
-
-	pr_info("[eDPTX] %s-\n", __func__);
+	pr_info("%s %s-\n", EDP_DVO_DEBUG_INFO, __func__);
 
 	return 0;
 }
@@ -769,8 +859,8 @@ static u32 *mtk_dvo_bridge_atomic_get_input_bus_fmts(struct drm_bridge *bridge,
 	input_fmts[0] = MEDIA_BUS_FMT_RGB888_1X24;
 
 #ifdef EDPTX_DEBUG
-	pr_info("[eDPTX] %s num_input_fmts:%d input_fmts:0x%04x\n",
-			__func__, *num_input_fmts, input_fmts[0]);
+	pr_info("%s %s num_input_fmts:%d input_fmts:0x%04x\n",
+			EDP_DVO_DEBUG_INFO, __func__, *num_input_fmts, input_fmts[0]);
 #endif
 
 	return input_fmts;
@@ -792,7 +882,8 @@ static int mtk_dvo_bridge_atomic_check(struct drm_bridge *bridge,
 	else
 		dvo->color_depth = 8;
 #ifdef EDPTX_DEBUG
-	pr_info("[eDPTX] %s+ bridge_state out_bus_format:0x%04x\n", __func__, out_bus_format);
+	pr_info("%s %s+ bridge_state out_bus_format:0x%04x\n",
+			EDP_DVO_DEBUG_INFO, __func__, out_bus_format);
 #endif
 
 	if (out_bus_format == MEDIA_BUS_FMT_FIXED)
@@ -800,8 +891,8 @@ static int mtk_dvo_bridge_atomic_check(struct drm_bridge *bridge,
 			out_bus_format = dvo->conf->output_fmts[0];
 
 #ifdef EDPTX_DEBUG
-	dev_info(dvo->dev, "[eDPTX] %s input format 0x%04x, output format 0x%04x\n",
-		__func__,
+	dev_info(dvo->dev, "%s %s input format 0x%04x, output format 0x%04x\n",
+		EDP_DVO_DEBUG_INFO, __func__,
 		bridge_state->input_bus_cfg.format,
 		out_bus_format);
 #endif
@@ -825,18 +916,22 @@ static int mtk_dvo_bridge_attach(struct drm_bridge *bridge,
 	int ret = 0, retry = 7;
 
 	/* set DVO switch 26Mhz crystal */
-	clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
+	ret = clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
+	if (ret)
+		pr_info("%s %s failed to set parent clock for pixel_clk\n",
+				EDP_DVO_DEBUG_INFO, __func__);
 
 	while (retry) {
 		retry--;
 		dvo->next_bridge = devm_drm_of_get_bridge(dvo->dev, dvo->dev->of_node, 0, 0);
 		if (IS_ERR(dvo->next_bridge)) {
-			pr_info("[eDPTX] Failed to get bridge\n");
+			pr_info("%s Failed to get bridge\n", EDP_DVO_DEBUG_INFO);
 			usleep_range(500, 800);
 			continue;
 		}
-
-		dev_info(dvo->dev, "[eDPTX] Found bridge node: %pOF\n", dvo->next_bridge->of_node);
+		if (dvo->conf->mmsys_id == MMSYS_MT6991)
+			dvo->next_bridge->driver_private = bridge->driver_private;
+		dev_info(dvo->dev, "%s Found bridge node: %pOF\n", EDP_DVO_DEBUG_INFO, dvo->next_bridge->of_node);
 		break;
 	}
 
@@ -846,7 +941,7 @@ static int mtk_dvo_bridge_attach(struct drm_bridge *bridge,
 	ret = drm_bridge_attach(bridge->encoder, dvo->next_bridge,
 				 &dvo->bridge, flags);
 	if (ret)
-		dev_info(dvo->dev, "[eDPTX] Failed to call attach ret = %d\n", ret);
+		dev_info(dvo->dev, "%s Failed to call attach ret = %d\n", EDP_DVO_DEBUG_INFO, ret);
 
 	return ret;
 }
@@ -857,17 +952,22 @@ static void mtk_dvo_bridge_mode_set(struct drm_bridge *bridge,
 {
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
 
-	pr_info("[eDPTX] %s\n", __func__);
+	pr_info("%s %s\n", EDP_DVO_DEBUG_INFO, __func__);
 	drm_mode_copy(&dvo->mode, adjusted_mode);
 }
 
 static void mtk_dvo_bridge_disable(struct drm_bridge *bridge)
 {
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
+	int ret = 0;
 
-	pr_info("[eDPTX] %s\n", __func__);
+	pr_info("%s  %s\n", EDP_DVO_DEBUG_INFO, __func__);
 
-	clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
+	ret = clk_set_parent(dvo->pixel_clk, dvo->dvo_clk);
+	if (ret)
+		pr_info("%s %s failed to set parent clock for pixel_clk\n",
+				EDP_DVO_DEBUG_INFO, __func__);
+
 	mtk_dvo_power_off(dvo);
 
 	if (dvo->pinctrl && dvo->pins_gpio)
@@ -880,7 +980,7 @@ static void mtk_dvo_bridge_enable(struct drm_bridge *bridge)
 {
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
 
-	dev_info(dvo->dev, "[eDPTX] %s+\n", __func__);
+	dev_info(dvo->dev, "%s %s+\n", EDP_DVO_DEBUG_INFO, __func__);
 	mtk_dvo_pm_ctl(dvo, true);
 	if (dvo->pinctrl && dvo->pins_dvo)
 		pinctrl_select_state(dvo->pinctrl, dvo->pins_dvo);
@@ -897,7 +997,7 @@ static void mtk_dvo_bridge_enable(struct drm_bridge *bridge)
 
 	mtk_dvo_enable(dvo, true);
 
-	dev_info(dvo->dev, "[eDPTX] %s-\n", __func__);
+	dev_info(dvo->dev, "%s %s-\n", EDP_DVO_DEBUG_INFO, __func__);
 }
 
 static enum drm_mode_status
@@ -908,12 +1008,12 @@ mtk_dvo_bridge_mode_valid(struct drm_bridge *bridge,
 	struct mtk_dvo *dvo = bridge_to_dvo(bridge);
 
 	if (mode->clock > dvo->conf->max_clock_khz) {
-		pr_info("[eDPTX] Invalid mode mode->clock= %d\n", mode->clock);
+		pr_info("%s Invalid mode mode->clock= %d\n", EDP_DVO_DEBUG_INFO, mode->clock);
 		return MODE_CLOCK_HIGH;
 	}
 
 #ifdef EDPTX_DEBUG
-	pr_info("[eDPTX] %s mode->clock=%d\n", __func__, mode->clock);
+	pr_info("%s %s mode->clock=%d\n", EDP_DVO_DEBUG_INFO, __func__, mode->clock);
 #endif
 
 	return MODE_OK;
@@ -937,16 +1037,14 @@ void mtk_dvo_start(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_dvo *dvo = container_of(comp, struct mtk_dvo, ddp_comp);
 
-	dev_info(dvo->dev, "[eDPTX] %s\n", __func__);
+	dev_info(dvo->dev, "%s %s\n", EDP_DVO_DEBUG_INFO, __func__);
 }
 
 void mtk_dvo_stop(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle)
 {
 	struct mtk_dvo *dvo = container_of(comp, struct mtk_dvo, ddp_comp);
 
-	dev_info(dvo->dev, "[eDPTX] %s\n", __func__);
-
-	//mtk_dvo_power_off(dvo);
+	dev_info(dvo->dev, "%s %s\n", EDP_DVO_DEBUG_INFO, __func__);
 }
 
 unsigned long long mtk_dvo_get_frame_hrt_bw_base_by_datarate(
@@ -957,7 +1055,7 @@ unsigned long long mtk_dvo_get_frame_hrt_bw_base_by_datarate(
 	int hact, vtotal, vact, vrefresh;
 
 	if (!mtk_crtc) {
-		DDPDBG("%s mtk_crtc is null\n", __func__);
+		pr_info("%s %s mtk_crtc is null\n", EDP_DVO_DEBUG_INFO, __func__);
 		return 0;
 	}
 
@@ -970,9 +1068,112 @@ unsigned long long mtk_dvo_get_frame_hrt_bw_base_by_datarate(
 	bw_base = bw_base * vtotal / vact;
 	bw_base = bw_base / 1000;
 
-	DDPDBG("Frame Bw:%llu",	bw_base);
+#ifdef EDPTX_DEBUG
+	pr_info("%s %s Frame Bw:%llu", EDP_DVO_DEBUG_INFO, __func__, bw_base);
+#endif
+
 	return bw_base;
 }
+
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
+static void mtk_dvo_get_panels_info(struct mtk_dvo *dvo,
+	struct mtk_drm_panels_info *panel_ctx)
+{
+	int dvo_cnt = 0;
+	int crtc_conn_id = -1;
+	bool only_check_mode = false;
+
+	if (!panel_ctx) {
+		pr_info("%s %s invalid panel_info_ctx ptr\n", EDP_DVO_DEBUG_INFO, __func__);
+		return;
+	}
+
+	if (panel_ctx->connector_cnt == -1)
+		only_check_mode = true;
+
+	if (only_check_mode == false) {
+		char *panel_name = NULL;
+
+		panel_name = vzalloc(sizeof(char) * GET_PANELS_STR_LEN);
+		if (panel_name == NULL)
+			return;
+
+		mtk_ddp_comp_io_cmd(&dvo->ddp_comp, NULL, GET_PANEL_NAME,
+				panel_name);
+
+		if (panel_name) {
+			strscpy(panel_ctx->panel_name[dvo_cnt], panel_name,
+				GET_PANELS_STR_LEN);
+			panel_ctx->connector_obj_id[dvo_cnt] =
+							dvo->connector->base.id;
+			panel_ctx->possible_crtc[dvo_cnt][0] =
+							dvo->encoder.possible_crtcs;
+		} else
+			pr_info("%s %s NULL panel_name\n", EDP_DVO_DEBUG_INFO, __func__);
+
+		vfree(panel_name);
+	}
+	dvo_cnt += 1;
+
+	if (only_check_mode == true) {
+		crtc_conn_id = dvo->connector->base.id;
+		panel_ctx->connector_cnt = dvo_cnt;
+		panel_ctx->default_connector_id = crtc_conn_id;
+	}
+
+}
+
+static int mtk_dvo_get_panel_name(struct mtk_dvo *dvo, char *panel_name)
+{
+	struct device_node *node = dvo->dev->of_node;
+	struct device_node *edp_tx_node = NULL, *serdes_node = NULL;
+	struct device_node *panel_node = NULL;
+	const char *panel_name_src = NULL;
+	int ret = 0;
+
+	edp_tx_node = of_graph_get_remote_node(node, 0, 0);
+	if (!edp_tx_node) {
+		pr_info("%s %s: %pOF failed to get edp_tx remote node\n",
+				EDP_DVO_DEBUG_INFO, __func__, node);
+		return -EINVAL;
+	}
+
+	serdes_node = of_graph_get_remote_node(edp_tx_node, 1, 0);
+	if (!serdes_node) {
+		pr_info("%s %s: %pO failed to get serdes remote node\n",
+				EDP_DVO_DEBUG_INFO, __func__, edp_tx_node);
+		ret = -EINVAL;
+		goto err_edp_tx_node;
+	}
+
+	panel_node = of_graph_get_remote_node(serdes_node, 1, 0);
+	if (!panel_node) {
+		pr_info("%s %s: %pOF failed to get panel node\n",
+				EDP_DVO_DEBUG_INFO, __func__, serdes_node);
+		ret = -EINVAL;
+		goto err_serdes_node;
+	}
+
+	panel_name_src = of_get_property(panel_node, "panel-name", NULL);
+	if (!panel_name_src) {
+		dev_info(dvo->dev, "%s %pOF: no panel name specified\n",
+				EDP_DVO_DEBUG_INFO, panel_node);
+		ret = -EINVAL;
+		goto err_panel_node;
+	}
+
+	strscpy(panel_name, panel_name_src, (strlen(panel_name_src) + 1));
+
+err_panel_node:
+	of_node_put(panel_node);
+err_serdes_node:
+	of_node_put(serdes_node);
+err_edp_tx_node:
+	of_node_put(edp_tx_node);
+
+	return ret;
+}
+#endif
 
 static int mtk_dvo_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 			  enum mtk_ddp_io_cmd cmd, void *params)
@@ -989,21 +1190,23 @@ static int mtk_dvo_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	{
 		mode = (struct drm_display_mode **)params;
 
-		dvo->mode.hdisplay = readl(dvo->regs + DVO_SIZE) & 0xFFFF;
-		dvo->mode.vdisplay = readl(dvo->regs + DVO_SIZE) >> 16;
-		vfporch = readl(dvo->regs + DVO_TGEN_VPORCH) >> 16;
-		vbporch = readl(dvo->regs + DVO_TGEN_VPORCH) & 0xFFFF;
-		vsync = readl(dvo->regs + DVO_TGEN_VWIDTH) & 0xFFFF;
+		dvo->mode.hdisplay = readl(dvo->regs + DVO_SRC_SIZE) & 0xFFFF;
+		dvo->mode.vdisplay = readl(dvo->regs + DVO_SRC_SIZE) >> 16;
+		vfporch = (readl(dvo->regs + DVO_TGEN_V0) >> VFP) & 0xFFFF;
+		vsync = (readl(dvo->regs + DVO_TGEN_V0) >> VSYNC) & 0xFFFF;
+		vbporch = ((readl(dvo->regs + DVO_TGEN_V1) >> VSYNC2ACT) & 0xFFFF) - vsync;
 		dvo->mode.vtotal = dvo->mode.vdisplay + vfporch + vbporch + vsync;
-		hfporch = readl(dvo->regs + DVO_TGEN_HPORCH) >> 16;
-		hbporch = readl(dvo->regs + DVO_TGEN_HPORCH) & 0xFFFF;
-		hsync = readl(dvo->regs + DVO_TGEN_HWIDTH) & 0xFFFF;
+
+		hfporch = (readl(dvo->regs + DVO_TGEN_H0) >> HFP) & 0xFFFF;
+		hsync = (readl(dvo->regs + DVO_TGEN_H0) >> HSYNC) & 0xFFFF;
+		hbporch = ((readl(dvo->regs + DVO_TGEN_H1) >> HSYNC2ACT) & 0xFFFF) - hsync;
 		dvo->mode.htotal = dvo->mode.hdisplay + hfporch + hbporch + hsync;
+
 		dvo->mode.clock = clk_get_rate(dvo->pixel_clk) * 4 / 1000;
-		dev_info(dvo->dev, "[eDPTX] %s cmd:%d\n", __func__, cmd);
-		dev_info(dvo->dev, "[eDPTX] dvo->hdisplay = %d\n", dvo->mode.hdisplay);
-		dev_info(dvo->dev, "[eDPTX] dvo->vdisplay = %d\n", dvo->mode.vdisplay);
-		dev_info(dvo->dev, "[eDPTX] dvo->clock = %d, fps: %d\n",
+		dev_info(dvo->dev, "%s %s cmd:%d\n", EDP_DVO_DEBUG_INFO, __func__, cmd);
+		dev_info(dvo->dev, "%s dvo->hdisplay = %d\n", EDP_DVO_DEBUG_INFO, dvo->mode.hdisplay);
+		dev_info(dvo->dev, "%s dvo->vdisplay = %d\n", EDP_DVO_DEBUG_INFO, dvo->mode.vdisplay);
+		dev_info(dvo->dev, "%s dvo->clock = %d, fps: %d\n", EDP_DVO_DEBUG_INFO,
 			dvo->mode.clock, drm_mode_vrefresh(&dvo->mode));
 		*mode = &dvo->mode;
 	}
@@ -1028,12 +1231,52 @@ static int mtk_dvo_io_cmd(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 		*base_bw = mtk_dvo_get_frame_hrt_bw_base_by_datarate(crtc, dvo);
 	}
 		break;
-#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
+	case GET_FRAME_HRT_BW_BY_MODE:
+	{
+		struct mtk_drm_crtc *crtc = comp->mtk_crtc;
+		unsigned long long *base_bw =
+			(unsigned long long *)params;
+
+		*base_bw = mtk_dvo_get_frame_hrt_bw_base_by_datarate(crtc, dvo);
+	}
+		break;
+#if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
 	case SET_CRTC_ID:
 	{
-		DDPMSG("%s set %s possible crtcs 0x%x\n", __func__,
+		pr_info("%s %s set %s possible crtcs 0x%x\n",
+			EDP_DVO_DEBUG_INFO, __func__,
 			mtk_dump_comp_str(comp), *(unsigned int *)params);
-		dvo->encoder.possible_crtcs = *(unsigned int *)params;
+			dvo->encoder.possible_crtcs = *(unsigned int *)params;
+	}
+		break;
+	case GET_PANEL_NAME:
+	{
+		int ret;
+
+		ret = mtk_dvo_get_panel_name(dvo, params);
+		if (ret != 0)
+			pr_info("%s failed to get panel name %d\n", EDP_DVO_DEBUG_INFO, ret);
+		else
+			pr_info("%s params: %s\n", EDP_DVO_DEBUG_INFO, params);
+	}
+		break;
+	case GET_ALL_CONNECTOR_PANEL_NAME:
+	{
+		struct mtk_drm_panels_info *panel_ctx;
+
+		panel_ctx = (struct mtk_drm_panels_info *)params;
+		if (!panel_ctx) {
+			pr_info("%s %s invalid panel_info_ctx ptr\n", EDP_DVO_DEBUG_INFO, __func__);
+			break;
+		}
+		mtk_dvo_get_panels_info(dvo, panel_ctx);
+	}
+		break;
+	case GET_CONNECTOR_ID:
+	{
+		unsigned int *conn_id = (unsigned int *)params;
+
+		*conn_id = dvo->connector->base.id;
 	}
 		break;
 #endif
@@ -1056,19 +1299,23 @@ static int mtk_dvo_bind(struct device *dev, struct device *master, void *data)
 	struct mtk_drm_private *priv = drm_dev->dev_private;
 	int ret;
 
-	dev_info(dev, "[eDPTX] %s+\n", __func__);
+	dev_info(dev, "%s %s+\n", EDP_DVO_DEBUG_INFO, __func__);
+
+	if (dvo->conf->mmsys_id == MMSYS_MT6991)
+		dvo->bridge.driver_private = drm_dev->dev_private;
 
 	dvo->mmsys_dev = priv->mmsys_dev;
+
 	ret = mtk_ddp_comp_register(drm_dev, &dvo->ddp_comp);
 	if (ret < 0) {
-		dev_info(dev, "Failed to register component %s: %d\n",
-			dev->of_node->full_name, ret);
+		dev_info(dev, "%s Failed to register component %s: %d\n",
+				EDP_DVO_DEBUG_INFO, dev->of_node->full_name, ret);
 		return ret;
 	}
 	ret = drm_simple_encoder_init(drm_dev, &dvo->encoder,
 				      DRM_MODE_ENCODER_TMDS);
 	if (ret) {
-		dev_info(dev, "Failed to initialize decoder: %d\n", ret);
+		dev_info(dev, "%s Failed to initialize decoder: %d\n", EDP_DVO_DEBUG_INFO, ret);
 		return ret;
 	}
 
@@ -1081,13 +1328,13 @@ static int mtk_dvo_bind(struct device *dev, struct device *master, void *data)
 
 	dvo->connector = drm_bridge_connector_init(drm_dev, &dvo->encoder);
 	if (IS_ERR(dvo->connector)) {
-		dev_info(dev, "Unable to create bridge connector\n");
+		dev_info(dev, "%s Unable to create bridge connector\n", EDP_DVO_DEBUG_INFO);
 		ret = PTR_ERR(dvo->connector);
 		goto err_cleanup;
 	}
 	drm_connector_attach_encoder(dvo->connector, &dvo->encoder);
 
-	dev_info(dev, "[eDPTX] %s-\n", __func__);
+	dev_info(dev, "%s %s-\n", EDP_DVO_DEBUG_INFO, __func__);
 
 	return 0;
 
@@ -1139,20 +1386,25 @@ static const struct mtk_dvo_conf mt6991_conf = {
 	.csc_enable_bit = CSC_EN,
 	.yuv422_en_bit = YUV422_EN | VYU_MAP,
 	.swap_input_support = false,
+	.mmsys_id = MMSYS_MT6991,
 };
 
 int mtk_drm_dvo_get_info(struct drm_device *dev,
 			struct drm_mtk_session_info *info)
 {
 	if (!g_mtk_dvo) {
-		pr_info("[eDPTX] %s dvo not initial\n", __func__);
+		pr_info("%s %s dvo not initial\n", EDP_DVO_DEBUG_INFO, __func__);
 		return -EINVAL;
 	}
 
 	info->physical_width = g_mtk_dvo->mode.hdisplay;
 	info->physical_height = g_mtk_dvo->mode.vdisplay;
-	pr_info("[eDPTX] physical_width:%u physical_height:%u\n",
+	info->physicalHeightUm = g_mtk_dvo->mode.height_mm;
+	info->physicalWidthUm = g_mtk_dvo->mode.width_mm;
+	pr_info("%s physical_width:%u physical_height:%u\n", EDP_DVO_DEBUG_INFO,
 			info->physical_width, info->physical_height);
+	pr_info("%s physical_width_mm:%u physical_height_mm:%u\n", EDP_DVO_DEBUG_INFO,
+			info->physicalHeightUm, info->physicalWidthUm);
 
 	return 0;
 }
@@ -1165,7 +1417,7 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 	int comp_id;
 	int ret;
 
-	dev_info(dev, "[eDPTX] %s+\n", __func__);
+	dev_info(dev, "%s %s+\n", EDP_DVO_DEBUG_INFO, __func__);
 	dvo = devm_kzalloc(dev, sizeof(*dvo), GFP_KERNEL);
 	if (!dvo)
 		return -ENOMEM;
@@ -1178,13 +1430,13 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 	dvo->pinctrl = devm_pinctrl_get(&pdev->dev);
 	if (IS_ERR(dvo->pinctrl)) {
 		dvo->pinctrl = NULL;
-		dev_dbg(&pdev->dev, "Cannot find pinctrl!\n");
+		dev_dbg(&pdev->dev, "%s Cannot find pinctrl!\n", EDP_DVO_DEBUG_INFO);
 	}
 	if (dvo->pinctrl) {
 		dvo->pins_gpio = pinctrl_lookup_state(dvo->pinctrl, "sleep");
 		if (IS_ERR(dvo->pins_gpio)) {
 			dvo->pins_gpio = NULL;
-			dev_dbg(&pdev->dev, "Cannot find pinctrl idle!\n");
+			dev_dbg(&pdev->dev, "%s Cannot find pinctrl idle!\n", EDP_DVO_DEBUG_INFO);
 		}
 		if (dvo->pins_gpio)
 			pinctrl_select_state(dvo->pinctrl, dvo->pins_gpio);
@@ -1192,42 +1444,42 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 		dvo->pins_dvo = pinctrl_lookup_state(dvo->pinctrl, "default");
 		if (IS_ERR(dvo->pins_dvo)) {
 			dvo->pins_dvo = NULL;
-			dev_dbg(&pdev->dev, "Cannot find pinctrl active!\n");
+			dev_dbg(&pdev->dev, "%s Cannot find pinctrl active!\n", EDP_DVO_DEBUG_INFO);
 		}
 	}
 	dvo->regs = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(dvo->regs)) {
-		pr_info("[eDPTX ] Failed to ioremap mem resource\n");
+		pr_info("%s Failed to ioremap mem resource\n", EDP_DVO_DEBUG_INFO);
 		return PTR_ERR(dvo->regs);
 	}
 
 	dvo->engine_clk = devm_clk_get(dev, "engine");
 	if (IS_ERR(dvo->engine_clk)) {
-		pr_info("[eDPTX ] Failed to get engine clock\n");
+		pr_info("%s Failed to get engine clock\n", EDP_DVO_DEBUG_INFO);
 		return PTR_ERR(dvo->engine_clk);
 	}
 
 	dvo->pixel_clk = devm_clk_get(dev, "pixel");
 	if (IS_ERR(dvo->pixel_clk)) {
-		pr_info("[eDPTX ] Failed to get pixel clock\n");
+		pr_info("%s Failed to get pixel clock\n", EDP_DVO_DEBUG_INFO);
 		return PTR_ERR(dvo->pixel_clk);
 	}
 
 	dvo->tvd_clk = devm_clk_get(dev, "pll");
 	if (IS_ERR(dvo->tvd_clk)) {
-		pr_info("[eDPTX ] Failed to get tvdpll clock\n");
+		pr_info("%s Failed to get tvdpll clock\n", EDP_DVO_DEBUG_INFO);
 		return PTR_ERR(dvo->tvd_clk);
 	}
 
 	dvo->dvo_clk = devm_clk_get(dev, "dvo_clk");
 	if (IS_ERR(dvo->dvo_clk)) {
-		pr_info("[eDPTX ] Failed to get tck26_clk clock\n");
+		pr_info("%s Failed to get tck26_clk clock\n", EDP_DVO_DEBUG_INFO);
 		return PTR_ERR(dvo->dvo_clk);
 	}
 
 	dvo->hf_fdvo_clk = devm_clk_get(dev, "hf_fdvo_clk");
 	if (IS_ERR(dvo->hf_fdvo_clk)) {
-		pr_info("[eDPTX ] Failed to get hf_fdvo_clk clock\n");
+		pr_info("%s Failed to get hf_fdvo_clk clock\n", EDP_DVO_DEBUG_INFO);
 		return PTR_ERR(dvo->hf_fdvo_clk);
 	}
 
@@ -1238,7 +1490,7 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 
 	dvo->irq = platform_get_irq(pdev, 0);
 	if (dvo->irq < 0) {
-		pr_info("[eDPTX] failed to get edp dvo irq num\n");
+		pr_info("%s failed to get edp dvo irq num\n", EDP_DVO_DEBUG_INFO);
 		return dvo->irq;
 	}
 
@@ -1247,20 +1499,20 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 		&pdev->dev, dvo->irq, mtk_dvo_irq_status,
 		IRQ_TYPE_LEVEL_HIGH, dev_name(&pdev->dev), dvo);
 	if (ret) {
-		dev_info(&pdev->dev, "failed to request mediatek edp dvo irq\n");
+		dev_info(&pdev->dev, "%s failed to request mediatek edp dvo irq\n", EDP_DVO_DEBUG_INFO);
 		return -EPROBE_DEFER;
 	}
 
 	comp_id = mtk_ddp_comp_get_id(dev->of_node, MTK_DISP_DVO);
 	if (comp_id < 0) {
-		dev_info(dev, "Failed to identify by alias: %d\n", comp_id);
+		dev_info(dev, "%s Failed to identify by alias: %d\n", EDP_DVO_DEBUG_INFO, comp_id);
 		return comp_id;
 	}
 
 	ret = mtk_ddp_comp_init(dev, dev->of_node, &dvo->ddp_comp, comp_id,
 				&mtk_dvo_funcs);
 	if (ret) {
-		dev_info(dev, "Failed to initialize component: %d\n", ret);
+		dev_info(dev, "%s Failed to initialize component: %d\n", EDP_DVO_DEBUG_INFO, ret);
 		return ret;
 	}
 
@@ -1279,11 +1531,11 @@ static int mtk_dvo_probe(struct platform_device *pdev)
 
 	ret = component_add(dev, &mtk_dvo_component_ops);
 	if (ret) {
-		pr_info("[eDPTX] Failed to add component\n");
+		pr_info("%s Failed to add component\n", EDP_DVO_DEBUG_INFO);
 		return ret;
 	}
 
-	dev_info(dev, "[eDPTX] %s-\n", __func__);
+	dev_info(dev, "%s %s-\n", EDP_DVO_DEBUG_INFO, __func__);
 
 	return 0;
 }

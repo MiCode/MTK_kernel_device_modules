@@ -133,8 +133,6 @@ struct CmdqMdpModuleClock {
 	struct clk *clk_MDP_MUTEX0;
 	struct clk *clk_IMG_DL_ASYNC0;
 	struct clk *clk_IMG_DL_ASYNC1;
-	struct clk *clk_IMG0_IMG_DL_ASYNC0;
-	struct clk *clk_IMG0_IMG_DL_ASYNC1;
 	struct clk *clk_IMG0_IMG_DL_RELAY0_ASYNC0;
 	struct clk *clk_IMG0_IMG_DL_RELAY1_ASYNC1;
 	struct clk *clk_MDP_RDMA0;
@@ -164,8 +162,6 @@ IMP_ENABLE_MDP_HW_CLOCK(APB, APB);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_MUTEX0, MDP_MUTEX0);
 IMP_ENABLE_MDP_HW_CLOCK(IMG_DL_ASYNC0, IMG_DL_ASYNC0);
 IMP_ENABLE_MDP_HW_CLOCK(IMG_DL_ASYNC1, IMG_DL_ASYNC1);
-IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_ASYNC0, IMG0_IMG_DL_ASYNC0);
-IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_ASYNC1, IMG0_IMG_DL_ASYNC1);
 IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_RELAY0_ASYNC0, IMG0_IMG_DL_RELAY0_ASYNC0);
 IMP_ENABLE_MDP_HW_CLOCK(IMG0_IMG_DL_RELAY1_ASYNC1, IMG0_IMG_DL_RELAY1_ASYNC1);
 IMP_ENABLE_MDP_HW_CLOCK(MDP_RDMA0, MDP_RDMA0);
@@ -180,8 +176,6 @@ IMP_MDP_HW_CLOCK_IS_ENABLE(APB, APB);
 IMP_MDP_HW_CLOCK_IS_ENABLE(MDP_MUTEX0, MDP_MUTEX0);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG_DL_ASYNC0, IMG_DL_ASYNC0);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG_DL_ASYNC1, IMG_DL_ASYNC1);
-IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_ASYNC0, IMG0_IMG_DL_ASYNC0);
-IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_ASYNC1, IMG0_IMG_DL_ASYNC1);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_RELAY0_ASYNC0,
 	IMG0_IMG_DL_RELAY0_ASYNC0);
 IMP_MDP_HW_CLOCK_IS_ENABLE(IMG0_IMG_DL_RELAY1_ASYNC1,
@@ -645,11 +639,9 @@ bool cmdq_mdp_clock_is_on(u32 engine)
 	switch (engine) {
 	case CMDQ_ENG_MDP_CAMIN:
 		return cmdq_mdp_clock_is_enable_IMG_DL_ASYNC0() &&
-			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_ASYNC0() &&
 			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_RELAY0_ASYNC0();
 	case CMDQ_ENG_MDP_CAMIN2:
 		return cmdq_mdp_clock_is_enable_IMG_DL_ASYNC1() &&
-			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_ASYNC1() &&
 			cmdq_mdp_clock_is_enable_IMG0_IMG_DL_RELAY1_ASYNC1();
 	case CMDQ_ENG_MDP_RDMA0:
 		return cmdq_mdp_clock_is_enable_MDP_RDMA0();
@@ -706,12 +698,10 @@ void cmdq_mdp_enable_clock(bool enable, u32 engine)
 	switch (engine) {
 	case CMDQ_ENG_MDP_CAMIN:
 		cmdq_mdp_enable_clock_IMG_DL_ASYNC0(enable);
-		cmdq_mdp_enable_clock_IMG0_IMG_DL_ASYNC0(enable);
 		cmdq_mdp_enable_clock_IMG0_IMG_DL_RELAY0_ASYNC0(enable);
 		break;
 	case CMDQ_ENG_MDP_CAMIN2:
 		cmdq_mdp_enable_clock_IMG_DL_ASYNC1(enable);
-		cmdq_mdp_enable_clock_IMG0_IMG_DL_ASYNC1(enable);
 		cmdq_mdp_enable_clock_IMG0_IMG_DL_RELAY1_ASYNC1(enable);
 		break;
 	case CMDQ_ENG_MDP_RDMA0:
@@ -1596,7 +1586,7 @@ static s32 cmdq_mdp_enable_common_clock(bool enable, u64 engine_flag)
 	if (engine_flag & MDP_ENG_LARB2)
 		return mdp_enable_larb(enable, larb2);
 
-	CMDQ_ERR("%s engine_flag not include MDP_ENG_LARB\n", __func__);
+	CMDQ_ERR("%s engine_flag:%llx not included in MDP_ENG_LARB\n", __func__, engine_flag);
 	return TASK_STATE_ERROR;
 }
 

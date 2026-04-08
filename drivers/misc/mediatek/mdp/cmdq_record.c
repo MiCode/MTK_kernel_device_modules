@@ -1064,12 +1064,22 @@ static void cmdq_task_release_buffer(struct cmdqRecStruct *handle)
 		handle->secData.addrMetadataMaxCount = 0;
 		handle->secData.addrMetadataCount = 0;
 	}
-	for (i = 0; i < ARRAY_SIZE(handle->secData.ispMeta.ispBufs); i++)
-		vfree(CMDQ_U32_PTR(handle->secData.ispMeta.ispBufs[i].va));
-	vfree(handle->sec_isp_msg1);
-	vfree(handle->sec_isp_msg2);
+	for (i = 0; i < ARRAY_SIZE(handle->secData.ispMeta.ispBufs); i++){
+		if(handle->secData.ispMeta.ispBufs[i].va){
+			vfree(CMDQ_U32_PTR(handle->secData.ispMeta.ispBufs[i].va));
+			handle->secData.ispMeta.ispBufs[i].va = 0;
+		}
+	}
 
-	/* reset local variable setting */
+	if (handle->sec_isp_msg1)
+		vfree(handle->sec_isp_msg1);
+	handle->sec_isp_msg1 = NULL;
+
+	if (handle->sec_isp_msg2)
+		vfree(handle->sec_isp_msg2);
+	handle->sec_isp_msg2 = NULL;
+
+/* reset local variable setting */
 	handle->replace_instr.number = 0;
 	if (handle->replace_instr.position) {
 		kfree(CMDQ_U32_PTR(handle->replace_instr.position));

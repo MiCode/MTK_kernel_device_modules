@@ -13,9 +13,9 @@
 #include <linux/spinlock_types.h>
 #include <linux/workqueue.h>
 
-#include <ufs/ufs.h>
-#include <ufs/ufshcd.h>
-#include <ufs/ufshci.h>
+#include "xiaomi/include/ufs.h"
+#include "xiaomi/include/ufshcd.h"
+#include "xiaomi/include/ufshci.h"
 
 #include "ufs-mediatek-mbrain.h"
 #include "ufs-mediatek-rpmb.h"
@@ -383,6 +383,7 @@ enum ip_ver_legacy {
 	IP_LEGACY_VER_MT6781 = 0x10380000,
 	IP_LEGACY_VER_MT6879 = 0x10360000,
 	IP_LEGACY_VER_MT6893 = 0x20160706,
+	IP_LEGACY_VER_MT6771 = 0x20160613,
 };
 
 struct tag_bootmode {

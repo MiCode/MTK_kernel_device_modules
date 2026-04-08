@@ -57,3 +57,9 @@ config DEVICE_MODULES_USB_MTU3_DEBUG
 	  Say Y here to enable debugging messages in the MTU3 Driver.
 
 endif
+
+config PDTEST_MODE
+	bool "enable pdtest mode"
+	default n
+	help
+	  Say Y here to enable pdtest mode.

@@ -628,9 +628,10 @@ GED_ERROR check_frame_base_optimize(void)
 	g_ged_frame_base_optimize = 0;
 	app_node = of_find_compatible_node(NULL, NULL, "mediatek,mali");
 	if (!app_node) {
-		GED_LOGE("No mali node.");
-		g_ged_frame_base_optimize = 0;
-	} else {
+		GED_LOGE("No mali node, Checking IMG node ..");
+		app_node = of_find_compatible_node(NULL, NULL, "mediatek,doma");
+	}
+	if (app_node) {
 		ret_temp = of_property_read_u32(app_node, "gpu-frame-base-optimize",
 			&g_ged_frame_base_optimize);
 		if (unlikely(ret_temp))

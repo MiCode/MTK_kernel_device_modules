@@ -298,6 +298,8 @@
 #define CMDQ_SYNC_TOKEN_STREAM_BLOCK			643
 /* check CABC setup finish */
 #define CMDQ_SYNC_TOKEN_CABC_EOF			644
+/* check vdo mode CABC setup finish */
+#define CMDQ_SYNC_TOKEN_VDO_MODE_CABC_EOF		646
 
 /* Notify normal CMDQ there are some secure task done
  * MUST NOT CHANGE, this token sync with secure world

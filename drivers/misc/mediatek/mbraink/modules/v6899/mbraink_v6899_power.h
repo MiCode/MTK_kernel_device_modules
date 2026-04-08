@@ -9,6 +9,10 @@
 #include <linux/of_address.h>
 #include <linux/io.h>
 #include <mbraink_ioctl_struct_def.h>
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+#include "ccci_mbrain.h"
+#endif
+
 
 
 #define MAX_POWER_HD_SZ 8
@@ -43,5 +47,9 @@ unsigned int *vcorefs_get_src_req(void);
 int mbraink_v6899_power_init(void);
 int mbraink_v6899_power_deinit(void);
 
+#if IS_ENABLED(CONFIG_MTK_ECCCI_DRIVER)
+int mbraink_v6899_power_ccci_event_cb(enum CCCI_MBRAIN_EVENT_TYPE event_type,
+	void *ccci_mbrain_data);
+#endif
 
 #endif /*end of MBRAINK_V6899_POWER_H*/

@@ -57,6 +57,7 @@
 #include "fbt_cpu_ctrl.h"
 #include "fbt_cpu_ux.h"
 #include "fpsgo_frame_info.h"
+#include "cpuqos_sys_common.h"
 
 #define GED_VSYNC_MISS_QUANTUM_NS 16666666
 #define TIME_3MS  3000000
@@ -233,10 +234,10 @@ enum FPSGO_MULTIUSER_CHECK {
 	FPSGO_MULTIUSER_DOMINANT,
 };
 
-enum FPSGO_TUNING_POINT_CONTROL {
-	FPSGO_TP_CONTROL_NONE = 0,
-	FPSGO_TP_CONTROL_ML = 1,
-	FPSGO_TP_CONTROL_BM = 2,
+enum FPSGO_TUNING_POINT_FULL_CONTROL {
+	FPSGO_TP_FULL_CTRL_NONE = 0,
+	FPSGO_TP_FULL_CTRL_BM = 1,
+	FPSGO_TP_FULL_CTRL_B = 2,
 	FPSGO_TP_CONTROL_MAX = 3,
 };
 
@@ -284,6 +285,8 @@ static int boost_VIP;
 static int bm_th;
 static int ml_th;
 static int tp_policy;
+static int tp_strict_little;
+static int tp_strict_middle;
 static int gh_prefer;
 static int rescue_second_time;
 static int rescue_second_group;
@@ -336,6 +339,7 @@ static int target_time_up_bound;
 static int cpumask_heavy;
 static int cpumask_second;
 static int cpumask_others;
+static int set_l3_cache_ct;
 static int set_ls;
 static int ls_groupmask;
 static int aa_b_minus_idle_time;
@@ -372,6 +376,8 @@ static int powerRL_ko_is_ready;
 static int ux_general_policy;
 static int cm_big_cap;
 static int cm_tdiff;
+static int magt_workaround_passive_mode;
+
 
 module_param(bhr, int, 0644);
 module_param(bhr_opp, int, 0644);
@@ -671,6 +677,7 @@ int fbt_cluster_X2Y(int cluster, unsigned long input, enum sugov_type in_type,
 		__func__, caller, cluster, cpu, input, in_type, out_type, output);
 	return (int)output;
 }
+EXPORT_SYMBOL(fbt_cluster_X2Y);
 
 static struct fbt_thread_blc *fbt_list_blc_add(int pid,
 	unsigned long long buffer_id)
@@ -1112,6 +1119,39 @@ FAIL:
 	return NULL;
 }
 
+
+static int fbt_set_l3_ct(int l3_cache_ct, int pid ,int spid_action ,int group )
+{
+
+	int ret = 0;
+#if IS_ENABLED(CONFIG_MTK_SCHEDULER) && IS_ENABLED(CONFIG_MTK_CPUQOS_V3) && IS_ENABLED(CONFIG_MTK_CPUQOS_EXT)
+	if (!pid)
+		return -EINVAL;
+
+	if (l3_cache_ct>=1 && group == FPSGO_GROUP_HEAVY){
+		ret=set_ct_task(pid,1);
+		if (!ret)
+			fpsgo_main_trace("%d is L3 CT group ", pid);
+	} else if (l3_cache_ct>=2 && group == FPSGO_GROUP_SECOND){
+		ret=set_ct_task(pid,1);
+		if (!ret)
+			fpsgo_main_trace("%d is L3 CT group ", pid);
+	} else if (l3_cache_ct>=3 && group == FPSGO_GROUP_OTHERS){
+		ret=set_ct_task(pid,1);
+		if (!ret)
+			fpsgo_main_trace("%d is L3 CT group ", pid);
+	} else if (spid_action == XGF_FORCE_L3_CT){
+		ret=set_ct_task(pid,1);
+		if (!ret)
+			fpsgo_main_trace("%d is L3 CT group ", pid);
+	} else{
+		ret=set_ct_task(pid,0);
+	}
+#endif
+	return ret ;
+};
+
+
 void fbt_task_reset_pmu(struct rb_root *pmu_info_tree, unsigned long long ts)
 {
 	struct rb_node *cur = NULL;
@@ -1431,8 +1471,14 @@ static int fbt_gear_hint_prefer_cpu(int prefer, int pid, int *is_prefer, int res
 	}
 
 	switch (prefer) {
+	case FPSGO_PREFER_LITTLE:
+		ret = set_gear_indices(pid, 0, 1, 0);
+		break;
 	case FPSGO_PREFER_BIG:
 		ret = set_gear_indices(pid, 2, 1, 1);
+		break;
+	case FPSGO_PREFER_M:
+		ret = set_gear_indices(pid, 1, 1, 0);
 		break;
 	case FPSGO_PREFER_B_M:
 		ret = set_gear_indices(pid, 1, 2, 0);
@@ -1447,6 +1493,7 @@ DONE:
 	return ret;
 
 }
+
 
 /* check whether there are multiple renders set policy hint (tuning point) */
 static int fbt_check_multiple_tp_control(int rid)
@@ -1469,14 +1516,19 @@ static int fbt_check_multiple_tp_control(int rid)
 
 /*  Policy hint (tuning point) for dynamicly control task placement through perfidx */
 static void fbt_tp_control(int pid, int group, int bm_th, int ml_th,
-		int tp_policy, int min_cap_base,int *group_affinity, int *group_affinity_mask,
+		int tp_policy, int strict_middle, int strict_little, int min_cap_base,
+		int *group_affinity, int *group_affinity_mask,
 		int *group_prefer, int multiuser_check)
 {
 	int tp_exceed = FPSGO_TP_SET_BUT_NOT_ACTIVATE;
+	int tp_prefer = FPSGO_PREFER_NONE;
+	int tp_full_ctrl_set = 0;
 
 	if (!bm_th && !ml_th) {
 		tp_exceed = FPSGO_TP_NOT_SET;
-		goto OUT;
+		fpsgo_systrace_c_fbt_debug(pid, 0, tp_exceed, "turn_point_exceed");
+		fpsgo_systrace_c_fbt_debug(pid, 0, tp_policy, "turn_point_policy");
+		return;
 	}
 
 	if (multiuser_check == FPSGO_MULTIUSER_OTHER)
@@ -1488,35 +1540,48 @@ static void fbt_tp_control(int pid, int group, int bm_th, int ml_th,
 	 * 2. The heaviest render when multiple render activate policy hint:
 	 */
 	if (bm_th && group == FPSGO_GROUP_HEAVY && min_cap_base >= bm_th) {
-		if (group_affinity && (tp_policy & FPSGO_TP_CONTROL_BM))
-			*group_affinity = FPSGO_BAFFINITY_B;
-		else if (group_prefer)
-			*group_prefer = FPSGO_PREFER_BIG;
+		tp_prefer = FPSGO_PREFER_BIG;
 		tp_exceed = FPSGO_TP_BMPOINT_ACTIVATE;
-	} else if (ml_th && min_cap_base >= ml_th) {
-		if (group_affinity && (tp_policy & FPSGO_TP_CONTROL_ML)) {
-			if (group_affinity_mask && !get_fbt_cpu_mask(FPSGO_PREFER_B_M, group_affinity_mask))
-				*group_affinity = FPSGO_BAFFINITY_USERDEFINE;
-		} else if (group_prefer)
-			*group_prefer = FPSGO_PREFER_B_M;
+	} else if ((ml_th && min_cap_base >= ml_th) || (bm_th && min_cap_base >= bm_th)) {
+		tp_prefer = (!strict_middle || group == FPSGO_GROUP_HEAVY) ?
+				FPSGO_PREFER_B_M : FPSGO_PREFER_M;
 		tp_exceed = FPSGO_TP_MLPOINT_ACTIVATE;
-	}
-	goto OUT;
+	} else if (strict_little)
+		tp_prefer = FPSGO_PREFER_LITTLE;
+	goto SET;
 
 	/*
-	 * Jump here when multiple render activate policy hint and this is not the heaviest
+	 * multiple render activate policy hint and this is not the heaviest
 	 */
 MINORUSER:
 	if (bm_th && group == FPSGO_GROUP_HEAVY && min_cap_base >= bm_th) {
-		if (group_affinity && (tp_policy & FPSGO_TP_CONTROL_ML)) {
-			if (group_affinity_mask && !get_fbt_cpu_mask(FPSGO_PREFER_B_M, group_affinity_mask))
-				*group_affinity = FPSGO_BAFFINITY_USERDEFINE;
-		} else if (group_prefer)
-			*group_prefer = FPSGO_PREFER_B_M;
+		tp_prefer = FPSGO_PREFER_B_M;
 		tp_exceed = FPSGO_TP_BMPOINT_ACTIVATE;
+	} else if (strict_little)
+		tp_prefer = FPSGO_PREFER_LITTLE;
+
+SET:
+	switch (tp_prefer) {
+	case FPSGO_PREFER_BIG:
+		if (tp_policy & FPSGO_TP_FULL_CTRL_B)
+			tp_full_ctrl_set = 1;
+		break;
+	case FPSGO_PREFER_B_M:
+	case FPSGO_PREFER_M:
+		if (tp_policy & FPSGO_TP_FULL_CTRL_BM)
+			tp_full_ctrl_set = 1;
+		break;
+	default:
+		/* for performance consideration, not affinity lcore */
+		break;
 	}
 
-OUT:
+	if (tp_full_ctrl_set && group_affinity) {
+		if (group_affinity_mask && !get_fbt_cpu_mask(tp_prefer, group_affinity_mask))
+			*group_affinity = FPSGO_BAFFINITY_USERDEFINE;
+	} else if (group_prefer)
+		*group_prefer = tp_prefer;
+
 	fpsgo_systrace_c_fbt_debug(pid, 0, tp_exceed, "turn_point_exceed");
 	fpsgo_systrace_c_fbt_debug(pid, 0, tp_policy, "turn_point_policy");
 }
@@ -1536,6 +1601,7 @@ static void fbt_set_task_ls(int set, int ls_mask, int pid, int group, int *ori_l
 			unset_task_ls(pid);
 		*ori_ls = 0;
 	}
+	fpsgo_systrace_c_fbt_debug(pid, 0, *ori_ls, "task_ls");
 #endif
 }
 
@@ -1722,7 +1788,7 @@ static void dep_a_except_b(
 
 static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 {
-	if (!fl || !fl->pid)
+	if (!fl || !fl->pid || magt_workaround_passive_mode)
 		return;
 
 	if (reset_boost)
@@ -1733,6 +1799,7 @@ static void fbt_reset_task_setting(struct fpsgo_loading *fl, int reset_boost)
 		fl->action, &fl->policy, &fl->prefer_type, &fl->ori_ls, NULL, 0);
 	fbt_change_task_policy(FPSGO_TASK_NORMAL, fl->pid, 0, fl->action,
 		0, 0, &fl->is_vip, 0, 0, 0, 1);
+	fbt_set_l3_ct(0,fl->pid,0,0);
 	fbt_set_task_vvip(0, fl->pid, 0, &fl->is_vvip, 1);
 	fbt_gear_hint_prefer_cpu(0, fl->pid, &fl->is_prefer, 1);
 	fbt_set_task_ls(0, 0, fl->pid, 0, &fl->ori_ls);
@@ -2478,11 +2545,14 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	int boost_VIP_final;
 	int vip_multiuser_check;
 	int tp_policy_final;
+	int tp_strict_middle_final;
+	int tp_strict_little_final;
 	int bm_th_final;
 	int ml_th_final;
 	int tp_multiuser_check;
 	int gh_prefer_final;
 	int boost_LR_final;
+	int set_l3_cache_ct_final;
 	int set_ls_final;
 	int ls_groupmask_final;
 	int vip_mask_final;
@@ -2513,12 +2583,15 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	boost_affinity_final = thr->attr.boost_affinity_by_pid;
 	boost_LR_final = thr->attr.boost_lr_by_pid;
 	boost_VIP_final = thr->attr.boost_vip_by_pid;
+	set_l3_cache_ct_final = thr->attr.set_l3_cache_ct_by_pid;
 	set_ls_final = thr->attr.set_ls_by_pid;
 	ls_groupmask_final = thr->attr.ls_groupmask_by_pid;
 	vip_mask_final = thr->attr.vip_mask_by_pid;
 	set_vvip_final = thr->attr.set_vvip_by_pid;
 	vip_throttle_final = thr->attr.vip_throttle_by_pid;
 	tp_policy_final = thr->attr.tp_policy_by_pid;
+	tp_strict_little_final = thr->attr.tp_strict_little_by_pid;
+	tp_strict_middle_final = thr->attr.tp_strict_middle_by_pid;
 	bm_th_final = thr->attr.bm_th_by_pid;
 	ml_th_final = thr->attr.ml_th_by_pid;
 	gh_prefer_final = thr->attr.gh_prefer_by_pid;
@@ -2526,19 +2599,6 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 	boost_info = &(thr->boost_info);
 
 	fbt_get_user_group_setting(thr, user_cpumask);
-
-	tp_multiuser_check = fbt_check_multiple_tp_control(thr->pid);
-	if (tp_multiuser_check != FPSGO_NO_MULTIUSER)
-		fpsgo_main_trace("tp multi-user detected!");
-
-	vip_multiuser_check = fbt_check_multiple_vip_control(thr->pid);
-	if (vip_multiuser_check != FPSGO_NO_MULTIUSER)
-		fpsgo_main_trace("vip multi-user detected!");
-
-	if (vip_follow_gh && tp_multiuser_check == FPSGO_NO_MULTIUSER)
-		turn_on_vip_in_gh();
-	else
-		turn_off_vip_in_gh();
 
 	if (!min_cap) {
 		fbt_clear_min_cap(thr);
@@ -2633,6 +2693,36 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 			goto EXIT;
 	}
 
+	if (magt_workaround_passive_mode) {
+		for (i = 0; i < thr->dep_valid_size; i++) {
+			struct fpsgo_loading *fl;
+
+			fl = &(thr->dep_arr[i]);
+			if (strlen(dep_str) == 0)
+				print_ret = snprintf(temp, sizeof(temp), "%d", fl->pid);
+			else
+				print_ret = snprintf(temp, sizeof(temp), ",%d", fl->pid);
+
+			if (print_ret > 0 &&
+					(strlen(dep_str) + strlen(temp) < MAIN_LOG_SIZE))
+				strncat(dep_str, temp, strlen(temp));
+		}
+		goto print_trace_dep;
+	}
+
+	tp_multiuser_check = fbt_check_multiple_tp_control(thr->pid);
+	if (tp_multiuser_check != FPSGO_NO_MULTIUSER)
+		fpsgo_main_trace("tp multi-user detected!");
+
+	vip_multiuser_check = fbt_check_multiple_vip_control(thr->pid);
+	if (vip_multiuser_check != FPSGO_NO_MULTIUSER)
+		fpsgo_main_trace("vip multi-user detected!");
+
+	if (vip_follow_gh && tp_multiuser_check == FPSGO_NO_MULTIUSER)
+		turn_on_vip_in_gh();
+	else
+		turn_off_vip_in_gh();
+
 	for (i = 0; i < thr->dep_valid_size; i++) {
 		struct fpsgo_loading *fl;
 
@@ -2683,7 +2773,8 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 		min_cap_other = (min_cap_other > max_cap_other) ? max_cap_other : min_cap_other;
 
 		fbt_tp_control(fl->pid, fl->heavyidx, bm_th_final, ml_th_final, tp_policy_final,
-			min_cap_base, &group_affinity_final, &group_affinity_mask[fl->heavyidx],
+			tp_strict_middle_final, tp_strict_little_final, min_cap_base,
+			&group_affinity_final, &group_affinity_mask[fl->heavyidx],
 			&group_prefer_final, tp_multiuser_check);
 		fbt_task_cap(fl->pid, min_cap, min_cap_b, min_cap_m, min_cap_other, max_cap,
 				max_cap_b,max_cap_m, max_cap_other, max_util, max_util_b,
@@ -2698,11 +2789,12 @@ void fbt_set_min_cap_locked(struct render_info *thr, int min_cap,
 
 		if ((boost_LR_final && fbt_is_R_L_task(fl->pid, heaviest_pid, second_heavy_pid, thr->pid)) ||
 				(boost_affinity_final && fl->heavyidx) ||
-				(boost_affinity_final == FPSGO_BAFFINITY_B_M && fl->action == XGF_ADD_DEP_NO_LLF))
+				(boost_affinity_final == FPSGO_BAFFINITY_B_M && fl->action == XGF_ADD_DEP_NO_LLF)
+		)
 			fbt_nice_task(fl->pid, 1, &fl->ori_nice);
 		else
 			fbt_nice_task(fl->pid, 0, &fl->ori_nice);
-
+		fbt_set_l3_ct(set_l3_cache_ct_final,fl->pid,fl->action,fl->heavyidx);
 		fbt_affinity_task(group_affinity_final, fl->pid, fl->heavyidx,
 			light_thread,llf_task_policy_final, fl->reset_taskmask, fl->action,
 			&fl->policy, &fl->prefer_type, &fl->ori_ls, group_affinity_mask, FPSGO_MAX_GROUP);
@@ -2727,6 +2819,7 @@ print_log:
 	if (powerRL_enable_final && bat_psy && cur_ts)
 		fbt_task_reset_pmu(&thr->pmu_info_tree, cur_ts);
 
+print_trace_dep:
 	fpsgo_main_trace("[%d] dep-list %s", thr->pid, dep_str);
 	fpsgo_systrace_c_fbt(thr->pid, thr->buffer_id,
 		min_cap,	"perf idx");
@@ -2789,7 +2882,10 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 	render_attr->bm_th_by_pid = bm_th;
 	render_attr->ml_th_by_pid = ml_th;
 	render_attr->tp_policy_by_pid = tp_policy;
+	render_attr->tp_strict_middle_by_pid = tp_strict_middle;
+	render_attr->tp_strict_little_by_pid = tp_strict_little;
 	render_attr->gh_prefer_by_pid = gh_prefer;
+	render_attr->set_l3_cache_ct_by_pid = set_l3_cache_ct;
 	render_attr->set_ls_by_pid = set_ls;
 	render_attr->ls_groupmask_by_pid = ls_groupmask;
 	render_attr->vip_mask_by_pid = vip_mask;
@@ -2985,10 +3081,16 @@ void fbt_set_render_boost_attr(struct render_info *thr)
 		render_attr->ml_th_by_pid = pid_attr.ml_th_by_pid;
 	if (pid_attr.tp_policy_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->tp_policy_by_pid = pid_attr.tp_policy_by_pid;
+	if (pid_attr.tp_strict_middle_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->tp_strict_middle_by_pid = pid_attr.tp_strict_middle_by_pid;
+	if (pid_attr.tp_strict_little_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->tp_strict_little_by_pid = pid_attr.tp_strict_little_by_pid;
 	if (pid_attr.gh_prefer_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->gh_prefer_by_pid = pid_attr.gh_prefer_by_pid;
 	if (pid_attr.set_ls_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->set_ls_by_pid = pid_attr.set_ls_by_pid;
+	if (pid_attr.set_l3_cache_ct_by_pid != BY_PID_DEFAULT_VAL)
+		render_attr->set_l3_cache_ct_by_pid = pid_attr.set_l3_cache_ct_by_pid;
 	if (pid_attr.ls_groupmask_by_pid != BY_PID_DEFAULT_VAL)
 		render_attr->ls_groupmask_by_pid = pid_attr.ls_groupmask_by_pid;
 	if(pid_attr.aa_b_minus_idle_t_by_pid != BY_PID_DEFAULT_VAL)
@@ -3052,6 +3154,8 @@ void fbt_set_render_last_cb(struct render_info *thr, unsigned long long ts_ns)
 	fpsgo_systrace_c_fbt_debug(thr->pid, thr->buffer_id,
 		thr->render_last_cb_ts, "render_last_cb_ts");
 }
+
+
 
 
 static int fbt_get_target_cluster(unsigned int blc_wt)
@@ -4831,8 +4935,12 @@ void fbt_update_freq_qos_min(int policy_id, unsigned int freq)
 
 	if (freq == cluster_min_freq)
 		freq_qos_cap = 0;
-	else
-		freq_qos_cap = freq_qos_cap_temp;
+	else {
+		if ((freq_qos_cap && freq_qos_cap_temp < freq_qos_cap) ||
+			!freq_qos_cap)
+			freq_qos_cap = freq_qos_cap_temp;
+	}
+
 
 	mutex_unlock(&fbt_mlock);
 
@@ -5736,6 +5844,8 @@ static int fbt_get_cl_loading_from_buffer(int pid, unsigned long long buffer_id,
 		if (lastest_obv_cl[i] == NULL || lastest_is_cl_isolated[i] == NULL) {
 			ret = 1;
 			spin_unlock_irqrestore(&loading_slock, spinlock_flag_loading);
+			spin_unlock_irqrestore(&freq_slock, spinlock_flag_freq);
+			FPSGO_LOGE("[%s] ERROR OOM!", __func__);
 			goto out;
 		}
 		cpu_obv[i] = lastest_obv_cl[i][cid];
@@ -7073,8 +7183,10 @@ static void fbt_jank_thread_restore(int pid)
 	}
 
 	fbt_tp_control(fl->pid, fl->heavyidx, iter->attr.bm_th_by_pid,
-		iter->attr.ml_th_by_pid, iter->attr.tp_policy_by_pid, min_cap_base,
-		&group_affinity_final, &group_affinity_mask[fl->heavyidx], NULL, tp_multiuser_check);
+		iter->attr.ml_th_by_pid, iter->attr.tp_policy_by_pid,
+		iter->attr.tp_strict_middle_by_pid, iter->attr.tp_strict_little_by_pid,
+		min_cap_base, &group_affinity_final, &group_affinity_mask[fl->heavyidx],
+		NULL, tp_multiuser_check);
 	fbt_set_per_task_cap(pid, min_cap_final, max_cap_final, 1024);
 	fpsgo_systrace_c_fbt(pid, 0, min_cap_final, "restore_perf_min");
 	fpsgo_systrace_c_fbt(pid, 0, max_cap_final, "restore_perf_max");
@@ -7180,6 +7292,33 @@ static void fbt_xgff_set_min_cap(unsigned int min_cap)
 	tgt_freq = fbt_cluster_X2Y(0, min_cap, CAP, FREQ, 1, __func__);
 	fbt_cpu_L_ceiling_min(tgt_freq);
 }
+
+int fbt_get_magt_workaround_passive_mode(void)
+{
+	int val = 0;
+
+	fpsgo_render_tree_lock(__func__);
+	val = magt_workaround_passive_mode;
+	fpsgo_render_tree_unlock(__func__);
+
+	return val;
+}
+EXPORT_SYMBOL(fbt_get_magt_workaround_passive_mode);
+
+int fbt_set_magt_workaround_passive_mode(int value)
+{
+	if (value > 1 || value < 0)
+		return -1;
+
+	fpsgo_render_tree_lock(__func__);
+
+	magt_workaround_passive_mode = value;
+
+	fpsgo_render_tree_unlock(__func__);
+
+	return 0;
+}
+EXPORT_SYMBOL(fbt_set_magt_workaround_passive_mode);
 
 void fpsgo_set_rl_l2q_enable(int enable)
 {
@@ -7842,11 +7981,26 @@ static ssize_t fbt_attr_by_pid_store(struct kobject *kobj,
 			boost_attr->tp_policy_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->tp_policy_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "tp_strict_middle")) {
+		if ((val == 0 || val == 1) && action == 's')
+			boost_attr->tp_strict_middle_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->tp_strict_middle_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "tp_strict_little")) {
+		if ((val == 0 || val == 1) && action == 's')
+			boost_attr->tp_strict_little_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->tp_strict_little_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "gh_prefer")) {
 		if ((val <= 4 && val >= 0) && action == 's')
 			boost_attr->gh_prefer_by_pid = val;
 		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
 			boost_attr->gh_prefer_by_pid = BY_PID_DEFAULT_VAL;
+	} else if (!strcmp(cmd, "set_l3_cache_ct")) {
+		if ((val <= 4 && val >= 0) && action == 's')
+			boost_attr->set_l3_cache_ct_by_pid = val;
+		else if (val == BY_PID_DEFAULT_VAL && action == 'u')
+			boost_attr->set_l3_cache_ct_by_pid = BY_PID_DEFAULT_VAL;
 	} else if (!strcmp(cmd, "set_ls")) {
 		if ((val == 0 || val == 1) && action == 's')
 			boost_attr->set_ls_by_pid = val;
@@ -9450,6 +9604,48 @@ out:
 
 static KOBJ_ATTR_RW(rl_l2q_exp_times);
 
+static ssize_t magt_workaround_passive_mode_show(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		char *buf)
+{
+	int val = -1;
+
+	val = fbt_get_magt_workaround_passive_mode();
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", val);
+}
+
+static ssize_t magt_workaround_passive_mode_store(struct kobject *kobj,
+		struct kobj_attribute *attr,
+		const char *buf, size_t count)
+{
+	int val = -1;
+	char *acBuffer = NULL;
+	int arg;
+	int ret = 0;
+
+	acBuffer = kcalloc(FPSGO_SYSFS_MAX_BUFF_SIZE, sizeof(char), GFP_KERNEL);
+	if (!acBuffer)
+		goto out;
+
+	if ((count > 0) && (count < FPSGO_SYSFS_MAX_BUFF_SIZE)) {
+		if (scnprintf(acBuffer, FPSGO_SYSFS_MAX_BUFF_SIZE, "%s", buf)) {
+			if (kstrtoint(acBuffer, 0, &arg) == 0) {
+				val = arg;
+				if (val <= 1 && val >= 0)
+					ret = fbt_set_magt_workaround_passive_mode(val);
+			}
+		}
+	}
+
+out:
+	kfree(acBuffer);
+	return ret == 0 ? count : ret;
+}
+
+static KOBJ_ATTR_RW(magt_workaround_passive_mode);
+
+
 FBT_SYSFS_READ(rescue_second_enhance_f, fbt_mlock, rescue_second_enhance_f);
 FBT_SYSFS_WRITE_VALUE(rescue_second_enhance_f, fbt_mlock, rescue_second_enhance_f, 0, 100);
 static KOBJ_ATTR_RW(rescue_second_enhance_f);
@@ -9481,6 +9677,10 @@ static KOBJ_ATTR_RW(cpumask_second);
 FBT_SYSFS_READ(cpumask_others, fbt_mlock, cpumask_others);
 FBT_SYSFS_WRITE_VALUE(cpumask_others, fbt_mlock, cpumask_others, 1, 255);
 static KOBJ_ATTR_RW(cpumask_others);
+
+FBT_SYSFS_READ(set_l3_cache_ct, fbt_mlock, set_l3_cache_ct);
+FBT_SYSFS_WRITE_VALUE(set_l3_cache_ct, fbt_mlock, set_l3_cache_ct, 0, 3);
+static KOBJ_ATTR_RW(set_l3_cache_ct);
 
 FBT_SYSFS_READ(set_ls, fbt_mlock, set_ls);
 FBT_SYSFS_WRITE_VALUE(set_ls, fbt_mlock, set_ls, 0, 1);
@@ -9586,6 +9786,14 @@ FBT_SYSFS_READ(powerRL_voltage, fbt_mlock, powerRL_voltage);
 FBT_SYSFS_WRITE_VALUE(powerRL_voltage, fbt_mlock, powerRL_voltage, 1, 10);
 static KOBJ_ATTR_RW(powerRL_voltage);
 
+FBT_SYSFS_READ(tp_strict_little, fbt_mlock, tp_strict_little);
+FBT_SYSFS_WRITE_VALUE(tp_strict_little, fbt_mlock, tp_strict_little, 0, 1);
+static KOBJ_ATTR_RW(tp_strict_little);
+
+FBT_SYSFS_READ(tp_strict_middle, fbt_mlock, tp_strict_middle);
+FBT_SYSFS_WRITE_VALUE(tp_strict_middle, fbt_mlock, tp_strict_middle, 0, 1);
+static KOBJ_ATTR_RW(tp_strict_middle);
+
 void fbt_init_cpu_loading_info(void)
 {
 	int i = 0;
@@ -9679,6 +9887,8 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_bm_th);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_ml_th);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_tp_policy);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_tp_strict_middle);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_tp_strict_little);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_gh_prefer);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_heavy_group_num);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_second_group_num);
@@ -9687,6 +9897,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_heavy);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_second);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_cpumask_others);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_set_l3_cache_ct);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_set_ls);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_ls_groupmask);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_vip_mask);
@@ -9714,6 +9925,7 @@ void __exit fbt_cpu_exit(void)
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_voltage_unit);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_total_unit);
 	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_powerRL_voltage);
+	fpsgo_sysfs_remove_file(fbt_kobj, &kobj_attr_magt_workaround_passive_mode);
 
 	fpsgo_sysfs_remove_dir(&fbt_kobj);
 	fbt_delete_cpu_loading_info();
@@ -9837,6 +10049,7 @@ int __init fbt_cpu_init(void)
 	cpumask_heavy = 255;
 	cpumask_second = 255;
 	cpumask_others = 255;
+	set_l3_cache_ct = 0;
 	set_ls = 0;
 	ls_groupmask = 7;
 	vip_mask = 7;
@@ -9952,10 +10165,13 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_bm_th);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_ml_th);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_tp_policy);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_tp_strict_middle);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_tp_strict_little);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_gh_prefer);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_heavy);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_second);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_cpumask_others);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_set_l3_cache_ct);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_set_ls);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_ls_groupmask);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_vip_mask);
@@ -9987,6 +10203,7 @@ int __init fbt_cpu_init(void)
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_voltage_unit);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_total_unit);
 		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_powerRL_voltage);
+		fpsgo_sysfs_create_file(fbt_kobj, &kobj_attr_magt_workaround_passive_mode);
 	}
 
 	bat_psy = power_supply_get_by_name("battery");

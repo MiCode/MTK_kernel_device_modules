@@ -548,6 +548,11 @@ struct subsys_req plat_subsys_req[] = {
 	{"uarthub", SPM_REQ_STA_14, (0x1 << 31), SPM_REQ_STA_15, 0xF, 0},
 	{"pcie", SPM_REQ_STA_12, (0xFFFF << 7), 0, 0, 0},
 	{"srclkeni", SPM_REQ_STA_14, 0xFF, 0, 0, 0},
+	{"clk_mon0", SPM_SRAM_LP_CLK_MON_0, 0xFFFFFFFF, 0,0,0},
+	{"clk_mon1", SPM_SRAM_LP_CLK_MON_1, 0xFFFFFFFF, 0,0,0},
+	{"clk_mon2", SPM_SRAM_LP_CLK_MON_2, 0xFFFFFFFF, 0,0,0},
+	{"vlp_mon0", SPM_SRAM_LP_VLP_MON_0, 0xFFFFFFFF, 0,0,0},
+	{"clk2_mon0", SPM_SRAM_LP_CLKSYS2_MON_0, 0xFFFFFFFF, 0,0,0},
 	{"spm", SPM_SRC_REQ, 0x18F6, 0, 0, 0},
 };
 

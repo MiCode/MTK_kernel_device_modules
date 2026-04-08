@@ -3,20 +3,29 @@
  * Copyright (c) 2021 MediaTek Inc.
  */
 
-#include <linux/kernel.h>
 #include <linux/module.h>
+#if IS_ENABLED(CONFIG_TCPC_CLASS)
+#include <linux/kernel.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/power_supply.h>
 #include <linux/usb/typec.h>
 #include <linux/usb/typec_mux.h>
 #include <linux/usb/typec_dp.h>
+#include <linux/mca/common/mca_event.h>
+#include <linux/mca/common/mca_log.h>
+#include <inc/tcpm.h>
+#include <linux/workqueue.h>
 
 #include "inc/tcpci_typec.h"
+#include "../../../../power/supply/mtk_charger.h"
 
+#ifndef MCA_LOG_TAG
+#define MCA_LOG_TAG "rt_pd_manager"
+#endif
 #define RT_PD_MANAGER_VERSION	"1.0.11"
 
-static bool dbg_log_en;
+static bool dbg_log_en = true;
 module_param(dbg_log_en, bool, 0644);
 #define mt_dbg(dev, fmt, ...) \
 	do { \
@@ -41,7 +50,38 @@ struct rt_pd_manager_data {
 	struct usb_pd_identity *partner_identity;
 	struct typec_mux **mux;
 	struct rpmd_notifier_block *pd_nb;
+	struct delayed_work start_rev_cable_check_work;
+	struct delayed_work end_rev_cable_check_work;
 };
+
+static void start_rev_cable_check_func(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct rt_pd_manager_data *pd_mgr = container_of(dwork,
+						struct rt_pd_manager_data,
+						start_rev_cable_check_work);
+	int rev_cable_status = 0;
+	int rev_cable_checked = 0;
+
+	mca_log_err("enter, pd_mgr=%p\n", pd_mgr);
+	usb_get_property(USB_PROP_TYPEC_REV_CABLE_CHECK, &rev_cable_status);
+	rev_cable_checked = (rev_cable_status >> 31) & 0x1;
+	mca_log_err("rev_cable_checked = %d\n", rev_cable_checked);
+	if (!rev_cable_checked) {
+		usb_set_property(USB_PROP_TYPEC_REV_CABLE_CHECK, 1);
+	}
+}
+
+static void end_rev_cable_check_func(struct work_struct *work)
+{
+	struct delayed_work *dwork = to_delayed_work(work);
+	struct rt_pd_manager_data *pd_mgr = container_of(dwork,
+						struct rt_pd_manager_data,
+						end_rev_cable_check_work);
+
+	mca_log_err("enter, pd_mgr=%p\n", pd_mgr);
+	usb_set_property(USB_PROP_TYPEC_REV_CABLE_CHECK, 0);
+}
 
 static int pd_tcp_notifier_call(struct notifier_block *nb,
 				unsigned long event, void *data)
@@ -51,24 +91,34 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		container_of(nb, struct rpmd_notifier_block, nb);
 	struct rt_pd_manager_data *rpmd = pd_nb->rpmd;
 	int ret = 0, idx = pd_nb - rpmd->pd_nb;
+	// int bootmode = rpmd->tcpc[idx]->bootmode;
 	uint8_t old_state = TYPEC_UNATTACHED, new_state = TYPEC_UNATTACHED;
 	enum typec_pwr_opmode opmode = TYPEC_PWR_MODE_USB;
 	uint16_t pd_revision = 0x0316;
 	uint32_t partner_vdos[VDO_MAX_NR];
 	struct typec_displayport_data dp_data = {.status = 0, .conf = 0};
 	struct typec_mux_state state = {.mode = 0, .data = &dp_data};
+	int boot_mode = rpmd->tcpc[idx]->bootmode;
+	struct device_node *np = rpmd->dev->of_node;
+	int rev_chg_cc_toggle = 0;
+	int pd_state_svid = 0;
+	int old_val, final_rev_quick_chg;
+	int user_revchg_enable = 0;
+	int rev_cable_status = 0;
+	int rev_cable_boostable = 0;
+	int rev_cable_boosted = 0;
 
 	mt_dbg(rpmd->dev, "event = %lu, idx = %d ++\n", event, idx);
 
 	switch (event) {
 	case TCP_NOTIFY_VBUS_SHORT_CC:
-		if (noti->vsc_status.short_status)
-			dev_info(rpmd->dev,
-				 "%s enter short status, short_cc = %s\n",
-				 __func__, noti->vsc_status.short_cc ==
-				 TCPC_POLARITY_CC1 ? "CC1" : "CC2");
-		else
+		if (!noti->vsc_status) {
 			dev_info(rpmd->dev, "%s exit short status\n", __func__);
+			break;
+		}
+		dev_info(rpmd->dev, "%s enter short status, CC%s%s\n", __func__,
+			 noti->vsc_status & BIT(TCPC_POLARITY_CC1) ? "1" : "",
+			 noti->vsc_status & BIT(TCPC_POLARITY_CC2) ? "2" : "");
 		break;
 	case TCP_NOTIFY_SINK_VBUS:
 		dev_info(rpmd->dev, "%s sink vbus %dmV %dmA type(0x%02X)\n",
@@ -115,6 +165,7 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			    old_state == TYPEC_ATTACHED_DBGACC_SNK) &&
 			    new_state == TYPEC_UNATTACHED) {
 			dev_info(rpmd->dev, "%s Charger plug out\n", __func__);
+			schedule_delayed_work(&rpmd->end_rev_cable_check_work, 0);
 			/*
 			 * report charger plug-out,
 			 * and disable device connection
@@ -145,14 +196,22 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			typec_set_vconn_role(rpmd->typec_port[idx],
 					     TYPEC_SOURCE);
 			/* set typec switch orientation */
-			typec_set_orientation(rpmd->typec_port[idx],
+			if (of_property_read_bool(np, "mediatek,not_support_u3")) {
+				typec_set_orientation(rpmd->typec_port[idx],
+					      noti->typec_state.polarity ?
+					      TYPEC_ORIENTATION_NORMAL :
+					      TYPEC_ORIENTATION_REVERSE);
+			} else {
+				typec_set_orientation(rpmd->typec_port[idx],
 					      noti->typec_state.polarity ?
 					      TYPEC_ORIENTATION_REVERSE :
 					      TYPEC_ORIENTATION_NORMAL);
+			}
 		} else if ((old_state == TYPEC_ATTACHED_SRC ||
 			    old_state == TYPEC_ATTACHED_DEBUG) &&
 			    new_state == TYPEC_UNATTACHED) {
 			dev_info(rpmd->dev, "%s OTG plug out\n", __func__);
+			schedule_delayed_work(&rpmd->end_rev_cable_check_work, 0);
 			/* disable host connection */
 		} else if (old_state == TYPEC_UNATTACHED &&
 			   new_state == TYPEC_ATTACHED_AUDIO) {
@@ -164,7 +223,8 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			/* disable AudioAccessory connection */
 		}
 
-		if (new_state == TYPEC_UNATTACHED) {
+		if (new_state == TYPEC_UNATTACHED ||
+		    new_state == TYPEC_PROTECTION) {
 			typec_unregister_partner(rpmd->partner[idx]);
 			rpmd->partner[idx] = NULL;
 			if (rpmd->typec_caps[idx].prefer_role == TYPEC_SOURCE) {
@@ -223,6 +283,12 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 	case TCP_NOTIFY_PR_SWAP:
 		dev_info(rpmd->dev, "%s power role swap, new role = %d\n",
 				    __func__, noti->swap_state.new_role);
+		if (rpmd->tcpc[idx]->pd_port.support_revcable)
+		{
+			usb_set_property(USB_PROP_TYPEC_SWAP_COUNT, 1);
+			mca_log_err("get power role swap, swap_count to 1\n");
+		}
+
 		if (noti->swap_state.new_role == PD_ROLE_SINK) {
 			dev_info(rpmd->dev, "%s swap power role to sink\n",
 					    __func__);
@@ -230,8 +296,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * report charger plug-in without charger type detection
 			 * to not interfering with USB2.0 communication
 			 */
-
 			typec_set_pwr_role(rpmd->typec_port[idx], TYPEC_SINK);
+			if((rpmd->partner_identity[idx].id_header & 0xFFFF) == 0x057e){
+				tcpm_dpm_vdm_discover_id(rpmd->tcpc[idx], NULL);
+			}
 		} else if (noti->swap_state.new_role == PD_ROLE_SOURCE) {
 			dev_info(rpmd->dev, "%s swap power role to source\n",
 					    __func__);
@@ -250,7 +318,6 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * disable host connection,
 			 * and enable device connection
 			 */
-
 			typec_set_data_role(rpmd->typec_port[idx],
 					    TYPEC_DEVICE);
 		} else if (noti->swap_state.new_role == PD_ROLE_DFP) {
@@ -260,8 +327,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 			 * disable device connection,
 			 * and enable host connection
 			 */
-
 			typec_set_data_role(rpmd->typec_port[idx], TYPEC_HOST);
+			if((rpmd->partner_identity[idx].id_header & 0xFFFF) == 0x057e){
+				tcpm_dpm_vdm_discover_id(rpmd->tcpc[idx], NULL);
+			}
 		}
 		break;
 	case TCP_NOTIFY_VCONN_SWAP:
@@ -280,6 +349,22 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		break;
 	case TCP_NOTIFY_PD_MODE:
 		typec_set_pwr_opmode(rpmd->typec_port[idx], TYPEC_PWR_MODE_PD);
+		if (rpmd->tcpc[idx]->pd_port.support_quick_revchg) {
+			old_val = rpmd->tcpc[idx]->pd_port.rev_quick_chg;
+			usb_get_property(USB_PROP_TYPEC_REVERSE_CHG, &user_revchg_enable);
+			usb_get_property(USB_PROP_TYPEC_REV_CABLE_CHECK, &rev_cable_status);
+			rev_cable_boostable = (rev_cable_status >> 16) & 0xFFFF;
+			rev_cable_boosted = rev_cable_status & 0xFFFF;
+			mca_log_err("rev cable present=%d, effective=%d\n", rev_cable_boostable, rev_cable_boosted);
+			final_rev_quick_chg = (user_revchg_enable || (rev_cable_boostable && rev_cable_boosted));
+			if (final_rev_quick_chg != old_val) {
+				rpmd->tcpc[idx]->pd_port.rev_quick_chg = final_rev_quick_chg;
+				mca_log_err("rev_quick_chg updated: %d -> %d (user=%d, cable=%d)\n",
+					old_val, final_rev_quick_chg,
+					user_revchg_enable, rev_cable_boostable);
+			}
+		}
+
 		break;
 	case TCP_NOTIFY_PD_STATE:
 		dev_info(rpmd->dev, "%s pd state = %d\n",
@@ -296,6 +381,10 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		case PD_CONNECT_PE_READY_SRC_PD30:
 			if (!rpmd->partner[idx])
 				break;
+			if (noti->pd_state.connected == PD_CONNECT_PE_READY_SNK_PD30)
+			{
+				schedule_delayed_work(&rpmd->start_rev_cable_check_work, 0);
+			}
 			if (noti->pd_state.connected <= PD_CONNECT_PE_READY_SRC)
 				pd_revision = 0x0200;
 			typec_partner_set_pd_revision(rpmd->partner[idx],
@@ -304,16 +393,29 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 						       pd_revision >= 0x0300 ?
 						       SVDM_VER_2_0 :
 						       SVDM_VER_1_0);
+			if (rpmd->tcpc[idx])
+			{
+				schedule_delayed_work(&rpmd->start_rev_cable_check_work, 0);
+			}
 			ret = tcpm_inquire_pd_partner_inform(rpmd->tcpc[idx],
 							     partner_vdos);
-			if (ret != TCPM_SUCCESS)
+			if (ret != TCPM_SUCCESS) {
+				pd_state_svid = (noti->pd_state.connected << 16);
+				usb_set_property(USB_PROP_TYPEC_PD_STATE_SVID, pd_state_svid);
+				usb_set_property(USB_PROP_TYPEC_PD_PID_BCD, 0);
+				mca_log_err("inquire pd partner inform fail(%d)\n", pd_state_svid);
 				break;
+			}
 			rpmd->partner_identity[idx].id_header = partner_vdos[0];
 			rpmd->partner_identity[idx].cert_stat = partner_vdos[1];
 			rpmd->partner_identity[idx].product = partner_vdos[2];
 			rpmd->partner_identity[idx].vdo[0] = partner_vdos[3];
 			rpmd->partner_identity[idx].vdo[1] = partner_vdos[4];
 			rpmd->partner_identity[idx].vdo[2] = partner_vdos[5];
+			pd_state_svid = (noti->pd_state.connected << 16) | (partner_vdos[0] & 0x0000FFFF);
+			usb_set_property(USB_PROP_TYPEC_PD_STATE_SVID, pd_state_svid);
+			usb_set_property(USB_PROP_TYPEC_PD_PID_BCD, partner_vdos[2]);
+			mca_log_err("svid = %x\n", partner_vdos[0] & 0x0000FFFF);
 			typec_partner_set_identity(rpmd->partner[idx]);
 			break;
 		};
@@ -345,10 +447,16 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		typec_mux_set(rpmd->mux[idx], &state);
 		break;
 	case TCP_NOTIFY_WD0_STATE:
-		tcpm_typec_change_role_postpone(rpmd->tcpc[idx],
-						noti->wd0_state.wd0 ?
-						rpmd->role_def[idx] :
-						TYPEC_ROLE_SNK, true);
+		if(boot_mode == 8 || boot_mode == 9){
+			break;
+		}
+		usb_get_property(USB_PROP_TYPEC_CC_TOGGLE_18W, &rev_chg_cc_toggle);
+		mca_log_err("reverse_chg_cc_toggle = %d\n", rev_chg_cc_toggle);
+		if (!rev_chg_cc_toggle)
+			tcpm_typec_change_role_postpone(rpmd->tcpc[idx],
+							noti->wd0_state.wd0 ?
+							rpmd->role_def[idx] :
+							TYPEC_ROLE_SNK, true);
 		break;
 	case TCP_NOTIFY_PS_CHANGE:
 		dev_dbg(rpmd->dev, "%s vbus_level = %d\n",
@@ -356,6 +464,23 @@ static int pd_tcp_notifier_call(struct notifier_block *nb,
 		break;
 	case TCP_NOTIFY_CC_HI:
 		dev_info(rpmd->dev, "%s cc_hi = %d\n", __func__, noti->cc_hi);
+		break;
+	case TCP_NOTIFY_ALERT_RATELIMITED:
+		dev_info(rpmd->dev, "%s alert_ratelimited = %d\n",
+				    __func__, noti->alert_ratelimited);
+		break;
+	case PD_CONNECT_PARTNER_ID_PRESENT:
+		ret = tcpm_inquire_pd_partner_inform(rpmd->tcpc[idx],
+			partner_vdos);
+		if (ret != TCPM_SUCCESS) {
+			pd_state_svid = (noti->pd_state.connected << 16);
+			usb_set_property(USB_PROP_TYPEC_PD_STATE_SVID, pd_state_svid);
+			mca_log_err("inquire pd partner inform fail(%d)\n", pd_state_svid);
+		} else {
+			pd_state_svid = (noti->pd_state.connected << 16) | (partner_vdos[0] & 0x0000FFFF);
+			usb_set_property(USB_PROP_TYPEC_PD_STATE_SVID, pd_state_svid);
+			mca_log_err("svid = %x\n", partner_vdos[0] & 0x0000FFFF);
+		}
 		break;
 	default:
 		break;
@@ -409,8 +534,16 @@ static int tcpc_typec_dr_set(struct typec_port *port, enum typec_data_role role)
 	int ret = 0, idx = find_port_index(rpmd, port);
 	uint8_t data_role = tcpm_inquire_pd_data_role(rpmd->tcpc[idx]);
 	bool do_swap = false;
+	u32 flags = tcpm_inquire_dpm_flags(rpmd->tcpc[idx]);
+	bool support_dual_role_data = true;
 
 	dev_info(rpmd->dev, "%s role = %d, idx = %d\n", __func__, role, idx);
+
+	support_dual_role_data = flags & DPM_FLAGS_PARTNER_DR_DATA;
+	if (!support_dual_role_data) {
+		dev_info(rpmd->dev, "%s does not support Dual Role Data\n", __func__);
+		return 0;
+	}
 
 	if (role == TYPEC_HOST) {
 		if (data_role == PD_ROLE_UFP) {
@@ -608,6 +741,9 @@ static void rt_pd_manager_remove_helper(struct rt_pd_manager_data *rpmd)
 {
 	int i = 0, ret = 0;
 
+	cancel_delayed_work_sync(&rpmd->start_rev_cable_check_work);
+	cancel_delayed_work_sync(&rpmd->end_rev_cable_check_work);
+
 	for (i = 0; i < rpmd->nr_port; i++) {
 		if (!rpmd->tcpc[i])
 			break;
@@ -664,6 +800,9 @@ static int rt_pd_manager_probe(struct platform_device *pdev)
 		return -ENOMEM;
 	platform_set_drvdata(pdev, rpmd);
 
+	INIT_DELAYED_WORK(&rpmd->start_rev_cable_check_work, start_rev_cable_check_func);
+	INIT_DELAYED_WORK(&rpmd->end_rev_cable_check_work, end_rev_cable_check_func);
+
 	for (i = 0; i < rpmd->nr_port; i++) {
 		ret = snprintf(name, sizeof(name), "type_c_port%d", i);
 		if (ret >= sizeof(name))
@@ -699,6 +838,7 @@ static int rt_pd_manager_probe(struct platform_device *pdev)
 			goto out;
 		}
 	}
+
 	dev_info(rpmd->dev, "%s OK!!\n", __func__);
 
 	return 0;
@@ -726,7 +866,7 @@ MODULE_DEVICE_TABLE(of, rt_pd_manager_of_match);
 static struct platform_driver rt_pd_manager_driver = {
 	.driver = {
 		.name = "rt-pd-manager",
-		.of_match_table = of_match_ptr(rt_pd_manager_of_match),
+		.of_match_table = rt_pd_manager_of_match,
 	},
 	.probe = rt_pd_manager_probe,
 	.remove = rt_pd_manager_remove,
@@ -746,8 +886,9 @@ module_exit(rt_pd_manager_exit);
 
 MODULE_AUTHOR("Jeff Chang");
 MODULE_DESCRIPTION("Richtek pd manager driver");
-MODULE_LICENSE("GPL");
 MODULE_VERSION(RT_PD_MANAGER_VERSION);
+#endif	/* CONFIG_TCPC_CLASS */
+MODULE_LICENSE("GPL");
 
 /*
  * Release Note

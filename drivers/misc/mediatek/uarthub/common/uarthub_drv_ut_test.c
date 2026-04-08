@@ -544,15 +544,36 @@ int uarthub_core_inband_is_support(void)
 		is_support = 0;
 
 	if (g_plat_ic_core_ops == NULL ||
-		  g_plat_ic_core_ops->uarthub_plat_inband_enable_ctrl == NULL ||
-		  g_plat_ic_core_ops->uarthub_plat_inband_trigger_ctrl == NULL)
+			g_plat_ic_core_ops->uarthub_plat_inband_is_support == NULL)
 		is_support = 0;
+	else
+		is_support = g_plat_ic_core_ops->uarthub_plat_inband_is_support();
 
 #if UARTHUB_INFO_LOG
-	pr_info("[%s] is_support=[0x%x]\n", __func__, is_support);
+	pr_info("[%s] is_support=[%d]\n", __func__, is_support);
 #endif
 
 	return is_support;
+}
+
+int uarthub_core_is_enable_fw_flow_ctrl_with_inband(void)
+{
+	int is_enable = 1;
+
+	if (g_uarthub_disable == 1)
+		is_enable = 0;
+
+	if (g_plat_ic_core_ops == NULL ||
+		  g_plat_ic_core_ops->uarthub_plat_is_enable_fw_flow_ctrl_with_inband == NULL)
+		is_enable = 0;
+	else
+		is_enable = g_plat_ic_core_ops->uarthub_plat_is_enable_fw_flow_ctrl_with_inband();
+
+#if UARTHUB_DEBUG_LOG
+	pr_info("[%s] is_enable=[%d]\n", __func__, is_enable);
+#endif
+
+	return is_enable;
 }
 
 int uarthub_core_uartip_write_data_to_tx_buf(int dev_index, int tx_data)

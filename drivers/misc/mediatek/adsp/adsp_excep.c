@@ -393,7 +393,7 @@ void adsp_aed_worker(struct work_struct *ws)
 	adsp_register_feature(SYSTEM_FEATURE_ID);
 	adsp_extern_notify_chain(ADSP_EVENT_STOP);
 
-#if !IS_ENABLED(CONFIG_MTK_ADSP_V0)
+#if !IS_ENABLED(CONFIG_MTK_ADSP_V0) && !IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
 	adsp_bus_monitor_dump();
 #endif
 
@@ -707,4 +707,3 @@ struct attribute_group adsp_excep_attr_group = {
 	.attrs = adsp_excep_attrs,
 	.bin_attrs = adsp_excep_bin_attrs,
 };
-

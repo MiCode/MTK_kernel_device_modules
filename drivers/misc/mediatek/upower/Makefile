@@ -48,6 +48,9 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/src/plat_
 Upower-y += mtk_unified_power_plat_6833.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6761)),)
 Upower-y += mtk_unified_power_plat_6761.o
+else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT8788)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cpufreq_v2/src/plat_k6771/
+Upower-y += mtk_unified_power_plat_6771.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6877)),)
 Upower-y += mtk_unified_power_plat_6877.o
 else ifneq ($(strip $(CONFIG_MTK_PLAT_POWER_MT6739)),)

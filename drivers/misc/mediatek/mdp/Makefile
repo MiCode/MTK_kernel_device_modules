@@ -28,8 +28,16 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/ \
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
 
+ifneq ($(filter y m, $(CONFIG_MTK_PMQOS)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek/
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/helio-dvfsrc/
+endif
 ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme/
+endif
+
+ifneq ($(filter mt6771,$(CONFIG_MTK_LEGACY_PLATFORM)),)
+ccflags-y += -DMT8788_MDP
 endif
 
 ifeq ($(strip $(CONFIG_MTK_PQ_COLOR_MODE)),"MDP")
@@ -119,7 +127,25 @@ endif
 ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6833.c),)
 obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6833.o
 endif
+ifneq ($(wildcard $(srctree)/$(src)/mdp_mt6771.c),)
+obj-$(CONFIG_MTK_MDP) += mdp_drv_mt6771.o
 endif
+endif
+
+mdp_drv_mt6771-objs := mdp_mt6771.o\
+	mdp_driver.o \
+	mdp_ioctl_ex.o \
+	mdp_common.o \
+	cmdq_record.o \
+	cmdq_virtual.o \
+	cmdq_device.o \
+	mdp_event_common.o \
+	cmdq_subsys_common.o \
+	cmdq_helper_ext.o \
+	cmdq_mmp.o \
+	mdp_fence.o \
+	mdp_dpc.o
+
 
 mdp_drv_mt6886-objs := mdp_mt6886.o\
 	mdp_driver.o \

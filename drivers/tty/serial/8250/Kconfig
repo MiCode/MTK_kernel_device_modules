@@ -11,3 +11,11 @@ config DEVICE_MODULES_SERIAL_8250_MT6577
 	help
 	  If you have a Mediatek based board and want to use the
 	  serial port, say Y to this option. If unsure, say N.
+
+config MTK_NO_SUPPORT_UARTHUB
+	bool "Mediatek support uarthub"
+	help
+	  This config is used to control whether the project supports uarthub.
+	  The default value is n.If uarthub is not supported, please set this config.
+	  This config is specifically enabled for projects without uarthub.
+	  If the current project does not support uarthub, please enable this config.

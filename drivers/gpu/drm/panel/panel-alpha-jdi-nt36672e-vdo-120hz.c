@@ -53,7 +53,7 @@ static char bl_tb0[] = { 0x51, 0xff };
 #define FHD_HBP            (80)
 #define FHD_HTOTAL         (FHD_FRAME_WIDTH + FHD_HFP + FHD_HSA + FHD_HBP)
 #define FHD_FRAME_HEIGHT   (2400)
-#define FHD_VFP_120        (94)
+#define FHD_VFP_120        (100)
 #define FHD_VFP_90         (927)
 #define FHD_VFP_60         (2620)
 #define FHD_VSA            (10)
@@ -83,7 +83,7 @@ static char bl_tb0[] = { 0x51, 0xff };
 #define HD_HBP            (80)
 #define HD_HTOTAL         (HD_FRAME_WIDTH + HD_HFP + HD_HSA + HD_HBP)
 #define HD_FRAME_HEIGHT   (1600)
-#define HD_VFP_120        (94)
+#define HD_VFP_120        (100)
 #define HD_VFP_90         (927)
 #define HD_VFP_60         (2620)
 #define HD_VSA            (10)
@@ -1698,6 +1698,7 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 	unsigned int lcm_degree;
 	int ret;
 	int probe_ret;
+	struct mtk_panel_params *cur_ext_param = NULL;
 	pr_info("%s+ jdi,nt36672e,vdo,120hz\n", __func__);
 
 	dsi_node = of_get_parent(dev->of_node);
@@ -1795,15 +1796,24 @@ static int jdi_probe(struct mipi_dsi_device *dsi)
 
 #if defined(CONFIG_MTK_PANEL_EXT)
 	mtk_panel_tch_handle_reg(&ctx->panel);
-	ret = mtk_panel_ext_create(dev, &ext_params, &ext_funcs, &ctx->panel);
+
+	if (current_fps == 120)
+		cur_ext_param = &ext_params_120hz;
+	else if (current_fps == 90)
+		cur_ext_param = &ext_params_90hz;
+	else
+		cur_ext_param = &ext_params;
+
+
+	ret = mtk_panel_ext_create(dev, cur_ext_param, &ext_funcs, &ctx->panel);
 	if (ret < 0)
 		return ret;
 	probe_ret = of_property_read_u32(dev->of_node, "lcm-degree", &lcm_degree);
 	if (probe_ret < 0)
 		lcm_degree = 0;
 	else
-		ext_params.lcm_degree = lcm_degree;
-	pr_info("lcm_degree: %d\n", ext_params.lcm_degree);
+		cur_ext_param->lcm_degree = lcm_degree;
+	pr_info("lcm_degree: %d\n", cur_ext_param->lcm_degree);
 #endif
 	pr_info("%s- jdi,nt36672e,vdo,120hz\n", __func__);
 

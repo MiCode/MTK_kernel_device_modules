@@ -51,7 +51,52 @@ struct ufs_mtk_smc_arg {
 	unsigned long v6;
 	unsigned long v7;
 };
+#if IS_ENABLED(CONFIG_UFS_MEDIATEK_MT6771)
+enum bc_flags_bits {
+	__BC_CRYPT,        /* marks the request needs crypt */
+	__BC_IV_PAGE_IDX,  /* use page index as iv. */
+	__BC_IV_CTX,       /* use the iv saved in crypt context */
+	__BC_AES_128_XTS,  /* crypt algorithms */
+	__BC_AES_192_XTS,
+	__BC_AES_256_XTS,
+	__BC_AES_128_CBC,
+	__BC_AES_256_CBC,
+	__BC_AES_128_ECB,
+	__BC_AES_256_ECB,
+};
 
+#define BC_CRYPT	(1UL << __BC_CRYPT)
+#define BC_IV_PAGE_IDX  (1UL << __BC_IV_PAGE_IDX)
+#define BC_IV_CTX       (1UL << __BC_IV_CTX)
+#define BC_AES_128_XTS	(1UL << __BC_AES_128_XTS)
+#define BC_AES_192_XTS	(1UL << __BC_AES_192_XTS)
+#define BC_AES_256_XTS	(1UL << __BC_AES_256_XTS)
+#define BC_AES_128_CBC	(1UL << __BC_AES_128_CBC)
+#define BC_AES_256_CBC	(1UL << __BC_AES_256_CBC)
+#define BC_AES_128_ECB	(1UL << __BC_AES_128_ECB)
+#define BC_AES_256_ECB	(1UL << __BC_AES_256_ECB)
+
+#define UFS_HIE_PARAM_OFS_CFG_ID         (24)
+#define UFS_HIE_PARAM_OFS_MODE           (16)
+#define UFS_HIE_PARAM_OFS_KEY_TOTAL_BYTE (8)
+#define UFS_HIE_PARAM_OFS_KEY_START_BYTE (0)
+#define UFS_MTK_SIP_HIE_CFG_REQUEST       MTK_SIP_SMC_CMD(0x274)
+/*Need a session id to intercept other false calls --- Ufs Program Key Request*/
+#define UFS_CRYPTO_SESSION_ID            (0x55504B52)
+
+static inline void _ufs_mtk_old_smc( struct ufs_mtk_smc_arg s)
+{
+	arm_smccc_smc(
+		s.cmd,
+		s.v1, s.v2, s.v3, s.v4, s.v5, s.v6, s.v7,s.res);
+}
+
+#define ufs_mtk_old_smc(...) \
+	_ufs_mtk_old_smc((struct ufs_mtk_smc_arg) {__VA_ARGS__})
+
+#define ufs_mtk_hie_cfg_smc(res, reg0, reg1, reg2) \
+	ufs_mtk_old_smc(UFS_MTK_SIP_HIE_CFG_REQUEST, &(res), reg0, reg1, reg2, UFS_CRYPTO_SESSION_ID)
+#endif
 
 static inline void _ufs_mtk_smc(struct ufs_mtk_smc_arg s)
 {

@@ -1080,6 +1080,7 @@ transparent_hugepage=never";
 	low_battery_throttling {
 		compatible = "mediatek,low_battery_throttling";
 		lvsys-thd-enable = <0>;
+		lbat-legacy-proj = <1>;
 		vbat-thd-enable = <1>;
 		bat0-thd-volts-l = <
 			3250 3100 2700
@@ -1112,20 +1113,6 @@ transparent_hugepage=never";
 
 	pbm: pbm {
 		compatible = "mediatek,pbm";
-	};
-
-	cpu_power_throttling: cpu_power_throttling {
-		compatible = "mediatek,cpu-power-throttling";
-		lbat-max-level = <2>;
-		lbat-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		lbat-limit-freq-lv2 = < 900000  900000 1300000>;
-
-		oc-max-level = <2>;
-		oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
-		oc-limit-freq-lv2 = < 900000  900000 900000>;
-
-		soc-max-level = <1>;
-		soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
 	};
 
 	md_power_throttling: md_power_throttling {
@@ -1269,7 +1256,7 @@ transparent_hugepage=never";
 		dvfsrc-vscp-supply = <&dvfsrc_vscp>;
 		sshub-vcore-supply = <&mt_pmic_vcore_buck_reg>;
 		sshub-vsram-supply = <&mt_pmic_vsram_others_ldo_reg>;
-		legacy_support_v1;
+		legacy-support-v1;
 
 	};
 
@@ -1372,6 +1359,7 @@ transparent_hugepage=never";
 		compatible = "mediatek,sleep";
 		reg = <0 0x10006000 0 0x1000>;
 		interrupts = <GIC_SPI 195 IRQ_TYPE_LEVEL_HIGH 0>;
+		dvfsrc-vcore-supply = <&dvfsrc_vcore>;
 	};
 
 	toprgu:toprgu@10007000 {
@@ -2623,6 +2611,10 @@ transparent_hugepage=never";
 
 	goodix_fp: fingerprint {
 		compatible = "mediatek,goodix-fp";
+	};
+
+	silead_spidev: fingerprint-silead {
+		  compatible = "sil,silead_fp-pins";
 	};
 
 	regulator_vibrator: regulator-vibrator {
@@ -4252,6 +4244,7 @@ transparent_hugepage=never";
 		compatible = "mediatek,mtk-smi-dbg";
 		mediatek-larb-supply = <&smi_larb0 &smi_larb1 &smi_larb2 &smi_larb3 &smi_larb4>;
 		mediatek-common-supply = <&smi_common>;
+		skip-bug-On;
 	};
 
 	smi-test {
@@ -5708,3 +5701,4 @@ transparent_hugepage=never";
 	md-vmodem = <750000 750000>;
 };
 
+/delete-node/ &mt_pmic_vpa_buck_reg;

@@ -3197,7 +3197,10 @@ static signed int RSC_probe(struct platform_device *pDev)
 
 	RSC_dev = &(RSC_devs[nr_RSC_devs - 1]);
 	RSC_dev->dev = &pDev->dev;
-	dma_set_mask_and_coherent(RSC_devs->dev, DMA_BIT_MASK(34));
+	Ret = dma_set_mask_and_coherent(RSC_devs->dev, DMA_BIT_MASK(34));
+	if (Ret)
+		dev_info(dev, "%s: dma_set_mask_and_coherent fail(%d)\n", __func__, Ret);
+
 	/* iomap registers */
 	RSC_dev->regs = of_iomap(pDev->dev.of_node, 0);
 

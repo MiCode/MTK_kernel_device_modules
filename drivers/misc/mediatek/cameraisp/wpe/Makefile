@@ -20,4 +20,3 @@ endif
 ifeq ($(CONFIG_MTK_CAMERA_WPE_ISP50),m)
  	obj-y += $(subst ",,isp_50)/
 endif
-

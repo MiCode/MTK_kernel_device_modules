@@ -112,6 +112,9 @@ static u64 mt_usb_dmamask = DMA_BIT_MASK(32);
 DEFINE_SPINLOCK(usb_io_lock);
 EXPORT_SYMBOL(usb_io_lock);
 
+DEFINE_SPINLOCK(usb_power_lock);
+EXPORT_SYMBOL(usb_power_lock);
+
 unsigned int musb_debug;
 EXPORT_SYMBOL(musb_debug);
 
@@ -380,16 +383,16 @@ static struct usb_phy_io_ops musb_ulpi_access = {
 void musb_write_fifo(struct musb_hw_ep *hw_ep, u16 len, const u8 *src)
 {
 	void __iomem *fifo;
-
 	if (mtk_musb->is_host)
 		fifo = hw_ep->fifo;
 	else
 		fifo = mtk_musb->mregs +
 			MUSB_FIFO_OFFSET(hw_ep->ep_in.current_epnum);
-
-	if (unlikely(len == 0))
+	if (unlikely(len == 0 || !mtk_usb_power)) {
+		DBG(0, "musb write fifo fail! len = %d, mtk_usb_power = %d\n",
+			len, mtk_usb_power);
 		return;
-
+	}
 	prefetch((u8 *) src);
 
 	DBG(4, "%cX ep%d fifo %p count %d buf %p\n",
@@ -437,9 +440,11 @@ void musb_read_fifo(struct musb_hw_ep *hw_ep, u16 len, u8 *dst)
 			MUSB_FIFO_OFFSET(hw_ep->ep_out.current_epnum);
 
 
-	if (unlikely(len == 0))
+	if (unlikely(len == 0 || !mtk_usb_power)) {
+		DBG(0, "musb read fifo fail! len = %d, mtk_usb_power = %d\n",
+			len, mtk_usb_power);
 		return;
-
+	}
 	DBG(4, "%cX ep%d fifo %p count %d buf %p\n",
 			'R', hw_ep->epnum, fifo, len, dst);
 
@@ -2629,7 +2634,7 @@ EXPORT_SYMBOL(musb_init_controller);
 
 #if IS_ENABLED(CONFIG_PM)
 
-static void musb_save_context(struct musb *musb)
+void musb_save_context(struct musb *musb)
 {
 	int i;
 	void __iomem *musb_base = musb->mregs;
@@ -2680,7 +2685,7 @@ static void musb_save_context(struct musb *musb)
 	}
 }
 
-static void musb_restore_context(struct musb *musb)
+void musb_restore_context(struct musb *musb)
 {
 	int i;
 	void __iomem *musb_base = musb->mregs;
@@ -3019,7 +3024,7 @@ static void spm_resource_req_usb(unsigned int user, unsigned int req_mask)
 {
 	if (spm_resource_req_fptr) {
 		spm_resource_req_fptr(user, req_mask);
-		DBG(0, "spm_resource_req() function is ready!!!\n");
+		DBG(1, "spm_resource_req() function is ready!!!\n");
 	} else
 		DBG(0, "spm_resource_req() function not ready!!!\n");
 }
@@ -3226,7 +3231,7 @@ static void mt_usb_wakeup(struct musb *musb, bool enable)
 		return;
 	}
 
-	DBG(0, "connection=%d\n", is_con);
+	DBG(0, "connection=%d uwk_vers =%d\n", is_con, uwk_vers);
 
 	if (is_con == 0 && enable != 0) {
 		DBG(0, "Only OTG Adapter\n");
@@ -3357,7 +3362,8 @@ static int mt_usb_wakeup_init(struct musb *musb)
 		DBG(0, "Support remote wakeup\n");
 		if (of_device_is_compatible(node, "mediatek,mt6855-usb20"))
 			uwk_vers = 1;
-		else if (of_device_is_compatible(node, "mediatek,mt6789-usb20"))
+		else if (of_device_is_compatible(node, "mediatek,mt6789-usb20") ||
+				of_device_is_compatible(node, "mediatek,mt6833-usb20"))
 			uwk_vers = 2;
 		else if (of_device_is_compatible(node, "mediatek,mt6768-usb20") ||
 				of_device_is_compatible(node, "mediatek,mt6761-usb20") ||
@@ -3392,6 +3398,50 @@ static int mt_usb_wakeup_init(struct musb *musb)
 	DBG(0, "usb wakeup init successful");
 
 	return 0;
+}
+
+/* usb top reset */
+#define GLOBALCON_RST0_SET	0x120
+#define GLOBALCON_RST0_CLR	0x124
+/* mt6768/mt6761/mt6765/mt6781 */
+#define SWRST_SET_V1	BIT(1)
+#define SWRST_CLR_V1	BIT(1)
+/* mt6789/mt6833 */
+#define SWRST_SET_V2	BIT(13)
+#define SWRST_CLR_V2	BIT(13)
+
+static void mt_usb_mac_reset(struct musb *musb)
+{
+	struct device_node *node = musb->glue->dev->of_node;
+	u32 tmp = 0;
+	u32 swrst_set = 0, swrst_clr = 0;
+
+	if (of_device_is_compatible(node, "mediatek,mt6768-usb20") ||
+		of_device_is_compatible(node, "mediatek,mt6761-usb20") ||
+		of_device_is_compatible(node, "mediatek,mt6765-usb20") ||
+		of_device_is_compatible(node, "mediatek,mt6781-usb20")) {
+		swrst_set = SWRST_SET_V1;
+		swrst_clr = SWRST_CLR_V1;
+	} else if (of_device_is_compatible(node, "mediatek,mt6789-usb20") ||
+		of_device_is_compatible(node, "mediatek,mt6833-usb20")) {
+		swrst_set = SWRST_SET_V2;
+		swrst_clr = SWRST_CLR_V2;
+	}
+
+	if (IS_ERR_OR_NULL(infracg)) {
+		DBG(0, "infracg init fail");
+		return;
+	}
+	DBG(0, "reset usb ip\n");
+	/* writ 1 to reset */
+	regmap_read(infracg, GLOBALCON_RST0_SET, &tmp);
+	tmp |= swrst_set;
+	regmap_write(infracg, GLOBALCON_RST0_SET, tmp);
+	udelay(10);
+	/* writ 1 to release */
+	regmap_read(infracg, GLOBALCON_RST0_CLR, &tmp);
+	tmp |= swrst_clr;
+	regmap_write(infracg, GLOBALCON_RST0_CLR, tmp);
 }
 #endif
 
@@ -3822,6 +3872,7 @@ static void mt_usb_enable(struct musb *musb)
 
 static void mt_usb_disable(struct musb *musb)
 {
+	unsigned long flags;
 	virt_disable++;
 
 	DBG(0, "begin, <%d,%d>,<%d,%d,%d,%d>\n",
@@ -3831,6 +3882,14 @@ static void mt_usb_disable(struct musb *musb)
 	if (musb->power == false)
 		return;
 
+	/* reset mac when HM bit is 1 */
+	if (musb_readb(musb->mregs, MUSB_DEVCTL) & MUSB_DEVCTL_HM) {
+		musb_save_context(musb);
+		mt_usb_mac_reset(musb);
+		musb_restore_context(musb);
+	}
+
+	spin_lock_irqsave(&usb_power_lock, flags);
 	usb_enable_clock(false);
 	/* clock will unprepare when leave here */
 
@@ -3842,6 +3901,8 @@ static void mt_usb_disable(struct musb *musb)
 	/* update musb->power & mtk_usb_power in the same time */
 	musb->power = 0;
 	mtk_usb_power = false;
+	spin_unlock_irqrestore(&usb_power_lock, flags);
+
 }
 
 /* ================================ */
@@ -4644,7 +4705,7 @@ static int musb_probe(struct platform_device *pdev)
 	}
 
 #if IS_ENABLED(CONFIG_MTK_MUSB_QMU_SUPPORT)
-	isoc_ep_end_idx = 1;
+	isoc_ep_end_idx = 3;
 	isoc_ep_gpd_count = 512; /* 30 ms for HS, at most (30*8 + 1) */
 
 	mtk_host_qmu_force_isoc_restart = 0;

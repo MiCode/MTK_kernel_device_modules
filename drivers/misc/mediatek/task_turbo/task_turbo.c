@@ -17,6 +17,9 @@
 #include <linux/plist.h>
 #include <linux/percpu-defs.h>
 #include <linux/input.h>
+#include <linux/cpumask.h>
+#include <linux/sched/signal.h>
+#include <linux/of.h>
 
 #include <kernel/futex/futex.h>
 #include <kernel/sched/sched.h>
@@ -30,9 +33,11 @@
 #include <trace/hooks/dtask.h>
 #include <trace/hooks/cgroup.h>
 #include <trace/hooks/sys.h>
+#include <include/trace/events/task.h>
 
 #include <task_turbo.h>
 #include <task_turbo_v.h>
+#include "eas/eas_plus.h"
 #include <eas/vip.h>
 #if IS_ENABLED(CONFIG_MTK_FPSGO_V3) || IS_ENABLED(CONFIG_MTK_FPSGO)
 #include <fstb.h>
@@ -40,11 +45,13 @@
 
 #define CREATE_TRACE_POINTS
 #include <trace_task_turbo.h>
+#if IS_ENABLED(CONFIG_MTK_CORE_CTL)
+#include "core_ctl/core_ctl.h"
+#endif
 
 LIST_HEAD(hmp_domains);
 
 /*TODO: find the magic bias number */
-#define TOP_APP_GROUP_ID	((4-1)*10)
 #define TURBO_PID_COUNT		8
 #define INHERITED_RWSEM_COUNT	4
 #define RENDER_THREAD_NAME	"RenderThread"
@@ -108,6 +115,13 @@ DEFINE_PER_CPU(struct hmp_domain *, hmp_cpu_domain);
 DEFINE_PER_CPU(unsigned long, cpu_scale) = SCHED_CAPACITY_SCALE;
 #endif
 
+#define HWCODE_IDX		20
+#define SEGMENT_IDX		30
+#define MAX_LOOM_BUF_SIZE 4
+#define MAX_NR_CPUS CONFIG_MAX_NR_CPUS
+#define HWCODE_IDX		20
+#define SEGMENT_IDX		30
+
 static uint32_t latency_turbo = SUB_FEAT_LOCK | SUB_FEAT_BINDER |
 				SUB_FEAT_SCHED;
 static uint32_t launch_turbo =  SUB_FEAT_LOCK | SUB_FEAT_BINDER |
@@ -122,6 +136,7 @@ static DEFINE_MUTEX(enforced_qualified_lock);
 static pid_t turbo_pid[TURBO_PID_COUNT] = {0};
 static unsigned int task_turbo_feats;
 static struct task_struct *inherited_rwsem_owners[INHERITED_RWSEM_COUNT] = {NULL};
+static struct cgroup_subsys_state *top_app_css;
 
 static bool is_turbo_task(struct task_struct *p);
 static void set_load_weight(struct task_struct *p, bool update_load);
@@ -159,13 +174,13 @@ static int hmp_compare(void *priv, const struct list_head *a, const struct list_
 static inline void fillin_cluster(struct cluster_info *cinfo,
 		struct hmp_domain *hmpd);
 static void sys_set_turbo_task(struct task_struct *p);
-static unsigned long capacity_of(int cpu);
 static void init_turbo_attr(struct task_struct *p);
 static unsigned long cpu_util(int cpu, struct task_struct *p, int dst_cpu, int boost);
 static inline unsigned long task_util(struct task_struct *p);
 static inline unsigned long _task_util_est(struct task_struct *p);
 static int avg_cpu_loading;
 static int cpu_loading_thres = 95;
+static int vip_util_thres = 80;
 static int tt_vip_enable = 1;
 static int binder_vip_inheritance_enable = 1;
 static int binder_nonvip_inheritance_enable;
@@ -184,6 +199,88 @@ static int f_tgid;
 static ktime_t cur_touch_time;
 static ktime_t cur_touch_down_time;
 static u64 enforced_qualified_mask;
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+static atomic_t vip_loom_flt_cfg;
+static int flt_orig_mode = -1;
+#endif
+static atomic_t vip_loom_select_cfg;
+static DEFINE_SPINLOCK(loom_affinity_lock);
+static struct affinity_data_node loom_rec_buffer[MAX_LOOM_BUF_SIZE];
+static atomic_t loom_cpu_dedicated_enable;
+static atomic_t loom_aff_ctl_enable = ATOMIC_INIT(1);
+
+struct tracepoints_table {
+	const char *name;
+	void *func;
+	struct tracepoint *tp;
+	bool registered;
+};
+
+static const char * const caller_id_desc[] = {
+	"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
+};
+
+struct devinfo_tag {
+	u32 data_size;
+	u32 data[300];
+};
+
+struct loom_support_rule {
+	u32 hwcode;
+	u32 segment_mask;   /* 0x00 = don't care */
+};
+
+static const struct devinfo_tag *get_devinfo(void)
+{
+	static const struct devinfo_tag *tags;
+	static bool initialized;
+
+	if (likely(initialized))
+		return tags;
+
+	if (!initialized) {
+		struct device_node *np;
+
+		np = of_find_node_by_path("/chosen");
+		if (np) {
+			tags = (struct devinfo_tag *) of_get_property(np, "atag,devinfo", NULL);
+			of_node_put(np);
+		}
+		initialized = true;
+	}
+
+	return tags;
+}
+
+static bool is_device_support_loom(void)
+{
+	static const struct loom_support_rule rules[] = {
+		{ 0x1471, 0x00 },
+		{ 0x1357, 0x05 },
+		{ 0x1357, 0x13 },
+		{ 0x6899, 0x08 },
+	};
+
+	const struct devinfo_tag *tags;
+	size_t i;
+
+	tags = get_devinfo();
+	if (!tags) {
+		pr_info("%s: devinfo property missing\n", __func__);
+		return false;
+	}
+
+	for (i = 0; i < ARRAY_SIZE(rules); i++) {
+		if (tags->data[HWCODE_IDX] != rules[i].hwcode)
+			continue;
+
+		if (!rules[i].segment_mask ||
+		    (tags->data[SEGMENT_IDX] == rules[i].segment_mask))
+			return true;
+	}
+	return false;
+}
+
 
 /*
  * get_cpu_loading - Calculates the CPU loading for each CPU
@@ -647,9 +744,6 @@ MODULE_PARM_DESC(enable_binder_nonvip_inheritance, "Enable or disable binder non
 int enforce_ct_to_vip(int val, int caller_id)
 {
 	u64 tmp_mask;
-	static const char * const caller_id_desc[] = {
-		"DEBUG_NODE", "FPSGO", "UX", "VIDEO"
-	};
 
 	if (caller_id < 0 || caller_id >= MAX_TYPE)
 		return -EINVAL;
@@ -725,6 +819,80 @@ static void update_cpu_loading(void)
 	mutex_unlock(&cpu_loading_lock);
 }
 
+#if IS_ENABLED(CONFIG_ARM64)
+unsigned long cpu_cap_ceiling(int cpu)
+{
+	unsigned long cap_ceiling;
+
+	cap_ceiling = min_t(unsigned long, arch_scale_cpu_capacity(cpu),
+		get_cpu_gear_uclamp_max_capacity(cpu));
+	return clamp_t(unsigned long, cap_ceiling,
+		READ_ONCE(per_cpu(min_freq_scale, cpu)), READ_ONCE(per_cpu(max_freq_scale, cpu)));
+}
+#endif
+
+unsigned long get_tgid_util(int tgid)
+{
+	struct task_struct *p, *t;
+	unsigned long vip_total_util = 0;
+	int i = 0;
+
+	rcu_read_lock();
+	p = find_task_by_vpid(tgid);
+	if (!p) {
+		rcu_read_unlock();
+		return 0;
+	}
+
+	get_task_struct(p);
+	for_each_thread(p, t) {
+		i++;
+		if (i > MAX_NR_THREAD)
+			break;
+		get_task_struct(t);
+		if (READ_ONCE(t->__state) == TASK_RUNNING)
+			vip_total_util += task_util(t);
+		put_task_struct(t);
+	}
+	put_task_struct(p);
+	rcu_read_unlock();
+
+	return vip_total_util;
+}
+EXPORT_SYMBOL(get_tgid_util);
+
+bool is_util_overhigh(unsigned long util)
+{
+	int cpu;
+	unsigned long total_capacity = 0;
+
+	for_each_online_cpu(cpu) {
+		total_capacity += min(cpu_cap_ceiling(cpu), cpu_rq(cpu)->cpu_capacity);
+	}
+	if (util*100 > vip_util_thres*total_capacity)
+		return true;
+
+	return false;
+}
+EXPORT_SYMBOL(is_util_overhigh);
+
+static inline void cpumask_complement(struct cpumask *dstp,
+				      const struct cpumask *srcp)
+{
+	bitmap_complement(cpumask_bits(dstp), cpumask_bits(srcp),
+					      nr_cpumask_bits);
+}
+
+int tt_cpu_count_check(void)
+{
+	cpumask_t count_mask = CPU_MASK_NONE;
+
+	cpumask_complement(&count_mask, cpu_pause_mask);
+	cpumask_and(&count_mask, &count_mask, cpu_online_mask);
+
+	return cpumask_weight(&count_mask);
+}
+
 int (*tt_vip_algo_hook)(int ct_vip_qualified, int ssid_tgid, int sui_tgid, int f_tgid, bool touching) = NULL;
 EXPORT_SYMBOL(tt_vip_algo_hook);
 
@@ -764,6 +932,7 @@ static void tt_vip(void)
 	mutex_unlock(&wi_lock);
 }
 module_param(cpu_loading_thres, int, 0644);
+module_param(vip_util_thres, int, 0644);
 
 /**
  * tt_vip_event_handler - Event-triggered work handler for VIP management
@@ -807,6 +976,11 @@ static void tt_vip_periodic_handler(struct work_struct *work)
 	tt_vip();
 }
 
+bool is_task_exiting(struct task_struct *task)
+{
+	return task->exit_state == EXIT_ZOMBIE || task->exit_state == EXIT_DEAD;
+}
+
 /*
  * tt_input_event - Handles touch input events for VIP management
  * @handle: input handle associated with the event
@@ -840,7 +1014,7 @@ static void tt_input_event(struct input_handle *handle, unsigned int type,
 		diff = cur_touch_time - cur_touch_down_time;
 		cur_touch_down_time = cur_touch_time;
 		if (diff >= TOUCH_SUSTAIN_MS) {
-			if (!is_target_found_hook)
+			if (!is_target_found_hook || is_task_exiting(current))
 				goto hook_unready;
 
 			rcu_read_lock();
@@ -1177,7 +1351,7 @@ static void probe_android_vh_alter_futex_plist_add(void *ignore, struct plist_no
 	int prev_pid = 0;
 	bool prev_turbo = 1;
 	bool this_turbo;
-
+	
 	if (!sub_feat_enable(SUB_FEAT_LOCK) ||
 	    !is_turbo_task(current)) {
 		*already_on_hb = false;
@@ -1238,11 +1412,6 @@ static inline bool is_rwsem_reader_owned(struct rw_semaphore *sem)
 	return rwsem_test_oflags(sem, RWSEM_READER_OWNED);
 }
 
-static unsigned long capacity_of(int cpu)
-{
-	return cpu_rq(cpu)->cpu_capacity;
-}
-
 /*
  * cpu_util_without: compute cpu utilization without any contributions from *p
  * @cpu: the CPU which utilization is requested
@@ -1264,7 +1433,6 @@ static unsigned long cpu_util_without(int cpu, struct task_struct *p)
 
 	return cpu_util(cpu, p, -1, 0);
 }
-
 /**
  * cpu_util() - Estimates the amount of CPU capacity used by CFS tasks.
  * @cpu: the CPU to get the utilization for
@@ -1410,7 +1578,7 @@ int find_best_turbo_cpu(struct task_struct *p)
 			}
 
 			spare_cap =
-			     max_t(long, capacity_of(iter_cpu) - cpu_util_without(iter_cpu, p), 0);
+			     max_t(long, cpu_rq(iter_cpu)->cpu_capacity - cpu_util_without(iter_cpu, p), 0);
 			if (spare_cap > max_spare_cap) {
 				max_spare_cap = spare_cap;
 				max_spare_cpu = iter_cpu;
@@ -1992,18 +2160,13 @@ module_param_cb(unset_turbo_pid, &unset_turbo_pid_param_ops,
 		&unset_turbo_pid_param, 0644);
 MODULE_PARM_DESC(unset_turbo_pid, "unset turbo task by pid");
 
-static inline int get_st_group_id(struct task_struct *task)
+static inline bool is_top_app(struct task_struct *task)
 {
 #if IS_ENABLED(CONFIG_CGROUP_SCHED)
-	const int subsys_id = cpu_cgrp_id;
-	struct cgroup *grp;
-
-	rcu_read_lock();
-	grp = task_cgroup(task, subsys_id);
-	rcu_read_unlock();
-	return grp->kn->id;
+	guard(rcu)();
+	return top_app_css == task_css(task, cpu_cgrp_id);
 #else
-	return 0;
+	return false;
 #endif
 }
 
@@ -2104,7 +2267,7 @@ static void probe_android_vh_cgroup_set_task(void *ignore, int ret, struct task_
 	if (ret)
 		return;
 
-	if (get_st_group_id(p) == TOP_APP_GROUP_ID) {
+	if (is_top_app(p)) {
 		if (!cgroup_check_set_turbo(p))
 			return;
 		add_turbo_list(p);
@@ -2191,6 +2354,20 @@ void init_hmp_domains(void)
 	hmp_cpu_mask_setup();
 }
 
+static void init_top_app_css(void)
+{
+	struct cgroup_subsys_state *root_css = &root_task_group.css;
+	struct cgroup_subsys_state *css = root_css;
+
+	guard(rcu)();
+	css_for_each_child(css, root_css)
+		if (css && css->cgroup && css->cgroup->kn && css->cgroup->kn->name &&
+		    !strcmp(css->cgroup->kn->name, "top-app")) {
+			top_app_css = css;
+			return;
+		}
+}
+
 void hmp_cpu_mask_setup(void)
 {
 	struct hmp_domain *domain;
@@ -2252,7 +2429,7 @@ static void sys_set_turbo_task(struct task_struct *p)
 	if (!launch_turbo_enable())
 		return;
 
-	if (get_st_group_id(p) != TOP_APP_GROUP_ID)
+	if (!is_top_app(p))
 		return;
 
 	if (strcmp(p->comm, RENDER_THREAD_NAME))
@@ -2343,6 +2520,544 @@ static void tt_tick(void *data, struct rq *rq)
 		queue_work(system_highpri_wq, &tt_vip_periodic_worker);
 	}
 }
+
+#if IS_ENABLED(CONFIG_MTK_CORE_CTL)
+static int loom_set_affinity(int pid, int aff_cpu)
+{
+	struct task_struct *p;
+	struct cpumask aff_mask;
+	int cpu = 0, ret = 0;
+
+	if (!atomic_read(&loom_cpu_dedicated_enable))
+		return -EINVAL;
+
+	if (pid < 0 || pid >= PID_MAX_DEFAULT)
+		return -EINVAL;
+
+	if (aff_cpu >= MAX_NR_CPUS || aff_cpu < LOOM_NO_AFFINITY)
+		return -EINVAL;
+
+	cpumask_clear(&aff_mask);
+
+	/* Unset affinity */
+	if (aff_cpu == LOOM_NO_AFFINITY) {
+		for_each_possible_cpu(cpu)
+			cpumask_set_cpu(cpu, &aff_mask);
+	} else
+		cpumask_set_cpu(aff_cpu, &aff_mask);
+
+	/* find task struct by pid */
+	rcu_read_lock();
+	p = find_task_by_vpid(pid);
+	if (!p) {
+		rcu_read_unlock();
+		return -ESRCH;
+	}
+
+	/* prevent p going away */
+	get_task_struct(p);
+	rcu_read_unlock();
+
+	/* task not allowed to set affinity */
+	if (p->flags & PF_NO_SETAFFINITY) {
+		ret = -EINVAL;
+		goto out_put_task;
+	}
+
+	ret = set_cpus_allowed_ptr_by_kernel(p, &aff_mask);
+
+out_put_task:
+	put_task_struct(p);
+	return ret;
+}
+
+static int loom_unset_affinity_buf(unsigned int index)
+{
+	int ret = 0;
+	unsigned long flags;
+	int pid, cpu;
+
+	spin_lock_irqsave(&loom_affinity_lock, flags);
+	pid = loom_rec_buffer[index].pid;
+	cpu = loom_rec_buffer[index].aff_cpu;
+	loom_rec_buffer[index].pid = LOOM_NO_TASK;
+	loom_rec_buffer[index].aff_cpu = LOOM_NO_AFFINITY;
+	spin_unlock_irqrestore(&loom_affinity_lock, flags);
+
+	if (cpu != LOOM_NO_AFFINITY) {
+		ret = core_ctl_force_pause_request(cpu, false, LOOM_FORCE_PAUSE);
+		if (ret < 0) {
+			pr_info("%s: Fail to reset buffer[%u] with force resume CPU#%d.",
+				__func__, index, cpu);
+			return ret;
+		}
+	}
+
+	if (pid != LOOM_NO_TASK) {
+		ret = loom_set_affinity(pid, LOOM_NO_AFFINITY);
+		if (ret < 0) {
+			pr_info("%s: Fail to reset buffer[%u] with pid=%d affinity.",
+				__func__, index, pid);
+			return ret;
+		}
+	}
+
+	return ret;
+}
+
+static int loom_update_affinity_buf(int pid, int aff_cpu)
+{
+	int ret = 0;
+	unsigned long flags;
+	unsigned int now_update_idx;
+	static unsigned int update_idx;
+
+	spin_lock_irqsave(&loom_affinity_lock, flags);
+	now_update_idx = update_idx;
+	update_idx = (update_idx + 1) % MAX_LOOM_BUF_SIZE;
+	spin_unlock_irqrestore(&loom_affinity_lock, flags);
+
+	/* remove old PID and CPU affinity with buffer */
+	ret = loom_unset_affinity_buf(now_update_idx);
+
+	/* update buffer */
+	spin_lock_irqsave(&loom_affinity_lock, flags);
+	loom_rec_buffer[now_update_idx].pid = pid;
+	loom_rec_buffer[now_update_idx].aff_cpu = aff_cpu;
+	spin_unlock_irqrestore(&loom_affinity_lock, flags);
+
+	ret = core_ctl_force_pause_request(aff_cpu, true, LOOM_FORCE_PAUSE);
+	if (ret < 0) {
+		spin_lock_irqsave(&loom_affinity_lock, flags);
+		loom_rec_buffer[now_update_idx].pid = LOOM_NO_TASK;
+		loom_rec_buffer[now_update_idx].aff_cpu = LOOM_NO_AFFINITY;
+		spin_unlock_irqrestore(&loom_affinity_lock, flags);
+		pr_info("%s: Fail to set pid=%d into record buffer[%u] with CPU#%d, reset it.\n",
+			__func__ , pid, now_update_idx, aff_cpu);
+	} else {
+		pr_info("%s: Success to set pid=%d into record buffer[%u] with CPU#%d\n",
+			__func__ , pid, now_update_idx, aff_cpu);
+	}
+
+	return ret;
+}
+
+static int loom_specify_pause(int pid, int aff_cpu)
+{
+	unsigned long flags;
+	int i, ret = 0;
+	bool dup_set = false;
+	int rec_pid[MAX_LOOM_BUF_SIZE], rec_aff_cpu[MAX_LOOM_BUF_SIZE];
+	int tmp_pid, tmp_aff_cpu;
+
+	if ((aff_cpu >= MAX_NR_CPUS) || (aff_cpu < LOOM_NO_AFFINITY) || aff_cpu == 0)
+		return -EINVAL;
+
+	if (pid < 0 || pid >= PID_MAX_DEFAULT)
+		return -EINVAL;
+
+	/* check already assigned CPU */
+	spin_lock_irqsave(&loom_affinity_lock, flags);
+	for(i=0; i<MAX_LOOM_BUF_SIZE; i++) {
+		tmp_pid = loom_rec_buffer[i].pid;
+		tmp_aff_cpu = loom_rec_buffer[i].aff_cpu;
+
+		if (tmp_aff_cpu == LOOM_NO_AFFINITY)
+			continue;
+
+		if (tmp_aff_cpu == aff_cpu) {
+			/* set already setting again */
+			if (tmp_pid == pid) {
+				dup_set = true;
+				break;
+			}
+
+			pr_info("%s: CPU#%d is already bound to pid=%d\n",
+				__func__, tmp_aff_cpu, tmp_pid);
+			ret = -EINVAL;
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&loom_affinity_lock, flags);
+	if (dup_set) {
+		ret = core_ctl_force_pause_request(aff_cpu, true, LOOM_FORCE_PAUSE);
+		goto print_log;
+	}
+	/* CPU already been bound or force paused */
+	if (ret < 0)
+		return ret;
+
+	/* remove existing pid node */
+	for(i=0; i<MAX_LOOM_BUF_SIZE; i++) {
+		spin_lock_irqsave(&loom_affinity_lock, flags);
+		tmp_pid = loom_rec_buffer[i].pid;
+		tmp_aff_cpu = loom_rec_buffer[i].aff_cpu;
+		spin_unlock_irqrestore(&loom_affinity_lock, flags);
+
+		if (tmp_pid == pid)
+			ret = loom_unset_affinity_buf(i);
+	}
+
+	/* Add new node to buffer */
+	if (aff_cpu != LOOM_NO_AFFINITY)
+		ret = loom_update_affinity_buf(pid, aff_cpu);
+
+print_log:
+	for(i=0; i<MAX_LOOM_BUF_SIZE; i++) {
+		spin_lock_irqsave(&loom_affinity_lock, flags);
+		rec_pid[i] = loom_rec_buffer[i].pid;
+		rec_aff_cpu[i] = loom_rec_buffer[i].aff_cpu;
+		spin_unlock_irqrestore(&loom_affinity_lock, flags);
+	}
+
+	trace_loom_bind_to_specify_cpu(atomic_read(&loom_cpu_dedicated_enable),
+		rec_pid, rec_aff_cpu, dup_set, ret);
+	return ret;
+}
+
+int loom_ctask_cpu_dedicated(int pid, int aff_cpu)
+{
+	int ret = 0;
+
+	if (!is_device_support_loom())
+		return -EINVAL;
+
+	if (!atomic_read(&loom_cpu_dedicated_enable))
+		return -EINVAL;
+
+	ret = loom_specify_pause(pid, aff_cpu);
+	if (ret < 0)
+		return ret;
+
+	ret = loom_set_affinity(pid, aff_cpu);
+	/* rollback force pause */
+	if (ret < 0) {
+		loom_specify_pause(pid, LOOM_NO_AFFINITY);
+		pr_info("%s: Pause CPU#%d success, but bound affinity pid=%d fail.\n",
+			__func__ , aff_cpu, pid);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(loom_ctask_cpu_dedicated);
+
+int loom_force_pause(int cpu, bool is_pause)
+{
+	int i, ret = 0;
+	unsigned long flags;
+	int tmp_aff_cpu;
+
+	if (!is_device_support_loom())
+		return -EINVAL;
+
+	if (!atomic_read(&loom_cpu_dedicated_enable))
+		return -EINVAL;
+
+	/* Not allow to force pause CPU0 */
+	if ((cpu >= MAX_NR_CPUS) || (cpu <= 0))
+		return -EINVAL;
+
+	/* Unset all already set combination with this CPU */
+	for (i=0; i<MAX_LOOM_BUF_SIZE; i++) {
+		spin_lock_irqsave(&loom_affinity_lock, flags);
+		tmp_aff_cpu = loom_rec_buffer[i].aff_cpu;
+		spin_unlock_irqrestore(&loom_affinity_lock, flags);
+
+		if (tmp_aff_cpu == cpu)
+			ret = loom_unset_affinity_buf(i);
+	}
+
+	/* Add new node to buffer, without pid */
+	if (is_pause) {
+		ret = loom_update_affinity_buf(LOOM_NO_TASK, cpu);
+		if (ret == 0)
+			pr_info("%s: Loom force pause success with CPU#%d\n", __func__ , cpu);
+	} else
+		pr_info("%s: Loom force resume success with CPU#%d\n", __func__ , cpu);
+
+	return ret;
+}
+EXPORT_SYMBOL(loom_force_pause);
+
+static int get_loom_force_pause(char *buffer, const struct kernel_param *kp)
+{
+	int len = 0;
+	unsigned int force_pause_mask = core_ctl_get_force_pause_mask();
+
+	return scnprintf(buffer + len, PAGE_SIZE - len,
+		"force_pause_mask=%x\n", force_pause_mask);
+}
+
+static const struct kernel_param_ops loom_force_pause_ops = {
+	.set = NULL,
+	.get = get_loom_force_pause,
+};
+
+module_param_cb(loom_force_pause, &loom_force_pause_ops, NULL, 0664);
+MODULE_PARM_DESC(loom_force_pause, "get pause mask status ");
+
+int loom_cpu_dedicated(unsigned int enable)
+{
+	int i;
+	int ret = 0;
+	unsigned int old_val = atomic_read(&loom_cpu_dedicated_enable);
+	unsigned int new_val;
+
+	/* disable loom affinity feature */
+	if (enable == 0) {
+		for(i=0; i<MAX_LOOM_BUF_SIZE; i++)
+			ret = loom_unset_affinity_buf(i);
+	}
+
+	atomic_set(&loom_cpu_dedicated_enable, enable);
+	new_val = atomic_read(&loom_cpu_dedicated_enable);
+
+	pr_info("%s: enable from %u to %u\n",
+		 __func__, old_val, new_val);
+
+	return ret;
+}
+EXPORT_SYMBOL(loom_cpu_dedicated);
+
+static int get_loom_cpu_dedicated_enable(char *buffer, const struct kernel_param *kp)
+{
+	int len = 0;
+
+	return scnprintf(buffer + len, PAGE_SIZE - len,
+		"loom_cpu_dedicated_enable=%u\n", atomic_read(&loom_cpu_dedicated_enable));
+}
+
+static const struct kernel_param_ops loom_cpu_dedicated_enable_ops = {
+	.set = NULL,
+	.get = get_loom_cpu_dedicated_enable,
+};
+
+module_param_cb(loom_cpu_dedicated_enable, &loom_cpu_dedicated_enable_ops, NULL, 0664);
+MODULE_PARM_DESC(loom_cpu_dedicated_enable, "enable API of loom affinity");
+
+static int get_loom_ctask_cpu_dedicated(char *buffer, const struct kernel_param *kp)
+{
+	int i, len = 0;
+
+	for (i = 0; i < MAX_LOOM_BUF_SIZE; i++) {
+		len += scnprintf(buffer + len, PAGE_SIZE - len, "buf[%d]: pid=%d, aff_cpu=%d\n",
+			i, loom_rec_buffer[i].pid, loom_rec_buffer[i].aff_cpu);
+	}
+
+	len += scnprintf(buffer + len, PAGE_SIZE - len, "\n");
+	return len;
+}
+
+static const struct kernel_param_ops loom_ctask_cpu_dedicated_ops = {
+	.set = NULL,
+	.get = get_loom_ctask_cpu_dedicated,
+};
+
+module_param_cb(loom_ctask_cpu_dedicated, &loom_ctask_cpu_dedicated_ops, NULL, 0664);
+MODULE_PARM_DESC(loom_ctask_cpu_dedicated, "set pid bind to specify cpu for specify usage");
+#endif /* CONFIG_MTK_CORE_CTL */
+
+static void loom_affinity_node_init(void)
+{
+	int i;
+	unsigned long flags;
+
+	spin_lock_irqsave(&loom_affinity_lock, flags);
+	for (i=0;i<MAX_LOOM_BUF_SIZE;i++) {
+		loom_rec_buffer[i].pid = LOOM_NO_TASK;
+		loom_rec_buffer[i].aff_cpu = LOOM_NO_AFFINITY;
+	}
+	spin_unlock_irqrestore(&loom_affinity_lock, flags);
+}
+
+int loom_aff_ctl(unsigned int enable)
+{
+	unsigned int old_val = atomic_read(&loom_aff_ctl_enable);
+	unsigned int new_val;
+
+	if (enable > 1)
+		return -EINVAL;
+
+	atomic_set(&loom_aff_ctl_enable, enable);
+	new_val = atomic_read(&loom_aff_ctl_enable);
+
+	pr_info("%s: loom affinity control enable from %u to %u\n",
+		 __func__, old_val, new_val);
+
+	return 0;
+}
+EXPORT_SYMBOL(loom_aff_ctl);
+
+static int set_loom_aff_ctl_enable(const char *buf, const struct kernel_param *kp)
+{
+	int retval = 0, val = 0;
+
+	retval = kstrtouint(buf, 0, &val);
+
+	if (retval)
+		return -EINVAL;
+
+	retval = loom_aff_ctl(!!val);
+
+	return retval;
+}
+
+static int get_loom_aff_ctl_enable(char *buffer, const struct kernel_param *kp)
+{
+	int len = 0;
+
+	return scnprintf(buffer + len, PAGE_SIZE - len,
+		"loom_aff_ctl_enable=%u\n", atomic_read(&loom_aff_ctl_enable));
+}
+
+static const struct kernel_param_ops loom_aff_ctl_enable_ops = {
+	.set = set_loom_aff_ctl_enable,
+	.get = get_loom_aff_ctl_enable,
+};
+module_param_cb(loom_aff_ctl_enable, &loom_aff_ctl_enable_ops, NULL, 0664);
+MODULE_PARM_DESC(loom_aff_ctl_enable, "Enable or disable affinity control");
+
+static unsigned int cpumask_to_uint(const cpumask_t *mask)
+{
+	if (mask)
+		return (unsigned int)cpumask_bits(mask)[0];
+	return 0;
+}
+
+static void loom_sched_process_fork(void *data, struct task_struct *parent, struct task_struct *child)
+{
+	unsigned long flags;
+	int i;
+
+	if (!atomic_read(&loom_cpu_dedicated_enable) || !atomic_read(&loom_aff_ctl_enable))
+		return;
+
+	/* check dedicated CPU for new task */
+	spin_lock_irqsave(&loom_affinity_lock, flags);
+	for(i=0; i<MAX_LOOM_BUF_SIZE; i++) {
+		if (loom_rec_buffer[i].pid == parent->pid) {
+			cpumask_setall(&child->cpus_mask);
+			child->cpus_ptr = &child->cpus_mask;
+			child->nr_cpus_allowed = cpumask_weight(&child->cpus_mask);
+			trace_loom_affinity_ctl(parent->pid, loom_rec_buffer[i].aff_cpu,
+				child->pid, cpumask_to_uint(child->cpus_ptr));
+			break;
+		}
+	}
+	spin_unlock_irqrestore(&loom_affinity_lock, flags);
+}
+
+#define FOR_EACH_INTEREST(i) \
+	for (i = 0; i < sizeof(loom_tracepoints) / sizeof(struct tracepoints_table); i++)
+
+struct tracepoints_table loom_tracepoints[] = {
+	{.name = "sched_process_fork", .func = loom_sched_process_fork},
+};
+
+static void lookup_tracepoints(struct tracepoint *tp, void *ignore)
+{
+	int i;
+
+	FOR_EACH_INTEREST(i) {
+		if (strcmp(loom_tracepoints[i].name, tp->name) == 0)
+			loom_tracepoints[i].tp = tp;
+	}
+}
+
+static void tracepoint_cleanup(void)
+{
+	int i;
+
+	FOR_EACH_INTEREST(i) {
+		if (loom_tracepoints[i].registered) {
+			tracepoint_probe_unregister(
+				loom_tracepoints[i].tp,
+				loom_tracepoints[i].func, NULL);
+			loom_tracepoints[i].registered = false;
+		}
+	}
+}
+
+int init_tracepoints(void)
+{
+	int i = 0, ret = 0;
+
+	FOR_EACH_INTEREST(i) {
+		if (loom_tracepoints[i].tp == NULL) {
+			pr_info("[LOOM] %s: invalid register trace-name=%s\n", __func__, loom_tracepoints[i].name);
+			tracepoint_cleanup();
+			return -1;
+		}
+	}
+
+	FOR_EACH_INTEREST(i) {
+		ret = tracepoint_probe_register(loom_tracepoints[i].tp, loom_tracepoints[i].func,  NULL);
+		if (ret) {
+			pr_info("[LOOM] %s: invalid activate trace-name=%s\n", __func__, loom_tracepoints[i].name);
+			continue;
+		}
+		loom_tracepoints[i].registered = true;
+	}
+	return ret;
+}
+
+
+void vip_loom_select_task_rq_fair(struct task_struct *p, int *target_cpu, int *flag)
+{
+#if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
+	int vip_prio = get_vip_task_prio(p);
+	bool is_vip = prio_is_vip(vip_prio, NOT_VIP);
+
+	if (is_vip)
+		return;
+#endif
+
+	if (atomic_read(&vip_loom_select_cfg))
+		*flag = ORIGINAL_PATH;
+}
+
+int vip_loom_select_cfg_apply(int val, int caller_id)
+{
+	if (!is_device_support_loom())
+		return -EINVAL;
+
+	if (val < 0 || caller_id < 0 || caller_id >= MAX_TYPE)
+		return -EINVAL;
+
+	atomic_set(&vip_loom_select_cfg, !!val);
+
+	trace_vip_loom("select_cfg", !!val, caller_id_desc[caller_id]);
+
+	return 0;
+}
+EXPORT_SYMBOL(vip_loom_select_cfg_apply);
+
+#if IS_ENABLED(CONFIG_MTK_SCHED_FAST_LOAD_TRACKING)
+int vip_loom_flt_cfg_apply(int val, int caller_id)
+{
+	if (!is_device_support_loom())
+		return -EINVAL;
+
+	if (val < 0 || caller_id < 0 || caller_id >= MAX_TYPE)
+		return -EINVAL;
+
+	atomic_set(&vip_loom_flt_cfg, !!val);
+
+	if (atomic_read(&vip_loom_flt_cfg) && flt_get_mode() != FLT_MODE_0) {
+		if (flt_orig_mode == -1)
+			flt_orig_mode = flt_get_mode();
+		flt_set_mode(FLT_MODE_0);
+	} else if (!atomic_read(&vip_loom_flt_cfg) && flt_get_mode() != flt_orig_mode) {
+		if (flt_orig_mode != -1)
+			flt_set_mode(flt_orig_mode);
+	}
+
+	trace_vip_loom("flt_cfg", !!val, caller_id_desc[caller_id]);
+
+	return 0;
+}
+EXPORT_SYMBOL(vip_loom_flt_cfg_apply);
+#endif
 
 static int __init init_task_turbo(void)
 {
@@ -2475,6 +3190,7 @@ static int __init init_task_turbo(void)
 	}
 
 	init_hmp_domains();
+	init_top_app_css();
 
 	/* register tracepoint of scheduler_tick */
 	ret = register_trace_android_vh_scheduler_tick(tt_tick, NULL);
@@ -2494,6 +3210,14 @@ static int __init init_task_turbo(void)
 		pr_info("%s: init input handler failed, returned %d\n", TAG, ret);
 
 	task_turbo_enforce_ct_to_vip_fp = enforce_ct_to_vip;
+	vip_loom_select_task_rq_fair_hook = vip_loom_select_task_rq_fair;
+
+	loom_affinity_node_init();
+
+	//Init Once Time
+	for_each_kernel_tracepoint(lookup_tracepoints, NULL);
+	//Enable API
+	init_tracepoints();
 
 failed:
 	if (ret)
@@ -2511,6 +3235,8 @@ static void  __exit exit_task_turbo(void)
 	/*
 	 * vendor hook cannot unregister, please check vendor_hook.h
 	 */
+	 //Disable API
+	tracepoint_cleanup();
 }
 module_init(init_task_turbo);
 module_exit(exit_task_turbo);

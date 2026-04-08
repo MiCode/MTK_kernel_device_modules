@@ -73,6 +73,10 @@ enum adsp_ipi_status adsp_push_message(enum adsp_ipi_id id, void *buf,
 				       unsigned int len, unsigned int wait_ms,
 				       unsigned int core_id);
 
+#if IS_ENABLED(CONFIG_MTK_ADSP_LEGACY)
+void __iomem *adsp_get_sharedmem_base(struct adsp_priv *pdata, int id);
+#endif
+
 int adsp_copy_to_sharedmem(struct adsp_priv *pdata, int id, const void *src, int count);
 int adsp_copy_from_sharedmem(struct adsp_priv *pdata, int id, void *dst, int count);
 

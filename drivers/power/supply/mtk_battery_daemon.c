@@ -695,7 +695,7 @@ void Intr_Number_to_Name(struct mtk_battery *gm, char *intr_name, unsigned int i
 
 void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 {
-	int i;
+	int i, used_tables;
 	struct BAT_EC_Struct *ec;
 	struct fuel_gauge_custom_data *fg_cust_data;
 	struct fuel_gauge_table_custom_data *fg_table_cust_data;
@@ -704,6 +704,12 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 	ec = &gm->Bat_EC_ctrl;
 	fg_cust_data = &gm->fg_cust_data;
 	fg_table_cust_data = &gm->fg_table_cust_data;
+
+	used_tables = fg_table_cust_data->active_table_number;
+	if (used_tables < 1)
+		used_tables = 1;
+	else if (used_tables > MAX_TABLE)
+		used_tables = MAX_TABLE;
 
 	bm_err(gm, "exe_BAT_EC cmd %d, param %d\n", cmd, param);
 	switch (cmd) {
@@ -984,9 +990,7 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 		break;
 	case 705:
 		{
-			for (i = 0;
-				i < fg_table_cust_data->active_table_number;
-				i++) {
+			for (i = 0; i < used_tables; i++) {
 				fg_table_cust_data->fg_profile[i].pmic_min_vol =
 					param * UNIT_TRANS_10;
 			}
@@ -997,9 +1001,7 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 		break;
 	case 706:
 		{
-			for (i = 0;
-				i < fg_table_cust_data->active_table_number;
-				i++) {
+			for (i = 0; i < used_tables; i++) {
 				fg_table_cust_data->fg_profile[i].pon_iboot =
 				param * UNIT_TRANS_10;
 			}
@@ -1089,6 +1091,11 @@ void exec_BAT_EC(struct mtk_battery *gm, int cmd, int param)
 		break;
 	case 717:
 		{
+			if (param < 1 || param > MAX_TABLE) {
+				bm_err(gm, "exe_BAT_EC cmd %d, invalid active_table_number %d\n",
+					cmd, param);
+				return;
+			}
 			fg_table_cust_data->active_table_number = param;
 			bm_err(gm,
 				"exe_BAT_EC cmd %d, param %d, additional_battery_table_en\n",
@@ -2594,6 +2601,7 @@ static ssize_t BAT_EC_store(
 	char cmd_buf[4], param_buf[16];
 	struct mtk_battery *gm;
 	struct mtk_gauge *gauge;
+	size_t param_len = 0, copy_len = 0;
 
 	gauge = dev_get_drvdata(dev);
 	gm = gauge->gm;
@@ -2616,11 +2624,14 @@ static ssize_t BAT_EC_store(
 		cmd_buf[2] = buf[2];
 		cmd_buf[3] = '\0';
 
-		if ((size - 4) > 0) {
-			strncpy(param_buf, buf + 4, size - 4);
-			param_buf[size - 4 - 1] = '\0';
-			bm_err(gm, "[FG_IT]cmd_buf %s, param_buf %s\n",
-				cmd_buf, param_buf);
+		param_len = (size > 4) ? (size - 4) : 0;
+		if (param_len > 0) {
+			copy_len = param_len;
+			if (copy_len >= sizeof(param_buf))
+				copy_len = sizeof(param_buf) - 1;
+			memcpy(param_buf, buf + 4, copy_len);
+			param_buf[copy_len] = '\0';
+			bm_err(gm, "[FG_IT]cmd_buf %s, param_buf %s\n", cmd_buf, param_buf);
 			ret2 = kstrtouint(param_buf, 10, &gm->BAT_EC_param);
 		}
 
@@ -2698,38 +2709,79 @@ static ssize_t BAT_SHUTDOWN_store(
 	struct device *dev, struct device_attribute *attr,
 	const char *buf, size_t size)
 {
-	char copy_str[8], buf_str[350];
+	char buf_str[350];
 	char *s = buf_str, *pch;
 	/* char *ori = buf_str; */
-	int chr_size = 0;
-	int i = 0, count = 0, value[7], result = 0;
+	int i = 0, j = 0, count = 0, value[7], result = 0;
 	struct mtk_battery *gm;
 	struct mtk_gauge *gauge;
+	size_t copy_len;
+	char saved;
+	const char *field_start;
 
 	gauge = dev_get_drvdata(dev);
 	gm = gauge->gm;
 
-	bm_err(gm, "%s, size =%zu, str=%s\n", __func__, size, buf);
-	strscpy(buf_str, buf, size);
+	if (size > 50) {
+		bm_err(gm, "%s error, size mismatch\n", __func__);
+		return -1;
+	}
+
+	for (i = 0; i < strlen(buf); i++) {
+		if (buf[i] == ',')
+			j++;
+	}
+	if (j != 7) {
+		bm_err(gm, "%s error, invalid input\n", __func__);
+		return -1;
+	}
+
+	if (size > 50) {
+		bm_err(gm, "%s error, size mismatch\n", __func__);
+		return -1;
+	}
+
+	for (i = 0; i < strlen(buf); i++) {
+		if (buf[i] == ',')
+			j++;
+	}
+	if (j != 7) {
+		bm_err(gm, "%s error, invalid input\n", __func__);
+		return -1;
+	}
+
+	bm_err(gm, "%s, size =%zu\n", __func__, size);
+	copy_len = size;
+	if (copy_len >= sizeof(buf_str))
+		copy_len = sizeof(buf_str) - 1;
+	memcpy(buf_str, buf, copy_len);
+	buf_str[copy_len] = '\0';
 	bm_err(gm, "%s, copy str=%s\n", __func__, buf_str);
 
 	if (buf != NULL && size != 0) {
 		pch = strchr(s, ',');
 		while (pch != NULL) {
-			memset(copy_str, 0, sizeof(copy_str));
-
-			chr_size = pch - s;
-			strscpy(copy_str, s, chr_size+1);
-
-			result = kstrtoint(copy_str, 10, &value[count]);
-			if (result < 0)
-				bm_err(gm, "[%s]str:%s\n", __func__, copy_str);
-			else {
-				bm_err(gm, "::%s::count:%d,%d\n", copy_str, count, value[count]);
-				s = pch + 1;
-				pch = strchr(s, ',');
-				count++;
+			if (count >= 7) {
+				bm_err(gm, "%s error, too many items\n", __func__);
+				return -1;
 			}
+
+			field_start = s;
+			saved = *pch;
+			*pch = '\0';
+
+			result = kstrtoint(field_start, 10, &value[count]);
+			if (result < 0) {
+				bm_err(gm, "[%s]str:%s\n", __func__, field_start);
+				*pch = saved;
+				return -1;
+			}
+			bm_err(gm, "::%s::count:%d,%d\n", field_start, count, value[count]);
+
+			*pch = saved;
+			s = pch + 1;
+			pch = strchr(s, ',');
+			count++;
 		}
 	}
 	if (count == 7) {
@@ -2777,13 +2829,14 @@ static ssize_t BAT_HEALTH_store(
 	struct device *dev, struct device_attribute *attr,
 	const char *buf, size_t size)
 {
-	char copy_str[7], buf_str[350];
+	char buf_str[350];
 	char *s = buf_str, *pch;
-	/* char *ori = buf_str; */
-	int chr_size = 0;
 	int i = 0, j = 0, count = 0, value[50], result = 0;
 	struct mtk_battery *gm;
 	struct mtk_gauge *gauge;
+	size_t copy_len;
+	char saved;
+	const char *field_start;
 
 	gauge = dev_get_drvdata(dev);
 	gm = gauge->gm;
@@ -2796,7 +2849,7 @@ static ssize_t BAT_HEALTH_store(
 	}
 
 	if (size >= 90 && size <= 350) {
-		for (i = 0; i < strlen(buf); i++) {
+		for (i = 0; i < size; i++) {
 			if (buf[i] == ',')
 				j++;
 		}
@@ -2806,30 +2859,32 @@ static ssize_t BAT_HEALTH_store(
 		}
 	}
 
-	strncpy(buf_str, buf, size);
+	copy_len = size;
+	if (copy_len >= sizeof(buf_str))
+		copy_len = sizeof(buf_str) - 1;
+	memcpy(buf_str, buf, copy_len);
+	buf_str[copy_len] = '\0';
+
 	bm_err(gm, "%s, copy str=%s\n", __func__, buf_str);
 
 	if (buf != NULL && size != 0) {
 		pch = strchr(s, ',');
 		while (pch != NULL) {
-			memset(copy_str, 0, 7);
-			copy_str[6] = '\0';
+			field_start = (count == 0) ? s : (s + 1);
+			saved = *pch;
+			*pch = '\0';
+			result = kstrtoint(field_start, 10, &value[count]);
 
-			chr_size = pch - s;
-			if (count == 0)
-				strncpy(copy_str, s, chr_size);
-			else
-				strncpy(copy_str, s+1, chr_size-1);
-
-			result = kstrtoint(copy_str, 10, &value[count]);
-			if (result < 0)
-				bm_err(gm, "[%s]str:%s\n", __func__, copy_str);
-			else {
-				bm_err(gm, "::%s::count:%d,%d\n", copy_str, count, value[count]);
-				s = pch;
-				pch = strchr(pch + 1, ',');
-				count++;
+			if (result < 0) {
+				bm_err(gm, "[%s]str:%s\n", __func__, field_start);
+				*pch = saved;
+				return -1;
 			}
+			bm_err(gm, "::%s::count:%d,%d\n", field_start, count, value[count]);
+			*pch = saved;
+			s = pch;
+			pch = strchr(pch + 1, ',');
+			count++;
 		}
 	}
 

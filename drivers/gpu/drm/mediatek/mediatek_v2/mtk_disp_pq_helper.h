@@ -23,7 +23,8 @@ enum PQ_REG_TABLE_IDX {
 	TUNING_DISP_GAMMA,
 	TUNING_DISP_DITHER,
 	TUNING_DISP_TDSHP,       // 5
-	TUNING_DISP_C3D,
+	TUNING_DISP_C3D9,
+	TUNING_DISP_C3D17,
 	TUNING_DISP_MDP_AAL,
 	TUNING_DISP_ODDMR_TOP,
 	TUNING_DISP_ODDMR_OD,
@@ -52,7 +53,7 @@ int mtk_drm_ioctl_pq_frame_config(struct drm_device *dev, void *data,
 int mtk_drm_ioctl_pq_proxy(struct drm_device *dev, void *data,
 	struct drm_file *file_priv);
 int disp_pq_helper_frame_config(struct drm_crtc *crtc, struct cmdq_pkt *cmdq_handle,
-	void *data, bool user_lock);
+	void *data, bool user_lock, bool is_kernel_data);
 int disp_pq_helper_fill_comp_pipe_info(struct mtk_ddp_comp *comp, int *path_order,
 	bool *is_right_pipe, struct mtk_ddp_comp **companion);
 struct drm_crtc *disp_pq_get_crtc_from_connector(int connector_id, struct drm_device *drm_dev);
@@ -62,5 +63,11 @@ int disp_pq_proxy_virtual_hw_read(struct drm_crtc *crtc, void *data);
 int disp_pq_proxy_virtual_hw_write(struct drm_crtc *crtc, void *data);
 int disp_pq_proxy_virtual_relay_engines(struct drm_crtc *crtc, void *data);
 void disp_pq_path_sel_set(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *handle);
+#if IS_ENABLED(CONFIG_COMPAT)
+int mtk_drm_ioctl_pq_frame_config_compat(struct file *file, unsigned int cmd,
+					unsigned long arg);
+int mtk_drm_ioctl_pq_proxy_compat(struct file *file, unsigned int cmd,
+					unsigned long arg);
+#endif
 
 #endif /* _MTK_DISP_PQ_HELPER_H_ */

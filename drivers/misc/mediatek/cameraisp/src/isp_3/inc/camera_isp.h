@@ -32,6 +32,7 @@ extern void mt_irq_set_polarity(unsigned int irq, unsigned int polarity);
 				 * fix fps, not read at each isr)
 				 */
 #define SIG_ERESTARTSYS 512	/* ERESTARTSYS */
+#define USERKEY_STR_LEN 32
 /******************************************************************************
  *
  *****************************************************************************/
@@ -478,7 +479,7 @@ struct ISP_WAIT_IRQ_STRUCT {
 
 struct ISP_REGISTER_USERKEY_STRUCT {
 	int userKey;
-	char *userName;
+	char userName[USERKEY_STR_LEN];
 };
 
 struct ISP_READ_IRQ_STRUCT {

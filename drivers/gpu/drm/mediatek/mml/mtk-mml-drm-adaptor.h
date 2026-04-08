@@ -191,7 +191,7 @@ void mml_drm_set_panel_pixel(struct mml_drm_ctx *dctx, u32 panel_width, u32 pane
  *
  * return:	0 if success and < 0 error no if fail
  */
-s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt);
+s32 mml_drm_racing_config_sync(struct mml_drm_ctx *dctx, struct cmdq_pkt *pkt, bool first_frame);
 
 /*
  * mml_drm_racing_stop_sync - append event sync instructions to disp pkt

@@ -22,6 +22,7 @@ struct FDVTRegIO {
 	unsigned int  *pAddr;
 	unsigned int  *pData;
 	unsigned int  u4Count;
+	unsigned int  u4value;
 };
 #define FDVTRegIO struct FDVTRegIO
 
@@ -31,6 +32,7 @@ struct compat_FDVTRegIO {
 	compat_uptr_t pAddr;
 	compat_uptr_t pData;
 	unsigned int  u4Count;
+	unsigned int  u4value;
 };
 #define compat_FDVTRegIO struct compat_FDVTRegIO
 

@@ -19,6 +19,7 @@
 //#include <trace/hooks/hung_task.h>
 #include <linux/sched/cputime.h>
 #include <sched/sched.h>
+#include "shortcut/compress.h"
 #include "common.h"
 #include "eas_plus.h"
 #include "sched_sys_common.h"
@@ -44,7 +45,6 @@
 
 #define CREATE_TRACE_POINTS
 #include "eas_trace.h"
-
 #define TAG "EAS_IOCTL"
 
 int mtk_sched_asym_cpucapacity  =  1;
@@ -386,11 +386,13 @@ static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 	struct affinity_context *ctx, bool *skip_user_ptr)
 {
 	struct cpumask *kernel_allowed_mask = &((struct mtk_task *) p->android_vendor_data1)->kernel_allowed_mask;
-	struct rq *rq = task_rq(p);
+	struct rq_flags rf;
+	struct rq *rq = task_rq_lock(p, &rf);
 	cpumask_t new_mask;
 
 	// not set or invalid cpu mask
 	if (cpumask_empty(kernel_allowed_mask)){
+		task_rq_unlock(rq, p, &rf);
 		return;
 	}
 
@@ -405,6 +407,7 @@ static void mtk_set_cpus_allowed_ptr(void *data, struct task_struct *p,
 		cpumask_copy(&new_mask, ctx->new_mask);
 		trace_sched_skip_user(p, *skip_user_ptr, p->user_cpus_ptr, kernel_allowed_mask, &new_mask);
 	}
+	task_rq_unlock(rq, p, &rf);
 }
 
 #if IS_ENABLED(CONFIG_MTK_IRQ_MONITOR_DEBUG)
@@ -497,6 +500,17 @@ static long eas_ioctl_impl(struct file *filp,
 	struct SA_task SA_task_args = {
 		.pid = -1,
 		.mask = 0
+	};
+
+	int rate = 0;
+	int cluster_idx = 0;
+	struct shortcut_compress_relax_enough_args shortcut_compress_relax_enough_cpu_args = {
+		.cluster_idx = 0,
+		.util = 0
+	};
+	struct shortcut_compress_relax_enough_args shortcut_compress_relax_enough_tsk_args = {
+		.cluster_idx = 0,
+		.util = 0
 	};
 
 #if IS_ENABLED(CONFIG_MTK_SCHED_GROUP_AWARE)
@@ -715,6 +729,52 @@ static long eas_ioctl_impl(struct file *filp,
 		if (easctl_copy_to_user((void *)arg, &val, sizeof(unsigned int)))
 			return -1;
 		break;
+
+	case EAS_SET_SHORTCUT_COMPRESS_RATE:
+		if (easctl_copy_from_user(&rate, (void *)arg, sizeof(int)))
+			return -1;
+
+		set_shortcut_compress_rate(rate);
+		break;
+
+	case EAS_RESET_SHORTCUT_COMPRESS_RATE:
+		reset_shortcut_compress_rate();
+		break;
+
+	case EAS_SET_SHORTCUT_COMPRESS_RELAX_ENOUGH_CPU_UTIL:
+		if (easctl_copy_from_user(&shortcut_compress_relax_enough_cpu_args, (void *)arg,
+					sizeof(struct shortcut_compress_relax_enough_args)))
+			return -1;
+
+		set_shortcut_compress_relax_enough_cpu_util(
+				shortcut_compress_relax_enough_cpu_args.cluster_idx,
+				shortcut_compress_relax_enough_cpu_args.util);
+		break;
+
+	case EAS_RESET_SHORTCUT_COMPRESS_RELAX_ENOUGH_CPU_UTIL:
+		if (easctl_copy_from_user(&cluster_idx, (void *)arg, sizeof(int)))
+			return -1;
+
+		reset_shortcut_compress_relax_enough_cpu_util(cluster_idx);
+		break;
+
+	case EAS_SET_SHORTCUT_COMPRESS_RELAX_ENOUGH_TSK_UTIL:
+		if (easctl_copy_from_user(&shortcut_compress_relax_enough_tsk_args, (void *)arg,
+					sizeof(struct shortcut_compress_relax_enough_args)))
+			return -1;
+
+		set_shortcut_compress_relax_enough_tsk_util(
+				shortcut_compress_relax_enough_tsk_args.cluster_idx,
+				shortcut_compress_relax_enough_tsk_args.util);
+		break;
+
+	case EAS_RESET_SHORTCUT_COMPRESS_RELAX_ENOUGH_TSK_UTIL:
+		if (easctl_copy_from_user(&cluster_idx, (void *)arg, sizeof(int)))
+			return -1;
+
+		reset_shortcut_compress_relax_enough_tsk_util(cluster_idx);
+		break;
+
 	case EAS_SBB_ALL_SET:
 		if (easctl_copy_from_user(&val, (void *)arg, sizeof(unsigned int)))
 			return -1;
@@ -1003,7 +1063,6 @@ static int __init mtk_scheduler_init(void)
 	init_updown_migration();
 	init_percore_l3_bw();
 	init_dsu_pwr_enable();
-
 	ret = init_sched_common_sysfs();
 	if (ret)
 		return ret;
@@ -1015,6 +1074,8 @@ static int __init mtk_scheduler_init(void)
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	vip_init();
 #endif
+
+	compress_init();
 
 	init_skip_hiIRQ();
 	init_rt_aggre_preempt();
@@ -1180,7 +1241,6 @@ static int __init mtk_scheduler_init(void)
 	ret = register_trace_android_rvh_set_cpus_allowed_ptr(mtk_set_cpus_allowed_ptr, NULL);
 	if (ret)
 		pr_info("register mtk_set_cpus_allowed_ptr hooks failed, returned %d\n", ret);
-
 out_wq:
 	return ret;
 

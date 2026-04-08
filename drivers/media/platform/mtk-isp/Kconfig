@@ -51,6 +51,13 @@ config VIDEO_MTK_ISP_CAMSYS_DUBUG
 	  the first capture image buffer in Mediatek's camera system.
 	  This configuration provides more debug information.
 
+config VIDEO_MTK_ISP_DYNAMIC_RAW_SUPPORT
+	tristate "Mediatek isp efuse function"
+	help
+	  This option is used to control whether efuse
+	  will be read in camsys to control the driver's
+	  resource allocation.
+
 config VIDEO_MTK_ISP_HCP
 	tristate "Mediatek hcp processing function"
 	help

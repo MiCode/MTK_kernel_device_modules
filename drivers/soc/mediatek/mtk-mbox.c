@@ -869,7 +869,7 @@ EXPORT_SYMBOL_GPL(mtk_mbox_get_index_record);
 void mtk_mbox_print_recv(struct mtk_mbox_device *mbdev,
 	struct mtk_mbox_pin_recv *pin_recv)
 {
-	pr_notice("[MBOX]dev=%s recv mbox=%u off=%u cv_opt=%u ctx_opt=%u mg_sz=%u p_idx=%u id=%u\n"
+	printk_deferred(KERN_NOTICE "[MBOX]dev=%s recv mbox=%u off=%u cv_opt=%u ctx_opt=%u mg_sz=%u p_idx=%u id=%u\n"
 		, mbdev->name
 		, pin_recv->mbox
 		, pin_recv->offset
@@ -879,7 +879,7 @@ void mtk_mbox_print_recv(struct mtk_mbox_device *mbdev,
 		, pin_recv->pin_index
 		, pin_recv->chan_id);
 
-	pr_notice("[MBOX]dev=%s recv id=%u poll=%u cv_irq=%u noti=%u cb=%u pre=%lld po=%lld\n"
+	printk_deferred(KERN_NOTICE "[MBOX]dev=%s recv id=%u poll=%u cv_irq=%u noti=%u cb=%u pre=%lld po=%lld\n"
 		, mbdev->name
 		, pin_recv->chan_id
 		, pin_recv->recv_record.poll_count
@@ -993,7 +993,7 @@ void mtk_mbox_dump_recv_pin(struct mtk_mbox_device *mbdev,
 
 	if (mbdev && pin_recv) {
 		irq_reg = mtk_mbox_read_recv_irq(mbdev, pin_recv->mbox);
-		pr_err("[MBOX]dev=%s mbox=%u recv irq status=%x\n",
+		printk_deferred(KERN_ERR "[MBOX]dev=%s mbox=%u recv irq status=%x\n",
 			mbdev->name, pin_recv->mbox, irq_reg);
 		mtk_mbox_print_recv(mbdev, pin_recv);
 	}

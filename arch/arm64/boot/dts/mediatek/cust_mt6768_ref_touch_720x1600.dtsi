@@ -1,0 +1,41 @@
+
+/* TOUCH start */
+&spi2 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	pinctrl-names = "default";
+	pinctrl-0 = <&ctp_pins_default>;
+	tran_touch:touch@0 {
+        	compatible = "adaptive-touchscreen","omnivision,tcm-spi";
+		reg = <0>;
+		spi-max-frequency = <8000000>;
+		status = "okay";
+		omnivision,irq-on-state = <0>;
+		omnivision,power-delay-ms = <200>;
+		omnivision,reset-on-state = <0>;
+		omnivision,reset-active-ms = <20>;
+		omnivision,reset-delay-ms = <200>;
+		omnivision,byte-delay-us = <0>;
+		omnivision,ubl-max-freq = <8000000>;
+		omnivision,ubl-byte-delay-us = <20>;
+		omnivision,spi-mode = <3>;
+		omnivision,block-delay-us = <0>;
+		omnivision,irq-gpio = <&pio 1 0x0>;
+		omnivision,reset-gpio = <&pio 160 0x0>;
+	};
+};
+/* add for tp_spi KM5TOS1510-248 by lingao.kong 20250219 start */
+&pio{
+	ctp_pins_default: pins_default {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO25__FUNC_SPI2_CSB>,
+				<PINMUX_GPIO26__FUNC_SPI2_MO>,
+				<PINMUX_GPIO27__FUNC_SPI2_CLK>,
+				<PINMUX_GPIO28__FUNC_SPI2_MI>;
+			drive-strength=<1>;//0/1/2/3/4/5/6/7╤тс╕2/4/6/8/10/12/14/16mA
+		};
+	};
+};
+/* add for tp_spi KM5TOS1510-248 by lingao.kong 20250219 end */
+/* TOUCH end */

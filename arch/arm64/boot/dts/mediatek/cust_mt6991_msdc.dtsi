@@ -24,7 +24,6 @@
 	sd-uhs-sdr104;
 	sd-uhs-ddr50;
 	cd-debounce-delay-ms = <0>;
-	cd-gpios = <&pio 41 GPIO_ACTIVE_LOW>;
 	vmmc-supply = <&mt6373_vmch_eint_high>;
 	vqmmc-supply = <&mt6373_vmc>;
 	no-mmc;
@@ -57,11 +56,7 @@
 &pio {
 	mmc1_pins_default: mmc1default {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO127__FUNC_MSDC1_DAT0>,
-				<PINMUX_GPIO128__FUNC_MSDC1_DAT1>,
-				<PINMUX_GPIO129__FUNC_MSDC1_DAT2>,
-				<PINMUX_GPIO130__FUNC_MSDC1_DAT3>,
-				<PINMUX_GPIO126__FUNC_MSDC1_CMD>;
+			pinmux = <PINMUX_GPIO126__FUNC_MSDC1_CMD>;
 			input-enable;
 			drive-strength = <3>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;
@@ -75,11 +70,7 @@
 	};
 	mmc1_pins_uhs: mmc1@0{
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO127__FUNC_MSDC1_DAT0>,
-				<PINMUX_GPIO128__FUNC_MSDC1_DAT1>,
-				<PINMUX_GPIO129__FUNC_MSDC1_DAT2>,
-				<PINMUX_GPIO130__FUNC_MSDC1_DAT3>,
-				<PINMUX_GPIO126__FUNC_MSDC1_CMD>;
+			pinmux = <PINMUX_GPIO126__FUNC_MSDC1_CMD>;
 			input-enable;
 			drive-strength = <3>;
 			bias-pull-up = <MTK_PUPD_SET_R1R0_01>;

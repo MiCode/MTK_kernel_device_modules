@@ -201,7 +201,6 @@ extern int send_throttle_msg(unsigned int msg);
 extern void update_throttle_power(unsigned int pa_id, unsigned int *pwr);
 extern struct cpu_iso_cooling_device *get_md_cdev(enum cpu_iso_cooling_type type, unsigned int pa_id);
 extern unsigned int get_pa_num(void);
-extern int core_ctl_force_pause_cpu(unsigned int cpu, bool is_pause);
 #if IS_ENABLED(CONFIG_DEBUG_FS)
 extern int cpu_iso_cooling_debugfs_init(void);
 extern void cpu_iso_cooling_debugfs_exit(void);

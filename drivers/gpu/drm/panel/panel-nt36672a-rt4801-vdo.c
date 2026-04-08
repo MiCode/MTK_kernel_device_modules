@@ -693,6 +693,7 @@ static int panel_ata_check(struct drm_panel *panel)
 	return 0;
 }
 
+#ifdef SUPPORT_PANELBACKLIGHT
 static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 	void *handle, unsigned int level)
 {
@@ -707,6 +708,7 @@ static int lcm_setbacklight_cmdq(void *dsi, dcs_write_gce cb,
 
 	return 0;
 }
+#endif
 
 static struct mtk_panel_params ext_params = {
 	.pll_clk = 522,
@@ -723,7 +725,9 @@ static struct mtk_panel_params ext_params = {
 
 static struct mtk_panel_funcs ext_funcs = {
 	.reset = panel_ext_reset,
+#ifdef SUPPORT_PANELBACKLIGHT
 	.set_backlight_cmdq = lcm_setbacklight_cmdq,
+#endif
 	.ata_check = panel_ata_check,
 };
 #endif

@@ -33,6 +33,8 @@ subdir-ccflags-y += \
 
 ifeq ($(CONFIG_CAMEREA_TB8786P2), m)
 subdir-ccflags-y += -DIMGSENSOR_TB8786P2
+else ifeq ($(CONFIG_REGULATOR_DOVDD), m)
+subdir-ccflags-y += -DIMGSENSOR_K69v1_64_KS
 else
 subdir-ccflags-y += -DIMGSENSOR_ISP4_T_REF
 endif

@@ -221,48 +221,6 @@ static int panel_edp_probe(struct platform_device *pdev)
 
 	dev_info(&pdev->dev, "%s %s+\n", edp->debug_str, __func__);
 
-	edp->supply = devm_regulator_get_optional(edp->dev, "power");
-	if (IS_ERR(edp->supply)) {
-		ret = PTR_ERR(edp->supply);
-
-		if (ret != -ENODEV) {
-			if (ret != -EPROBE_DEFER)
-				dev_info(edp->dev, "failed to request regulator: %d\n",
-					ret);
-			return ret;
-		}
-
-		edp->supply = NULL;
-	}
-
-	/* Get GPIOs and backlight controller. */
-	edp->enable_gpio = devm_gpiod_get_optional(edp->dev, "enable",
-						     GPIOD_OUT_HIGH);
-	if (IS_ERR(edp->enable_gpio)) {
-		ret = PTR_ERR(edp->enable_gpio);
-		dev_info(edp->dev, "failed to request %s GPIO: %d\n",
-			"enable", ret);
-		return ret;
-	}
-
-	edp->power3v3_gpio = devm_gpiod_get_optional(edp->dev, "power3v3",
-						     GPIOD_OUT_HIGH);
-	if (IS_ERR(edp->power3v3_gpio)) {
-		ret = PTR_ERR(edp->power3v3_gpio);
-		dev_info(edp->dev, "failed to request %s GPIO: %d\n",
-			"power3v3", ret);
-		return ret;
-	}
-
-	edp->reset_gpio = devm_gpiod_get_optional(edp->dev, "reset",
-							GPIOD_OUT_HIGH);
-	if (IS_ERR(edp->reset_gpio)) {
-		ret = PTR_ERR(edp->reset_gpio);
-		dev_info(edp->dev, "failed to request %s GPIO: %d\n",
-			"reset", ret);
-		return ret;
-	}
-
 	/*
 	 * TODO: Handle all power supplies specified in the DT node in a generic
 	 * way for panels that don't care about power supply ordering. eDP

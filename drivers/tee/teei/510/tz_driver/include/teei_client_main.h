@@ -99,6 +99,6 @@ extern void cpus_write_unlock(void);
 int soter_ffa_shm_register(unsigned long page_link, unsigned int length,
 				unsigned int offset, unsigned long *sec_id);
 #endif
-
+int teei_get_order(unsigned long size);
 int teei_set_switch_pri(unsigned long policy);
 #endif /* __TEEI_CLIENT_MAIN_H__ */
