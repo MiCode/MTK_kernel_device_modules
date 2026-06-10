@@ -123,6 +123,29 @@ TRACE_EVENT(network_tput,
 		__entry->md_tput, __entry->wifi_tput)
 );
 
+// MIUI ADD: Game_LogEnhance
+TRACE_EVENT(thermal_cluster_limit,
+
+	TP_PROTO(unsigned int cluster_id, unsigned int max),
+
+	TP_ARGS(cluster_id, max),
+
+	TP_STRUCT__entry(
+		__field(unsigned int, max)
+		__field(unsigned int, cluster_id)
+	),
+
+	TP_fast_assign(
+		__entry->max = max;
+		__entry->cluster_id = cluster_id;
+	),
+
+	TP_printk("max=%u cluster_id=%u",
+		__entry->max,
+		__entry->cluster_id)
+);
+// END Game_LogEnhance
+
 TRACE_EVENT(thermal_cpu,
 
 	TP_PROTO(struct thermal_cpu_info *cpu),

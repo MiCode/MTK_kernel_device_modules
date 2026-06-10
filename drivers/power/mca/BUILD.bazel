@@ -1,0 +1,84 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mca_sysfs",
+    srcs = [
+        "mca_sysfs.c",
+    ],
+    hdrs = glob([
+            "include/linux/mca/common/mca_sysfs.h",
+    ]),
+    includes = ["."],
+    out = "mca_sysfs.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mca_event",
+    srcs = [
+        "mca_event.c",
+    ],
+    hdrs = glob([
+            "include/linux/mca/common/mca_event.h",
+    ]),
+    includes = ["."],
+    ko_deps = [
+        ":mca_sysfs",
+    ],
+    out = "mca_event.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mca_log",
+    srcs = [
+        "mca_log.c",
+    ],
+    hdrs = glob([
+            "include/linux/mca/common/mca_log.h",
+    ]),
+    includes = ["."],
+    ko_deps = [
+        ":mca_sysfs",
+        ":mca_event",
+    ],
+    out = "mca_log.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mca_charge_mievent",
+    srcs = [
+        "mca_charge_mievent.c",
+    ],
+    hdrs = glob([
+            "include/linux/mca/common/mca_charge_mievent.h",
+    ]),
+    includes = ["."],
+    ko_deps = [
+        ":mca_sysfs",
+        ":mca_event",
+        ":mca_log",
+    ],
+    out = "mca_charge_mievent.ko",
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+          "**/Kconfig",
+    ]),
+)

@@ -57,6 +57,10 @@ enum MTK_DSI_CMD_V2_SCN_OPS {
 	MODE_SWITCH_DBG,
 	ESD_CHECK_DBG,
 	PU_DBG,
+#ifdef CONFIG_MI_DISP
+	DDIC_CMD_DBG,
+	AOD_DBG,
+#endif
 	DSI_CMD_V2_SCN_NUM
 };
 
@@ -247,5 +251,10 @@ enum DISP_PQ_TEST_FLAG {
 
 void disp_pq_set_test_flag(unsigned int flag);
 bool is_disp_reg(uint32_t addr, char *comp_name, uint32_t comp_name_len);
+
+#if defined(CONFIG_VIS_DISPLAY_V2_D2)
+void nvt_set_idlemgr(unsigned int flag);
+void nvt_set_pq_trigger(unsigned int flag);
+#endif
 
 #endif

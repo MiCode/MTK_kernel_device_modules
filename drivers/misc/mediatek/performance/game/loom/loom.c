@@ -603,7 +603,8 @@ void fpsgo_loom_frame_info_cb(unsigned long cmd, struct render_frame_info *iter)
 	//thermal condition change(on->off/off->on), need reset or reapply fpsgo passive mode
 	if (ret) {
 		loom_main_trace("[%s]pid=%d, thermal condition change to %d", __func__, tgid, ret);
-		fbt_set_magt_workaround_passive_mode(ret == THERMAL_END_REACTIVATE ? 1 : 0);
+		fbt_set_magt_workaround_passive_mode(ret == THERMAL_END_REACTIVATE ?
+				!loom_disable_fpsgo_passive_mode : 0);
 		if (ret == THERMAL_START_DEACTIVATE)
 			loom_clear_loading_ctrl_list(&info->lc_active_list);
 	}

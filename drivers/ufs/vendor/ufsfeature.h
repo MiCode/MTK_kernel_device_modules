@@ -47,7 +47,6 @@
 #include "ufstw.h"
 #include "ufshid.h"
 #include "ufsringbuf.h"
-
 #define UFS_UPIU_MAX_GENERAL_LUN		8
 #define UFSHCD_STATE_OPERATIONAL		2	/* ufshcd.c */
 

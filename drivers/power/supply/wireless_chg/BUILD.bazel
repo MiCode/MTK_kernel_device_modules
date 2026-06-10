@@ -1,0 +1,134 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "wireless_charger_class",
+    srcs = [
+        "wireless_charger_class.c",
+    ],
+    hdrs = glob([
+        "wireless_charger_class.h",
+        "wireless_charger_class_weak.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "nuvolta_1671",
+    srcs = [
+        "nuvolta_1671.c",
+        "nuvolta_1671.h",
+        "nuvolta_1671_fw.h",
+    ],
+    includes = ["."],
+    hdrs = glob([
+    ]),
+    ko_deps = [
+        ":wireless_charger_class",
+        "//kernel_device_modules-{}/drivers/power/supply:bq28z610".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_framework".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_event".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_charge_mievent".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "sc96231",
+    srcs = [
+        "sc96231_tx.c",
+        "sc96231_mtp_program.c",
+        "sc96231_mtp_program.h",
+        "sc96231_fw.h",
+        "sc96231_reg.h",
+        "sc96231_pgm.h",
+    ],
+    includes = ["."],
+    hdrs = glob([
+    ]),
+    ko_deps = [
+        ":wireless_charger_class",
+        "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_framework".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_event".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_charge_mievent".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "wls_cp_manager",
+    srcs = [
+        "wls_cp_manager.c",
+        "wls_cp_manager.h",
+    ],
+    includes = ["."],
+    hdrs = glob([
+    ]),
+    ko_deps = [
+        ":wireless_charger_class",
+        "//kernel_device_modules-{}/drivers/power/supply:bq28z610".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_framework".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_event".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_charge_mievent".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+          "**/Kconfig",
+    ]),
+)

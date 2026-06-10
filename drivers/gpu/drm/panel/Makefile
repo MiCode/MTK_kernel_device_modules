@@ -5,6 +5,9 @@ ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
 ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme
 endif
 
+obj-$(CONFIG_DRM_PANEL_M12A_36_02_0A_DSC_CMD) += panel-m12a-36-02-0a-dsc-cmd.o
+obj-$(CONFIG_DRM_PANEL_M12A_42_02_0B_DSC_CMD) += panel-m12a-42-02-0b-dsc-cmd.o
+
 obj-$(CONFIG_DRM_PANEL_NT37801_MSYNC2_RTE) += panel-nt37801-msync2-rte.o
 obj-$(CONFIG_DRM_PANEL_BOE_TV106C9MLL0) += ocp2138_i2c.o
 obj-$(CONFIG_DRM_PANEL_MAXIAM_MAX96851) += panel-maxiam-max96851.o

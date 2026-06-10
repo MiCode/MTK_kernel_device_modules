@@ -228,7 +228,8 @@ static int __init game_init(void)
 	int ret = 0;
 
 	kGame_task = kthread_create(gameMain, NULL, "kGameThread");
-	if (kGame_task == NULL) {
+	if (IS_ERR(kGame_task)) {
+		kGame_task = NULL;
 		ret = -EFAULT;
 		goto end;
 	}

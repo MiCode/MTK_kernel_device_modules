@@ -97,6 +97,23 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "cpu_isolate_cooling",
+    srcs = [
+        "cpu_isolate_cooling.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/core_ctl/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:mtk_core_ctl".format(kernel_version)
+    ],
+
+)
+
+define_mgk_ddk_ko(
     name = "thermal_interface",
     srcs = [
         "thermal_interface.c",

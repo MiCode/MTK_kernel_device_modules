@@ -1,0 +1,135 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2024 MediaTek Inc.
+ */
+
+/* fingerprint start */
+
+&odm {
+	xiaomi_fingerprint: xiaomi_fingerprint {
+		compatible = "xiaomi,xiaomi-fp";
+		xiaomi,vendor_names = "x_n2_431_132_M_SPI3";
+		intr2-pin-enable;
+		intr2-side-config = "AP";
+		intr2-default-electrical = <1 1>;
+		spi-max-frequency = <8000000>;
+		netlink-event = <29>;
+		// Slave Id: MT6661BP: 0x3, MT6661CP/FP: 0x5
+		fp_3v3_vreg-supply = <&mt6661_3_ldc0_3>;
+		fp_1v8_vreg-supply = <&mt6661_5_ln60_7>;
+		sensor-loc = <543 1985 737 2179>;
+		power-type = <1>;
+		pinctrl-names = "spiio_gpio_mode", "spiio_spi_mode", "intr2_high", "intr2_low", "eint_default", "eint_pulldown";
+		pinctrl-0 = <&fingerprints_spiio_gpio_mode>;
+		pinctrl-1 = <&fingerprints_spiio_spi_mode>;
+		pinctrl-2 = <&fingerprints_intr2_high>;
+		pinctrl-3 = <&fingerprints_intr2_low>;
+		pinctrl-4 = <&fingerprints_eint_default>;
+		pinctrl-5 = <&fingerprints_eint_pulldown>;
+		xiaomi,gpio_irq = <&pio 5 0>;
+		xiaomi,gpio_ipc = <&pio 5 0>;
+		interrupt-parent = <&pio>;
+		interrupts = <5 IRQ_TYPE_EDGE_RISING 5 0>;
+		status = "okay";
+	};
+};
+
+&mt6661_3_ldc0_3 {
+	regulator-min-microvolt = <3300000>;
+	regulator-max-microvolt = <3300000>;
+};
+
+&mt6661_5_ln60_7 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+};
+
+&pio {
+	fingerprints_spiio_gpio_mode: state_gpio_mode {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO148__FUNC_GPIO148>;
+			drive-strength = <MTK_DRIVE_2mA>;
+			output-low;
+		};
+		pins_cmd2_dat {
+			pinmux = <PINMUX_GPIO149__FUNC_GPIO149>;
+			drive-strength = <MTK_DRIVE_2mA>;
+			output-low;
+			bias-disable;
+		};
+		pins_cmd3_dat {
+			pinmux = <PINMUX_GPIO150__FUNC_GPIO150>;
+			drive-strength = <MTK_DRIVE_2mA>;
+			output-low;
+			bias-disable;
+		};
+		pins_cmd4_dat {
+			pinmux = <PINMUX_GPIO151__FUNC_GPIO151>;
+			drive-strength = <MTK_DRIVE_2mA>;
+			bias-pull-down;
+			bias-disable;
+		};
+	};
+	fingerprints_spiio_spi_mode: state_spi_mode {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO148__FUNC_SPI3_B_CLK>;
+			drive-strength = <MTK_DRIVE_2mA>;
+			input-enable;
+			bias-disable;
+		};
+		pins_cmd2_dat {
+			pinmux = <PINMUX_GPIO149__FUNC_SPI3_B_CSB>;
+			drive-strength = <MTK_DRIVE_2mA>;
+			input-enable;
+			bias-disable;
+		};
+		pins_cmd3_dat {
+			pinmux = <PINMUX_GPIO150__FUNC_SPI3_B_MO>;
+			drive-strength = <MTK_DRIVE_2mA>;
+			input-enable;
+			bias-disable;
+		};
+		pins_cmd4_dat {
+			pinmux = <PINMUX_GPIO151__FUNC_SPI3_B_MI>;
+			drive-strength = <MTK_DRIVE_2mA>;
+			input-enable;
+			bias-disable;
+		};
+	};
+
+	fingerprints_intr2_high: state_intr2_high {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO202__FUNC_GPIO202>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	fingerprints_intr2_low: state_intr2_low {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO202__FUNC_GPIO202>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	fingerprints_eint_default: state_eint_default {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO5__FUNC_GPIO5>;
+			slew-rate = <0>;
+			input-enable;
+			bias-disable;
+			input-schmitt-enable;
+		};
+	};
+	fingerprints_eint_pulldown: state_eint_pulldown {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO5__FUNC_GPIO5>;
+			slew-rate = <0>;
+			input-enable;
+			bias-pull-down;
+			input-schmitt-enable;
+		};
+	};
+};
+
+/* fingerprint end */

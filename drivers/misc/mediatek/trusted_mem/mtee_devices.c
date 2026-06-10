@@ -58,7 +58,7 @@ static struct tmem_device_description mtee_mchunks[] = {
 	IS_ENABLED(CONFIG_MICROTRUST_TEE_SUPPORT)
 		.notify_remote = true,
 		.notify_remote_fn = secmem_fr_set_svp_region,
-#else
+#else /* including CONFIG_MITEE_SUPPORT */
 		.notify_remote = false,
 		.notify_remote_fn = NULL,
 #endif

@@ -24,6 +24,12 @@ config MTK_MML_LEGACY
 	  This driver provides kernel mode setting and
 	  buffer management to display driver.
 
+config MML_DL_SUPPORT
+	bool "MTK MML DL Feature Switch"
+	default n
+	help
+	  This is used to config support MML DL
+
 config MTK_MML_AUTO_GUEST
 	tristate "DRM MML hypervisor Guest Support for Mediatek SoCs"
 	help

@@ -148,6 +148,7 @@ void (*task_turbo_select_task_rq_fair_hook)(struct task_struct *p, int *target_c
 void (*vip_loom_select_task_rq_fair_hook)(struct task_struct *p, int *target_cpu, int *flag);
 EXPORT_SYMBOL(task_turbo_select_task_rq_fair_hook);
 EXPORT_SYMBOL(vip_loom_select_task_rq_fair_hook);
+
 static void sched_select_task_rq_fair_hook(void *ignore, struct task_struct *p,
 							int prev_cpu, int sd_flag,
 							int wake_flags, int *target_cpu)

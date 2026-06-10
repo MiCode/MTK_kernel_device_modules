@@ -44,6 +44,9 @@ EXPORT_SYMBOL(dma_heap_normal_total);
 
 static dmaheap_slc_callback slc_callback;
 
+is_mtk_heap_dmabuf_cb is_sec_heap_dmabuf;
+EXPORT_SYMBOL_GPL(is_sec_heap_dmabuf);
+
 dmabuf_rbtree_dump_cb dmabuf_rbtree_dump_by_domain;
 EXPORT_SYMBOL_GPL(dmabuf_rbtree_dump_by_domain);
 
@@ -2061,11 +2064,25 @@ int is_system_heap_dmabuf(const struct dma_buf *dmabuf)
 }
 EXPORT_SYMBOL_GPL(is_system_heap_dmabuf);
 
+static int is_mtk_heap_dmabuf(const struct dma_buf *dmabuf)
+{
+	if (IS_ERR_OR_NULL(dmabuf))
+		return 0;
+
+	if (dmabuf->ops == &mtk_mm_heap_buf_ops ||
+	    dmabuf->ops == &system_heap_buf_ops ||
+	    dmabuf->ops == &mtk_slc_heap_buf_ops ||
+	    (is_sec_heap_dmabuf && is_sec_heap_dmabuf(dmabuf)))
+		return 1;
+
+	return 0;
+}
+
 int is_uncached_dmabuf(const struct dma_buf *dmabuf)
 {
 	struct system_heap_buffer *buffer;
 
-	if (IS_ERR_OR_NULL(dmabuf))
+	if (!is_mtk_heap_dmabuf(dmabuf))
 		return 0;
 
 	buffer = dmabuf->priv;
@@ -2080,7 +2097,7 @@ int is_coherent_heap_dmabuf(const struct dma_buf *dmabuf)
 {
 	struct system_heap_buffer *buffer;
 
-	if (IS_ERR_OR_NULL(dmabuf))
+	if (!is_mtk_heap_dmabuf(dmabuf))
 		return 0;
 
 	buffer = dmabuf->priv;
@@ -2115,8 +2132,12 @@ EXPORT_SYMBOL_GPL(mtk_dmaheap_unregister_slc_callback);
 
 int dma_buf_set_gid(struct dma_buf *dmabuf, int gid)
 {
-	struct system_heap_buffer *buffer = dmabuf->priv;
+	struct system_heap_buffer *buffer;
 
+	if (!is_mtk_heap_dmabuf(dmabuf))
+		return -EINVAL;
+
+	buffer = dmabuf->priv;
 	if (IS_ERR_OR_NULL(buffer))
 		return -EINVAL;
 
@@ -2127,8 +2148,12 @@ EXPORT_SYMBOL_GPL(dma_buf_set_gid);
 
 int dma_buf_get_gid(struct dma_buf *dmabuf)
 {
-	struct system_heap_buffer *buffer = dmabuf->priv;
+	struct system_heap_buffer *buffer;
 
+	if (!is_mtk_heap_dmabuf(dmabuf))
+		return -EINVAL;
+
+	buffer = dmabuf->priv;
 	if (IS_ERR_OR_NULL(buffer))
 		return -EINVAL;
 
@@ -2141,6 +2166,9 @@ struct dma_buf_attachment *dma_buf_attach_ssid(struct dma_buf *dmabuf,
 {
 	struct dma_buf_attachment *attach = dma_buf_attach(dmabuf, dev);
 	struct dma_heap_attachment *a;
+
+	if (!is_mtk_heap_dmabuf(dmabuf))
+		return attach;
 
 	if (!IS_ERR_OR_NULL(attach)) {
 		a = attach->priv;

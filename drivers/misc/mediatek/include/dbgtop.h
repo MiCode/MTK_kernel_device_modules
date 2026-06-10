@@ -26,6 +26,8 @@
 #define MTK_DBGTOP_LATCH_CTL2_KEY		(0x95000000)
 
 #define MTK_DBGTOP_MODE				(0x0)
+#define MTK_DBGTOP_NONRST1			(0x00000020)
+#define MTK_DBGTOP_NONRST2			(0x00000024)
 #define MTK_DBGTOP_DEBUG_CTL			(0x00000030)
 #define MTK_DBGTOP_DEBUG_CTL2			(0x00000034)
 #define MTK_DBGTOP_DEBUG_CTL3			(0x00000038)
@@ -42,5 +44,7 @@ struct dbgtop_drm {
 };
 
 extern int mtk_dbgtop_dfd_timeout(int value_abnormal, int value_normal);
+extern int mtk_dbgtop_read_non_reset_reg(int reg);
+extern int mtk_dbgtop_write_non_reset_reg(int reg, int value);
 extern int mtk_dbgtop_mfg_pwr_on(int value);
 extern int mtk_dbgtop_mfg_pwr_en(int value);

@@ -131,9 +131,10 @@ static inline int engine_gear_power_off(struct engine_control_t *ctrl,
 			engine_dec_wait_idle(ctrl);
 
 			/* Ok. It's safe to power off engine */
-			engine_power_off(ctrl);
-			gear_ctrl->power_on = false;
-			ret = 0;
+			if (engine_power_off(ctrl)) {
+				gear_ctrl->power_on = false;
+				ret = 0;
+			}
 
 			/* No more access, disable clk */
 			clk_disable(gear_ctrl->clk_mux);
@@ -160,9 +161,11 @@ static inline int __engine_gear_enable_clock_by_cnt(struct engine_control_t *ctr
 		ret = clk_enable(gear_ctrl->clk_mux);
 
 		if (engine_power_efficiency_enabled() && !ret) {
-			ret = engine_power_on(ctrl);
-			if (!ret)
-				gear_ctrl->power_on = true;
+			if (!gear_ctrl->power_on) {
+				ret = engine_power_on(ctrl);
+				if (!ret)
+					gear_ctrl->power_on = true;
+			}
 		}
 	}
 

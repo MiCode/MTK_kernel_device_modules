@@ -44,6 +44,8 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/pinctrl/mediatek/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/power/supply/
 
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/power/mca/
+
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/rtc/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/remoteproc/
@@ -99,6 +101,8 @@ obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/net/phy/
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/devfreq/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/misc/mediatek/
+
+obj-y += ../$(DEVICE_MODULES_REL_DIR)/drivers/misc/xiaomi/
 
 obj-y += ../$(DEVICE_MODULES_REL_DIR)/sound/soc/codecs/
 

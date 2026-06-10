@@ -146,6 +146,7 @@ struct mtk_disp_aal_primary {
 	atomic_t func_flag;  // 0: ess & dre off; 1: ess | dre on
 	atomic_t hal_force_update;
 	int pre_enable;
+	int dre30_curve_updated;
 };
 
 struct mtk_disp_aal {

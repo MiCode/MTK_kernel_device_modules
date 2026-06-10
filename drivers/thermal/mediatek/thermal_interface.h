@@ -109,7 +109,7 @@
 #define MONITOR_TJ_CORE_TEMP_TCM_OFFSET (0x188)
 
 #define CPU_COOLER_TCM_BASE             (0x1B0)
-
+#define EFFICIENCY_TCM_OFFSET           (0x1D4)
 
 #define DSU_CEILING_FREQ_TCM_OFFSET     (0x220)
 

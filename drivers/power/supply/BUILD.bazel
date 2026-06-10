@@ -1,5 +1,6 @@
 load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
 load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("@mgk_info//:dict.bzl","DEFCONFIG_OVERLAYS")
 
 package(
     default_visibility = [
@@ -58,8 +59,15 @@ define_mgk_ddk_ko(
     srcs = [
         "adapter_class.c",
     ],
-    hdrs = ["adapter_class.h",],
-    includes = ["."],
+    hdrs =  glob([
+        "adapter_class.h",
+    ]),
+    includes = [".",
+        "inc/pd_core.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
+    ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
@@ -84,7 +92,10 @@ define_mgk_ddk_ko(
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
-    ],
+        ":mtk_charger_framework",
+    ] + (
+        [":mpc8011b", ":fuelgauge_strategy",] if "yili" in DEFCONFIG_OVERLAYS else [":bq28z610",]
+    ),
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
@@ -99,7 +110,9 @@ define_mgk_ddk_ko(
     srcs = [
         "charger_class.c",
     ],
-    hdrs = ["charger_class.h",],
+    hdrs = glob([
+        "charger_class.h",
+    ]),
     includes = ["."],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
@@ -134,25 +147,46 @@ define_mgk_ddk_ko(
         "mtk_charger.c",
         "mtk_charger_intf.c",
         "mtk_pulse_charger.c",
+        "step_jeita_charge.c",
+        "pmic_voter.c",
+        "charger_partition.c",
     ],
     hdrs = glob([
         "mtk_charger.h",
         "mtk_charger_algorithm_class.h",
         "mtk_smartcharging.h",
+        "step_jeita_charge.h",
+        "pmic_voter.h",
+        "charger_class.h",
+        "adapter_class.h",
+        "charger_partition.h",
     ]),
-    includes = ["."],
+    includes = [".",
+        "drivers/power/supply/wireless_chg",
+        "drivers/misc/mediatek/typec/tcpc/inc",
+    ],
     ko_deps = [
         ":adapter_class",
         ":charger_class",
-        ":mtk_battery_manager",
         ":mtk_charger_algorithm_class",
-    ],
+        "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_event".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_charge_mievent".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply/wireless_chg:wireless_charger_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+    ] + (
+        [":mpc8011b", ":fuelgauge_strategy",] if "yili" in DEFCONFIG_OVERLAYS else [":bq28z610",]
+    ),
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
         "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/wireless_chg",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/mi_disp",
     ],
 )
 
@@ -429,6 +463,7 @@ define_mgk_ddk_ko(
         ":charger_class",
         ":mtk_charger_algorithm_class",
         ":mtk_charger_framework",
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
@@ -436,6 +471,7 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
         "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
     ],
 )
 
@@ -455,7 +491,10 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
         ":mtk_battery_manager",
-    ],
+        ":mtk_charger_framework",
+    ] + (
+        [":mpc8011b", ":fuelgauge_strategy", ":fuelgauge_class",] if "yili" in DEFCONFIG_OVERLAYS else [":bq28z610",]
+    ),
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
@@ -481,7 +520,10 @@ define_mgk_ddk_ko(
         "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
         ":mtk_battery_manager",
-    ],
+        ":mtk_charger_framework",
+    ] + (
+        [":mpc8011b", ":fuelgauge_strategy", ":fuelgauge_class",] if "yili" in DEFCONFIG_OVERLAYS else [":bq28z610",]
+    ),
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
@@ -549,6 +591,7 @@ define_mgk_ddk_ko(
         ":mtk_charger_framework",
         ":mtk_chg_type_det",
         "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
@@ -572,8 +615,10 @@ define_mgk_ddk_ko(
         ":charger_class",
         ":mtk_charger_framework",
         ":mtk_chg_type_det",
+        ":mtk_battery_manager",
         "//kernel_device_modules-{}/drivers/power/supply/ufcs:ufcs_class".format(kernel_version),
-    ],
+        "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
+    ] + ([":sc2201",] if "yili" in DEFCONFIG_OVERLAYS else []),
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
@@ -617,6 +662,342 @@ define_mgk_ddk_ko(
         ":mtk_chg_type_det",
         ":mtk_charger_framework",
         "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "bq28z610",
+    srcs = [
+        "bq28z610.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "bq28z610.h",
+        "mtk_battery.h",
+        "mtk_gauge.h",
+        "mtk_battery_daemon.h",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "fuelgauge_class",
+    srcs = [
+        "fuelgauge_class.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "fuelgauge_class.h",
+        "mtk_battery.h",
+        "mtk_gauge.h",
+        "mtk_battery_daemon.h",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mpc8011b",
+    srcs = [
+        "mpc8011b.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "fuelgauge_class.h",
+        "mpc8011b.h",
+        "mtk_battery.h",
+        "mtk_gauge.h",
+        "mtk_battery_daemon.h",
+    ]),
+    ko_deps = [
+        "fuelgauge_class",
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "fuelgauge_strategy",
+    srcs = [
+        "fuelgauge_strategy.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "fuelgauge_class.h",
+        "fuelgauge_strategy.h",
+        "mtk_battery.h",
+        "mtk_gauge.h",
+        "mtk_battery_daemon.h",
+    ]),
+    ko_deps = [
+        "fuelgauge_class",
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "sc8585_charger",
+    srcs = [
+        "sc8585_charger.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "sc8585_charger.h",
+    ]),
+    ko_deps = [
+        ":charger_class",
+        ":mtk_charger_framework",
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "sc8541_charger",
+    srcs = [
+        "sc8541_charger.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "sc8541_charger.h",
+    ]),
+    ko_deps = [
+        ":charger_class",
+        ":mtk_charger_framework",
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "sc7601",
+    srcs = [
+        "sc7601.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "sc7601.h",
+        "sc7601_reg.h",
+    ]),
+    ko_deps = [
+        ":charger_class",
+        ":mtk_charger_framework",
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pd_single_cp_manager",
+    srcs = [
+        "pd_single_cp_manager.c",
+    ],
+    includes = [".",
+        "drivers/misc/mediatek/typec/tcpc/inc",
+    ],
+    hdrs = glob([
+        "pd_cp_manager.h",
+    ]),
+    ko_deps = [
+        "mtk_charger_framework",
+        "adapter_class",
+        "charger_class",
+        "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ] + (
+        [":mpc8011b", ":fuelgauge_strategy",] if "yili" in DEFCONFIG_OVERLAYS else [":bq28z610",]
+    ),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pd_cp_manager",
+    srcs = [
+        "pd_cp_manager.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "pd_cp_manager.h",
+    ]),
+    ko_deps = [
+        "mtk_charger_framework",
+        "adapter_class",
+        "charger_class",
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ] + (
+        [":mpc8011b", ":fuelgauge_strategy",] if "yili" in DEFCONFIG_OVERLAYS else [":bq28z610",]
+    ),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "ln8000_charger",
+    srcs = [
+        "ln8000_charger.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "ln8000_charger.h",
+    ]),
+    ko_deps = [
+        ":charger_class",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "xm_pwm_fan",
+    srcs = [
+        "xm_pwm_fan.c",
+    ],
+    includes = [
+        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    hdrs = glob([
+        "xm_pwm_fan.h",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_event".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_charge_mievent".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pwm:mtk-pwm".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/mca",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_ut_test",
+    srcs = [
+        "mtk_ut_test.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+    ]),
+    ko_deps = [
+        ":mtk_charger_framework",
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    ] + (
+        [":mpc8011b", ":fuelgauge_strategy",] if "yili" in DEFCONFIG_OVERLAYS else [":bq28z610",]
+    ),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "hl7603",
+    srcs = [
+        "hl7603.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "hl7603.h",
+    ]),
+    ko_deps = [],
+    copts = [],
+)
+
+define_mgk_ddk_ko(
+    name = "sc2201",
+    srcs = [
+        "sc2201.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "sc2201.h",
+    ]),
+    ko_deps = [
+        ":mtk_charger_framework",
+        ":charger_class",
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
     ],
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",

@@ -17,8 +17,7 @@
 
 #include "ufs-mediatek-mbrain.h"
 #include "ufs-mediatek.h"
-#include "ufs/ufshcd.h"
-
+#include <ufs/ufshcd.h>
 
 static int ufs_mb_notify(struct ufs_hba *hba, struct ufs_mbrain_event *event)
 {

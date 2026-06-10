@@ -3543,7 +3543,7 @@ int mtk_effective_cpu_util_with_uclamp(int util, int cpu,
 		struct rq *rq;
 		struct task_struct *curr_task;
 		unsigned long max_util_curr = ULONG_MAX;
-		unsigned long max_util_curr_eff = ULONG_MAX;
+		unsigned long min_util_curr = 0;
 		int flg_curr_task = -1, flg_exit_state = -1, flg_pid = -1;
 		unsigned long umax = 0;
 		int cpu_util_mgn = util;
@@ -3560,8 +3560,8 @@ int mtk_effective_cpu_util_with_uclamp(int util, int cpu,
 
 			if (!curr_task->exit_state) {
 				flg_exit_state = 0;
-				max_util_curr = curr_task->uclamp_req[UCLAMP_MAX].value;
-				max_util_curr_eff = curr_task->uclamp[UCLAMP_MAX].value;
+				max_util_curr = uclamp_eff_value(curr_task, UCLAMP_MAX);
+				min_util_curr = uclamp_eff_value(curr_task, UCLAMP_MIN);
 			} else {
 				flg_exit_state = 1;
 			}
@@ -3573,11 +3573,12 @@ int mtk_effective_cpu_util_with_uclamp(int util, int cpu,
 
 		umax = min_t(unsigned long, max_util_curr, rq->uclamp[UCLAMP_MAX].value);
 		util = min_t(unsigned long, util, umax);
+		util = max_t(unsigned long, util, min_util_curr);
 
 		if (trace_sugov_ext_curr_task_uclamp_enabled())
 			trace_sugov_ext_curr_task_uclamp(cpu, flg_pid, flg_curr_task, flg_exit_state,
 				util, cpu_util_mgn,
-				max_util_curr, max_util_curr_eff, rq->uclamp[UCLAMP_MAX].value);
+				max_util_curr, min_util_curr, rq->uclamp[UCLAMP_MAX].value);
 	} else {
 		util = sugov_effective_cpu_perf_clamp(util, min, max);
 	}

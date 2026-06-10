@@ -10,6 +10,9 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-device.h>
 #include <media/v4l2-subdev.h>
+#ifdef __XIAOMI_CAMERA__
+#include <linux/ktime.h>
+#endif
 
 #define DRIVER_NAME "main_vcm"
 #define MAIN_VCM_I2C_SLAVE_ADDR 0x18
@@ -53,6 +56,7 @@ struct main_vcm_device {
 static struct workqueue_struct *main_vcm_init_wq;
 
 static DEFINE_MUTEX(main_vcm_mutex);
+static DEFINE_MUTEX(main_rw_mutex);
 
 #define I2CCOMM_MAXSIZE 4
 
@@ -82,11 +86,17 @@ struct VcmDriverConfig {
 	unsigned int slave_addr;
 	uint8_t I2CSendNum;
 	struct stVCM_I2CFormat I2Cfmt[I2CSEND_MAXSIZE];
-
+#ifdef __XIAOMI_CAMERA__
+	int32_t read_code_addr;
+	uint8_t read_capability;
+#endif
 	// Uninit param
 	unsigned int origin_focus_pos;
 	int32_t move_long_steps_pct;
 	int32_t move_short_steps_pct;
+#ifdef __XIAOMI_CAMERA__
+    int32_t move_fixed_steps;
+#endif
 	unsigned int move_delay_us;
 	uint32_t delay_power_off_ms;
 	char wr_rls_table[8][3];
@@ -113,6 +123,32 @@ struct VcmDriverList {
 struct mtk_vcm_info {
 	struct VcmDriverList *p_vcm_info;
 };
+
+#ifdef __XIAOMI_CAMERA__
+struct read_af_data {
+	int32_t code;
+	uint64_t timestamp;
+	int32_t sensordev;
+};
+
+struct AfCodeData {
+  struct read_af_data *read_af_data;
+};
+struct read_af_data afdata;
+
+#define VIDIOC_XIAOMI_S_LENS_INFO _IOWR('V', BASE_VIDIOC_PRIVATE + 4, struct AfCodeData)
+
+#define CHM9600AF_VCM_ID 	0x9600
+#define AAC_MODULE_ID   	0x10
+
+#define CHM9600_CHIP_ACTIVE	0x0C
+#define CHM9600_SERVER_ON	0x01
+
+#define GT9772BAF_VCM_ID  0x9773
+
+static bool isAFActive = true;
+
+#endif
 
 struct VCM_Hall_data {
 	unsigned int hall_value;
@@ -174,6 +210,10 @@ static void register_setting(struct i2c_client *client, char table[][3], int tab
 {
 	int ret = 0, read_count = 0, i = 0, j = 0;
 
+	struct i2c_msg msg;
+	u8 buf[2];
+	i2c_lock_bus(client->adapter, I2C_LOCK_SEGMENT);
+
 	for (i = 0; i < table_size; ++i) {
 
 		LOG_INF("table[%d] = [0x%x 0x%x 0x%x]\n",
@@ -186,11 +226,17 @@ static void register_setting(struct i2c_client *client, char table[][3], int tab
 
 		// write command
 		if (table[i][0] == 0x1) {
-
+			buf[0] = table[i][1];
+			buf[1] = table[i][2];
+			msg.addr = client->addr;
+			msg.flags = client->flags;
+			msg.buf = buf;
+			msg.len = 2;
+			ret = __i2c_transfer(client->adapter, &msg, 1);
 			// write register
-			ret = i2c_smbus_write_byte_data(client,
-					table[i][1],
-					table[i][2]);
+			// ret = i2c_smbus_write_byte_data(client,
+			// 		table[i][1],
+			// 		table[i][2]);
 			if (ret < 0) {
 				LOG_INF(
 					"i2c write fail: %d, table[%d] = [0x%x 0x%x 0x%x]\n",
@@ -249,7 +295,91 @@ static void register_setting(struct i2c_client *client, char table[][3], int tab
 		}
 		udelay(100);
 	}
+	i2c_unlock_bus(client->adapter, I2C_LOCK_SEGMENT);
 }
+
+#ifdef __XIAOMI_CAMERA__
+static void read_register_pos(struct main_vcm_device *main_vcm, void __user *buf)
+{
+	if (isAFActive) {
+		int ret = 0;
+		unsigned short addr = g_vcmconfig.vcm_config.read_code_addr;
+		struct i2c_client *client = v4l2_get_subdevdata(&main_vcm->sd);
+		struct timespec64 ts = ktime_to_timespec64(ktime_get_boottime());
+
+		mutex_lock(&main_rw_mutex);
+		if(g_vcmconfig.vcm_id == CHM9600AF_VCM_ID){
+			struct i2c_msg msgs[2];
+			u8 tx_buf[1];  // 发送缓冲区：存放寄存器地址
+			u8 rx_buf[2];  // 接收缓冲区：存放读取的2字节数据
+			int i2c_ret;
+			
+			LOG_INF("read_register_pos start, addr = 0x%x", addr);
+			
+			tx_buf[0] = addr & 0xFF;
+			msgs[0].addr = client->addr;
+			msgs[0].flags = 0;
+			msgs[0].len = 1;
+			msgs[0].buf = tx_buf;
+			
+			msgs[1].addr = client->addr;
+			msgs[1].flags = I2C_M_RD;
+			msgs[1].len = 2;
+			msgs[1].buf = rx_buf;
+			
+			i2c_ret = i2c_transfer(client->adapter, &msgs[0], 1);
+			if (i2c_ret != 1) {
+				LOG_INF("i2c write address failed, ret = %d", i2c_ret);
+                        	mutex_unlock(&main_rw_mutex);
+				return;
+			}
+	
+			udelay(10);
+
+			i2c_ret = i2c_transfer(client->adapter, &msgs[1], 1);
+			if (i2c_ret != 1) {
+				LOG_INF("i2c read data failed, ret = %d", i2c_ret);
+                          	mutex_unlock(&main_rw_mutex);
+				return;
+			}
+
+			// 假设 rx_buf[0] 是低字节，rx_buf[1] 是高字节
+			ret = (rx_buf[1] << 8) | rx_buf[0];
+			LOG_INF("read_register_pos raw data = 0x%x (rx_buf[0]=0x%x, rx_buf[1]=0x%x)",
+				ret, rx_buf[0], rx_buf[1]);
+		} else{
+			ret = i2c_smbus_read_word_data(client,addr);
+			LOG_INF("read_register_pos ret = 0x%x ",ret);
+		}
+
+		mutex_unlock(&main_rw_mutex);
+
+		ret = ((ret & 0xff) << 8 )|((ret & 0xff00) >> 8);
+		if(g_vcmconfig.vcm_config.read_capability == 1){
+			afdata.code = ret & 0x3ff;
+		}else if(g_vcmconfig.vcm_config.read_capability == 2){
+			afdata.code = ret & 0xfff;
+		}else if(g_vcmconfig.vcm_config.read_capability == 3){
+			afdata.code = (ret >> 4) & 0x3fff;
+		}else{
+			afdata.code = (ret >> 6) & 0x3fff;
+		}
+		afdata.timestamp = timespec64_to_ns(&ts);
+		afdata.sensordev = 0;
+
+		LOG_INF("read_register_pos ret = %d afdata.timestamp = %lld addr = %d",afdata.code,afdata.timestamp, addr);
+
+		ret = copy_to_user((struct read_af_data *)buf, &afdata, sizeof(struct read_af_data));
+		if (ret < 0)
+		{
+			LOG_INF("copy_to_user fail ret =%d \n",ret);
+			ret = -EFAULT;
+		}
+	} else {
+		LOG_INF("AF is not active");
+	}
+}
+#endif
 
 static int main_vcm_set_position(struct main_vcm_device *main_vcm, u16 val)
 {
@@ -260,6 +390,8 @@ static int main_vcm_set_position(struct main_vcm_device *main_vcm, u16 val)
 	int i = 0, j = 0;
 	int retry = 3;
 
+	mutex_lock(&main_rw_mutex);
+
 	for (i = 0; i < g_vcmconfig.vcm_config.I2CSendNum; ++i, nArrayIndex = 0) {
 		int nCommNum = g_vcmconfig.vcm_config.I2Cfmt[i].AddrNum +
 			g_vcmconfig.vcm_config.I2Cfmt[i].DataNum;
@@ -269,6 +401,7 @@ static int main_vcm_set_position(struct main_vcm_device *main_vcm, u16 val)
 			if (nArrayIndex >= ARRAY_SIZE(puSendCmd)) {
 				LOG_INF("nArrayIndex(%d) exceeds the size of puSendCmd(%d)\n",
 					nArrayIndex, (int)ARRAY_SIZE(puSendCmd));
+                          	mutex_unlock(&main_rw_mutex);
 				return -1;
 			}
 			puSendCmd[nArrayIndex] = g_vcmconfig.vcm_config.I2Cfmt[i].Addr[j];
@@ -280,6 +413,7 @@ static int main_vcm_set_position(struct main_vcm_device *main_vcm, u16 val)
 			if (nArrayIndex >= ARRAY_SIZE(puSendCmd)) {
 				LOG_INF("nArrayIndex(%d) exceeds the size of puSendCmd(%d)\n",
 					nArrayIndex, (int)ARRAY_SIZE(puSendCmd));
+                          	mutex_unlock(&main_rw_mutex);
 				return -1;
 			}
 			puSendCmd[nArrayIndex] =
@@ -302,11 +436,13 @@ static int main_vcm_set_position(struct main_vcm_device *main_vcm, u16 val)
 				"puSendCmd I2C failure i2c_master_send: %d, I2Cfmt[%d].AddrNum/DataNum: %d/%d\n",
 				ret, i, g_vcmconfig.vcm_config.I2Cfmt[i].AddrNum,
 				g_vcmconfig.vcm_config.I2Cfmt[i].DataNum);
+                  	mutex_unlock(&main_rw_mutex);
 			return ret;
 		}
 	}
 
 	main_vcm->cur_pos = val;
+	mutex_unlock(&main_rw_mutex);
 
 	return ret;
 }
@@ -317,6 +453,10 @@ static int main_vcm_release(struct main_vcm_device *main_vcm)
 	int long_step, short_step;
 	int diff_dac = 0;
 	int nStep_count_long = 0, nStep_count_short = 0;
+#ifdef __XIAOMI_CAMERA__
+	int fixed_step = 0;
+	int nStep_count_fixed = 0;
+#endif
 	int val = 0;
 	int i = 0;
 
@@ -410,6 +550,67 @@ PROCESS_SHORT_STEP:
 	}
 
 LAST_STEP_TO_ORIGIN:
+#ifdef __XIAOMI_CAMERA__
+	fixed_step = g_vcmconfig.vcm_config.move_fixed_steps;
+	LOG_INF("process fixed step: fixed_step: %d\n", fixed_step);
+	if (fixed_step != 0) {
+		diff_dac = g_vcmconfig.vcm_config.origin_focus_pos - val;
+		nStep_count_fixed = (diff_dac < 0 ? (diff_dac*(-1)) : diff_dac) / fixed_step;
+		LOG_INF("process fixed step: diff_dac: %d, nStep_count_fixed: %d\n",
+				diff_dac, nStep_count_fixed);
+	}
+
+	for (i = 0; i < nStep_count_fixed; ++i) {
+		val += (diff_dac < 0 ? (fixed_step*(-1)) : fixed_step);
+
+		LOG_INF("fixed step index %d, val: %d\n", i, val);
+
+		ret = main_vcm_set_position(main_vcm, val);
+		if (ret < 0) {
+			LOG_INF("%s I2C failure: %d\n",
+				__func__, ret);
+			return ret;
+		}
+
+		ret = wait_event_interruptible_timeout(main_vcm->wait_queue_head,
+				main_vcm->is_stop_flag,
+				msecs_to_jiffies(g_vcmconfig.vcm_config.move_delay_us/1000));
+		if (ret > 0) {
+			LOG_INF("back to origin, fixed step, interrupting, ret = %d\n", ret);
+			return ret;
+		}
+	}
+
+	// if diff_dac is less than short_step, it means it is very close to the origin
+	if (((diff_dac < 0 ? (diff_dac*(-1)) : diff_dac) % fixed_step) == 0) {
+		LOG_INF("already back to origin\n");
+		return 0;
+	}
+#endif
+#ifdef __XIAOMI_CAMERA__
+	if(g_vcmconfig.vcm_id == CHM9600AF_VCM_ID) {
+		LOG_INF("not need last step to origin\n");
+	} else {
+		// last step to origin
+		LOG_INF("last step to origin\n");
+		ret = main_vcm_set_position(main_vcm, g_vcmconfig.vcm_config.origin_focus_pos);
+		if (ret < 0) {
+			LOG_INF("%s I2C failure: %d\n",
+				__func__, ret);
+			return ret;
+		}
+
+		ret = wait_event_interruptible_timeout(main_vcm->wait_queue_head,
+				main_vcm->is_stop_flag,
+				msecs_to_jiffies(g_vcmconfig.vcm_config.move_delay_us/1000));
+		if (ret > 0) {
+			LOG_INF("back to origin, fixed step, interrupting, ret = %d\n", ret);
+			return ret;
+		}
+
+		register_setting(client, g_vcmconfig.vcm_config.wr_rls_table, 8);
+	}
+#else
 	// last step to origin
 	LOG_INF("last step to origin\n");
 	ret = main_vcm_set_position(main_vcm, g_vcmconfig.vcm_config.origin_focus_pos);
@@ -420,6 +621,8 @@ LAST_STEP_TO_ORIGIN:
 	}
 
 	register_setting(client, g_vcmconfig.vcm_config.wr_rls_table, 8);
+
+#endif
 
 	LOG_INF("-\n");
 
@@ -516,7 +719,6 @@ static int main_vcm_power_on(struct main_vcm_device *main_vcm)
 	int ret = 0;
 	int ldo_num = 0;
 	int i = 0;
-
 	LOG_INF("+\n");
 
 	ldo_num = ARRAY_SIZE(ldo_names);
@@ -628,7 +830,7 @@ static long main_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, vo
 	struct i2c_client *client = v4l2_get_subdevdata(&main_vcm->sd);
 	struct v4l2_ctrl_handler *hdl = &main_vcm->ctrls;
 	const struct v4l2_ctrl_ops *ops = &main_vcm_vcm_ctrl_ops;
-
+	LOG_INF("Enter main_vcm_ops_core_ioctl, afstatus: %d\n", isAFActive);
 	client->addr = g_vcmconfig.vcm_config.slave_addr >> 1;
 
 	switch (cmd) {
@@ -682,7 +884,13 @@ static long main_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, vo
 		LOG_INF("active mode, current pos:%d\n", main_vcm->cur_pos);
 
 		register_setting(client, g_vcmconfig.vcm_config.resume_table, 8);
+#ifdef __XIAOMI_CAMERA__
+		isAFActive = true;
+#endif
 		ret = main_vcm_set_position(main_vcm, main_vcm->cur_pos);
+		if(g_vcmconfig.vcm_id == GT9772BAF_VCM_ID){
+			mdelay(10);
+		}
 		if (ret < 0) {
 			LOG_INF("%s I2C failure: %d\n",
 				__func__, ret);
@@ -696,6 +904,9 @@ static long main_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, vo
 		LOG_INF("stand by mode\n");
 
 		register_setting(client, g_vcmconfig.vcm_config.suspend_table, 8);
+#ifdef __XIAOMI_CAMERA__
+		isAFActive = false;
+#endif
 	}
 	break;
 	case VIDIOC_MTK_G_LENS_HALL:
@@ -733,6 +944,16 @@ static long main_vcm_ops_core_ioctl(struct v4l2_subdev *sd, unsigned int cmd, vo
 		}
 	}
 	break;
+#ifdef __XIAOMI_CAMERA__
+	case VIDIOC_XIAOMI_S_LENS_INFO:
+	{
+		//struct read_af_data *afinfo = arg;
+		struct AfCodeData *afinfo = arg;
+		read_register_pos(main_vcm, afinfo->read_af_data);
+		LOG_INF("read_register_pos\n");
+	}
+	break;
+#endif
 	default:
 		ret = -ENOIOCTLCMD;
 		break;

@@ -1035,7 +1035,7 @@ done:
 s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 		   void *cb_param)
 {
-	struct mml_ctx *ctx = &dctx->ctx;
+	struct mml_ctx *ctx;
 	struct mml_frame_data *src = &submit->info.src;
 	struct mml_frame_config *cfg;
 	struct mml_task *task = NULL;
@@ -1044,7 +1044,15 @@ s32 mml_drm_submit(struct mml_drm_ctx *dctx, struct mml_submit *submit,
 	s32 result = -EINVAL;
 	u32 i;
 	struct fence_data fence = {0};
-	u32 pre_jobid = atomic_read(&ctx->job_serial) + 1;
+	u32 pre_jobid;
+
+	if (IS_ERR_OR_NULL(dctx)) {
+		mml_err("dctx is not available, fail to submit!");
+		return PTR_ERR(dctx);
+	}
+
+	ctx = &dctx->ctx;
+	pre_jobid = atomic_read(&ctx->job_serial) + 1;
 
 	mml_trace_begin("%s_%u_%u", __func__, pre_jobid, disp_fid);
 

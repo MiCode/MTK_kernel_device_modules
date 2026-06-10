@@ -858,9 +858,12 @@ static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, cha
 			xgf_attr_iter.mode = 1;
 			xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
 			xgf_attr_iter.bufid = scroll_policy_info.final_bufID_arr[i];
-			xgf_attr_iter.calculate_dep_enable = 1;
 			xgf_attr_iter.ts = sbe_get_time();
-			fpsgo_other2xgf_set_attr(1, &xgf_attr_iter);
+			fpsgo_other2xgf_get_attr(&xgf_attr_iter);
+			if (thr)
+				thr->calculate_dep_enable_saved = xgf_attr_iter.calculate_dep_enable;
+			xgf_attr_iter.calculate_dep_enable = 1;
+			fpsgo_other2xgf_set_attr(&xgf_attr_iter);
 
 			memset(&attr_iter, 0, sizeof(struct fpsgo_boost_attr));
 			attr_iter.aa_enable_by_pid = 1;
@@ -874,7 +877,10 @@ static int sbe_do_webview_notify_fpsgo_ctrl(int tgid, char *name, int start, cha
 			xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
 			xgf_attr_iter.bufid = scroll_policy_info.final_bufID_arr[i];
 			xgf_attr_iter.ts = sbe_get_time();
-			fpsgo_other2xgf_set_attr(0, &xgf_attr_iter);
+			fpsgo_other2xgf_get_attr(&xgf_attr_iter);
+			if (thr)
+				xgf_attr_iter.calculate_dep_enable = thr->calculate_dep_enable_saved;
+			fpsgo_other2xgf_set_attr(&xgf_attr_iter);
 			set_fpsgo_attr(1, scroll_policy_info.final_pid_arr[i], 0, &attr_iter);
 
 			/*
@@ -1053,6 +1059,7 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 
 	sbe_force_reset_dptv2_policy();
 
+
 	if (num < 0 || num >= FPSGO_MAX_RENDER_INFO_SIZE
 		|| specific_name == NULL || tgid <= 0 || name == NULL) {
 		ret = SBE_INPUT_ERROR;
@@ -1190,9 +1197,12 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 			xgf_attr_iter.mode = 1;
 			xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
 			xgf_attr_iter.bufid = scroll_policy_info.final_bufID_arr[i];
-			xgf_attr_iter.calculate_dep_enable = 1;
 			xgf_attr_iter.ts = sbe_get_time();
-			fpsgo_other2xgf_set_attr(1, &xgf_attr_iter);
+			fpsgo_other2xgf_get_attr(&xgf_attr_iter);
+			if (thr)
+				thr->calculate_dep_enable_saved = xgf_attr_iter.calculate_dep_enable;
+			xgf_attr_iter.calculate_dep_enable = 1;
+			fpsgo_other2xgf_set_attr(&xgf_attr_iter);
 
 			if (get_sbe_extra_sub_en_deque_enable()) {
 				memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
@@ -1200,10 +1210,13 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 				xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
 				xgf_attr_iter.bufid = SBE_HWUI_BUFFER_ID;
 				xgf_attr_iter.ts = sbe_get_time();
+				fpsgo_other2xgf_get_attr(&xgf_attr_iter);
+				if (thr)
+					thr->xgf_extra_sub_saved = xgf_attr_iter.xgf_extra_sub;
 				xgf_attr_iter.xgf_extra_sub = 1;
 				sbe_trace("xgf_extra_sub enable: pid = %d, buffer_id: 0x%llx ",
-					xgf_attr_iter.pid, xgf_attr_iter.bufid);
-				fpsgo_other2xgf_set_attr(1, &xgf_attr_iter);
+				xgf_attr_iter.pid, xgf_attr_iter.bufid);
+				fpsgo_other2xgf_set_attr(&xgf_attr_iter);
 			}
 
 			memset(&attr_iter, 0, sizeof(struct fpsgo_boost_attr));
@@ -1237,7 +1250,10 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 			xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
 			xgf_attr_iter.bufid = scroll_policy_info.final_bufID_arr[i];
 			xgf_attr_iter.ts = sbe_get_time();
-			fpsgo_other2xgf_set_attr(0, &xgf_attr_iter);
+			fpsgo_other2xgf_get_attr(&xgf_attr_iter);
+			if (thr)
+				xgf_attr_iter.calculate_dep_enable = thr->calculate_dep_enable_saved;
+			fpsgo_other2xgf_set_attr(&xgf_attr_iter);
 
 			if (get_sbe_extra_sub_en_deque_enable()) {
 				memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
@@ -1245,10 +1261,12 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 				xgf_attr_iter.pid = scroll_policy_info.final_pid_arr[i];
 				xgf_attr_iter.bufid = SBE_HWUI_BUFFER_ID;
 				xgf_attr_iter.ts = sbe_get_time();
-				xgf_attr_iter.xgf_extra_sub = 0;
+				fpsgo_other2xgf_get_attr(&xgf_attr_iter);
+				if (thr)
+					xgf_attr_iter.xgf_extra_sub = thr->xgf_extra_sub_saved;
 				sbe_trace("xgf_extra_sub disable: pid = %d, buffer_id: 0x%llx ",
-					xgf_attr_iter.pid, xgf_attr_iter.bufid);
-				fpsgo_other2xgf_set_attr(0, &xgf_attr_iter);
+				xgf_attr_iter.pid, xgf_attr_iter.bufid);
+				fpsgo_other2xgf_set_attr(&xgf_attr_iter);
 			}
 
 			memset(&attr_iter, 0, sizeof(struct fpsgo_boost_attr));
@@ -1314,6 +1332,64 @@ static int sbe_do_hwui_scrolling_status_policy(int tgid, char *name, unsigned lo
 	return ret;
 }
 
+static void scroll_force_update_xgf_by_tgid(int tgid, int start)
+{
+	struct xgf_policy_cmd xgf_attr_iter;
+	struct sbe_info *s_info;
+
+	sbe_get_tree_lock(__func__);
+	s_info = sbe_get_info(tgid, 1);
+	if (!s_info) {
+		sbe_put_tree_lock(__func__);
+		return;
+	}
+
+	if (start) {
+		/* Only trigger once for multiple start calls */
+		if (s_info->xgf_force_update_started) {
+			sbe_put_tree_lock(__func__);
+			return;
+		}
+
+		memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
+		xgf_attr_iter.mode = 0;
+		xgf_attr_iter.tgid = tgid;
+		xgf_attr_iter.ts = sbe_get_time();
+		fpsgo_other2xgf_get_attr(&xgf_attr_iter);
+		s_info->filter_dep_task_enable_saved = xgf_attr_iter.filter_dep_task_enable;
+		sbe_trace("[SBE] %s ori filter_dep_task_enable %d ", __func__,
+			s_info->filter_dep_task_enable_saved);
+		xgf_attr_iter.filter_dep_task_enable = 11;
+		fpsgo_other2xgf_set_attr(&xgf_attr_iter);
+		s_info->xgf_force_update_started = 1;
+		sbe_trace("[SBE] %s start rt %d ", __func__, start);
+        sbe_systrace_c(tgid, 0, 1, "[SBE]sbe_set_dep_task");
+	} else {
+		/* Only trigger stop if start was called before */
+		if (!s_info->xgf_force_update_started) {
+			sbe_put_tree_lock(__func__);
+			return;
+		}
+
+		memset(&xgf_attr_iter, 0, sizeof(struct xgf_policy_cmd));
+		xgf_attr_iter.mode = 0;
+		xgf_attr_iter.tgid = tgid;
+		xgf_attr_iter.ts = sbe_get_time();
+		fpsgo_other2xgf_get_attr(&xgf_attr_iter);
+		xgf_attr_iter.filter_dep_task_enable = s_info->filter_dep_task_enable_saved;
+		sbe_trace("[SBE] %s ema2:%d flt_dep:%d calc_dep:%d xgf_sub:%d", __func__,
+			xgf_attr_iter.ema2_enable, xgf_attr_iter.filter_dep_task_enable,
+			xgf_attr_iter.calculate_dep_enable, xgf_attr_iter.xgf_extra_sub);
+
+		fpsgo_other2xgf_set_attr(&xgf_attr_iter);
+		s_info->xgf_force_update_started = 0;		
+		sbe_trace("[SBE] %s stop rt %d ", __func__, start);
+        sbe_systrace_c(tgid, 0, 0, "[SBE]sbe_set_dep_task");
+	}
+
+	sbe_put_tree_lock(__func__);
+}
+
 static int sbe_set_scroll_policy(int tgid, char *name, unsigned long mask,
 				unsigned long long ts, int start,
 				char *specific_name, int num)
@@ -1346,6 +1422,7 @@ static int sbe_set_scroll_policy(int tgid, char *name, unsigned long mask,
 
 	if (IS_BIT_SET(mask, SBE_CPU_CONTROL)) {
 		ret = sbe_do_webview_notify_fpsgo_ctrl(tgid, name, start, specific_name, num, ts, mask);
+		scroll_force_update_xgf_by_tgid(tgid, start);
 		sbe_trace("[SBE] %s webview notify fpsgo ctrl start: %d, ret = %d", __func__, start, ret);
 	}
 
@@ -1361,6 +1438,7 @@ static int sbe_set_scroll_policy(int tgid, char *name, unsigned long mask,
 
 	if (IS_BIT_SET(mask, SBE_HWUI)) {
 		ret = sbe_do_hwui_scrolling_status_policy(tgid, name, mask, ts, start, specific_name, num);
+		scroll_force_update_xgf_by_tgid(tgid, start);
 		sbe_trace("[SBE] %s hwui scrolling status policy: %d, mask:%lx, start:%d, s_name:%s, num:%d, ret:%d",
 			__func__, tgid, mask, start, specific_name, num, ret);
 	}

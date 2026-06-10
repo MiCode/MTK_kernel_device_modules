@@ -883,6 +883,15 @@ static void handle_sleep_initiate_state(struct kbase_device *kbdev)
 		 */
 		if (!kbase_csf_global_request_complete(kbdev, GLB_REQ_IDLE_DISABLE_MASK))
 			return;
+
+#if IS_ENABLED(CONFIG_MALI_MTK_LOG_BUFFER)
+		mtk_logbuffer_type_print(kbdev, MTK_LOGBUFFER_TYPE_CRITICAL | MTK_LOGBUFFER_TYPE_EXCEPTION,
+			"Check log (%d %d %d)\n",
+					atomic_read(&kbdev->csf.scheduler.gpu_idle_timer_enabled),
+					atomic_read(&kbdev->csf.scheduler.fw_soi_enabled),
+					test_bit(KBASE_GPU_SUPPORTS_FW_SLEEP_ON_IDLE, &backend->gpu_sleep_allowed));
+#endif /* IS_ENABLED(CONFIG_MALI_MTK_LOG_BUFFER) */
+		goto pend_soi_sleep;
 	}
 
 	/* SoI is disabled or unsupported, so send a sleep request to FW.*/

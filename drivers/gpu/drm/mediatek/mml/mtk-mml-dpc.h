@@ -44,6 +44,7 @@ void mml_dpc_srt_bw_set(u32 larb_idx, const u32 bw_in_mb, bool force_keep);
 void mml_dpc_dvfs_set(const u8 level, bool force);
 void mml_dpc_dvfs_trigger(void);
 void mml_dpc_channel_bw_set_by_idx(u32 larb_idx, u32 bw, bool hrt);
+void mml_dpc_channel_bw_set_by_idx_stash(u32 larb_idx, u32 bw, bool hrt);
 void mml_dpc_channel_bw_set(u32 sysid, u32 bw);
 void mml_dpc_dump(void);
 

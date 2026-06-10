@@ -47,6 +47,12 @@ enum mtk_vidle_hint_type {
 	VIDLE_HINT_MMDVFS_DISABLE,
 	VIDLE_HINT_VDO_MODE_SWITCH_START,
 	VIDLE_HINT_VDO_MODE_SWITCH_DONE,
+#ifdef CONFIG_MI_DISP
+	VIDLE_HINT_AOD_ON,
+	VIDLE_HINT_AOD_OFF,
+	VIDLE_HINT_CLOUD_CONTROL_ON,
+	VIDLE_HINT_CLOUD_CONTROL_OFF,
+#endif
 };
 
 struct mtk_vidle_hint {
@@ -59,6 +65,10 @@ struct mtk_vidle_hint {
 	u8 hsidle_fuse;			/* 0: okay, or +1 by enter hs idle */
 	u8 vdo_vblank_fuse;		/* 0: okay, or +1 by vdo panel vblank too short */
 	u8 mmdvfs_disabled;		/* 0: okay, or +1 by mmdvfs not ready */
+#ifdef CONFIG_MI_DISP
+	u8 aod_fuse;			/* 0: okay, 1: bypass */
+	u8 cloud_control_fuse;		/* 0: okay, 1: bypass */
+#endif
 };
 
 struct mtk_disp_dpc_data {

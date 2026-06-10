@@ -15,18 +15,18 @@
 };
 
 &ise_lpm {
-	ise-wakelock = <1>;
-	ise-lpm-freerun = <1>;
+	ise-wakelock = <0>;
+	ise-lpm-freerun = <0>;
 	ise-lpm-deinit-bypass = <0>;
-	ise-lpm-vote-dram = <1>;
+	ise-lpm-vote-dram = <0>;
 };
 
 &ise_mbox {
-	mediatek,real-drv = <1>;
+	mediatek,real-drv = <0>;
 };
 
 &ise_trusty {
-	mediatek,real-drv = <1>;
+	mediatek,real-drv = <0>;
 };
 
 &pio {
@@ -425,6 +425,7 @@
 	};
 };
 
+#if 0
 &scp_i2c1 {
 	clock-frequency = <1000000>;
 	#address-cells = <1>;
@@ -513,6 +514,7 @@
 		};
 	};
 };
+#endif
 
 &pio {
 	codec_en_off: codec-en-off {

@@ -847,7 +847,7 @@ void battery_update(struct mtk_battery_manager *bm)
 		bat_data->bat_batt_temp = bm->gm1->battery_temp;
 	}
 
-	bat_data->bat_technology = POWER_SUPPLY_TECHNOLOGY_LION;
+	bat_data->bat_technology = POWER_SUPPLY_TECHNOLOGY_LIPO;
 	bat_data->bat_health = POWER_SUPPLY_HEALTH_GOOD;
 	bat_data->bat_present = 1;
 

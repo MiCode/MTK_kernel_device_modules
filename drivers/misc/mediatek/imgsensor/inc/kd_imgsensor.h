@@ -123,6 +123,16 @@
 /************************************************************************
  *
  ************************************************************************/
+/*aristotle*/
+#define ARISTOTLEIMX707_SENSOR_ID                   0x0707
+#define SENSOR_DRVNAME_ARISTOTLEIMX707_MIPI_RAW     "aristotleimx707_mipi_raw"
+#define ARISTOTLEOV13B10_SENSOR_ID                  0x0D42
+#define SENSOR_DRVNAME_ARISTOTLEOV13B10_MIPI_RAW    "aristotleov13b10_mipi_raw"
+#define ARISTOTLEIMX596_SENSOR_ID                   0x0596
+#define SENSOR_DRVNAME_ARISTOTLEIMX596_MIPI_RAW     "aristotleimx596_mipi_raw"
+#define ARISTOTLEOV50D_SENSOR_ID                    0x5044
+#define SENSOR_DRVNAME_ARISTOTLEOV50D_MIPI_RAW      "aristotleov50d_mipi_raw"
+
 #define HI1339_SENSOR_ID                          0x1339
 #define SENSOR_DRVNAME_HI1339_MIPI_RAW            "hi1339_mipi_raw"
 #define SENSOR_DRVNAME_HI1339SUBTXD_MIPI_RAW      "hi1339subtxd_mipi_raw"
@@ -724,6 +734,44 @@
 #define IMX866RGB_I3C_PID							0x036008660000
 #define S5KHP9SP_I3C_PID							0x02161b730000
 
+/*XIAOMI ADD START*/
+#define WARHOLS5KJN5TELE_SENSOR_ID                 0x38E5
+#define SENSOR_DRVNAME_WARHOLS5KJN5TELE_MIPI_RAW  "warhols5kjn5tele_mipi_raw"
+
+#define WARHOLOV13BULTRA_SENSOR_ID                  0x0D43
+#define SENSOR_DRVNAME_WARHOLOV13BULTRA_MIPI_RAW   "warholov13bultra_mipi_raw"
+
+#define WARHOLOVX9500WIDE_SENSOR_ID                  0x5650
+#define SENSOR_DRVNAME_WARHOLOVX9500WIDE_MIPI_RAW   "warholovx9500wide_mipi_raw"
+
+#define WARHOLS5KKDSFRONT_SENSOR_ID                  0x484F
+#define SENSOR_DRVNAME_WARHOLS5KKDSFRONT_MIPI_RAW   "warhols5kkdsfront_mipi_raw"
+
+#define PRAGUEOVX8000WIDE_SENSOR_ID                  0x5651 //id duplication(original id + 1)
+#define SENSOR_DRVNAME_PRAGUEOVX8000WIDE_MIPI_RAW   "pragueovx8000wide_mipi_raw"
+
+#define PRAGUEOV20BFRONT_SENSOR_ID                  0x2042
+#define SENSOR_DRVNAME_PRAGUEOV20BFRONT_MIPI_RAW   "pragueov20bfront_mipi_raw"
+
+#define PRAGUEGC08A8ULTRA_SENSOR_ID                 0x08A8
+#define SENSOR_DRVNAME_PRAGUEGC08A8ULTRA_MIPI_RAW  "praguegc08a8ultra_mipi_raw"
+
+#define YILIOV08F10FRONT_SENSOR_ID                 0x5609
+#define SENSOR_DRVNAME_YILIOV08F10FRONT_MIPI_RAW  "yiliov08f10front_mipi_raw"
+
+#define YILIOV13B10WIDE_SENSOR_ID                  0x0D42
+#define SENSOR_DRVNAME_YILIOV13B10WIDE_MIPI_RAW   "yiliov13b10wide_mipi_raw"
+
+/*CHICAGO START*/
+#define CHICAGOS5KHP5WIDE_SENSOR_ID                  0x1B75
+#define SENSOR_DRVNAME_CHICAGOS5KHP5WIDE_MIPI_RAW    "chicagos5khp5wide_mipi_raw"
+#define CHICAGOS5KKDSFRONT_SENSOR_ID                 0x4850
+#define SENSOR_DRVNAME_CHICAGOS5KKDSFRONT_MIPI_RAW   "chicagos5kkdsfront_mipi_raw"
+#define CHICAGOOV08F10ULTRA_SENSOR_ID                0x5608
+#define SENSOR_DRVNAME_CHICAGOOV08F10ULTRA_MIPI_RAW  "chicagoov08f10ultra_mipi_raw"
+/*CHICAGO END*/
+
+/*XIAOMI ADD END*/
 
 /************************************
  * ADD I3C SENSOR To TABLE

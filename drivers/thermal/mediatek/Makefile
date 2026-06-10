@@ -35,3 +35,5 @@ obj-$(CONFIG_MTK_THERMAL_IPI)	+= thermal_ipi.o
 #obj-$(CONFIG_MTK_VTSKIN_THERMAL)	+= vtskin_temp.o
 
 obj-$(CONFIG_MTK_FAN_THERMAL) += fan_cooling.o
+
+obj-$(CONFIG_MTK_CPU_ISOLATE_THERMAL) += cpu_isolate_cooling.o

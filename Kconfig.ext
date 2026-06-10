@@ -44,6 +44,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/pinctrl/mediatek/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/power/mca/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)drivers/rtc/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/remoteproc/Kconfig"
@@ -102,6 +104,8 @@ source "$(KCONFIG_EXT_PREFIX)drivers/devfreq/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)drivers/misc/mediatek/Kconfig"
 
+source "$(KCONFIG_EXT_PREFIX)drivers/misc/xiaomi/Kconfig"
+
 source "$(KCONFIG_EXT_PREFIX)sound/soc/codecs/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)sound/soc/mediatek/Kconfig"
@@ -133,3 +137,5 @@ source "$(KCONFIG_EXT_PREFIX)/drivers/video/backlight/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/hooks/geniezone_vendor_hooks/Kconfig"
 
 source "$(KCONFIG_EXT_PREFIX)/drivers/trusty/Kconfig"
+
+

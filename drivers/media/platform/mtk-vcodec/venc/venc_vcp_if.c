@@ -697,6 +697,12 @@ int vcp_enc_ipi_handler(void *arg)
 			goto return_venc_ipi_ack;
 		}
 		case VCU_IPIMSG_ENC_SET_PARAM_DONE:
+			// check venc set param status
+			if (msg->status != VENC_IPI_MSG_STATUS_OK) {
+				vcu->failure = msg->status;
+				mtk_v4l2_err("VCU_IPIMSG_ENC_SET_PARAM_DONE return error status %d\n", vcu->failure);
+			}
+			goto return_venc_ipi_ack;
 		case VCU_IPIMSG_ENC_ENCODE_DONE:
 		case VCU_IPIMSG_ENC_DEINIT_DONE:
 		case VCU_IPIMSG_ENC_BACKUP_DONE:

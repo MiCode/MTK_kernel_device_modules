@@ -2043,6 +2043,7 @@ void scp_reset_wait_timeout(void)
 	c0 = readl(SCP_GPR_CORE0_REBOOT);
 	c1 = scpreg.core_nums == 2 ? readl(SCP_GPR_CORE1_REBOOT) :
 			CORE_RDY_TO_REBOOT;
+	pr_notice("[SCP] %s() clk[0x21000]: 0x%08x\n", __func__, readl(scpreg.clkctrl));
 	pr_notice("[SCP] %s() SCP GPR in wfi c0:%lx c1:%lx, sap:%d\n",
 		__func__, c0, c1, is_sap_ready_to_reboot());
 	pr_notice("[SCP] %s() SCP core status c0:%x c1:%x sap:%x\n", __func__, core0_halt, core1_halt, sap_halt);

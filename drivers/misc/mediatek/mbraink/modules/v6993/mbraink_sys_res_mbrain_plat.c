@@ -344,7 +344,7 @@ static int mbraink_get_over_threshold_num(void *address, uint32_t size,
 
 		if (k >= threshold_num) {
 			ret = -1;
-			pr_info("[Mbraink][SPM] number of threshold is error\n");
+			//pr_info("[Mbraink][SPM] number of threshold is error\n");
 			break;
 		}
 

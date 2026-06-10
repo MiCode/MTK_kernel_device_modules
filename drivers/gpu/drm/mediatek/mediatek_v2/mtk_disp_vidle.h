@@ -54,6 +54,12 @@ enum mtk_vidle_hint_type {
 	VIDLE_HINT_TUI_OFF,
 	VIDLE_HINT_HSIDLE_ENTER,
 	VIDLE_HINT_HSIDLE_LEAVE,
+#ifdef CONFIG_MI_DISP
+	VIDLE_HINT_AOD_ON,
+	VIDLE_HINT_AOD_OFF,
+	VIDLE_HINT_CLOUD_CONTROL_ON,
+	VIDLE_HINT_CLOUD_CONTROL_OFF,
+#endif
 	VIDLE_HINT_FORCE_CONFIG,
 };
 
@@ -65,6 +71,10 @@ struct mtk_vidle_hint {
 	u8 crtc_fuse;			/* 0: okay, or +1 by others(multi crtc, DP, ...) */
 	u8 tui_fuse;			/* 0: okay, or +1 by enter tui */
 	u8 hsidle_fuse;			/* 0: okay, or +1 by enter hs idle */
+#ifdef CONFIG_MI_DISP
+	u8 aod_fuse;			/* 0: okay, 1: bypass */
+	u8 cloud_control_fuse;		/* 0: okay, 1: bypass */
+#endif
 };
 
 struct mtk_disp_dpc_data {

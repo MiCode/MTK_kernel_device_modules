@@ -386,12 +386,24 @@ EXPORT_SYMBOL(flt_get_grp_weight);
 
 int flt_set_grp_weight(int set)
 {
+	int ret = 0;
+
 	if (unlikely(flt_get_mode() == FLT_MODE_0))
 		return -1;
-	else if (flt_class_mode && flt_class_mode->flt_set_grp_weight_api)
-		return flt_class_mode->flt_set_grp_weight_api(set);
-	else
-		return -1;
+
+	if (!flt_class_mode)
+		return -2;
+
+	if (!flt_class_mode->flt_set_grp_weight_api)
+		return -3;
+
+	ret = flt_class_mode->flt_set_grp_weight_api(set);
+	if (ret) {
+		pr_err("migt flt_set_grp_weight ret=%d set=%d\n", ret, set);
+		return -4;
+	}
+
+	return ret;
 }
 EXPORT_SYMBOL(flt_set_grp_weight);
 

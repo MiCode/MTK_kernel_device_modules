@@ -38,6 +38,9 @@
 typedef void (*hang_dump_cb)(const char *fmt, ...);
 extern hang_dump_cb hang_dump_proc;
 
+typedef int (*is_mtk_heap_dmabuf_cb)(const struct dma_buf *dmabuf);
+extern is_mtk_heap_dmabuf_cb is_sec_heap_dmabuf;
+
 typedef int (*mtk_refill_order_cb)(unsigned int order, int value);
 
 typedef void (*dmabuf_rbtree_dump_cb)(u64 tab_id, u32 dom_id);

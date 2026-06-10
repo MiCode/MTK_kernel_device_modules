@@ -197,6 +197,16 @@ config SND_SOC_MT6368_ACCDET
 	  detection mechanism. Select N if you don't
 	  have jack on board.
 
+# et7480 type-c switch device configuration
+config USB_SWITCH_ET7480
+	tristate "TYPE-C switch for MediaTek MT6368 ACCDET driver"
+	depends on I2C
+	help
+	  TYPE-C switch for ACCDET means Accessory Detection technology,
+	  MediaTek develop it for ASoC codec soc-jack
+	  detection mechanism. Select N if you don't
+	  have jack on board.
+
 config SND_SOC_MT6369_ACCDET
 	tristate "MediaTek MT6369 ACCDET driver"
 	depends on MFD_MTK_SPMI_PMIC
@@ -238,6 +248,18 @@ config SND_SOC_HFDA80X
 	  Config of hfda80x. It is a Smart amplifier
 	  It would be set to yes if device with HFDA801/HFDA803 on it.
 
+config SND_SMARTPA_AW882XX
+	tristate "SoC Audio for awinic aw882xx series"
+	depends on I2C
+	help
+	  This option enables support for aw882xx series Smart PA.
+
+config SND_SMARTPA_AW882XX_GPIO_CONFIG
+	tristate "GPIO configuration for awinic aw882xx series"
+	depends on I2C && SND_SMARTPA_AW882XX
+	help
+	  This option provides GPIO configuration support for aw882xx series Smart PA.
+
 config SND_SOC_ES8311_AUTO
 	tristate "EVEREST ES8311 CODEC driver"
 	depends on I2C
@@ -253,6 +275,15 @@ config SND_SOC_AW85601
 	  Config of AW85601.
 	  It would be set to yes if device with AW85601 on it.
 	  Select N if you don't have AW85601 on board.
+
+config SND_SOC_SIA91XX
+	tristate "SoC Audio for awinic SIA91XX Smart K PA"
+	depends on I2C
+	help
+	  Config of SIA91XX. It is a Smart power amplifier which contain speaker protection.
+	  This option enables support for SIA91XX Smart K PA.
+	  It would be set to yes if device with SIA91XX on it.
+	  Select this if your SIA91XX is connected via an I2S bus.
 
 config SND_SOC_AW836XX
 	tristate "SoC Audio for awinic AW836XX Smart K PA"

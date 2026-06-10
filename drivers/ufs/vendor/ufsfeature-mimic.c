@@ -2,7 +2,6 @@
 /*
  * Samsung UFS Feaature Mimic for android12-5.10
  */
-
 #include "ufshcd.h"
 #include "ufshcd-crypto.h"
 #include "ufsfeature.h"

@@ -62,6 +62,9 @@ define_mgk_ddk_ko(
     copts = [
         "-I$(srctree)/drivers/misc/mediatek/flashlight",
     ],
+    local_defines = [
+        "__XIAOMI_CAMERA__",
+    ],
 )
 
 ddk_headers(

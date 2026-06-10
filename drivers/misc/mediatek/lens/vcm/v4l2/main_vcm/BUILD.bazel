@@ -14,4 +14,7 @@ define_mgk_ddk_ko(
     copts = [
         "-I$(srctree)/drivers/misc/mediatek/lens",
     ],
+    local_defines = [
+		"__XIAOMI_CAMERA__",
+    ],
 )

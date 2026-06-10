@@ -324,6 +324,47 @@ static bool dpm_build_request_info_pdo(
 	return max_uw >= 0;
 }
 
+static void dpm_check_adapter_power_decrease(struct pd_port *pd_port)
+{
+	int i, cur_pos;
+	struct pd_port_power_caps *src_cap = &pd_port->pe_data.remote_src_cap;
+	struct dpm_pdo_info_t *last;
+	struct dpm_pdo_info_t source[PDO_MAX_NR];
+
+	if (src_cap->nr > PDO_MAX_NR) {
+		pd_port->direct_cap_change_active = false;
+		DPM_INFO("src cap nr invalid, nr = %d\n", src_cap->nr);
+		return;
+	}
+	if (pd_port->last_changed_cap.nr != src_cap->nr) {
+		pd_port->direct_cap_change_active = false;
+		DPM_INFO("last nr = %d, cur nr = %d\n", pd_port->last_changed_cap.nr, src_cap->nr);
+	} else {
+		pd_port->direct_cap_change_active = true;
+		for (i = 0; i < src_cap->nr; i++) {
+			dpm_extract_pdo_info(src_cap->pdos[i], &(source[i]));
+			last = &(pd_port->last_changed_cap.pdo_info[i]);
+			DPM_INFO("last%d: type=%d vmin=%d vmax=%d ma=%d\n", i, last->type, last->vmin, last->vmax, last->ma);
+			DPM_INFO("src%d: type=%d vmin=%d vmax=%d ma=%d\n", i, source[i].type, source[i].vmin, source[i].vmax, source[i].ma);
+			if (last->type != source[i].type || last->vmin != source[i].vmin ||
+				last->vmax != source[i].vmax || last->ma < source[i].ma) {
+				pd_port->direct_cap_change_active = false;
+				break;
+			}
+		}
+		cur_pos = pd_port->pe_data.selected_cap - 1;
+		DPM_INFO("cur_pos = %d\n", cur_pos);
+		if (pd_port->direct_cap_change_active && pd_port->last_changed_cap.pdo_info[cur_pos].ma > source[cur_pos].ma)
+			pd_port->direct_cap_change_active = true;
+		else
+			pd_port->direct_cap_change_active = false;
+	}
+	pd_port->last_changed_cap.nr = src_cap->nr;
+	for (i = 0; i < src_cap->nr; i++)
+		dpm_extract_pdo_info(src_cap->pdos[i], &(pd_port->last_changed_cap.pdo_info[i]));
+	DPM_INFO("direct_cap_change_active=%d\n", pd_port->direct_cap_change_active);
+}
+
 static bool dpm_build_request_info(
 		struct pd_port *pd_port, struct dpm_rdo_info_t *req_info)
 {
@@ -342,6 +383,18 @@ static bool dpm_build_request_info(
 
 	if (pd_event_data_msg_match(pd_event, PD_DATA_SOURCE_CAP) &&
 		pd_port->pe_data.explicit_contract) {
+		if (pd_port->direct_cap_change_support) {
+			if (pd_port->last_changed_cap.nr == 0) {
+				pd_port->direct_cap_change_active = false;
+				if (src_cap->nr <= PDO_MAX_NR) {
+					pd_port->last_changed_cap.nr = src_cap->nr;
+					for (i = 0; i < src_cap->nr; i++)
+						dpm_extract_pdo_info(src_cap->pdos[i], &(pd_port->last_changed_cap.pdo_info[i]));
+					DPM_INFO("last changed cap init\n");
+				}
+			} else if (pd_port->adapter_support_dcc)
+				dpm_check_adapter_power_decrease(pd_port);
+		}
 		pd_update_connect_state(pd_port, PD_CONNECT_NEW_SRC_CAP);
 		if (dpm_build_request_info_with_new_src_cap(
 				pd_port, req_info, src_cap, policy))

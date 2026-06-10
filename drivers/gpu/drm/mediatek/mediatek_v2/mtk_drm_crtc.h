@@ -33,6 +33,9 @@
 #include "slbc_ops.h"
 #include "mtk_disp_pq_helper.h"
 #include "mtk_disp_dbgtp.h"
+#ifdef CONFIG_MI_DISP
+#include "mi_disp/mi_disp_esd_check.h"
+#endif
 
 #if IS_ENABLED(CONFIG_ARM64)
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO_YCT)
@@ -85,6 +88,7 @@
 
 #define HBM_BYPASS_PQ 0x10000
 #define DOZE_BYPASS_PQ 0x1
+#define ESD_TRIGGERED_BY_CMDQ_TIMEOUT 2
 
 struct mtk_fence_info;
 
@@ -605,6 +609,11 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_COLOR_TRANSFORM,
 	CRTC_PROP_USER_SCEN,
 	CRTC_PROP_HDR_ENABLE,
+#ifdef CONFIG_MI_DISP
+#ifdef CONFIG_VIS_DISPLAY_V2_D2
+	CRTC_PROP_EXT_MV,
+#endif
+#endif
 	/*Msync 2.0*/
 	CRTC_PROP_MSYNC2_0_ENABLE,
 	CRTC_PROP_EPT,
@@ -623,6 +632,10 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_DBI_COUNT_BLOCK_H,
 	CRTC_PROP_DBI_COUNT_BLOCK_V,
 	CRTC_PROP_DBI_COUNT_FENCE_IDX,
+#ifdef CONFIG_MI_DISP_FOD_SYNC
+	/*MI FOD SYNC*/
+	CRTC_PROP_MI_FOD_SYNC_INFO,
+#endif
 	CRTC_PROP_STYLUS,
 	CRTC_PROP_MAX,
 };
@@ -1076,6 +1089,7 @@ struct mtk_bif_info {
 	int wb_frame_done_event;
 	int wdma_offset;
 	enum BIF_STAGE stage;
+	u32 mml_dl_lye;
 	bool sram_en;
 	u64 sram_pa;
 	u64 sram_size;
@@ -1513,6 +1527,10 @@ struct mtk_drm_crtc {
 	bool capturing;
 	bool recovery_flg;
 
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+	struct mi_esd_ctx *mi_esd_ctx;
+#endif
+
 	int dli_relay_1tnp;
 
 	unsigned int total_srt;
@@ -1577,7 +1595,13 @@ struct mtk_drm_crtc {
 
 	int bg_bld_id;
 	unsigned int bg_code;
-
+#ifdef CONFIG_MI_DISP
+	/* 0: no aod layer; 1: has aod layer */
+	int has_aod_layer;
+	/* 0: aod layer not changed; 1: aod layer changed(enter or leave aod) */
+	int aod_layer_changed;
+	bool doze_into_suspend;
+#endif
 	/* bif data */
 	struct mtk_bif_info *bif_info;
 	bool is_frame_trigger_mode;
@@ -2071,4 +2095,9 @@ struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn_dual(struct drm_crtc *crtc, e
 enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state);
 void mtk_crtc_reset_ovlsys_dli(struct drm_crtc *crtc,  struct cmdq_pkt *cmdq_handle);
 #endif /* MTK_DRM_CRTC_H */
+#ifdef CONFIG_MI_DISP
+#ifdef CONFIG_VIS_DISPLAY_V2_D2
+void mtk_crtc_extmv_notify(struct mtk_drm_crtc *mtk_crtc);
+#endif
+#endif
 bool mtk_crtc_is_dual_pipe(struct drm_crtc *crtc);

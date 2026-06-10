@@ -17,6 +17,7 @@
 unsigned int (*grp_cal_rat)(unsigned long long x, unsigned long long y);
 EXPORT_SYMBOL(grp_cal_rat);
 #endif
+
 const char *task_event_names[] = {
 	"PUT_PREV_TASK",
 	"PICK_NEXT_TASK",
@@ -880,6 +881,7 @@ static void flt_update_task_ravg(struct task_struct *p, struct rq *rq, int event
 	update_task_demand(p, rq, event, wallclock);
 	irq_log_store();
 	update_cpu_busy_time(p, rq, event, wallclock, irqtime);
+
 done:
 	fts->last_update_time += delta << 10;
 	fts->mark_start = wallclock;

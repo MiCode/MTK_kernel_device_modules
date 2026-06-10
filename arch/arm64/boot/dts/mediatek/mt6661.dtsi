@@ -105,7 +105,7 @@
 			};
 
 			home {
-				linux,keycodes = <115>;
+				linux,keycodes = <114>;
 			};
 		};
 
@@ -204,6 +204,7 @@
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
 				regulator-allow-set-load;
+				regulator-always-on;
 			};
 			mt6661_4_ln60_5: mt6661-4-ln60-5 {
 				regulator-compatible = "LN60_5";
@@ -272,6 +273,7 @@
 				regulator-max-microvolt = <2090000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
 			};
 			mt6661_4_ld20_1_eint_high: mt6661-4-ld20-1-eint-high {
 				regulator-compatible = "LD20_1_EINT_HIGH";
@@ -528,6 +530,7 @@
 				regulator-max-microvolt = <2090000>;
 				regulator-enable-ramp-delay = <200>;
 				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
 			};
 			mt6661_3_ln60_6: mt6661-3-ln60-6 {
 				regulator-compatible = "LN60_6";

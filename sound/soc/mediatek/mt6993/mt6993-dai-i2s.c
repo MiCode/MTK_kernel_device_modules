@@ -2629,18 +2629,10 @@ static int mtk_i2s_en_event(struct snd_soc_dapm_widget *w,
 
 	switch (event) {
 	case SND_SOC_DAPM_PRE_PMU:
-		if (i2s_priv->vlp_domain == 0)
-			/* set audio Vcore request before AUD_1/AUD_2 select to apll for mt6993 bug */
-			regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
-					   AFE_VCORE_REQ_MASK_SFT, 0x1 << AFE_VCORE_REQ_SFT);
 		mt6993_afe_gpio_request(afe, true, i2s_priv->id, 0);
 		break;
 	case SND_SOC_DAPM_POST_PMD:
 		mt6993_afe_gpio_request(afe, false, i2s_priv->id, 0);
-		if (i2s_priv->vlp_domain == 0)
-			/* release audio Vcore request before AUD_1/AUD_2 select to 26M */
-			regmap_update_bits(afe->regmap, AFE_SPM_CONTROL_REQ,
-					   AFE_VCORE_REQ_MASK_SFT, 0x0 << AFE_VCORE_REQ_SFT);
 		break;
 	default:
 		break;
@@ -3109,6 +3101,10 @@ static const struct snd_soc_dapm_widget mtk_dai_i2s_widgets[] = {
 			      mtk_apll_event,
 			      SND_SOC_DAPM_PRE_PMU | SND_SOC_DAPM_POST_PMD),
 
+	/* vcore */
+	SND_SOC_DAPM_SUPPLY_S("VCORE_REQ", SUPPLY_SEQ_APLL,
+			      AFE_SPM_CONTROL_REQ, AFE_VCORE_REQ_SFT, 0,
+			      NULL, 0),
 	SND_SOC_DAPM_INPUT("PLAYBACK_DUMMY"),
 	SND_SOC_DAPM_MUX("PLAYBACK_DUMMY_TO_I2SOUT4_Mux",
 			 SND_SOC_NOPM, 0, 0, &playback_dummy_to_i2sout4_mux_control),
@@ -3287,6 +3283,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"Connsys I2S", NULL, "CONNSYS"},
 
 	/* i2sin0 */
+	{"I2SIN0", NULL, "VCORE_REQ"},
 	{"I2SIN0", NULL, "I2SIN0_GPIO"},
 	{"I2SIN0", NULL, "I2SIN0_EN"},
 	{"I2SIN0", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
@@ -3339,6 +3336,9 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SIN0", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SIN0_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SIN0_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	/* set audio Vcore request before AUD_1/AUD_2 select to apll for mt6993 bug */
+	/* releae audio Vcore request after AUD_1/AUD_2 select to 26M */
+	{I2SIN0_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sin1 */
 	{"I2SIN1", NULL, "I2SIN1_GPIO"},
@@ -3393,8 +3393,10 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SIN1", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SIN1_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SIN1_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SIN1_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sin2 */
+	{"I2SIN2", NULL, "VCORE_REQ"},
 	{"I2SIN2", NULL, "I2SIN2_GPIO"},
 	{"I2SIN2", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SIN2", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
@@ -3447,8 +3449,10 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SIN2", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SIN2_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SIN2_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SIN2_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sin3 */
+	{"I2SIN3", NULL, "VCORE_REQ"},
 	{"I2SIN3", NULL, "I2SIN3_GPIO"},
 	{"I2SIN3", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SIN3", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
@@ -3501,6 +3505,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SIN3", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SIN3_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SIN3_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SIN3_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sin4 */
 	{"I2SIN4", NULL, "I2SIN4_GPIO"},
@@ -3555,8 +3560,10 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SIN4", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SIN4_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SIN4_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SIN4_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sin5 */
+	{"I2SIN5", NULL, "VCORE_REQ"},
 	{"I2SIN5", NULL, "I2SIN5_GPIO"},
 	{"I2SIN5", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SIN5", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
@@ -3609,8 +3616,10 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SIN5", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SIN5_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SIN5_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SIN5_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sin6 */
+	{"I2SIN6", NULL, "VCORE_REQ"},
 	{"I2SIN6", NULL, "I2SIN6_GPIO"},
 	{"I2SIN6", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SIN6", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
@@ -3663,6 +3672,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SIN6", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SIN6_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SIN6_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SIN6_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sout0 */
 	{"I2SOUT0_CH1", "DL0_CH1", "DL0"},
@@ -3696,6 +3706,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT0", NULL, "I2SOUT0_CH1"},
 	{"I2SOUT0", NULL, "I2SOUT0_CH2"},
 
+	{"I2SOUT0", NULL, "VCORE_REQ"},
 	{"I2SOUT0", NULL, "I2SIN0_GPIO"},
 	{"I2SOUT0", NULL, "I2SOUT0_GPIO"},
 	{"I2SOUT0", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
@@ -3749,6 +3760,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT0", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SOUT0_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SOUT0_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SOUT0_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sout1 */
 	{"I2SOUT1_CH1", "DL0_CH1", "DL0"},
@@ -3828,6 +3840,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT1", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SOUT1_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SOUT1_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SOUT1_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sout2 */
 	{"I2SOUT2_CH1", "DL0_CH1", "DL0"},
@@ -3856,6 +3869,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT2", NULL, "I2SOUT2_CH1"},
 	{"I2SOUT2", NULL, "I2SOUT2_CH2"},
 
+	{"I2SOUT2", NULL, "VCORE_REQ"},
 	{"I2SOUT2", NULL, "I2SIN2_GPIO"},
 	{"I2SOUT2", NULL, "I2SOUT2_GPIO"},
 	{"I2SOUT2", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
@@ -3909,6 +3923,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT2", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SOUT2_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SOUT2_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SOUT2_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sout3 */
 	{"I2SOUT3_CH1", "DL0_CH1", "DL0"},
@@ -3935,6 +3950,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT3", NULL, "I2SOUT3_CH1"},
 	{"I2SOUT3", NULL, "I2SOUT3_CH2"},
 
+	{"I2SOUT3", NULL, "VCORE_REQ"},
 	{"I2SOUT3", NULL, "I2SIN3_GPIO"},
 	{"I2SOUT3", NULL, "I2SOUT3_GPIO"},
 	{"I2SOUT3", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
@@ -3987,6 +4003,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT3", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SOUT3_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SOUT3_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SOUT3_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sout4 */
 	{"I2SOUT4_CH1", "DL0_CH1", "DL0"},
@@ -4111,6 +4128,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT4", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SOUT4_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SOUT4_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SOUT4_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sout5 */
 	{"I2SOUT5_CH2", "DL4_CH1", "DL4"},
@@ -4208,6 +4226,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT5", NULL, "I2SOUT5_CH15"},
 	{"I2SOUT5", NULL, "I2SOUT5_CH16"},
 
+	{"I2SOUT5", NULL, "VCORE_REQ"},
 	{"I2SOUT5", NULL, "I2SOUT5_GPIO"},
 	{"I2SOUT5", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"I2SOUT5", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
@@ -4249,6 +4268,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 
 	{I2SOUT5_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SOUT5_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SOUT5_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* i2sout6 */
 	{"I2SOUT6_CH1", "DL0_CH1", "DL0"},
@@ -4277,6 +4297,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT6", NULL, "I2SOUT6_CH1"},
 	{"I2SOUT6", NULL, "I2SOUT6_CH2"},
 
+	{"I2SOUT6", NULL, "VCORE_REQ"},\
 	{"I2SOUT6", NULL, "I2SIN6_GPIO"},
 	{"I2SOUT6", NULL, "I2SOUT6_GPIO"},
 	{"I2SOUT6", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
@@ -4330,8 +4351,10 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"I2SOUT6", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{I2SOUT6_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{I2SOUT6_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{I2SOUT6_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* fmi2s */
+	{"FMI2S_MASTER", NULL, "VCORE_REQ"},
 	{"FMI2S_MASTER", NULL, "I2SIN0_EN", mtk_afe_i2s_share_connect},
 	{"FMI2S_MASTER", NULL, "I2SIN1_EN", mtk_afe_i2s_share_connect},
 	{"FMI2S_MASTER", NULL, "I2SIN2_EN", mtk_afe_i2s_share_connect},
@@ -4383,6 +4406,7 @@ static const struct snd_soc_dapm_route mtk_dai_i2s_routes[] = {
 	{"FMI2S_MASTER", NULL, FMI2S_MASTER_MCLK_EN_W_NAME, mtk_afe_i2s_mclk_connect},
 	{FMI2S_MASTER_MCLK_EN_W_NAME, NULL, APLL1_W_NAME, mtk_afe_mclk_apll_connect},
 	{FMI2S_MASTER_MCLK_EN_W_NAME, NULL, APLL2_W_NAME, mtk_afe_mclk_apll_connect},
+	{FMI2S_MASTER_MCLK_EN_W_NAME, NULL, "VCORE_REQ"},
 
 	/* allow i2s on without codec on */
 	{"I2SIN0", NULL, "I2S_IN0_Mux"},

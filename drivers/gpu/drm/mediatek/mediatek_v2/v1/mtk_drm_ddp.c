@@ -42,6 +42,11 @@
 #if IS_ENABLED(CONFIG_MTK_AUDIODSP_SUPPORT)
 #include "mtk-afe-external.h"
 #endif
+#ifdef CONFIG_MI_DISP
+#ifdef CONFIG_VIS_DISPLAY_DALI
+#include "vis_display.h"
+#endif
+#endif
 
 #define DISP_REG_OVL0_MOUT_EN(data) (data->ovl0_mout_en)
 #define DISP_REG_DPI0_SEL_IN(data) (data->dpi0_sel_in)
@@ -41993,6 +41998,16 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 			}
 		}
 		if (val & (0x1 << m_id)) {
+#ifdef CONFIG_MI_DISP
+#ifdef CONFIG_VIS_DISPLAY_DALI
+			if (is_mi_dev_support_nova())
+			{
+				if(m_id == 0) {
+					mtk_crtc_extmv_notify(mtk_crtc0);
+				}
+			}
+#endif
+#endif
 			DDPIRQ("[IRQ] mutex%d sof!\n", m_id);
 			DRM_MMP_MARK(mutex[m_id], val, 0);
 			if (m_id == 0) {

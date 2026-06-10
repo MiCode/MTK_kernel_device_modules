@@ -2429,6 +2429,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	bool is_vip = false;
 	int vip_prio = NOT_VIP;
 	struct cpumask vip_candidate;
+
 #if IS_ENABLED(CONFIG_MTK_SCHED_VIP_TASK)
 	struct vip_task_struct *vts = &((struct mtk_static_vendor_task *)p->android_vendor_data1)->vip_task;
 
@@ -2443,7 +2444,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 	if (!get_eas_hook())
 		return;
 
-	if (loom_select_reason != -1) {
+	if (loom_select_reason != -1 && *new_cpu >= 0) {
 		select_reason = loom_select_reason;
 		goto done;
 	}
@@ -2464,6 +2465,7 @@ void mtk_find_energy_efficient_cpu(void *data, struct task_struct *p, int prev_c
 			order_index, end_index, reverse);
 	}
 #endif // CONFIG_MTK_SCHED_VIP_TASK
+
 	if (!pd || READ_ONCE(rd->overutilized)) {
 		select_reason = LB_FAIL;
 		rcu_read_unlock();

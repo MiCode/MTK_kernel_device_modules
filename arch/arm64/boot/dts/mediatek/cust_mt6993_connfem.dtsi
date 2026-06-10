@@ -575,6 +575,34 @@
 							<0x27>;	/* TxH */
 					};
 				};
+
+				vc536421_rxh: vc536421-rxh {
+					fem = <&vc536421>;
+					cat-names = "cat-iso", "cat-rx", "cat-tx-lf";
+					cat-iso {
+						cat-id = <0x00>;
+						states =
+							<0x10>;	/* BYP */
+					};
+					cat-rx {
+						cat-id = <0x01>;
+						states =
+							<0x10>,	/* BYP */
+							<0x12>;	/* RxH */
+					};
+					cat-tx-lf {
+						cat-id = <0x02>;
+						states =
+							<0x20>, /* TxBYP */
+							<0x21>,	/* TxL */
+							<0x22>,	/* TxML */
+							<0x23>,	/* TxM */
+							<0x24>,	/* TxMH */
+							<0x25>,	/* TxHE2 */
+							<0x26>,	/* TxHE1 */
+							<0x27>;	/* TxH */
+					};
+				};
 			};
 		};
 

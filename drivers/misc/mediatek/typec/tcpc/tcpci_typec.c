@@ -289,16 +289,48 @@ static inline int typec_handle_role_swap_stop(struct tcpc_device *tcpc)
 
 static inline void typec_unattached_src_and_drp_entry(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	uint32_t chip_vid;
+	int rv = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+
 	TYPEC_NEW_STATE(typec_unattached_src);
-	tcpci_set_cc(tcpc, TYPEC_CC_RP);
-	tcpc_enable_timer(tcpc, TYPEC_TIMER_DRP_SRC_TOGGLE);
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	rv = tcpci_get_chip_vid(tcpc,&chip_vid);
+	if (!rv && SOUTHCHIP_PD_VID == chip_vid) {
+		tcpci_set_cc(tcpc, TYPEC_CC_DRP);
+		typec_enable_low_power_mode(tcpc);
+	} else
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+	{
+		TYPEC_NEW_STATE(typec_unattached_src);
+		tcpci_set_cc(tcpc, TYPEC_CC_RP);
+		tcpc_enable_timer(tcpc, TYPEC_TIMER_DRP_SRC_TOGGLE);
+	}
 }
 
 static inline void typec_unattached_snk_and_drp_entry(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	uint32_t chip_vid;
+	int rv = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+
 	TYPEC_NEW_STATE(typec_unattached_snk);
-	tcpci_set_cc(tcpc, TYPEC_CC_DRP);
-	typec_enable_low_power_mode(tcpc);
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	rv = tcpci_get_chip_vid(tcpc,&chip_vid);
+	if (!rv && SOUTHCHIP_PD_VID == chip_vid) {
+		tcpci_set_cc(tcpc, TYPEC_CC_RD);
+		tcpc_enable_timer(tcpc, TYPEC_TIMER_DRP_SRC_TOGGLE);
+	} else
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+	{
+		TYPEC_NEW_STATE(typec_unattached_snk);
+		tcpci_set_cc(tcpc, TYPEC_CC_DRP);
+		typec_enable_low_power_mode(tcpc);
+	}
 }
 
 static inline void typec_unattached_cc_entry(struct tcpc_device *tcpc)
@@ -384,11 +416,11 @@ static bool typec_is_in_protection_states(struct tcpc_device *tcpc)
 #endif /* CONFIG_WATER_DETECTION */
 
 	if ((tcpc->tcpc_flags & TCPC_FLAGS_FOREIGN_OBJECT_DETECTION) &&
-	    tcpc->typec_state == typec_foreign_object_protection)
+		tcpc->typec_state == typec_foreign_object_protection)
 		return true;
 
 	if ((tcpc->tcpc_flags & TCPC_FLAGS_TYPEC_OTP) &&
-	    tcpc->typec_state == typec_otp)
+		tcpc->typec_state == typec_otp)
 		return true;
 
 	return false;
@@ -637,11 +669,22 @@ static inline void typec_norp_src_attached_entry(struct tcpc_device *tcpc)
 #if CONFIG_TYPEC_CAP_TRY_SOURCE
 static inline void typec_try_src_entry(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	uint32_t vid;
+	int rv = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	TYPEC_NEW_STATE(typec_try_src);
 
 	tcpci_set_cc(tcpc, TYPEC_CC_RP);
 	tcpc->typec_drp_try_timeout = false;
 	tcpc_enable_timer(tcpc, TYPEC_TRY_TIMER_DRP_TRY);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	/* add once cc_change */
+	rv = tcpci_get_chip_vid(tcpc, &vid);
+	if (!rv && SOUTHCHIP_PD_VID == vid) {
+		tcpc_typec_handle_cc_change(tcpc);
+	}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	tcpc_enable_timer(tcpc, TYPEC_TRY_TIMER_TRY_TOUT);
 }
 
@@ -679,11 +722,22 @@ static inline void typec_trywait_snk_pe_entry(struct tcpc_device *tcpc)
 
 static inline void typec_try_snk_entry(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	uint32_t vid;
+	int rv = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	TYPEC_NEW_STATE(typec_try_snk);
 
 	tcpci_set_cc(tcpc, TYPEC_CC_RD);
 	tcpc->typec_drp_try_timeout = false;
 	tcpc_enable_timer(tcpc, TYPEC_TRY_TIMER_DRP_TRY);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	/* add once cc_change */
+	rv = tcpci_get_chip_vid(tcpc, &vid);
+	if (!rv && SOUTHCHIP_PD_VID == vid) {
+		tcpc_typec_handle_cc_change(tcpc);
+	}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 }
 
 static inline void typec_trywait_src_entry(struct tcpc_device *tcpc)
@@ -999,6 +1053,10 @@ static inline bool typec_handle_cc_changed_entry(struct tcpc_device *tcpc)
 
 static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int rv = 0;
+	uint32_t chip_vid = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	bool as_sink = tcpc_typec_is_act_as_sink_role(tcpc);
 
 	switch (tcpc->typec_state) {
@@ -1066,7 +1124,21 @@ static inline void typec_attach_wait_entry(struct tcpc_device *tcpc)
 	}
 
 	tcpci_notify_attachwait_state(tcpc, as_sink);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	if (as_sink) {
+		TYPEC_NEW_STATE(typec_attachwait_snk);
+		rv = tcpci_get_chip_vid(tcpc, &chip_vid);
+		if (!(rv && chip_vid == SOUTHCHIP_PD_VID)) {
+			tcpci_set_cc(tcpc,TYPEC_CC_RD);
+		}
+	} else {
+		TYPEC_NEW_STATE(typec_attachwait_src);
+		tcpci_set_cc(tcpc,
+			TYPEC_CC_PULL(tcpc->typec_local_rp_level, TYPEC_CC_RP));
+	}
+#else
 	TYPEC_NEW_STATE(as_sink ? typec_attachwait_snk : typec_attachwait_src);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	tcpc_enable_timer(tcpc, TYPEC_TIMER_CCDEBOUNCE);
 }
 
@@ -1282,6 +1354,9 @@ int tcpc_typec_handle_cc_change(struct tcpc_device *tcpc)
 		typec_attach_wait_entry(tcpc);
 	} else {
 		typec_detach_wait_entry(tcpc);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+		tcpc->int_invaild_cnt = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	}
 
 	return 0;
@@ -1416,6 +1491,18 @@ static inline int typec_handle_src_reach_vsafe0v(struct tcpc_device *tcpc)
 int tcpc_typec_handle_timeout(struct tcpc_device *tcpc, uint32_t timer_id)
 {
 	int ret = 0;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int rv = 0;
+	uint32_t chip_vid;
+	tcpci_get_chip_vid(tcpc,&chip_vid);
+
+	if (timer_id == TYPEC_TIMER_DRP_SRC_TOGGLE &&
+			(!rv && SOUTHCHIP_PD_VID == chip_vid) &&
+			(tcpc->typec_state != typec_unattached_snk)) {
+		TCPC_DBG("Dummy SRC_TOGGLE\n");
+		return 0;
+	}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 	if (timer_id == TYPEC_TIMER_ERROR_RECOVERY)
 		return typec_handle_error_recovery_timeout(tcpc);
@@ -1449,6 +1536,14 @@ int tcpc_typec_handle_timeout(struct tcpc_device *tcpc, uint32_t timer_id)
 		break;
 
 	case TYPEC_TIMER_DRP_SRC_TOGGLE:
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+		rv = tcpci_get_chip_vid(tcpc,&chip_vid);
+		if (tcpc->typec_state == typec_unattached_snk && !rv
+				&& SOUTHCHIP_PD_VID == chip_vid) {
+			typec_unattached_src_and_drp_entry(tcpc);
+			return 0;
+		}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 		if (tcpc->typec_state == typec_unattached_src)
 			typec_unattached_snk_and_drp_entry(tcpc);
 		break;
@@ -1459,7 +1554,7 @@ int tcpc_typec_handle_timeout(struct tcpc_device *tcpc, uint32_t timer_id)
 
 	case TYPEC_TRY_TIMER_TRY_TOUT:
 		if (tcpc->typec_state == typec_try_src &&
-		    !typec_is_snk_detected())
+			!typec_is_snk_detected())
 			typec_trywait_snk_entry(tcpc);
 		break;
 
@@ -1574,6 +1669,9 @@ static inline int typec_attached_snk_vbus_absent(struct tcpc_device *tcpc)
 
 static inline int typec_handle_vbus_absent(struct tcpc_device *tcpc)
 {
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int ret = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	if (tcpc->pd_wait_pr_swap_complete) {
 		TYPEC_DBG("[PR.Swap] Ignore vbus_absent\n");
@@ -1593,6 +1691,15 @@ static inline int typec_handle_vbus_absent(struct tcpc_device *tcpc)
 		break;
 	}
 
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	ret = tcpci_get_cc(tcpc);
+	if (ret < 0)
+		return ret;
+
+	if (!typec_is_cc_no_res()) {
+		tcpc_typec_handle_cc_change(tcpc);
+	}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	return 0;
 }
 
@@ -1882,7 +1989,7 @@ int tcpc_typec_init(struct tcpc_device *tcpc, uint8_t typec_role)
 
 	if (!typec_is_cc_no_res()) {
 		tcpci_set_cc(tcpc, TYPEC_CC_OPEN);
-		usleep_range(20000, 30000);
+		usleep_range(200000, 200000);
 #if CONFIG_CABLE_TYPE_DETECTION
 		tcpci_reset_ctd(tcpc);
 #endif /* CONFIG_CABLE_TYPE_DETECTION */

@@ -458,6 +458,8 @@ struct ssusb_mtk {
 	bool ls_slp_quirk;
 	bool ldm_resp_delay;
 	int ls_slp_bypass;
+	/* suspend sleep retry count */
+	unsigned int suspend_sleep_retry;
 	/* chip version*/
 	u32 sw_ver;
 	/* power notifier */
@@ -591,6 +593,7 @@ struct mtu3 {
 	const char *typec_name;
 	const char *typec_port_name;
 	struct typec_port *typec_port;
+	bool usb_pd;
 	bool gadget_suspend;
 };
 

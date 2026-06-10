@@ -1295,10 +1295,7 @@ exit:
 static int comp_post_process(void *data)
 {
 	struct zram_engine_t *hwz = data;
-	struct sched_attr attr = {
-		.sched_policy = SCHED_NORMAL,
-		.sched_nice = -10,
-	};
+	struct sched_attr attr = {};
 	unsigned long pflags;
 	uint32_t processed, total_processed;
 	uint32_t hang_detect, suspect_hang;

@@ -3960,9 +3960,11 @@ static void mtk_battery_daemon_handler(struct mtk_battery *gm, void *nl_data,
 		memcpy(&fg_zcv_current,
 			&msg->data[0], sizeof(fg_zcv_current));
 
-		gauge_set_property(gm, GAUGE_PROP_ZCV_INTR_THRESHOLD,
-			fg_zcv_current);
-		gauge_set_property(gm, GAUGE_PROP_ZCV_INTR_EN, 1);
+		if (!gm->disableGM30) {
+			gauge_set_property(gm, GAUGE_PROP_ZCV_INTR_THRESHOLD,
+				fg_zcv_current);
+			gauge_set_property(gm, GAUGE_PROP_ZCV_INTR_EN, 1);
+		}
 
 		bm_debug(gm,
 			"BATTERY_METER_CMD_SET_ZCV_INTR=%d\n",

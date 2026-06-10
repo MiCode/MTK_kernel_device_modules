@@ -416,9 +416,7 @@
 			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C7_I2C>,
 			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C8_I2C>,
 			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C9_I2C>,
-			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C10_I2C>,
-			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C11_I2C>,
-			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C12_I2C>;
+			<&imp_iic_top_wrap_s_clk CLK_IMP_IIC_TOP_WRAP_S_I2C10_I2C>;
 	};
 
 	disable-unused-clk-ufscfg-pdn@7e {

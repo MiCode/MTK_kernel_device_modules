@@ -318,7 +318,8 @@ extern int fpsgo_other2xgf_set_critical_tasks(int rpid, unsigned long long bufID
 	struct task_info *arr, int num, int use);
 extern int fpsgo_other2xgf_get_critical_tasks(int pid, int max_num,
 	struct task_info *arr, int filter_non_cfs, unsigned long long bufID);
-extern int fpsgo_other2xgf_set_attr(int set, struct xgf_policy_cmd *request_attr);
+extern int fpsgo_other2xgf_set_attr(struct xgf_policy_cmd *request_attr);
+extern int fpsgo_other2xgf_get_attr(struct xgf_policy_cmd *request_attr);
 
 /* FPSGO General API of FBT */
 extern int fpsgo_other2fbt_get_cpu_capacity_area(int cluster, int pid,

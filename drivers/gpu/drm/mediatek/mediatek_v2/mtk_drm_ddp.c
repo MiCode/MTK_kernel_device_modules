@@ -40,6 +40,12 @@
 #include "mtk-afe-external.h"
 #endif
 
+#ifdef CONFIG_MI_DISP
+#ifdef CONFIG_VIS_DISPLAY_V2_D2
+#include "V2/D2/vis_display.h"
+#endif
+#endif
+
 #define DISPSYS0	0
 #define DISPSYS1	1
 #define OVLSYS0		2
@@ -28697,6 +28703,12 @@ static int mtk_ddp_sel_in_MT6993(const struct mtk_mmsys_reg_data *data,
 		*addr = MT6993_DISP_COLOR0_SEL_IN;
 		value = MT6993_DISP_COLOR0_SEL_IN_FROM_DISP_MDP_AAL0_SOUT_SEL;
 	} else if ((cur == DDP_COMPONENT_AAL0 &&
+		next == DDP_COMPONENT_COLOR0) ||
+		(cur == DDP_COMPONENT_SYS_B_AAL0 &&
+		next == DDP_COMPONENT_SYS_B_COLOR0)) {
+		*addr = MT6993_DISP_COLOR0_SEL_IN;
+		value = MT6993_DISP_COLOR0_SEL_IN_FROM_DISP_AAL0_SOUT_SEL;
+	} else if ((cur == DDP_COMPONENT_AAL0 &&
 		next == DDP_COMPONENT_DMDP_AAL0) ||
 		(cur == DDP_COMPONENT_SYS_B_AAL0 &&
 		next == DDP_COMPONENT_SYS_B_DMDP_AAL0)) {
@@ -38067,8 +38079,17 @@ static irqreturn_t mtk_disp_mutex_irq_handler(int irq, void *dev_id)
 		if (!ddp->mutex[m_id].is_vdo)
 			val = val & ~(0x1 << (m_id + ddp->data->disp_mutex_total));
 		if (val & (0x1 << m_id)) {
+#ifdef CONFIG_MI_DISP
+#ifdef CONFIG_VIS_DISPLAY_V2_D2
+			if (is_mi_dev_support_nova())
+			{
+				if(m_id == 0) {
+					mtk_crtc_extmv_notify(mtk_crtc0);
+				}
+			}
+#endif
+#endif
 			unsigned int *addr = NULL;
-
 			DDPIRQ("[IRQ] mutex%d sof!\n", m_id);
 
 			if (m_id == 4) {

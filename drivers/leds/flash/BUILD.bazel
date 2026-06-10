@@ -57,3 +57,37 @@ define_mgk_ddk_ko(
         "-I$(srctree)/drivers/power/supply",
     ],
 )
+
+define_mgk_ddk_ko(
+    name = "dual-leds-mt6379pmic",
+    srcs = [
+        "dual-leds-mt6379pmic.c",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:flashlight".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/flashlight",
+        "-I$(DEVICE_MODULES_PATH)/drivers/leds",
+        "-I$(DEVICE_MODULES_PATH)/drivers/video/backlight",
+        "-I$(srctree)/drivers/power/supply",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "leds-mt6379pmic",
+    srcs = [
+        "leds-mt6379pmic.c",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:flashlight".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/flashlight",
+        "-I$(DEVICE_MODULES_PATH)/drivers/leds",
+        "-I$(DEVICE_MODULES_PATH)/drivers/video/backlight",
+        "-I$(srctree)/drivers/power/supply",
+    ],
+)

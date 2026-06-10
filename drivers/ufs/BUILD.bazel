@@ -124,6 +124,7 @@ define_mgk_ddk_ko(
 		"-I$(srctree)/drivers/ufs/host/",
 		"-I$(srctree)/drivers/devfreq/",
 		"-I$(srctree)/kernel/",
+		"-I$(srctree)/block/",
 	],
 )
 
@@ -218,6 +219,7 @@ define_mgk_ddk_ko(
 		"-I$(srctree)/drivers/ufs/host/",
 		"-I$(srctree)/drivers/devfreq/",
 		"-I$(srctree)/kernel/",
+		"-I$(srctree)/block/",
 	],
 )
 
@@ -250,10 +252,10 @@ define_mgk_ddk_ko(
 		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/",
 		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
 		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor/",
+		"-I$(srctree)/drivers/devfreq/",
+		"-I$(srctree)/kernel/",
 		"-I$(srctree)/drivers/ufs/",
 		"-I$(srctree)/drivers/ufs/core/",
 		"-I$(srctree)/drivers/ufs/host/",
-		"-I$(srctree)/drivers/devfreq/",
-		"-I$(srctree)/kernel/",
 	],
 )

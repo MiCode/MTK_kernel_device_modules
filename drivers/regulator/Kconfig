@@ -259,5 +259,64 @@ config DEVICE_MODULES_REGULATOR_RT6160
 	  The wide output range is from 2025mV to 5200mV and can be used on most
 	  common application scenario.
 
+config REGULATOR_FAN53870
+	tristate "Fairchild FAN53870 Regulator"
+	depends on I2C && (OF || COMPILE_TEST)
+	select REGMAP_I2C
+	help
+	  This driver supports Fairchild (ON Semiconductor) FAN53870
+	  regulator. The regulator is a programmable power management IC
+	  (PMIC), it is controlled by I2C and provides one BUCK, one BOOST
+	  and four LDO outputs.
+
+config REGULATOR_WL2868C
+	tristate "Fairchild WL2868C Regulator"
+	depends on I2C && (OF || COMPILE_TEST)
+	select REGMAP_I2C
+	help
+	  This driver supports Fairchild (WILL Semiconductor) WL2868C
+	  regulator. The regulator is a programmable power management IC
+	  (PMIC), it is controlled by I2C and provides one BUCK, one BOOST
+	  and four LDO outputs.
+
+config REGULATOR_WL28681C
+        tristate "Fairchild WL28681C Regulator"
+        depends on I2C && (OF || COMPILE_TEST)
+        select REGMAP_I2C
+        help
+          This driver supports Fairchild (WILL Semiconductor) WL28681C
+          regulator. The regulator is a programmable power management IC
+          (PMIC), it is controlled by I2C and provides one BUCK, one BOOST
+          and four LDO outputs.
+
+config REGULATOR_WARHOL_WL2868C
+	tristate "Fairchild WARHOL_WL2868C Regulator"
+	depends on I2C && (OF || COMPILE_TEST)
+	select REGMAP_I2C
+	help
+	  This driver supports Fairchild (WILL Semiconductor) WL2868C
+	  regulator. The regulator is a programmable power management IC
+	  (PMIC), it is controlled by I2C and provides one BUCK, one BOOST
+	  and four LDO outputs.
+
+config REGULATOR_WARHOL_WL2868C2
+	tristate "Fairchild WARHOL_WL2868C2 Regulator"
+	depends on I2C && (OF || COMPILE_TEST)
+	select REGMAP_I2C
+	help
+	  This driver supports Fairchild (WILL Semiconductor) WL2868C
+	  regulator. The regulator is a programmable power management IC
+	  (PMIC), it is controlled by I2C and provides one BUCK, one BOOST
+	  and four LDO outputs.
+
+config REGULATOR_SGM38121
+	tristate "Fairchild SGM38121 Regulator"
+	depends on I2C && (OF || COMPILE_TEST)
+	select REGMAP_I2C
+	help
+	  This driver supports Fairchild (WILL Semiconductor) SGM38121
+	  regulator. The regulator is a programmable power management IC
+	  (PMIC), it is controlled by I2C and provides one BUCK, one BOOST
+	  and four LDO outputs.
 endif
 

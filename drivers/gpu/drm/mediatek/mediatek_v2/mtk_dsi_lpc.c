@@ -180,7 +180,7 @@ struct mtk_dsi_lpc {
 	const struct mtk_dsi_lpc_data *data;
 };
 static const struct mtk_dsi_lpc_data lpc_data_mt6993 = {
-	.te_limit = 8333,
+	.te_limit = 6000,
 	.dpc_te_by_lpc = true,
 };
 void mtk_dsi_lpc_for_debug_config(struct mtk_drm_crtc *mtk_crtc, struct cmdq_pkt *cmdq_handle)
@@ -1026,6 +1026,7 @@ static int mtk_dsi_lpc_probe(struct platform_device *pdev)
 		}
 	}
 	dsi_lpc->dsi_lpc_en = true;
+	dsi_lpc->dsi_lpc_te_irq_en = true;
 
 	mtk_ddp_comp_pm_enable(&dsi_lpc->ddp_comp);
 

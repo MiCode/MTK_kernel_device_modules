@@ -2781,6 +2781,10 @@ static void ufs_mtk_event_notify(struct ufs_hba *hba,
 		ufs_mtk_dbg_l2_dump(hba);
 
 	trace_ufs_mtk_event(evt, val);
+#if IS_ENABLED(CONFIG_MI_ERROR_STATE)
+	ufshcd_update_err_state(evt, val);
+	ufshcd_update_uic_error_cnt(evt, val);
+#endif
 
 	/* error check for mbrain */
 	if (evt <= UFS_EVT_FATAL_ERR){

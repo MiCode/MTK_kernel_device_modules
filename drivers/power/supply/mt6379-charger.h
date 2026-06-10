@@ -20,10 +20,16 @@
 #include <linux/workqueue.h>
 #include <linux/regmap.h>
 #include <linux/alarmtimer.h>
+#include <linux/reboot.h>
+#include <linux/reboot-mode.h>
 
 #include "charger_class.h"
 #include "mtk_charger.h"
+#include "mtk_battery.h"
 #include "mtk_chg_type_det.h"
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+#include "sc2201.h"
+#endif
 
 extern unsigned int dbg_log_level;
 #define mt_dbg(dev, fmt, ...)						\
@@ -118,6 +124,7 @@ extern unsigned int dbg_log_level;
 #define MT6379_REG_DPDM_CTRL1		(0x603)
 #define MT6379_REG_DPDM_CTRL2		(0x604)
 #define MT6379_REG_DPDM_CTRL4		(0x606)
+#define MT6379_REG_DPDM_CTRL5		(0x607)
 
 #define MT6379_REG_FGADC_SYS_INFO_CON0	(0x7F9)
 #define MT6379_REG_FGADC_SYS_INFO_CON2	(0x7FD)
@@ -150,6 +157,18 @@ enum {
 	CHARGER_ID_MAX
 };
 
+enum {
+	PORT_STAT_NOINFO = 0,
+	PORT_STAT_APPLE_10W = 8,
+	PORT_STAT_SS_TA,
+	PORT_STAT_APPLE_5W,
+	PORT_STAT_APPLE_12W,
+	PORT_STAT_UNKNOWN_TA,
+	PORT_STAT_SDP,
+	PORT_STAT_CDP,
+	PORT_STAT_DCP,
+};
+
 enum mt6379_charger_reg_field {
 	/* MT6379_REG_CORE_CTRL0 */
 	F_MREN,
@@ -164,7 +183,7 @@ enum mt6379_charger_reg_field {
 	/* MT6379_REG_VDDA_SUPPLY */
 	F_FON_OSC,
 	/* MT6379_REG_CHG_STAT0 */
-	F_ST_PWR_RDY,
+	F_ST_WLS_CHG_RDY, F_ST_PWR_RDY,
 	/* MT6379_REG_CHG_STAT1 */
 	F_ST_MIVR,
 	/* MT6379_REG_CHG_STAT2 */
@@ -248,15 +267,21 @@ enum mt6379_charger_reg_field {
 	/* MT6379_REG_TYPECOTP_CTRL */
 	F_PD_OTP_HWEN,
 	/* MT6379_REG_BC12_FUNC */
-	F_BC12_EN,
+	F_BC12_EN, F_BC12_VBUS_EN_OPT,
 	/* MT6379_REG_BC12_STAT */
 	F_PORT_STAT,
 	/* MT6379_REG_DPDM_CTRL1 */
 	F_MANUAL_MODE, F_DPDM_SW_VCP_EN, F_DP_DET_EN, F_DM_DET_EN,
 	/* MT6379_REG_DPDM_CTRL2 */
-	F_DP_LDO_EN, F_DP_LDO_VSEL,
+	F_DP_LDO_EN, F_DP_LDO_VSEL, F_DM_LDO_VSEL, F_DM_LDO_EN,
 	/* MT6379_REG_DPDM_CTRL4 */
 	F_DP_PULL_REN, F_DP_PULL_RSEL,
+	/* MT6375_REG_DPDM_CTRL5 */
+	F_DM_PULL_RSEL, F_DM_PULL_REN,
+	/* MT6375_REG_DPDM_CTRL5 */
+	F_DP_PULL_ISEL, F_DP_PULL_IEN,
+	/* MT6375_REG_DPDM_CTRL5 */
+	F_DM_PULL_ISEL, F_DM_PULL_IEN,
 	F_MAX
 };
 
@@ -273,6 +298,12 @@ enum mt6379_adc_chan {
 	ADC_CHAN_SBU2,
 	ADC_CHAN_VBATMON2,
 	ADC_CHAN_ZCV,
+	ADC_CHAN_USB_CONNECT,
+	ADC_CHAN_SUB_USB_CONNECT,
+	ADC_CHAN_SHORT_USB_CONNECT,
+	ADC_CHAN_SHORT_SUB_USB_CONNECT,
+	ADC_CHAN_WLSVIN,
+	ADC_CHAN_WLSIIN,
 	ADC_CHAN_MAX
 };
 
@@ -289,6 +320,12 @@ static const char *const mt6379_adc_chan_names[] = {
 	[ADC_CHAN_SBU2] = "sbu2",
 	[ADC_CHAN_VBATMON2] = "vbatmon2",
 	[ADC_CHAN_ZCV] = "zcv",
+	[ADC_CHAN_USB_CONNECT] = "usb-connect",
+	[ADC_CHAN_SUB_USB_CONNECT] = "sub-usb-connect",
+	[ADC_CHAN_SHORT_USB_CONNECT] = "short-usb-connect",
+	[ADC_CHAN_SHORT_SUB_USB_CONNECT] = "short-sub-usb-connect",
+	[ADC_CHAN_WLSVIN] = "wlsvin",
+	[ADC_CHAN_WLSIIN] = "wlsiin",
 };
 
 /* irq index */
@@ -409,10 +446,13 @@ struct mt6379_charger_data {
 	struct regulator *otg_regu;
 	struct workqueue_struct *wq;
 	struct work_struct bc12_work;
+	struct work_struct short_bc12_work;
 	struct delayed_work switching_work;
 	struct delayed_work icc_cali_work;
 	struct delayed_work pwr_rdy_dwork;
 	struct delayed_work non_switch_dwork;
+	struct delayed_work detect_hvchg_work;
+	struct delayed_work rerun_bc12_work;
 	struct power_supply *psy;
 	struct power_supply_desc psy_desc;
 	struct iio_channel *iio_adcs;
@@ -450,6 +490,10 @@ struct mt6379_charger_data {
 	enum power_supply_usb_type *psy_usb_type;
 	atomic_t *attach;
 	bool *bc12_dn;
+	bool lock_aicr_mivr;
+	u32 aicr_test;
+	u32 mivr_test;
+	int hvchg_recheck_count;
 
 	bool enable_fsw;
 	bool enable_fon_osc;
@@ -472,6 +516,15 @@ struct mt6379_charger_data {
 	u32 waferid;
 	u8 id; /* mt6379 or mt6720 */
 	u8 ecid_val[3];
+	struct phy *phy;
+	int recheck_count;
+	struct charger_device *cp_master;
+	struct  notifier_block reboot_notifier;
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	struct power_supply *sc2201_psy;
+	int sc2201_bc12_type;
+#endif
 };
 
 extern int mt6379_charger_init_chgdev(struct mt6379_charger_data *cdata);
@@ -484,5 +537,10 @@ extern int mt6379_charger_set_non_switching_setting(struct mt6379_charger_data *
 
 extern int mt6379_enable_tm(struct mt6379_charger_data *cdata, bool en);
 extern enum mt6379_chip_rev mt6379_charger_get_chip_rev(struct mt6379_charger_data *cdata);
+
+extern int mi_mt6379_set_dpdm_voltage(struct charger_device *chgdev, int dp, int dm);
+
+extern int mt6379_otg_regulator_enable(struct regulator_dev *rdev);
+extern int mt6379_otg_regulator_disable(struct regulator_dev *rdev);
 
 #endif /* __LINUX_MT6379_CHARGER_H */

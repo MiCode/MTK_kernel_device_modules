@@ -293,6 +293,10 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 	uint32_t alert_status = 0, alert_mask = 0;
 	const uint8_t typec_role = tcpc->typec_role,
 		      vbus_level = tcpc->vbus_level;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	uint32_t chip_vid = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+
 #if IS_ENABLED(CONFIG_USB_POWER_DELIVERY)
 	uint8_t pd_bist_mode = PD_BIST_MODE_DISABLE;
 
@@ -323,7 +327,12 @@ int tcpci_alert(struct tcpc_device *tcpc, bool masked)
 
 	TCPC_INFO("Alert:0x%04x, Mask:0x%04x\n", alert_status, alert_mask);
 
-	alert_status &= alert_mask;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	rv = tcpci_get_chip_vid(tcpc, &chip_vid);
+	if (!(!rv && (chip_vid == SOUTHCHIP_PD_VID)))
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+		alert_status &= alert_mask;
+
 
 	if (typec_role == TYPEC_ROLE_UNKNOWN ||
 		typec_role >= TYPEC_ROLE_NR) {

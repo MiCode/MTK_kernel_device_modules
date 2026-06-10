@@ -40,6 +40,9 @@ static const char * const pd_ctrl_msg_name[] = {
 	"get_snk_cap_ext",
 	"ctrl17",
 	"get_rev",
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	"get_source_info",
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #endif	/* CONFIG_USB_PD_REV30 */
 };
 
@@ -265,7 +268,10 @@ static inline void print_event(
 		break;
 
 	case PD_EVT_TIMER_MSG:
-		PE_EVT_INFO("timer, %u\n", pd_event->msg);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+		if (pd_event->msg != PD_TIMER_INT_INVAILD)
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+			PE_EVT_INFO("timer, %u\n", pd_event->msg);
 		break;
 
 	case PD_EVT_TCP_MSG:
@@ -422,7 +428,16 @@ bool pd_process_protocol_error(
 	case PE_SRC_TRANSITION_SUPPLY2:
 		power_change = true;
 		break;
-
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	/* while send <request msg>, recevied <alert msg> ignore */
+	case PE_SNK_SELECT_CAPABILITY:
+		if (pd_event_msg_match(pd_event,
+			PD_EVT_DATA_MSG, PD_DATA_ALERT)) {
+			PE_INFO("Ignore Alert\n");
+			goto out;
+		}
+		break;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	case PE_SNK_READY:
 	case PE_SRC_READY:
 		if (pd_process_ready_protocol_error(pd_port)) {
@@ -738,11 +753,21 @@ static inline bool pe_transit_startup_state(
 {
 	uint8_t startup_state =
 		pe_get_startup_state(pd_port, pd_event);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int rv = 0;
+	uint32_t chip_pid = 0;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 	if (startup_state == 0xff)
 		return false;
 
 	pd_dpm_notify_pe_startup(pd_port);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	rv = tcpci_get_chip_pid(pd_port->tcpc, &chip_pid);
+	if (!rv &&  SC660X_PID == chip_pid) {
+		pd_enable_timer(pd_port, PD_TIMER_INT_INVAILD);
+	}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 	PE_TRANSIT_STATE(pd_port, startup_state);
 
 	return true;

@@ -31,6 +31,8 @@
 #define C3D_REG_NUM 60
 #define REG_NOT_SUPPORT 0xfff
 #define C3D_LABEL_COUNT 13
+#define MML_C3D_TIMEOUT_REG_NUM 38
+#define C3D_LUT_NUM_17 14739
 
 enum mml_color_reg_index {
 	C3D_EN,
@@ -85,6 +87,41 @@ enum mml_color_reg_index {
 	C3D_BIDX_12_13,
 	C3D_BIDX_14_15,
 	C3D_BIDX_16,
+	C3D_C1D_000_001,
+	C3D_C1D_002_003,
+	C3D_C1D_004_005,
+	C3D_C1D_006_007,
+	C3D_C1D_008_009,
+	C3D_C1D_010_011,
+	C3D_C1D_012_013,
+	C3D_C1D_014_015,
+	C3D_C1D_016_017,
+	C3D_C1D_018_019,
+	C3D_C1D_020_021,
+	C3D_C1D_022_023,
+	C3D_C1D_024_025,
+	C3D_C1D_026_027,
+	C3D_C1D_028_029,
+	C3D_C1D_030_031,
+	C3D_R2Y_00,
+	C3D_R2Y_01,
+	C3D_R2Y_02,
+	C3D_R2Y_03,
+	C3D_R2Y_04,
+	C3D_R2Y_05,
+	C3D_R2Y_06,
+	C3D_R2Y_07,
+	C3D_R2Y_08,
+	C3D_Y2R_00,
+	C3D_Y2R_01,
+	C3D_Y2R_02,
+	C3D_Y2R_03,
+	C3D_Y2R_04,
+	C3D_Y2R_05,
+	C3D_Y2R_06,
+	C3D_Y2R_07,
+	C3D_Y2R_08,
+	C3D_Y2R_10,
 	C3D_REG_MAX_COUNT
 };
 
@@ -170,6 +207,41 @@ static const u16 c3d_reg_table_mt6993[C3D_REG_MAX_COUNT] = {
 	[C3D_BIDX_12_13] = 0x150,
 	[C3D_BIDX_14_15] = 0x154,
 	[C3D_BIDX_16] = 0x158,
+	[C3D_C1D_000_001] = 0x034,
+	[C3D_C1D_002_003] = 0x038,
+	[C3D_C1D_004_005] = 0x03C,
+	[C3D_C1D_006_007] = 0x040,
+	[C3D_C1D_008_009] = 0x044,
+	[C3D_C1D_010_011] = 0x048,
+	[C3D_C1D_012_013] = 0x04C,
+	[C3D_C1D_014_015] = 0x050,
+	[C3D_C1D_016_017] = 0x054,
+	[C3D_C1D_018_019] = 0x058,
+	[C3D_C1D_020_021] = 0x05C,
+	[C3D_C1D_022_023] = 0x060,
+	[C3D_C1D_024_025] = 0x064,
+	[C3D_C1D_026_027] = 0x068,
+	[C3D_C1D_028_029] = 0x06C,
+	[C3D_C1D_030_031] = 0x070,
+	[C3D_R2Y_00] = 0x09C,
+	[C3D_R2Y_01] = 0x0A0,
+	[C3D_R2Y_02] = 0x0A4,
+	[C3D_R2Y_03] = 0x0A8,
+	[C3D_R2Y_04] = 0x0AC,
+	[C3D_R2Y_05] = 0x0B0,
+	[C3D_R2Y_06] = 0x0B4,
+	[C3D_R2Y_07] = 0x0B8,
+	[C3D_R2Y_08] = 0x0BC,
+	[C3D_Y2R_00] = 0x0C4,
+	[C3D_Y2R_01] = 0x0C8,
+	[C3D_Y2R_02] = 0x0CC,
+	[C3D_Y2R_03] = 0x0D0,
+	[C3D_Y2R_04] = 0x0D4,
+	[C3D_Y2R_05] = 0x0D8,
+	[C3D_Y2R_06] = 0x0DC,
+	[C3D_Y2R_07] = 0x0E0,
+	[C3D_Y2R_08] = 0x0E4,
+	[C3D_Y2R_10] = 0x0EC,
 };
 
 enum c3d_label_index {
@@ -215,6 +287,7 @@ static const struct c3d_data mt6993_mmlf_c3d_data = {
 
 struct mml_comp_c3d {
 	struct mml_comp comp;
+	struct mml_pq_reg *timeout_handle_reg;
 	const struct c3d_data *data;
 };
 
@@ -252,8 +325,223 @@ static s32 c3d_prepare(struct mml_comp *comp, struct mml_task *task,
 	return (s32)sizeof(*c3d_frm);
 }
 
+static void parseToHWReg(struct mml_pq_reg *pReg, u32 idx, u32 offset,
+			u32 value, u32 mask)
+{
+	if(idx >= MML_C3D_TIMEOUT_REG_NUM) {
+		mml_pq_msg("%s OVERFLOW idx[%d]", __func__, idx);
+		return;
+	}
+	pReg[idx].offset = offset;
+	pReg[idx].value = value;
+	pReg[idx].mask = mask;
+}
+
+static void c3d_handle_timeout(struct mml_pq_reg *pC3DRegs, struct mml_comp_c3d *c3d,
+	const struct mml_frame_data *src)
+{
+	u32 index = 0;
+	u32 mask = 0xffffffff;
+
+	mml_pq_msg("%s c3d timeout config", __func__);
+
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_000_001],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_002_003],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_004_005],
+			(0 << 16) |
+			(0<< 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_006_007],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_008_009],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_010_011],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_012_013],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_014_015],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_016_017],
+			(0 << 16) |
+			(0<< 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_018_019],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_020_021],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_022_023],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_024_025],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_026_027],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_028_029],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_C1D_030_031],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_00],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_01],
+			(0<< 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_02],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_03],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_04],
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_05],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_06],
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_07],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_08],
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	if (MML_FMT_IS_YUV(src->format)) {
+		parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_09],
+				(0 << 4) |
+				(0 << 2) |
+				(0 << 1) |
+				(1 << 0), mask);
+	} else {
+		parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_R2Y_09],
+				(0 << 4) |
+				(0 << 2) |
+				(0 << 1) |
+				(0 << 0), mask);
+	}
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_00],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_01],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_02],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_03],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_04],
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_05],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_06],
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_07],
+			(0<< 16) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_08],
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_09],
+			(0 << 2) |
+			(0 << 1) |
+			(0 << 0), mask);
+
+	mask = 0xffffffff;
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_Y2R_10],
+			(0 << 16) |
+			(0 << 0), mask);
+
+	parseToHWReg(pC3DRegs, index++, c3d->data->reg_table[C3D_CFG],
+			0x0,
+			0x1E0);
+}
+
 static void c3d_relay(struct mml_comp *comp, struct cmdq_pkt *pkt,
-	const phys_addr_t base_pa, bool relay, bool alpha)
+	const phys_addr_t base_pa, bool relay, bool timeout, bool alpha,
+	const struct mml_frame_data *src)
 {
 	struct mml_comp_c3d *c3d = comp_to_c3d(comp);
 
@@ -262,6 +550,9 @@ static void c3d_relay(struct mml_comp *comp, struct cmdq_pkt *pkt,
 		cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_CFG],
 			0x227, U32_MAX);
 	else {
+		if (timeout)
+			c3d_handle_timeout(c3d->timeout_handle_reg, c3d, src);
+
 		if (alpha)
 			cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_CFG],
 				(c3d->data->c3d_lut_num == 729)? 0x266 : 0x276, U32_MAX);
@@ -284,8 +575,8 @@ s32 c3d_tile_prepare(struct mml_comp *comp, struct mml_task *task,
 	func->enable_flag = dest->pq_config.en_c3d;
 
 	if (cfg->info.dest_cnt == 1 &&
-	    (crop->r.width != frame_in->width ||
-	    crop->r.height != frame_in->height)) {
+		(crop->r.width != frame_in->width ||
+		crop->r.height != frame_in->height)) {
 		func->full_size_x_in = cfg->frame_tile_sz.width + crop->r.left;
 		func->full_size_y_in = cfg->frame_tile_sz.height + crop->r.top;
 	} else {
@@ -302,7 +593,7 @@ static const struct mml_comp_tile_ops c3d_tile_ops = {
 };
 
 static s32 c3d_buf_prepare(struct mml_comp *comp, struct mml_task *task,
-			     struct mml_comp_config *ccfg)
+				 struct mml_comp_config *ccfg)
 {
 	struct mml_frame_config *cfg = task->config;
 	struct mml_frame_dest *dest = &cfg->info.dest[ccfg->node->out_idx];
@@ -347,7 +638,7 @@ static void c3d_init(struct mml_comp *comp, struct cmdq_pkt *pkt, const phys_add
 }
 
 static s32 c3d_config_init(struct mml_comp *comp, struct mml_task *task,
-			     struct mml_comp_config *ccfg)
+				 struct mml_comp_config *ccfg)
 {
 	c3d_init(comp, task->pkts[ccfg->pipe], comp->base_pa, task->config->shadow);
 	return 0;
@@ -384,6 +675,7 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 	struct mml_task_reuse *reuse = &task->reuse[ccfg->pipe];
 	struct mml_pipe_cache *cache = &cfg->cache[ccfg->pipe];
 	struct mml_pq_reg *regs = NULL;
+	struct mml_frame_data *src = &cfg->info.src;
 	u32 *c3d_lut = NULL, *c3d_prog_idx = NULL;
 	u32 gpr = c3d->data->gpr[ccfg->pipe];
 	s32 ret = 0;
@@ -392,7 +684,7 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 	u32 alpha = cfg->info.alpha ? 1 : 0;
 
 	mml_pq_trace_ex_begin("%s %d", __func__, cfg->info.mode);
-	c3d_relay(comp, pkt, base_pa, !dest->pq_config.en_c3d, alpha);
+	c3d_relay(comp, pkt, base_pa, !dest->pq_config.en_c3d, false, alpha, src);
 	if (!dest->pq_config.en_c3d)
 		goto exit;
 
@@ -401,27 +693,37 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 			mml_pq_get_comp_config_result(task, C3D_WAIT_TIMEOUT_MS)) {
 			mml_pq_comp_config_clear(task);
 			c3d_frm->config_success = false;
-			c3d_relay(comp, pkt, base_pa, true, alpha);
+			c3d_relay(comp, pkt, base_pa, false, true, alpha, src);
+			mml_pq_err("get c3d param timeout: %d in %dms",
+				ret, C3D_WAIT_TIMEOUT_MS);
 			ret = -ETIMEDOUT;
 			mml_pq_err("%s: %s c3d param timeout: %d in %dms", __func__,
 				(mml_pq_debug_mode & MML_PQ_FORCE_TIMEOUT_DBG) ? "simulate" : "get",
 				ret, C3D_WAIT_TIMEOUT_MS);
-			goto exit;
+			break;
 		}
 
 		result = get_c3d_comp_config_result(task);
+
 		if (!result) {
 			c3d_frm->config_success = false;
-			c3d_relay(comp, pkt, base_pa, true, alpha);
+			c3d_relay(comp, pkt, base_pa, false, true, alpha, src);
 			mml_pq_err("%s: not get result from user lib", __func__);
 			ret = -EBUSY;
-			goto exit;
+			break;
 		}
 	} while ((mml_pq_debug_mode & MML_PQ_SET_TEST) && result->is_set_test);
 
-	regs = result->c3d_regs;
-	c3d_lut = result->c3d_lut;
-	c3d_prog_idx = result->c3d_prog_idx;
+	if (!result) {
+		mml_pq_msg("%s c3d timeout config reg", __func__);
+		regs = c3d->timeout_handle_reg;
+		c3d_lut = NULL;
+		c3d_prog_idx = 0;
+	} else {
+		regs = result->c3d_regs;
+		c3d_lut = result->c3d_lut;
+		c3d_prog_idx = result->c3d_prog_idx;
+	}
 
 	cmdq_pkt_write(pkt, NULL, base_pa + c3d->data->reg_table[C3D_SRAM_CFG],
 		(0 << 6)|(0 << 5)|(1 << 4), (0x7 << 4));
@@ -429,31 +731,59 @@ static s32 c3d_config_frame(struct mml_comp *comp, struct mml_task *task,
 		base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_0], addr, U32_MAX);
 	cmdq_pkt_poll(pkt, NULL, (0x1 << 16),
 		base_pa + c3d->data->reg_table[C3D_SRAM_STATUS], (0x1 << 16), gpr);
-	for (i = 0, addr=0; i < result->c3d_lut_num; i++, addr+=4)
-		mml_write_array(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_1],
-			c3d_lut[i], U32_MAX, reuse, cache, &c3d_frm->reuse_lut);
+	if (!result) {
+		for (i = 0; i < c3d->data->c3d_lut_num; i++)
+			mml_write_array(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_1],
+				0x0, U32_MAX, reuse, cache, &c3d_frm->reuse_lut);
+	} else {
+		for (i = 0, addr=0; i < result->c3d_lut_num; i++, addr+=4)
+			mml_write_array(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_SRAM_RW_IF_1],
+				c3d_lut[i], U32_MAX, reuse, cache, &c3d_frm->reuse_lut);
+	}
 	if (c3d_frm->reuse_lut.idx >= ARRAY_SIZE(c3d_frm->offs_lut))
 		mml_pq_err("%s result lut offset size necessary %u",
 			__func__, c3d_frm->reuse_lut.idx);
 
-	if (c3d->data->sup_prog_idx) {
-		mml_pq_msg("%s: c3d_prog_idx_reg_num = %d", __func__, result->c3d_prog_idx_reg_num);
-		for (i = 0; i < result->c3d_prog_idx_reg_num; i++) {
-			mml_write(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_RIDX_00_01 + i],
-				c3d_prog_idx[i], 0x03FF03FF, reuse, cache,
-				&c3d_frm->labels[i]);
-			mml_pq_msg("%s: c3d_prog_idx[%d] = %d", __func__, i, c3d_prog_idx[i]);
+	if (!result) {
+		if (c3d->data->sup_prog_idx) {
+			for (i = 0; i < 27; i++) {
+				mml_write(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_RIDX_00_01 + i],
+					0x0, 0x03FF03FF, reuse, cache,
+					&c3d_frm->labels[i]);
+				mml_pq_msg("%s: c3d_prog_idx[%d] = 0", __func__, i);
+			}
+		}
+	} else {
+		if (c3d->data->sup_prog_idx) {
+			mml_pq_msg("%s: c3d_prog_idx_reg_num = %d", __func__, result->c3d_prog_idx_reg_num);
+			for (i = 0; i < result->c3d_prog_idx_reg_num; i++) {
+				mml_write(comp->id, pkt, base_pa + c3d->data->reg_table[C3D_RIDX_00_01 + i],
+					c3d_prog_idx[i], 0x03FF03FF, reuse, cache,
+					&c3d_frm->labels[i]);
+				mml_pq_msg("%s: c3d_prog_idx[%d] = %d", __func__, i, c3d_prog_idx[i]);
+			}
 		}
 	}
 
-	mml_pq_msg("%s:config c3d regs, count: %d", __func__, result->c3d_reg_cnt);
 	c3d_frm->config_success = true;
-	for (i = 0; i < result->c3d_reg_cnt; i++) {
-		mml_write(comp->id, pkt, base_pa + regs[i].offset,
-			regs[i].value, regs[i].mask, reuse, cache,
-			&c3d_frm->labels[i + result->c3d_prog_idx_reg_num]);
-		mml_pq_msg("[C3D][config][%x] = %#x mask(%#x)",
-			regs[i].offset, regs[i].value, regs[i].mask);
+	if (!result) {
+		mml_pq_msg("%s:config timeout c3d regs, count: %d", __func__, MML_C3D_TIMEOUT_REG_NUM);
+		for (i = 0; i < MML_C3D_TIMEOUT_REG_NUM; i++) {
+			mml_write(comp->id, pkt, base_pa + regs[i].offset,
+				regs[i].value, regs[i].mask, reuse, cache,
+				&c3d_frm->labels[i + 27]);
+			mml_pq_msg("[C3D][config][%x][%d] = %#x mask(%#x)",
+				regs[i].offset, i, regs[i].value, regs[i].mask);
+		}
+	} else {
+		mml_pq_msg("%s:config c3d regs, count: %d", __func__, result->c3d_reg_cnt);
+		for (i = 0; i < result->c3d_reg_cnt; i++) {
+			mml_write(comp->id, pkt, base_pa + regs[i].offset,
+				regs[i].value, regs[i].mask, reuse, cache,
+				&c3d_frm->labels[i + result->c3d_prog_idx_reg_num]);
+			mml_pq_msg("[C3D][config][%x] = %#x mask(%#x)",
+				regs[i].offset, regs[i].value, regs[i].mask);
+		}
 	}
 
 	mml_pq_msg("%s: success ", __func__);
@@ -543,7 +873,7 @@ static s32 c3d_reconfig_frame(struct mml_comp *comp, struct mml_task *task,
 		mml_pq_err("%s value cnt %u lut cnt %u not match",
 			__func__, val_idx, result->c3d_lut_num);
 
-
+	mml_pq_msg("%s: show result->c3d_lut_num %d",  __func__,result->c3d_lut_num);
 	if (c3d->data->sup_prog_idx) {
 		mml_pq_msg("%s: c3d_prog_idx_reg_num = %d", __func__, result->c3d_prog_idx_reg_num);
 		for (i = 0; i < result->c3d_prog_idx_reg_num; i++) {
@@ -579,6 +909,7 @@ static const struct mml_comp_config_ops c3d_cfg_ops = {
 	.reframe = c3d_reconfig_frame,
 	.repost = c3d_config_post,
 };
+
 
 static void c3d_debug_dump(struct mml_comp *comp)
 {
@@ -695,6 +1026,9 @@ static int probe(struct platform_device *pdev)
 		return ret;
 	}
 
+
+	priv->timeout_handle_reg = kmalloc_array(MML_C3D_TIMEOUT_REG_NUM,
+			sizeof(struct mml_pq_reg), GFP_KERNEL);
 	/* assign ops */
 	priv->comp.tile_ops = &c3d_tile_ops;
 	priv->comp.config_ops = &c3d_cfg_ops;

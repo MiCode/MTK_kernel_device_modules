@@ -33,6 +33,15 @@ config MTK_HANG_PROC
 	  if value is 2, will dump all thread info; if value > 10,
 	  will dump backtrace of pid equals value.
 
+config MTK_HANG_SECURITY
+	bool "enable security check"
+	depends on SECURITY_SELINUX
+	help
+	  Enable security checks for RT_monitor access. When this option is enabled,
+	  the kernel will verify SELinux attributes of any task attempting to access RT_monitor.
+	  Check the SELinux attributes when accessing RT_monitor to
+	  prevent attacks from unauthorized tasks.
+
 config MTK_HANG_YOCTO
 	bool "run on the Yocto system"
 	help

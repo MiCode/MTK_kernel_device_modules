@@ -78,7 +78,6 @@ struct mbraink_oom_tracelist {
 
 extern int mbraink_netlink_send_msg(const char *msg); //EXPORT_SYMBOL_GPL
 
-void mbraink_show_process_info(void);
 void mbraink_get_process_stat_info(pid_t current_pid, unsigned int current_cnt,
 			struct mbraink_process_stat_data *process_stat_buffer);
 void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,

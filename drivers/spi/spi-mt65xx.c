@@ -24,6 +24,11 @@
 #include <linux/iopoll.h>
 #include <linux/arm-smccc.h>
 #include <linux/soc/mediatek/mtk_sip_svc.h>
+#include <linux/regulator/consumer.h>
+#include <linux/pm_qos.h>
+#include <mt-plat/dvfsrc-exp.h>
+#include <linux/interconnect.h>
+#include "fp_spi.h"
 
 
 #define SPI_CFG0_REG                      0x0000
@@ -229,6 +234,13 @@ struct mtk_spi {
 	bool err_occur;
 	spinlock_t eh_spi_lock;
 	bool dma_en;
+#ifdef CONFIG_DX5_SPI_PULL_RESUORCES
+	struct regulator *reg_vcore;
+	int vcore_volt;
+	bool spi_qos_enable;
+	struct icc_path *bw_path;
+	unsigned int peak_bw;
+#endif
 	u32 valid_cnt_thr;
 };
 
@@ -1843,7 +1855,10 @@ static int mtk_spi_probe(struct platform_device *pdev)
 	const struct of_device_id *of_id;
 	int i, irq, ret, addr_bits;
 	const char *clk_type = NULL;
-
+#ifdef CONFIG_DX5_SPI_PULL_RESUORCES
+	struct regulator *reg = NULL;
+	u32 volt = 0;
+#endif
 	ctrl = spi_alloc_master(&pdev->dev, sizeof(*mdata));
 	if (!ctrl) {
 		dev_err(&pdev->dev, "failed to alloc spi master\n");
@@ -2093,6 +2108,34 @@ static int mtk_spi_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "failed to register controller (%d)\n", ret);
 		goto err_put_ctrl;
 	}
+	if(strncmp(dev_name(&ctrl->dev), FP_USE_SPI, FP_USE_SPI_LENGTH) == 0) {
+		fingerprint_ms = spi_controller_get_devdata(ctrl);
+		pr_info("it is Fingerprint spi: %s", FP_USE_SPI);
+#ifdef CONFIG_DX5_SPI_PULL_RESUORCES
+                /* spi scale up the vcore */
+                reg = devm_regulator_get_optional(&pdev->dev, "dvfsrc-vcore");
+				if (IS_ERR(reg)) {
+                        reg = NULL;
+                        dev_info(&pdev->dev, "failed to get dvfsrc-vcore: %ld\n",
+                        PTR_ERR(reg));
+                }
+                if (of_property_read_u32(pdev->dev.of_node, "spi-scale-up-vcore-min", &volt)) {
+                        volt = 0;
+                        dev_info(&pdev->dev, "failed to get spi-scale-up-vcore-min\n");
+                }
+                mdata->reg_vcore = reg;
+                mdata->vcore_volt = volt;
+                if (volt != 0)
+                        dev_info(&pdev->dev, "spi ctrl voltage = %d\n", volt);
+                /* spi scale up the bw */
+                mdata->bw_path = of_icc_get(&pdev->dev, "spi-perf-bw");
+                if (IS_ERR(mdata->bw_path)) {
+                        dev_info(&pdev->dev, "spi:failed to get icc path\n");
+                        mdata->bw_path = NULL;
+                }
+                mdata->peak_bw = dvfsrc_get_required_opp_peak_bw(pdev->dev.of_node, 0);
+#endif
+	}
 
 	return 0;
 
@@ -2254,6 +2297,49 @@ void mt_spi_enable_master_clk(struct spi_device *spidev)
 	BUG_ON(ret < 0);
 }
 EXPORT_SYMBOL(mt_spi_enable_master_clk);
+
+void spi_disable_fingerprint_clk(void)
+{
+#ifdef CONFIG_DX5_SPI_PULL_RESUORCES
+	if(fingerprint_ms->reg_vcore != NULL){
+		int ret;
+		struct regulator *reg;
+		dev_err(fingerprint_ms->dev, "crd enter");
+		if (fingerprint_ms->bw_path) {
+			icc_set_bw(fingerprint_ms->bw_path, 0, 0);
+		}
+		reg = fingerprint_ms->reg_vcore;
+		ret = regulator_set_voltage(reg, 0, INT_MAX);
+		if (ret) {
+			dev_info(fingerprint_ms->dev, "failed to release vcore to 0\n");
+		}
+	}
+#endif
+	clk_disable_unprepare(fingerprint_ms->spi_clk);
+}
+EXPORT_SYMBOL(spi_disable_fingerprint_clk);
+
+void spi_enable_fingerprint_clk(void)
+{
+	int ret;
+#ifdef CONFIG_DX5_SPI_PULL_RESUORCES
+	struct regulator *reg;
+	if(fingerprint_ms->reg_vcore != NULL){
+		reg = fingerprint_ms->reg_vcore;
+		u32 volt = 0;
+		volt = fingerprint_ms->vcore_volt;
+		ret = regulator_set_voltage(reg, volt, INT_MAX);
+		if (ret) {
+			dev_err(fingerprint_ms->dev, "failed to set vcore to (%d)\n", volt);
+		}
+		if (fingerprint_ms->bw_path) {
+			icc_set_bw(fingerprint_ms->bw_path, 0, fingerprint_ms->peak_bw);
+		}
+	}
+#endif
+	ret = clk_prepare_enable(fingerprint_ms->spi_clk);
+}
+EXPORT_SYMBOL(spi_enable_fingerprint_clk);
 
 static struct platform_driver mtk_spi_driver = {
 	.driver = {

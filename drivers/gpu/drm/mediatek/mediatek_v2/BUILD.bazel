@@ -188,6 +188,9 @@ define_mgk_ddk_ko(
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/extcon",
         "-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/mi_disp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/driver_novatek",
+        "-I$(DEVICE_MODULES_PATH)/include/uapi",
         "-Wno-unused-but-set-parameter",
         "-Wno-dangling-else",
         "-Wno-unused-variable",
@@ -303,6 +306,70 @@ define_mgk_ddk_ko(
                 "mtk_drm_edp/mtk_drm_edp_phy.c",
                 "mtk_drm_edp/mtk_drm_edp.c",
             ],
+        },
+        "CONFIG_VIS_DISPLAY_V2_D2": {
+            True: [
+                "driver_novatek/V2/D2/vis_display/vis_display_spi.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_pq.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_boot.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_power.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_ops.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_gpio.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_factory.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_dsi.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_notify.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_test.c",
+                "driver_novatek/V2/D2/vis_display/vis_display_mtk.c",
+            ],
+        },
+        "CONFIG_MI_DISP": {
+            True: [
+                "mi_disp/mi_disp_core.c",
+                "mi_disp/mi_disp_feature.c",
+                "mi_disp/mi_disp_file.c",
+                "mi_disp/mi_dsi_display.c",
+                "mi_disp/mi_dsi_panel.c",
+                "mi_disp/mi_disp_print.c",
+            ],
+        },
+        "CONFIG_MI_DISP_DEBUGFS": {
+            True: ["mi_disp/mi_disp_debugfs.c"],
+        },
+        "CONFIG_MI_DISP_SYSFS": {
+            True: ["mi_disp/mi_disp_sysfs.c"],
+        },
+        "CONFIG_MI_DISP_PROCFS": {
+            True: ["mi_disp/mi_disp_procfs.c"],
+        },
+        "CONFIG_MI_DISP_ESD_CHECK": {
+            True: ["mi_disp/mi_disp_esd_check.c"],
+        },
+        "CONFIG_MI_DISP_DFS_EVENT": {
+            True: ["mi_disp/mi_disp_event.c"],
+        },
+        "CONFIG_MI_DISP_BRIGTHNESS_CLONE_COOLER": {
+            True: ["mi_disp/mi_cooler_brightness_clone.c"],
+        },
+        "CONFIG_MI_DISP_NOTIFIER": {
+            True: ["mi_disp/mi_disp_notifier.c"],
+        },
+        "CONFIG_MI_HWCONF_MANAGER": {
+            True: ["mi_disp/mi_hwconf_manager.c"],
+        },
+        "CONFIG_MI_DISP_LOG": {
+            True: ["mi_disp/mi_disp_log.c"],
+        },
+        "CONFIG_MI_DISP_INPUT_HANDLER": {
+            True: ["mi_disp/mi_disp_input_handler.c"],
+        },
+        "CONFIG_MI_DISP_BOOST": {
+            True: ["mi_disp/mi_disp_boost.c"],
+        },
+        "CONFIG_MI_DISP_FOD_SYNC": {
+            True: ["mi_disp/mi_drm_crtc.c"],
+        },
+        "CONFIG_MI_DISP_LHBM": {
+            True: ["mi_disp/mi_disp_lhbm.c"],
         },
     },
 )
@@ -437,5 +504,5 @@ define_mgk_ddk_ko(
 ddk_headers(
     name = "ddk_public_headers",
     includes = ["."],
-    hdrs = glob(["**/*.h"]), # export all headers for other modules to use
+    hdrs = glob(["**/*.h","driver_novatek/*.h","driver_novatek/V2/D1/*.h","driver_novatek/V2/D2/*.h"]), # export all headers for other modules to use
 )

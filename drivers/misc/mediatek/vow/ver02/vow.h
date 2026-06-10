@@ -51,8 +51,8 @@
 #define VOW_VOICE_RECORD_BIG_THRESHOLD (8320) /* 260ms */
 #define VOW_IPI_SEND_CNT_TIMEOUT       (50) /* 50 loop */
 /* UBM_V1:0xA000, UBM_V2:0xDC00, UBM_V3: 2*0x11000, UBM_V4: 2*0x16800  */
-#define VOW_MODEL_SIZE_THRES           (0x2800)
-#define VOW_MODEL_SIZE                 (0x16800)
+#define VOW_MODEL_SIZE_THRES           (0x0)
+#define VOW_MODEL_SIZE                 (0x28000)
 #define VOW_VOICEDATA_OFFSET           (VOW_MODEL_SIZE * MAX_VOW_SPEAKER_MODEL)
 #define VOW_VOICEDATA_SIZE             (0x12C00) /* 74880 + 6*320, need over 2.3sec */
 #define VOW_NORMAL_REC_SIZE            (0x12480) /* 2.3sec(74880B) can be divided by 320byte */
@@ -72,6 +72,7 @@
 #define VOW_MAX_ECHO_NUM               (2)
 #define VOW_MAX_VFFP_OUTPUT_CH         (2)
 #define VOW_DEFAULT_SPEAKER_NUM        (1)
+#define VOW_MAX_CUSTOM_KEYWORD_NUM	   (12)
 
 /* length limitation sync by audio hal */
 #define VOW_VBUF_LENGTH                (0x12E80)  /* 0x12480 + 0x0A00 */
@@ -135,6 +136,7 @@
 #define VOW_SET_VOW_DELAY_WAKEUP      _IOW(VOW_IOC_MAGIC, 0x1C, unsigned int)
 #define VOW_SET_VOW_PAYLOAD_CALLBACK  _IOW(VOW_IOC_MAGIC, 0x1D, unsigned int)
 #define VOW_SET_VOW_DIGITAL_GAIN      _IOW(VOW_IOC_MAGIC, 0x1E, unsigned int)
+#define VOW_SET_CUSTOM_KEYWORD  	  _IOW(VOW_IOC_MAGIC, 0x1F, unsigned int)
 
 #ifdef VOW_ECHO_SW_SRC
 #define VOW_BARGEIN_AFE_MEMIF_SIZE        (0x1E00)
@@ -178,7 +180,9 @@ enum vow_control_cmd_t {
 	VOWControlCmd_Mic_Single,
 	VOWControlCmd_Mic_Dual,
 	VOWControlCmd_Speaker_Single,
-	VOWControlCmd_Speaker_Dual
+	VOWControlCmd_Speaker_Dual,
+	VOWControlCmd_Oneshot_Enable,
+	VOWControlCmd_Oneshot_Disable
 };
 
 enum vow_ipi_msgid_t {
@@ -210,6 +214,8 @@ enum vow_ipi_msgid_t {
 	IPIMSG_VOW_SCP_BARGE_IN_RESUME = 31,
 	/* IPI id 32~35 reserved for SCP VOW merged task using */
 	IPIMSG_VOW_PMIC_EFUSE_VER = 36,
+	IPIMSG_VOW_ONESHOT_SUPPORT = 40,
+	IPIMSG_VOW_SET_CUSTOM_KEYWORD = 41,
 	/*------ sound_soc-vow-kernel ------*/
 	IPIMSG_VOW_PCM_HWFREE = 100
 };
@@ -296,6 +302,7 @@ enum vow_model_control_t {
 enum {
 	VENDOR_ID_MTK = 77,     //'M'
 	VENDOR_ID_AMAZON = 65,  //'A'
+	VENDOR_ID_CUSTOM = 67,  //'C'
 	VENDOR_ID_OTHERS = 71,
 	VENDOR_ID_NONE = 0
 };

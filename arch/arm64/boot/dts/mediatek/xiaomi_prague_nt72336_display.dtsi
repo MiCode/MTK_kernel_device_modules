@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * Copyright (c) 2022, The Linux Foundation. All rights reserved.
+ * Copyright (C) 2022 XiaoMi, Inc.
+ */
+
+&pio {
+	spi0_bus_active: spi0_bus_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO45__FUNC_SPI0_MI>, <PINMUX_GPIO44__FUNC_SPI0_MO>,
+			<PINMUX_GPIO42__FUNC_SPI0_CLK>;
+			slew-rate = <0>;
+			drive-strength=<2>;
+			bias-pull-down;
+		};
+	};
+
+	spi0_cs_active: spi0_cs_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO43__FUNC_SPI0_CSB>;
+			slew-rate = <0>;
+			drive-strength=<2>;
+			bias-pull-up;
+		};
+	};
+
+	spi0_sleep: spi0_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO42__FUNC_GPIO42>, <PINMUX_GPIO43__FUNC_GPIO43>,
+			<PINMUX_GPIO44__FUNC_GPIO44>, <PINMUX_GPIO45__FUNC_GPIO45>;
+			slew-rate = <0>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+
+	uart1_tx_active: uart1_tx_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO228__FUNC_UTXD1>;
+			slew-rate = <0>;
+			bias-disable;
+		};
+	};
+
+	uart1_rx_active: uart1_rx_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO229__FUNC_URXD1>;
+			slew-rate = <0>;
+			bias-disable;
+		};
+	};
+
+	uart1_sleep: uart1_sleep {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO228__FUNC_GPIO228>, <PINMUX_GPIO229__FUNC_GPIO229>;
+			slew_rate = <0>;
+			bias-pull-down;
+			input-anable;
+		};
+	};
+};
+
+&spi0 {
+	status = "okay";
+	dma-mode; /*enable spi dma mode */
+	mediatek,pad-select = <0>;
+
+	nvt {
+		compatible = "novatek,vis-display";
+		reg = <0x0>;
+		status = "okay";
+		spi-max-frequency = <26000000>;
+		nvt,vsel = <&pio 185 0>;
+		nvt,always08 = <&pio 187 0>;
+		nvt,always18 = <&pio 37 0>;
+		nvt,resetN = <&pio 170 0>;
+		nvt,abnormal = <&pio 31 0>;
+		nvt,ready = <&pio 184 0>;
+		nvt,xtalEN = <&pio 204 0>;
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&spi0_bus_active &spi0_cs_active &uart1_tx_active &uart1_rx_active>;
+		pinctrl-1 = <&spi0_sleep &uart1_sleep>;
+	};
+};
+
+&uart1 {
+	status = "okay";
+};
+
+&spmi {
+	mt6687_mfd: mt6687-mfd {
+		mt6687_nvtclk: mt6687-nvtclk {
+			compatible = "mediatek,mt6687-nvtclk";
+			mt6687-dcxo-extbuf3-cw0 = <0x7d4>;
+			xo-bbck3-mode-shift = <0>;
+			xo-bbck3-mode-mask = <0x3>;
+			xo-bbck3-en-shift = <2>;
+			xo-bbck3-en-mask = <0x1>;
+			status = "okay";
+		};
+	};
+};

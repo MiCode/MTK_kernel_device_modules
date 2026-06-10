@@ -187,7 +187,7 @@ int mt6993_fe_trigger(struct snd_pcm_substream *substream, int cmd,
 		strscpy(memif->process_name, "NULL", sizeof(memif->process_name) - 1);
 
 		/* add delay for bt memif to avoid dl noise */
-		if (id == MT6993_MEMIF_DL23) {
+		if (id == MT6993_MEMIF_DL23 || id == MT6993_MEMIF_DL_24CH) {
 			mtk_memif_set_pbuf_size(afe, id, MT6993_MEMIF_PBUF_SIZE_64_BYTES);
 			mtk_memif_set_min_max_len(afe, id, MT6993_MEMIF_MIN_LEN_16_BYTES,
 					  MT6993_MEMIF_MAX_LEN_64_BYTES);
@@ -1977,6 +1977,90 @@ static const struct soc_enum mt6993_pcm_type_enum[] = {
 			    off_on_function),
 };
 
+bool back_dmic_power_status = false;
+int gpio_back_dmic_power_get(struct snd_kcontrol *kcontrol,
+                        struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = back_dmic_power_status;
+
+	return 0;
+}
+
+int gpio_back_dmic_power_set(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+        struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+        struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+
+	int enable = ucontrol->value.integer.value[0];
+	back_dmic_power_status = enable;
+
+	pr_info("enable: %d", enable);
+	if (enable) {
+		mt6993_afe_gpio_request(afe, true, MT6993_GPIO_BACK_DMIC_POWER, 0);
+	} else {
+		mt6993_afe_gpio_request(afe, false, MT6993_GPIO_BACK_DMIC_POWER, 0);
+	}
+
+	return 0;
+}
+
+bool bot_dmic_power_status = false;
+int gpio_bot_dmic_power_get(struct snd_kcontrol *kcontrol,
+                        struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = bot_dmic_power_status;
+
+	return 0;
+}
+
+int gpio_bot_dmic_power_set(struct snd_kcontrol *kcontrol,
+			struct snd_ctl_elem_value *ucontrol)
+{
+        struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+        struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+
+	int enable = ucontrol->value.integer.value[0];
+	bot_dmic_power_status = enable;
+
+	pr_info("enable: %d", enable);
+	if (enable) {
+		mt6993_afe_gpio_request(afe, true, MT6993_GPIO_BOT_DMIC_POWER, 0);
+	} else {
+		mt6993_afe_gpio_request(afe, false, MT6993_GPIO_BOT_DMIC_POWER, 0);
+	}
+
+	return 0;
+}
+
+bool top_dmic_power_status = false;
+int gpio_top_dmic_power_get(struct snd_kcontrol *kcontrol,
+                        struct snd_ctl_elem_value *ucontrol)
+{
+        ucontrol->value.integer.value[0] = top_dmic_power_status;
+
+	return 0;
+}
+
+int gpio_top_dmic_power_set(struct snd_kcontrol *kcontrol,
+                        struct snd_ctl_elem_value *ucontrol)
+{
+        struct snd_soc_component *cmpnt = snd_soc_kcontrol_component(kcontrol);
+        struct mtk_base_afe *afe = snd_soc_component_get_drvdata(cmpnt);
+
+        int enable = ucontrol->value.integer.value[0];
+        top_dmic_power_status = enable;
+
+        pr_info("enable: %d", enable);
+        if (enable) {
+                mt6993_afe_gpio_request(afe, true, MT6993_GPIO_TOP_DMIC_POWER, 0);
+        } else {
+                mt6993_afe_gpio_request(afe, false, MT6993_GPIO_TOP_DMIC_POWER, 0);
+        }
+
+	return 0;
+}
+
 static const struct snd_kcontrol_new mt6993_pcm_kcontrols[] = {
 	SOC_SINGLE_EXT("Audio IRQ1 CNT", SND_SOC_NOPM, 0, 0x3ffff, 0,
 		       mt6993_irq_cnt1_get, mt6993_irq_cnt1_set),
@@ -2191,6 +2275,12 @@ static const struct snd_kcontrol_new mt6993_pcm_kcontrols[] = {
 		      sizeof(struct virtio_passthrough_shm_msg),
 		      NULL, mt6993_passthrough_shm_set),
 #endif
+	SOC_SINGLE_EXT("BOT_DMIC_POWER", SND_SOC_NOPM, 0, 1, 0,
+			gpio_bot_dmic_power_get, gpio_bot_dmic_power_set),
+	SOC_SINGLE_EXT("TOP_DMIC_POWER", SND_SOC_NOPM, 0, 1, 0,
+			gpio_top_dmic_power_get, gpio_top_dmic_power_set),
+	SOC_SINGLE_EXT("BACK_DMIC_POWER", SND_SOC_NOPM, 0, 1, 0,
+			gpio_back_dmic_power_get, gpio_back_dmic_power_set),
 };
 
 enum {
@@ -12717,7 +12807,8 @@ static int mt6993_afe_pcm_dev_probe(struct platform_device *pdev)
 	ret = mt6993_afe_gpio_init(afe);
 	if (ret)
 		dev_info(dev, "init gpio error\n");
-
+	mt6993_afe_gpio_request(afe, true, MT6993_GPIO_TOP_DMIC_POWER, 0);
+	mt6993_afe_gpio_request(afe, true, MT6993_GPIO_BOT_DMIC_POWER, 0);
 #if !IS_ENABLED(CONFIG_NEBULA_SND_PASSTHROUGH)
 	/* init sram */
 	afe->sram = devm_kzalloc(&pdev->dev, sizeof(struct mtk_audio_sram),

@@ -28,7 +28,7 @@
 #define MML_DL_MAX_W		3840
 #define MML_DL_MAX_H		3840
 #define MML_DL_RROT_S_PX	(1920 * 1088)
-#define MML_MIN_SIZE		64
+#define MML_MIN_SIZE		80
 #define MML_DC_MAX_DURATION_US	8300
 
 /* use OPP index 0(229Mhz) 1(273Mhz) 2(458Mhz) */
@@ -1105,7 +1105,7 @@ static inline bool tp_need_resize(struct mml_frame_info *info, bool *can_binning
 			*can_binning = true;
 			if (cw >= w * 2 && !(inw & 0x3))
 				cw = cw / 2;
-			if (ch >= h * 2 && !(inh & 0x3))
+			if (ch >= h * 2 && !(ch & 0x3) && !(inh & 0x3))
 				ch = ch / 2;
 		}
 	}
@@ -1521,6 +1521,11 @@ static enum mml_mode tp_query_mode_dl(struct mml_dev *mml, struct mml_frame_info
 
 	if (info->src.height > MML_DL_MAX_H) {
 		*reason = mml_query_inheight;
+		goto decouple;
+	}
+
+	if (!MML_FMT_COMPRESS(info->src.format) && MML_FMT_IS_RGB(info->src.format)) {
+		*reason = mml_query_format;
 		goto decouple;
 	}
 

@@ -37,7 +37,9 @@
 #include <linux/debugfs.h>
 #include <linux/cpuhotplug.h>
 #include <linux/part_stat.h>
+#if IS_ENABLED(CONFIG_MTK_KCOMPRESSD)
 #include <linux/kcompressd.h>
+#endif
 #include <linux/mempool.h>
 #include <linux/tracepoint.h>
 
@@ -53,14 +55,17 @@ static int zram_major;
 static const char *default_compressor = "lz4";
 #if PAGE_SIZE == 4096
 static const char *default_mode = "hwonly";
+static const int default_mode_idx = 1;
 #else
 static const char *default_mode = "swonly";
+static const int default_mode_idx = 2;
 #endif
 
 #define MAX_MEMPOOL_SIZE	(8192)
 #define MEMPOOL_NEW_SIZE	(4096)
 static int mempool_min_size = MEMPOOL_NEW_SIZE; /* For non swonly modes */
 
+#if IS_ENABLED(CONFIG_MTK_KCOMPRESSD)
 static DEFINE_STATIC_KEY_FALSE(kcompressd_enabled);
 static inline bool is_kcompressd_enabled(void)
 {
@@ -86,7 +91,7 @@ static inline void mark_hwzram_not_busy(void)
 	if(is_kcompressd_enabled())
 		atomic_dec_if_positive(&hwzram_busy);
 }
-
+#endif
 /* Module params (documentation at end) */
 static unsigned int num_devices = 1;
 /*
@@ -108,12 +113,12 @@ static int zram_slot_trylock(struct zram *zram, u32 index)
 
 static void zram_slot_lock(struct zram *zram, u32 index)
 {
-	bit_spin_lock(ZRAM_LOCK, &(ZRAM_TE(zram, index))->flags);
+	spin_lock(&(ZRAM_TE(zram, index))->lock);
 }
 
 static void zram_slot_unlock(struct zram *zram, u32 index)
 {
-	bit_spin_unlock(ZRAM_LOCK, &(ZRAM_TE(zram, index))->flags);
+	spin_unlock(&(ZRAM_TE(zram, index))->lock);
 }
 
 static inline bool init_done(struct zram *zram)
@@ -168,15 +173,15 @@ static unsigned long zram_get_element(struct zram *zram, u32 index)
 
 static size_t zram_get_obj_size(struct zram *zram, u32 index)
 {
-	return (ZRAM_TE(zram, index))->flags & (BIT(ZRAM_FLAG_SHIFT) - 1);
+	return ZRAM_TE(zram, index)->flags & (BIT(ZRAM_FLAG_SHIFT) - 1);
 }
 
 static void zram_set_obj_size(struct zram *zram,
 					u32 index, size_t size)
 {
-	unsigned long flags = (ZRAM_TE(zram, index))->flags >> ZRAM_FLAG_SHIFT;
+	unsigned long flags = ZRAM_TE(zram, index)->flags >> ZRAM_FLAG_SHIFT;
 
-	(ZRAM_TE(zram, index))->flags = (flags << ZRAM_FLAG_SHIFT) | size;
+	ZRAM_TE(zram, index)->flags = (flags << ZRAM_FLAG_SHIFT) | size;
 }
 
 static inline bool zram_allocated(struct zram *zram, u32 index)
@@ -218,7 +223,7 @@ static inline void zram_set_priority(struct zram *zram, u32 index, u32 prio)
 	 */
 	(ZRAM_TE(zram, index))->flags &= ~(ZRAM_COMP_PRIORITY_MASK <<
 				      ZRAM_COMP_PRIORITY_BIT1);
-	(ZRAM_TE(zram, index))->flags |= (prio << ZRAM_COMP_PRIORITY_BIT1);
+	ZRAM_TE(zram, index)->flags |= (prio << ZRAM_COMP_PRIORITY_BIT1);
 }
 
 static inline u32 zram_get_priority(struct zram *zram, u32 index)
@@ -1285,7 +1290,6 @@ static void zram_meta_free(struct zram *zram, u64 disksize)
 static bool zram_meta_alloc(struct zram *zram, u64 disksize)
 {
 	size_t num_pages;
-
 	num_pages = disksize >> PAGE_SHIFT;
 	zram->table = vzalloc(array_size(num_pages, zram->ops->table_entry_sz));
 	if (!zram->table)
@@ -1301,7 +1305,6 @@ static bool zram_meta_alloc(struct zram *zram, u64 disksize)
 		huge_class_size = zs_huge_class_size(zram->mem_pool);
 
 	pr_info("%s: %llu\n", __func__, (unsigned long long)huge_class_size);
-
 	return true;
 }
 
@@ -1422,6 +1425,8 @@ static int zram_read_page(struct zram *zram, struct page *page, u32 index,
 	int ret;
 
 	zram_slot_lock(zram, index);
+
+
 	if (!zram_test_flag(zram, index, ZRAM_WB)) {
 		/* Slot should be locked through out the function call */
 		ret = zram_read_from_zspool(zram, page, index);
@@ -1525,14 +1530,13 @@ compress_again:
 				__GFP_KSWAPD_RECLAIM |
 				__GFP_NOWARN |
 				__GFP_HIGHMEM |
-				__GFP_MOVABLE |
-				__GFP_CMA);
+				__GFP_MOVABLE);
 	if (IS_ERR_VALUE(handle)) {
 		zcomp_stream_put(zram->comps[ZRAM_PRIMARY_COMP]);
 		atomic64_inc(&zram->stats.writestall);
 		handle = zs_malloc(zram->mem_pool, comp_len,
 				GFP_NOIO | __GFP_HIGHMEM |
-				__GFP_MOVABLE | __GFP_CMA);
+				__GFP_MOVABLE);
 		if (IS_ERR_VALUE(handle))
 			return PTR_ERR((void *)handle);
 
@@ -1753,8 +1757,7 @@ static int zram_recompress(struct zram *zram, u32 index, struct page *page,
 			       __GFP_KSWAPD_RECLAIM |
 			       __GFP_NOWARN |
 			       __GFP_HIGHMEM |
-			       __GFP_MOVABLE |
-			       __GFP_CMA);
+			       __GFP_MOVABLE);
 	if (IS_ERR_VALUE(handle_new)) {
 		zcomp_stream_put(zram->comps[prio]);
 		return PTR_ERR((void *)handle_new);
@@ -1919,6 +1922,7 @@ release_init_lock:
 	return ret;
 }
 #endif
+
 
 static void zram_bio_discard(struct zram *zram, struct bio *bio)
 {
@@ -2766,9 +2770,10 @@ static void hwcomp_compress_post_process_dc(int err, void *buffer, unsigned int 
 	zram_accessed(zram, index);
 	zram_slot_unlock(zram, index);
 
+#if IS_ENABLED(CONFIG_MTK_KCOMPRESSD)
 	/* Mark hwzram not busy if necessary */
 	mark_hwzram_not_busy();
-
+#endif
 	/* Update stats */
 	atomic64_inc(&zram->stats.pages_stored);
 
@@ -2899,9 +2904,10 @@ again:
 	/* Wait for HW available */
 	if (ret == -EBUSY) {
 
+#if IS_ENABLED(CONFIG_MTK_KCOMPRESSD)
 		/* Mark hwzram busy if necessary */
 		mark_hwzram_busy();
-
+#endif
 		if (wait) {
 #ifdef ZRAM_ENGINE_DEBUG
 			pr_info_ratelimited("%s: HW is busy, waiting for available.\n", __func__);
@@ -3163,6 +3169,7 @@ static void zram_fini_hw_engine(struct zram *zram)
 	hwcomp_destroy(hw_engine);
 }
 
+#if IS_ENABLED(CONFIG_MTK_KCOMPRESSD)
 /* Callback for kcompressd */
 static void zram_bio_write_callback(void *mem, struct bio *bio)
 {
@@ -3199,7 +3206,7 @@ static void zram_kcompressd_bio_write(struct zram *zram, struct bio *bio)
 	if(schedule_bio_write(zram, bio, zram_bio_write_callback))
 		zram_bio_write(zram, bio);
 }
-
+#endif
 /*
  * The order is corresponding to the one in the comp_mode_series.
  */
@@ -3253,7 +3260,7 @@ const struct zram_mode_operations mode_ops[] = {
 		.default_swalg	= false,
 		.table_entry_sz = sizeof(struct zram_table_entry),
 	},
-
+#if IS_ENABLED(CONFIG_MTK_KCOMPRESSD)
 	/* kcompressd:hw (similar to hybrid) */
 	[3] = {
 		.name		= "kcompressd:hw",
@@ -3286,6 +3293,7 @@ const struct zram_mode_operations mode_ops[] = {
 		.default_swalg	= false,
 		.table_entry_sz = sizeof(struct zram_table_entry),
 	},
+#endif
 
 #if IS_ENABLED(CONFIG_HWCOMP_SUPPORT_NO_DST_COPY)
 	/* Mode operations for No-DST-Copy mode (_ndc). */
@@ -3382,8 +3390,10 @@ static const char * const comp_mode_series[] = {
 	"hybrid",
 	"hwonly",
 	"swonly",
+#if IS_ENABLED(CONFIG_MTK_KCOMPRESSD)
 	"kcompressd:hw",
 	"kcompressd",
+#endif
 #if IS_ENABLED(CONFIG_HWCOMP_SUPPORT_NO_DST_COPY)
 	"ndc:hybrid",
 	"ndc:hwonly",
@@ -3439,6 +3449,11 @@ retry:
 	}
 
 	/* Determine operations */
+	if (i >= ARRAY_SIZE(mode_ops)) {
+		pr_info("%s: index err, use default mode: %s\n", __func__, default_mode);
+		mode = default_mode;
+		i = default_mode_idx;
+	}
 	zram->ops = &mode_ops[i];
 
 	/* Support BLK_FEAT_SYNCHRONOUS when it's swonly */
@@ -3459,10 +3474,11 @@ retry:
 			pr_info("%s: Resize mempool size successfully!\n", __func__);
 	}
 
+#if IS_ENABLED(CONFIG_MTK_KCOMPRESSD)
 	/* Turn on kcompressd_enabled if necessary */
 	if (!strcmp(mode, "kcompressd:hw") || !strcmp(mode, "kcompressd"))
 		static_branch_enable(&kcompressd_enabled);
-
+#endif
 	/* Override SW algorithm if necessary before creating zcomp instance */
 	comp_mode_set_algorithm(zram);
 }
@@ -4079,6 +4095,7 @@ static struct class zram_control_class = {
 	.class_groups	= zram_control_class_groups,
 };
 
+
 static int zram_remove_cb(int id, void *ptr, void *data)
 {
 	WARN_ON_ONCE(zram_remove(ptr));
@@ -4134,6 +4151,7 @@ static int __init zram_init(void)
 	/* Hook up related tracepoints */
 	zram_hookup_tracepoints();
 
+
 	return 0;
 
 out_error:
@@ -4145,7 +4163,6 @@ static void __exit zram_exit(void)
 {
 	/* Unhook probed tracepoints */
 	zram_unhook_tracepoints();
-
 	destroy_devices();
 }
 

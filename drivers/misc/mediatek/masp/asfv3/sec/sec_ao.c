@@ -57,14 +57,17 @@ int masp_hal_set_dm_verity_error(void)
 	/* configure to make misc register live after system reset */
 	mt_reg_sync_writel(MISC_LOCK_KEY_MAGIC, (void *)MISC_LOCK_KEY);
 	rst_con = __raw_readl((const void *)RST_CON);
+	pr_notice("[%s] rst_con reg = 0x%x\n", MOD, rst_con);
 	rst_con |= RST_CON_BIT(BOOT_MISC2_IDX);
 	mt_reg_sync_writel(rst_con, (void *)RST_CON);
 	mt_reg_sync_writel(0, (void *)MISC_LOCK_KEY);
 
 	/* set dm-verity error flag to misc2 */
 	reg_val = __raw_readl((const void *)BOOT_MISC2);
-	reg_val |= BOOT_MISC2_VERITY_ERR;
-	mt_reg_sync_writel(reg_val, (void *)BOOT_MISC2);
+	pr_notice("[%s] boot_misc2 reg = 0x%x\n", MOD, reg_val);
+	mt_reg_sync_writel(BOOT_MISC2_DM_VERITY_ERR_MAGIC, (void *)BOOT_MISC2);
+
+	pr_notice("[%s] boot_misc2 after set dm-verity error flag = 0x%x\n", MOD, __raw_readl((const void *)BOOT_MISC2));
 
 	return ret;
 	// LCOV_EXCL_STOP

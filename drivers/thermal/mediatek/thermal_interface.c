@@ -2353,6 +2353,38 @@ static ssize_t gpt_store(struct kobject *kobj,
 	return -EINVAL;
 }
 
+static ssize_t efficiency_show(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	int len = 0;
+
+	len += snprintf(buf + len, PAGE_SIZE - len, "%d\n",
+		therm_intf_read_cputcm_s32(EFFICIENCY_TCM_OFFSET));
+
+	return len;
+}
+
+static ssize_t efficiency_store(struct kobject *kobj,
+	struct kobj_attribute *attr, const char *buf, size_t count)
+{
+	char cmd[10];
+	u32 val;
+
+	if (sscanf(buf, "%4s %10u", cmd, &val) == 2) {
+		if (strncmp(cmd, "eff", 3) == 0) {
+			if (tm_data.is_cputcm) {
+				therm_intf_write_cputcm(val, EFFICIENCY_TCM_OFFSET);
+				return count;
+			}
+			pr_info("[efficiency] is_cputcm is false\n");
+		}
+	}
+
+	pr_info("[efficiency] invalid input\n");
+
+	return -EINVAL;
+}
+
 static struct kobj_attribute ttj_attr = __ATTR_RW(ttj);
 static struct kobj_attribute power_budget_attr = __ATTR_RW(power_budget);
 static struct kobj_attribute cpu_info_attr = __ATTR_RO(cpu_info);
@@ -2398,6 +2430,7 @@ static struct kobj_attribute thermal_hint_attr = __ATTR_RW(thermal_hint);
 static struct kobj_attribute boot_status_attr = __ATTR_RO(boot_status);
 static struct kobj_attribute gpt_attr = __ATTR_RW(gpt);
 static struct kobj_attribute cpu_cooler_dbg_attr = __ATTR_RO(cpu_cooler_dbg);
+static struct kobj_attribute efficiency_attr = __ATTR_RW(efficiency);
 
 
 static struct attribute *thermal_attrs[] = {
@@ -2445,6 +2478,7 @@ static struct attribute *thermal_attrs[] = {
 	&boot_status_attr.attr,
 	&gpt_attr.attr,
 	&cpu_cooler_dbg_attr.attr,
+	&efficiency_attr.attr,
 	NULL
 };
 static struct attribute_group thermal_attr_group = {
@@ -3068,7 +3102,7 @@ static void __used thermal_task(struct work_struct *work)
 	hint_remain = hint_remain - next_duration;
 
 	if (log_remain <= 0 && !skip_logs) {
-		dump_thermal_log();
+		//dump_thermal_log();
 		log_remain = LOG_DURATION;
 	}
 

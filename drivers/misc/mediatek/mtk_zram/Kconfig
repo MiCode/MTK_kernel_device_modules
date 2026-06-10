@@ -10,7 +10,7 @@ config MTK_ZRAM
 	tristate "MTK zram feature"
 	depends on BLOCK && SYSFS && MMU
 	depends on CRYPTO_LZ4
-	depends on MTK_ZRAM_ENGINE && MTK_KCOMPRESSD
+	depends on MTK_ZRAM_ENGINE
 	select ZSMALLOC
 	help
 	  Creates virtual block devices called /dev/block/zramX (X = 0, 1, ...).
@@ -41,3 +41,4 @@ config HWCOMP_SUPPORT_NO_DST_COPY
 	  Original zram uses zsmalloc to store compressed data. The flow is to compress
 	  SRC page and then copy the compressed data to zsmalloc. Turn on this option will
 	  use slab memory to store compressed data directly without the SW copy.
+

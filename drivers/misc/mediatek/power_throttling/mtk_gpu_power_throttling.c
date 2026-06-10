@@ -132,6 +132,7 @@ static void gpu_pt_low_battery_cb(enum LOW_BATTERY_LEVEL_TAG level, void *data)
 	trace_low_battery_throttling_gpu_freq(freq_limit);
 	gpufreq_set_limit(TARGET_DEFAULT, LIMIT_LOW_BATT, freq_limit, GPUPPM_KEEP_IDX);
 	mutex_unlock(&gpu_freq_lock);
+	pr_info("[PT][LV] throttle level=%d, gpu_limit_freq=%d\n", level, freq_limit);
 }
 #endif
 
@@ -157,6 +158,7 @@ static void gpu_pt_over_current_cb(enum BATTERY_OC_LEVEL_TAG level, void *data)
 		freq_limit = GPUPPM_RESET_IDX;
 
 	gpufreq_set_limit(TARGET_DEFAULT, LIMIT_BATT_OC, freq_limit, GPUPPM_KEEP_IDX);
+	pr_info("[PT][OC] throttle level=%d, gpu_limit_freq=%d\n", level, freq_limit);
 }
 #endif
 
@@ -174,6 +176,7 @@ static void gpu_pt_battery_percent_cb(enum BATTERY_PERCENT_LEVEL_TAG level)
 		freq_limit = GPUPPM_RESET_IDX;
 
 	gpufreq_set_limit(TARGET_DEFAULT, LIMIT_BATT_PERCENT, freq_limit, GPUPPM_KEEP_IDX);
+	pr_info("[PT][BP] throttle level=%d, gpu_limit_freq=%d\n", level, freq_limit);
 }
 #endif
 

@@ -1897,6 +1897,7 @@ static void mtk_drm_mmdvfs_get_avail_freq(struct device *dev)
 	step_size = dev_pm_opp_get_opp_count(dev);
 	g_freq_steps = kcalloc(step_size, sizeof(unsigned long), GFP_KERNEL);
 	freq = 0;
+	//idx 0 is lowest freq, index (step_size-1) is highest freq
 	while (!IS_ERR(opp = dev_pm_opp_find_freq_ceil(dev, &freq))) {
 		g_freq_steps[i] = freq;
 		freq++;
@@ -1911,9 +1912,16 @@ static void mtk_drm_mmdvfs_get_avail_freq(struct device *dev)
 void mtk_drm_mmdvfs_init(struct device *dev)
 {
 	struct device_node *node = dev->of_node;
+	struct mtk_drm_private *priv = dev_get_drvdata(dev);
 	int ret = 0;
+	u32 opp_tbl_num = 0;
 
-	dev_pm_opp_of_add_table(dev);
+	opp_tbl_num = of_count_phandle_with_args(dev->of_node, "operating-points-v2", NULL);
+	if ((opp_tbl_num > 1) && priv) {
+		dev_pm_opp_of_add_table_indexed(dev, priv->sw_ver);
+		DDPMSG("select sw_ver %u table\n", priv->sw_ver);
+	} else
+		dev_pm_opp_of_add_table(dev);
 	mtk_drm_mmdvfs_get_avail_freq(dev);
 
 	/* support DPC and VDISP */

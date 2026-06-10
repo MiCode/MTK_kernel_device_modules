@@ -262,14 +262,6 @@ int custom_cmd_comm_with(int sensor_type, struct custom_cmd *cust_cmd)
 	uint16_t tx_len = header_len + cust_cmd->tx_len;
 	uint16_t rx_len = header_len + cust_cmd->rx_len;
 
-#if IS_ENABLED(CONFIG_MTK_TINYSYS_SAP_SUPPORT)
-	if (sap_enabled() && (sensor_type == SENSOR_TYPE_OIS
-		|| sensor_type == SENSOR_TYPE_OIS1
-		|| sensor_type == SENSOR_TYPE_OIS2
-		|| sensor_type == SENSOR_TYPE_OIS3))
-		return sap_custom_cmd_comm(sensor_type, cust_cmd);
-#endif
-
 	if (tx_len > sizeof(rx_fast_notify.value) ||
 		rx_len > sizeof(rx_fast_notify.value))
 		ret = custom_cmd_slow_comm(sensor_type, cust_cmd);

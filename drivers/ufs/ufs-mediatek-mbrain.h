@@ -9,7 +9,7 @@
 #include <linux/types.h>
 #include <linux/platform_device.h>
 
-#include "ufs/ufshcd.h"
+#include <ufs/ufshcd.h>
 
 enum ufs_mb_version {
 	UFS_MB_VER1 = 1,

@@ -24,6 +24,13 @@ config DRM_MEDIATEK_DPTX_AUTO
 	  Choose this option if you want to enable
 	  DPTX AUTO driver for auto.
 
+config MI_DP_AUX_PN_SWAP
+	tristate "aw35743 dp aux swap driver"
+	help
+	  aw35743 dp aux swap driver.
+	  P88 uses aw35743 ic to do positive and negative
+	  switching of dp aux pn signals
+
 config DRM_MEDIATEK_AUTO_YCT
 	tristate "DRM AUTO Yocto Support for Mediatek SoCs"
 	depends on DRM_MEDIATEK_V2
@@ -117,4 +124,6 @@ config MTK_SE_SUPPORT
 	  reduce the driver's footprint.
 
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_edp/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/mi_disp/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/driver_novatek/V2/D2/vis_display/Kconfig"
 source "$(KCONFIG_EXT_PREFIX)drivers/gpu/drm/mediatek/mediatek_v2/v1/mtk_drm_auto/Kconfig"

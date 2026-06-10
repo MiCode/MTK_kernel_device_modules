@@ -142,6 +142,9 @@ static void __iomem *hwccf_mtcmos_sta;
 static void __iomem *mmpc_sw_hint_set;
 static void __iomem *mmpc_sw_hint_clr;
 static void __iomem *mmpc_dummy_voter;	/* 0x160(RU) 0x164(SET) 0x168(CLR) */
+static void __iomem *mmpc_idx2_ch_bw;
+static void __iomem *mmpc_idx10_ch_bw;
+
 
 static atomic_t g_mminfra_cnt = ATOMIC_INIT(0);
 static atomic_t g_apsrc_cnt = ATOMIC_INIT(0);
@@ -1566,6 +1569,7 @@ static void dpc_channel_bw_set_by_idx_v2(const u32 subsys, const u8 idx, const u
 	u32 cur_ch_bw = 0;
 	u32 max_ch_bw = 0;
 	int i = 0;
+	u32 value = 0;
 
 	mutex_lock(&g_priv->dvfs_bw.lock);
 	cur_ch_bw = g_priv->ch_bw_cfg[idx].disp_bw + g_priv->ch_bw_cfg[idx].mml_bw;
@@ -1576,21 +1580,35 @@ static void dpc_channel_bw_set_by_idx_v2(const u32 subsys, const u8 idx, const u
 		g_priv->ch_bw_cfg[idx].mml_bw = bw_in_mb;
 
 	ch_bw = g_priv->ch_bw_cfg[idx].disp_bw + g_priv->ch_bw_cfg[idx].mml_bw;
-	mutex_unlock(&g_priv->dvfs_bw.lock);
 
-	if (ch_bw == cur_ch_bw)
+	if (ch_bw == cur_ch_bw) {
+		mutex_unlock(&g_priv->dvfs_bw.lock);
 		return;
+	}
 
 	dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, BIT(subsys) << 16 | idx, bw_in_mb << 16 | ch_bw);
 	dpc_ch_bw_set_v2(subsys, idx, ch_bw);
 
-	mutex_lock(&g_priv->dvfs_bw.lock);
 	for (i = 0; i < 24; i++) {
 		ch_bw = g_priv->ch_bw_cfg[i].disp_bw + g_priv->ch_bw_cfg[i].mml_bw;
 		if (ch_bw > max_ch_bw)
 			max_ch_bw = ch_bw;
 	}
 	g_priv->dvfs_bw.bw_level = bw_to_level_v3(max_ch_bw);
+	if (idx == 2) {
+		udelay(20);
+		if (mmpc_idx2_ch_bw != NULL) {
+			value = readl(mmpc_idx2_ch_bw);
+			dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, 0xFFFF<<16 | idx, value);
+		}
+	}
+	if (idx == 10) {
+		udelay(20);
+		if (mmpc_idx10_ch_bw != NULL) {
+			value = readl(mmpc_idx10_ch_bw);
+			dpc_mmp(ch_bw, MMPROFILE_FLAG_PULSE, 0xFFFF<<16 | idx, value);
+		}
+	}
 	mutex_unlock(&g_priv->dvfs_bw.lock);
 }
 
@@ -1832,8 +1850,94 @@ static void dpc_dsi_pll_set_v2(const u32 value)
 	}
 }
 
+
+static void dpc_ap_vote_hwccf_pre_mt6993(u32 *step_trace, const char *caller)
+{
+	int ret = 0;
+	u32 value = 0;
+	u64 time = 0;
+
+/*	1.1. polling local status idle */
+	*step_trace |= BIT(0);
+	ret = readl_poll_timeout_atomic(hwccf_mtcmos_sta, value, !(value & 0x1ff80000), 1, 200);
+	if (ret < 0) {
+		*step_trace |= BIT(16);
+		time = sched_clock();
+
+/*	1.2. polling global status idle, timeout = ~300us (12us * 25) */
+		ret = readl_poll_timeout_atomic(hwccf_global_sta, value, !(value & 0x1ff80000), 1, 200);
+
+/*	1.3. If the first car is stuck, attempt to unlock the FSM */
+		dpc_toggle_cg_fsm(NULL, __LINE__);
+		if ((readl(hwccf_mtcmos_sta) & 0x1ff80000) != 0) {
+			*step_trace |= BIT(17);
+/*	1.4. If the second car is stuck, attempt to unlock the FSM */
+			dpc_toggle_cg_fsm(NULL, __LINE__);
+			ret = readl_poll_timeout_atomic(hwccf_mtcmos_sta, value, !(value & 0x1ff80000), 1, 200);
+			if (ret < 0) {
+				DPCERR("%s pre poll idle 1 cost(%llu)", caller, sched_clock() - time);
+				dpc_hwccf_dump("polling poll idle 1", __LINE__);
+			}
+		}
+	}
+	*step_trace |= BIT(1);
+}
+
+static void dpc_ap_vote_hwccf_post_mt6993(u32 pm_ack, u32 *step_trace, const char *caller)
+{
+	int ret = 0;
+	u32 value = 0;
+	u64 time = 0;
+
+/*	4. Make sure local enable is voted */
+	*step_trace |= BIT(2);
+	ret = readl_poll_timeout_atomic(hwccf_mtcmos_en, value, (value & pm_ack) == pm_ack, 1, 2000);
+	if (ret < 0)
+		dpc_hwccf_dump("polling hwccf_mtcmos_en(SW+HW) timeout", __LINE__);
+
+/*	5. Polling mtcmos pm ack */
+	*step_trace |= BIT(3);
+	ret = readl_poll_timeout_atomic(hwccf_mtcmos_pm_ack, value, (value & pm_ack) == pm_ack, 1, 200);
+	if (ret < 0) {
+		*step_trace |= BIT(18);
+		time = sched_clock();
+
+/*	5.1. If the first car is stuck, attempt to unlock the FSM */
+		dpc_toggle_cg_fsm(NULL, __LINE__);
+		if ((readl(hwccf_mtcmos_pm_ack) & pm_ack) != pm_ack) {
+			*step_trace |= BIT(19);
+/*	5.2. If the second car is stuck, attempt to unlock the FSM */
+			dpc_toggle_cg_fsm(NULL, __LINE__);
+
+/*	5.3. Polling mtcmos pm ack */
+			ret = readl_poll_timeout_atomic(hwccf_mtcmos_pm_ack, value, (value & pm_ack) == pm_ack,
+							1, 10000);
+			if (ret < 0) {
+				DPCERR("%s poll pm ack timeout cost(%llu)", caller, sched_clock() - time);
+				dpc_hwccf_dump("poll mtcmos pm ack 1 timeout", __LINE__);
+			}
+		}
+	}
+
+	if ((readl(hwccf_mtcmos_pm_ack) & pm_ack) == pm_ack)
+		*step_trace |= BIT(4);
+	else {
+		*step_trace |= BIT(20);
+		time = sched_clock();
+		ret = readl_poll_timeout_atomic(hwccf_mtcmos_pm_ack, value, (value & pm_ack) == pm_ack, 1, 10000);
+		DPCERR("%s poll pm ack timeout cost(%llu) trace(%#x)", caller, sched_clock() - time, *step_trace);
+		if (ret < 0)
+			dpc_hwccf_dump("pm ack abnormal 2", __LINE__);
+	}
+}
+
 static void dpc_bif_mtcmos_ctrl_mt6993(const u32 stage)
 {
+	int ret = 0;
+	u32 temp = 0;
+	u32 step_trace = 0;
+	u64 time1 = 0, time2 = 0, time3 = 0;
+
 	/* stage 0 : normal */
 	/* stage 1 : read mode + pwr off */
 	/* stage 2 : read mode + pwr on */
@@ -1841,39 +1945,62 @@ static void dpc_bif_mtcmos_ctrl_mt6993(const u32 stage)
 	if (!has_cap(DPC_CAP_BIF) || !g_priv)
 		return;
 
-	DPCFUNC("stage(%u)", stage);
-
 	if (stage == 0) {
-		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, 0x888, 1);
+		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, 0, 0x801);
+		time1 = sched_clock();
 		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, DPC_MTCMOS_MANUAL);
-		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, 0x888, 2);
-		// dpc_wait_pwr_ack_v3(DPC3_SUBSYS_DISP);
+		time3 = sched_clock();
+		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, time3 - time1, 0x802);
 	} else if (stage == 1) {
-		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, 0, 0);
+		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, 0, 0x901);
 
 		/* unvote to enable gce power keep */
 		writel(BIT(DISP_VIDLE_FORCE_KEEP), mmpc_dummy_voter + 0x8);
 
+		time1 = sched_clock();
 		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, DPC_MTCMOS_FORCE_AUTO);
 		g_priv->mtcmos_vote(DPC3_SUBSYS_OVL0, 4, true);
 		g_priv->mtcmos_vote(DPC3_SUBSYS_DIS0A, 4, true);
 		writel(0xffffffff, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
 		writel(0xa, dpc_base + DISP_REG_DPC_DISP_DT_EN);
 		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(3));
+		time2 = sched_clock();
+		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, time2 - time1, 0x902);
+
+		/* polling hwvote sign low of disp0b ovl1 ovl2 */
+		ret = readl_poll_timeout_atomic(dpc_base + DISP_DPC_INTSTA_HWVOTE_STATE, temp,
+						temp & 0xC4000,	1, 2000);
+		if (ret < 0)
+			DPCERR("polling hwvote sign low timeout (%#x)", temp);
+
+		ret = readl_poll_timeout_atomic(hwccf_mtcmos_sta, temp,
+						!(temp & 0x3100000), 1, 2000);
+		if (ret < 0)
+			DPCERR("polling hwccf_mtcmos_sta idle timeout (%#x)", temp);
+
+		time3 = sched_clock();
 		dpc_mmp(debug2, MMPROFILE_FLAG_END, 0, 0);
 	} else if (stage == 2) {
 		dpc_mmp(debug2, MMPROFILE_FLAG_START, 0, 0);
 		g_priv->set_mtcmos(DPC3_SUBSYS_DISP, DPC_MTCMOS_FORCE_AUTO);
 		writel(0xffffffff, dpc_base + DISP_REG_DPC_DISP_DT_SW_TRIG_EN);
 		writel(0xa, dpc_base + DISP_REG_DPC_DISP_DT_EN);
+
+		time1 = sched_clock();
+		dpc_ap_vote_hwccf_pre_mt6993(&step_trace, __func__);
+		time2 = sched_clock();
+		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, time2 - time1, step_trace);
+
 		writel(1, dpc_base + DISP_REG_DPC3_DTx_SW_TRIG(1));
+
+		dpc_ap_vote_hwccf_post_mt6993(0x3f80000, &step_trace, __func__);
+		time3 = sched_clock();
+		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, time3 - time2, step_trace);
 
 		/* vote to disable gce power keep */
 		writel(BIT(DISP_VIDLE_FORCE_KEEP), mmpc_dummy_voter + 0x4);
-
-		dpc_wait_pwr_ack_v3(DPC3_SUBSYS_DISP);
-		dpc_mmp(debug2, MMPROFILE_FLAG_PULSE, 1, 1);
 	}
+	DPCDUMP("dpc_bif stage(%u) step(%u) cost(%lld\t%lld)", stage, step_trace, time3 - time1, time2 - time1);
 
 	/* clear xpu voter vote by set_mtcmos */
 	if (excep_by_xpu & BIT(0))
@@ -2770,6 +2897,8 @@ static int dpc_res_init_v3(struct mtk_dpc *priv)
 	mmpc_sw_hint_clr = ioremap(0x31b501e8, 0x4);
 	mmpc_dummy_voter = ioremap(0x31b50160, 0x4);
 
+	mmpc_idx2_ch_bw = ioremap(0x31ae009c, 0x4);
+	mmpc_idx10_ch_bw = ioremap(0x31ae015c, 0x4);
 
 	// Mask unprocessed mutex
 	busy_mask[0] = ioremap(0x3E320328, 0x4); //(0x1000100)
@@ -3377,6 +3506,7 @@ static void dpc_gce_ref_cnt(struct cmdq_pkt *pkt, bool add, const enum mtk_vidle
 	rop.reg = false;
 	rop.value = 0;
 
+	cmdq_pkt_assign_command(pkt, mtcmos_sta, 0);
 /*SPR2*/cmdq_pkt_read(pkt, NULL, 0x31350160, dummy_voter);
 
 	if (add) {
@@ -4552,7 +4682,7 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 	struct clk *clk;
 	const struct of_device_id *of_id;
 	int ret = 0, genpd_num = 0, clk_num = 0, i;
-#if defined(DISP_VIDLE_ENABLE)
+#if defined(DISP_VIDLE_ENABLE) || defined(CONFIG_VIDLE_ENABLE)
 	int sw_ver = 0;
 #endif
 
@@ -4606,7 +4736,7 @@ static int mtk_dpc_probe_v3(struct platform_device *pdev)
 		}
 	}
 
-#if defined(DISP_VIDLE_ENABLE)
+#if defined(DISP_VIDLE_ENABLE) || defined(CONFIG_VIDLE_ENABLE)
 	if (of_property_read_u32(dev->of_node, "vidle-mask", &priv->vidle_mask)) {
 		DPCERR("failed to get vidle mask:%#x", priv->vidle_mask);
 		priv->vidle_mask = 0;

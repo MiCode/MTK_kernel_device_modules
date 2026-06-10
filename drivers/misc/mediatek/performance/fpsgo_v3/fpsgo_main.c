@@ -1446,8 +1446,10 @@ static int __init fpsgo_init(void)
 	fpsgo_sysfs_init();
 
 	kfpsgo_tsk = kthread_create(kfpsgo, NULL, "kfps");
-	if (kfpsgo_tsk == NULL)
+	if (IS_ERR(kfpsgo_tsk)) {
+		kfpsgo_tsk = NULL;
 		return -EFAULT;
+	}
 	wake_up_process(kfpsgo_tsk);
 
 #if FPSGO_DYNAMIC_WL

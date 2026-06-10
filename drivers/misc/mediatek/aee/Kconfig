@@ -86,3 +86,12 @@ config MTK_AEE_YOCTO
 	  for storing and handling physical addresses. This is necessary for
 	  systems with physical address ranges that exceed 4GB, which cannot
 	  be represented by a 32-bit 'u32' type.
+
+ config MTK_AEE_SECURITY
+	bool "enable security check"
+	depends on SECURITY_SELINUX
+	help
+	  This option enables security checks for the AEE driver.
+	  It adds an additional layer of protection by checking the
+	  SELinux attributes when accessing dev/aed0 and dev/aed1,
+	  preventing unauthorized tasks from gaining access.

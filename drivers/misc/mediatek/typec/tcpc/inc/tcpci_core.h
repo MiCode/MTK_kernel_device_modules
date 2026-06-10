@@ -106,6 +106,9 @@ struct tcpc_desc {
 /* TCPC Alert Register Define */
 #define TCPC_REG_ALERT_EXT_VBUS_80		(1<<(16+1))
 #define TCPC_REG_ALERT_EXT_WAKEUP		(1<<(16+0))
+#define TCPC_REG_POWER_STATUS_VBUS_PRES		(1<<2)
+#define TCPC_REG_POWER_STATUS_EXT_VSAFE0V	(1<<15)	/* extend */
+#define TCPC_FLAGS_LPM_WAKEUP_WATCHDOG		(1<<3)
 
 /* TCPC Behavior Flags */
 #define TCPC_FLAGS_RETRY_CRC_DISCARD		(1<<0)
@@ -182,6 +185,11 @@ struct tcpc_ops {
 	int (*alert_vendor_defined_handler)(struct tcpc_device *tcpc);
 	int (*set_auto_dischg_discnt)(struct tcpc_device *tcpc, bool en);
 	int (*get_vbus_voltage)(struct tcpc_device *tcpc, u32 *vbus);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int (*get_chip_id)(struct tcpc_device *tcpc,uint32_t *chip_id);
+	int (*get_chip_pid)(struct tcpc_device *tcpc,uint32_t *chip_pid);
+	int (*get_chip_vid)(struct tcpc_device *tcpc,uint32_t *chip_vid);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 #if CONFIG_WATER_DETECTION
 	int (*set_water_protection)(struct tcpc_device *tcpc, bool en);
@@ -192,6 +200,9 @@ struct tcpc_ops {
 	int (*set_vbus_short_cc)(struct tcpc_device *tcpc, bool cc1, bool cc2);
 
 	int (*set_low_power_mode)(struct tcpc_device *tcpc, bool en, int pull);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int (*set_watchdog)(struct tcpc_device *tcpc, bool en);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 #if CONFIG_TYPEC_CAP_FORCE_DISCHARGE
 	int (*set_force_discharge)(struct tcpc_device *tcpc, bool en, int mv);
@@ -267,6 +278,10 @@ struct tcpc_device {
 	struct srcu_notifier_head evt_nh[TCP_NOTIFY_IDX_NR];
 	struct tcpc_managed_res *mr_head;
 	struct mutex mr_lock;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int recv_msg_cnt;
+	int int_invaild_cnt;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 	/* For TCPC TypeC */
 	uint8_t typec_state;

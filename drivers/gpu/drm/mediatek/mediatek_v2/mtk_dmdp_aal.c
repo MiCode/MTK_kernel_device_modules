@@ -152,8 +152,7 @@ static void disp_mdp_aal_config_overhead(struct mtk_ddp_comp *comp,
 	if (cfg->tile_overhead.is_support) {
 		/*set component overhead*/
 		if (!data->is_right_pipe) {
-			if (priv->data->mmsys_id == MMSYS_MT6991 ||
-			    priv->data->mmsys_id == MMSYS_MT6993)
+			if (priv->data->mmsys_id == MMSYS_MT6991)
 				data->tile_overhead.comp_overhead = 8;
 			else
 				data->tile_overhead.comp_overhead = 0;
@@ -166,8 +165,7 @@ static void disp_mdp_aal_config_overhead(struct mtk_ddp_comp *comp,
 			data->tile_overhead.width =
 				cfg->tile_overhead.left_in_width;
 		} else {
-			if (priv->data->mmsys_id == MMSYS_MT6991 ||
-			    priv->data->mmsys_id == MMSYS_MT6993)
+			if (priv->data->mmsys_id == MMSYS_MT6991)
 				data->tile_overhead.comp_overhead = 8;
 			else
 				data->tile_overhead.comp_overhead = 0;

@@ -735,6 +735,8 @@ static void mtk_vidle_enable_v2(bool _en, void *_drm_priv)
 	/* reset status to config dpc setting at first time*/
 	if (!en && !mtk_vidle_is_ff_enabled())
 		atomic_set(&g_need_config, 1);
+
+	DDPINFO("%s, en:%d\n", __func__, en);
 }
 
 void mtk_vidle_enable(bool _en, void *_drm_priv)
@@ -847,6 +849,8 @@ void mtk_vidle_config_ff(bool en)
 	atomic_set(&g_ff_enabled, en);
 out:
 	spin_unlock_irqrestore(&vidle_hint_lock, flags);
+
+	DDPINFO("%s, g_need_config:%d, en:%d\n", __func__, atomic_read(&g_need_config), en);
 }
 EXPORT_SYMBOL(mtk_vidle_config_ff);
 
@@ -939,6 +943,20 @@ u32 mtk_vidle_hint_update(enum mtk_vidle_hint_type type)
 	case VIDLE_HINT_HSIDLE_LEAVE:
 		vidle_data.hint.hsidle_fuse--;
 		break;
+#ifdef CONFIG_MI_DISP
+	case VIDLE_HINT_AOD_ON:
+		vidle_data.hint.aod_fuse = 1;
+		break;
+	case VIDLE_HINT_AOD_OFF:
+		vidle_data.hint.aod_fuse = 0;
+		break;
+	case VIDLE_HINT_CLOUD_CONTROL_ON:
+		vidle_data.hint.cloud_control_fuse = 0;
+		break;
+	case VIDLE_HINT_CLOUD_CONTROL_OFF:
+		vidle_data.hint.cloud_control_fuse = 1;
+		break;
+#endif
 	case VIDLE_HINT_FORCE_CONFIG:
 		atomic_set(&g_need_config, 1);
 		vidle_data.hint.mtcmos_debounce = VIDLE_MTCMOS_DEBOUNCE;
@@ -973,6 +991,10 @@ int mtk_vidle_hint_decision(const char *caller)
 	decision = !(vidle_data.hint.crtc_fuse |
 		     vidle_data.hint.tui_fuse |
 		     vidle_data.hint.hsidle_fuse |
+#ifdef CONFIG_MI_DISP
+		     vidle_data.hint.aod_fuse |
+		     vidle_data.hint.cloud_control_fuse |
+#endif
 		     vidle_data.hint.doze_debounce |
 		     vidle_data.hint.mode_switch_debounce |
 		     vidle_data.hint.mtcmos_debounce |

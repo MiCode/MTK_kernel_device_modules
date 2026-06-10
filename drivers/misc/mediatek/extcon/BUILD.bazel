@@ -30,6 +30,11 @@ define_mgk_ddk_ko(
     ],
     ko_deps = [
         "//kernel_device_modules-{}/drivers/misc/mediatek/typec/tcpc:tcpc_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_framework".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:pd_single_cp_manager".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_event".format(kernel_version),
     ],
     hdrs = glob(["**/*.h"]),
     includes = ["."],
@@ -38,5 +43,6 @@ define_mgk_ddk_ko(
     out = "extcon-mtk-usb.ko",
     copts = [
         "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply",
     ],
 )

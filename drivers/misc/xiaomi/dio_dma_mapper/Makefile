@@ -1,0 +1,1 @@
+obj-$(CONFIG_DEVICE_MODULES_DIO_DMABUF_MAPPER) += dio_dma_mapper.o

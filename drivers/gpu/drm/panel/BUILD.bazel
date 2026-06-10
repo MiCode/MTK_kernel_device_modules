@@ -44,6 +44,14 @@ define_mgk_ddk_ko(
 )
 
 define_mgk_ddk_ko(
+    name = "leds-ktz8866",
+    srcs = [
+        "leds-ktz8866.c",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
     name = "rt4831a",
     srcs = [
         "rt4831a.c",
@@ -108,6 +116,14 @@ PANELS = [
     "panel-hx-nt37701-dphy-cmd",
     "panel-hx-nt37701-dphy-cmd-120hz",
     "panel-vtdr6126a-vdo",
+    "panel-p12-42-02-0a-dsc-cmd",
+    "panel-p12-36-0d-0b-dsc-cmd",
+    "panel-m12a-36-02-0a-dsc-cmd",
+    "panel-m12a-42-02-0b-dsc-cmd",
+    "panel-p12u-42-02-0a-dsc-cmd",
+    "panel-p88-42-02-0a-dsc-vdo",
+    "panel-q16x-41-02-0a-dsc-vdo",
+    "panel-q16x-42-02-0b-dsc-vdo",
     "panel-vtdr6126a-vdo-144hz",
     "panel-boe-jd9365da-vdo",
     "bridge-serdes",
@@ -119,16 +135,39 @@ PANELS = [
         "{}.c".format(p),
     ],
     header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2/v1:ddk_public_headers".format(kernel_version),
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk_interconnect".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mml_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
     ],
     hdrs = glob([
         "**/*.h".format(p),
     ]),
-    includes = ["."],
+    includes = [
+        ".",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/aee.h",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/mtk-interconnect-provider.h",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mml/mtk-mml.h",
+    ],
     ko_deps = [
         "panel-aw37501-i2c",
         "ktz8866",
+        "leds-ktz8866",
         "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/gate_ic:rt4831a_drv".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2/v1:mediatek_drm_v1".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+    ],
+    copts = [
+        "-Wno-unused-variable",
+        "-Wno-unused-function",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mml",
+        "-I$(DEVICE_MODULES_PATH)/include/uapi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/driver_novatek",
     ],
 ) for p in PANELS]

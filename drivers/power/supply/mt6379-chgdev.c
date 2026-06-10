@@ -11,6 +11,65 @@
 
 #define PE_POLL_TIME_US		(100 * 1000)
 
+struct ntc_desc {
+	int temp;	/* 0.1 deg.C */
+	int res;	/* ohm */
+};
+
+static struct ntc_desc ntc_table[] = {
+	{-400, 4251000},
+	{-350, 3005000},
+	{-300, 2149000},
+	{-250, 1554000},
+	{-200, 1135000},
+	{-150, 837800},
+	{-100, 624100},
+	{-50,  469100},
+	{0,    355600},
+	{50,   271800},
+	{100,  209400},
+	{150,  162500},
+	{200,  127000},
+	{250,  100000},
+	{300,  79230},
+	{350,  63180},
+	{400,  50680},
+	{450,  40900},
+	{500,  33190},
+	{550,  27090},
+	{600,  22220},
+	{650,  18320},
+	{700,  15180},
+	{750,  12640},
+	{800,  10580},
+	{850,  8887},
+	{900,  7500},
+	{950,  6357},
+	{1000, 5410},
+	{1050, 4623},
+	{1100, 3966},
+	{1150, 3415},
+	{1200, 2952},
+	{1250, 2561}
+};
+
+#if IS_ENABLED(CONFIG_SUPPORT_SOUTHCHIP_PDPHY)
+#define TS_VREF        1840
+#define TS_RP          100000
+#define SUB_RP         100000
+#define SUB_VREF       1840
+#elif IS_ENABLED(CONFIG_SUPPORT_MT6720_TS)
+#define TS_VREF        1800
+#define TS_RP          24900
+#define SUB_RP         100000
+#define SUB_VREF       1840
+#else
+#define TS_VREF        1840
+#define TS_RP          100000
+#define SUB_RP         100000
+#define SUB_VREF       1840
+#endif
+
 static int mt6379_plug_in(struct charger_device *chgdev)
 {
 	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
@@ -319,12 +378,50 @@ static int mt6379_get_adc(struct charger_device *chgdev, enum adc_channel chan, 
 
 static int mt6379_get_vbus(struct charger_device *chgdev, u32 *vbus)
 {
-	return mt6379_get_adc(chgdev, ADC_CHANNEL_VBUS, vbus, vbus);
+	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
+	int ret = 0;
+	u32 wls = 0;
+
+	ret = mt6379_charger_field_get(cdata, F_ST_WLS_CHG_RDY, &wls);
+	if (ret < 0) {
+		dev_info(cdata->dev, "%s, get wls chg rdy failed\n", __func__);
+		return ret;
+	}
+
+	if (wls == 1 && cdata->id != CHARGER_ID_MT6720) {
+		ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_WLSVIN], vbus);
+		if (ret < 0) {
+			dev_info(cdata->dev, "%s, get WLS vbus failed\n", __func__);
+			return ret;
+		}
+		dev_info(cdata->dev, "%s, get WLS vbus = %u\n", __func__, *vbus);
+		return ret;
+	} else
+		return mt6379_get_adc(chgdev, ADC_CHANNEL_VBUS, vbus, vbus);
 }
 
 static int mt6379_get_ibus(struct charger_device *chgdev, u32 *ibus)
 {
-	return mt6379_get_adc(chgdev, ADC_CHANNEL_IBUS, ibus, ibus);
+	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
+	int ret = 0;
+	u32 wls = 0;
+
+	ret = mt6379_charger_field_get(cdata, F_ST_WLS_CHG_RDY, &wls);
+	if (ret < 0) {
+		dev_info(cdata->dev, "%s, get wls chg rdy failed\n", __func__);
+		return ret;
+	}
+
+	if (wls == 1 && cdata->id != CHARGER_ID_MT6720) {
+		ret = iio_read_channel_processed(&cdata->iio_adcs[ADC_CHAN_WLSIIN], ibus);
+		if (ret < 0) {
+			dev_info(cdata->dev, "%s, get WLS ibus failed\n", __func__);
+			return ret;
+		}
+		dev_info(cdata->dev, "%s, get WLS ibus = %u\n", __func__, *ibus);
+		return ret;
+	} else
+		return mt6379_get_adc(chgdev, ADC_CHANNEL_IBUS, ibus, ibus);
 }
 
 static int mt6379_get_ibat(struct charger_device *chgdev, u32 *ibat)
@@ -366,6 +463,193 @@ static int mt6379_get_zcv(struct charger_device *chgdev, u32 *uV)
 
 	*uV = M_TO_U(cdata->zcv);
 	return 0;
+}
+
+static int mt6379_get_sub_temp(struct charger_device *chg_dev, int *value)
+{
+	struct mt6379_charger_data *ddata= charger_get_data(chg_dev);
+	int volt = 0, res = 0, lower = 0, upper = 0, i = 0, ret = 0;
+	struct ntc_desc *ts_ntc_table = NULL;
+	int size;
+
+	ts_ntc_table = ntc_table;
+	size = sizeof(ntc_table) / sizeof(ntc_table[0]);
+
+	ret = iio_read_channel_processed(&ddata->iio_adcs[ADC_CHAN_SUB_USB_CONNECT], &volt);
+	if(ret < 0)
+	{
+		chr_err("can not read ADC_CHAN_SUB_USB_CONNECT\n");
+		return ret;
+	}
+
+	dev_err(ddata->dev, "read sub temp volt=%d\n", volt);
+
+	res = SUB_RP * volt / (SUB_VREF - volt);
+
+	if (res >= ts_ntc_table[0].res) {
+		*value = ts_ntc_table[0].temp;
+		dev_err(ddata->dev, "read TS temp value = %d\n", *value);
+		return ret;
+	} else if (res <= ts_ntc_table[size - 1].res) {
+		*value = ts_ntc_table[size - 1].temp;
+		dev_err(ddata->dev, "read TS temp value = %d\n", *value);
+		return ret;
+	}
+
+	for (i = 0; i < size; i++) {
+		if (res >= ts_ntc_table[i].res) {
+			upper = i;
+			break;
+		}
+		lower = i;
+	}
+
+	*value = (ts_ntc_table[lower].temp * (res - ts_ntc_table[upper].res) + ts_ntc_table[upper].temp *
+			(ts_ntc_table[lower].res - res)) / (ts_ntc_table[lower].res - ts_ntc_table[upper].res);
+	dev_err(ddata->dev, "read sub temp value = %d\n", *value);
+
+	return ret;
+}
+
+static int mt6379_get_ts_temp(struct charger_device *chg_dev, int *value)
+{
+	struct mt6379_charger_data *ddata = charger_get_data(chg_dev);
+	int volt = 0, res = 0, lower = 0, upper = 0, i = 0, ret = 0;
+	struct ntc_desc *ts_ntc_table = NULL;
+	int size;
+
+	ts_ntc_table = ntc_table;
+	size = sizeof(ntc_table) / sizeof(ntc_table[0]);
+
+	ret = iio_read_channel_processed(&ddata->iio_adcs[ADC_CHAN_USB_CONNECT], &volt);
+	if(ret < 0)
+	{
+		chr_err("can not read ADC_CHAN_USB_CONNECT\n");
+		return ret;
+	}
+	if(ddata->id == CHARGER_ID_MT6720){
+		volt /=1000;
+	}
+
+	dev_err(ddata->dev, "read ts temp volt=%d\n", volt);
+
+	res = TS_RP * volt / (TS_VREF - volt);
+
+	if (res >= ts_ntc_table[0].res) {
+		*value = ts_ntc_table[0].temp;
+		dev_err(ddata->dev, "read TS temp value = %d\n", *value);
+		return ret;
+	} else if (res <= ts_ntc_table[size - 1].res) {
+		*value = ts_ntc_table[size - 1].temp;
+		dev_err(ddata->dev, "read TS temp value = %d\n", *value);
+		return ret;
+	}
+
+	for (i = 0; i < size; i++) {
+		if (res >= ts_ntc_table[i].res) {
+			upper = i;
+			break;
+		}
+		lower = i;
+	}
+
+	*value = (ts_ntc_table[lower].temp * (res - ts_ntc_table[upper].res) + ts_ntc_table[upper].temp *
+			(ts_ntc_table[lower].res - res)) / (ts_ntc_table[lower].res - ts_ntc_table[upper].res);
+	dev_err(ddata->dev, "read ADC_CHANNEL_TS value = %d\n", *value);
+
+	return ret;
+}
+
+static int mt6379_get_short_sub_temp(struct charger_device *chg_dev, int *value)
+{
+	struct mt6379_charger_data *ddata= charger_get_data(chg_dev);
+	int volt = 0, res = 0, lower = 0, upper = 0, i = 0, ret = 0;
+	struct ntc_desc *ts_ntc_table = NULL;
+	int size;
+
+	chr_err("short usb sub ntc not support\n");
+	return 0;
+
+	ret = iio_read_channel_processed(&ddata->iio_adcs[ADC_CHAN_SHORT_SUB_USB_CONNECT], &volt);
+	if (ret < 0) {
+		chr_err("can not read ADC_CHAN_SHORT_SUB_USB_CONNECT\n");
+		return ret;
+	}
+
+	dev_err(ddata->dev, "read short sub temp volt=%d\n", volt);
+
+	res = SUB_RP * volt / (SUB_VREF - volt);
+
+	if (res >= ts_ntc_table[0].res) {
+		*value = ts_ntc_table[0].temp;
+		dev_err(ddata->dev, "read short sub temp value = %d\n", *value);
+		return ret;
+	}
+	else if (res <= ts_ntc_table[size - 1].res) {
+		*value = ts_ntc_table[size - 1].temp;
+		dev_err(ddata->dev, "read short sub temp value = %d\n", *value);
+		return ret;
+	}
+
+	for (i = 0; i < size; i++) {
+		if (res >= ts_ntc_table[i].res) {
+			upper = i;
+			break;
+		}
+		lower = i;
+	}
+
+	*value = (ts_ntc_table[lower].temp * (res - ts_ntc_table[upper].res) + ts_ntc_table[upper].temp *
+			(ts_ntc_table[lower].res - res)) / (ts_ntc_table[lower].res - ts_ntc_table[upper].res);
+	dev_err(ddata->dev, "read short sub temp value = %d\n", *value);
+
+	return ret;
+}
+
+static int mt6379_get_short_ts_temp(struct charger_device *chg_dev, int *value)
+{
+	struct mt6379_charger_data *ddata = charger_get_data(chg_dev);
+	int volt = 0, res = 0, lower = 0, upper = 0, i = 0, ret = 0;
+	struct ntc_desc *ts_ntc_table = NULL;
+	int size;
+
+	chr_err("short usb ntc not support\n");
+	return 0;
+
+	ret = iio_read_channel_processed(&ddata->iio_adcs[ADC_CHAN_SHORT_USB_CONNECT], &volt);
+	if (ret < 0) {
+		chr_err("can not read ADC_CHAN_SHORT_USB_CONNECT\n");
+		return ret;
+	}
+
+	dev_err(ddata->dev, "read short ts temp volt=%d\n", volt);
+
+	res = TS_RP * volt / (TS_VREF - volt);
+
+	if (res >= ts_ntc_table[0].res) {
+		*value = ts_ntc_table[0].temp;
+		dev_err(ddata->dev, "read short ts temp value = %d\n", *value);
+		return ret;
+	}
+	else if (res <= ts_ntc_table[size - 1].res) {
+		*value = ts_ntc_table[size - 1].temp;
+		dev_err(ddata->dev, "read short ts temp value = %d\n", *value);
+		return ret;
+	}
+
+	for (i = 0; i < size; i++) {
+		if (res >= ts_ntc_table[i].res) {
+			upper = i;
+			break;
+		}
+		lower = i;
+	}
+
+	*value = (ts_ntc_table[lower].temp * (res - ts_ntc_table[upper].res) + ts_ntc_table[upper].temp *
+			(ts_ntc_table[lower].res - res)) / (ts_ntc_table[lower].res - ts_ntc_table[upper].res);
+	dev_err(ddata->dev, "read short ts temp value = %d\n", *value);
+
+	return ret;
 }
 
 static int mt6379_set_ieoc(struct charger_device *chgdev, u32 uA)
@@ -883,6 +1167,8 @@ enum {
 	ADC_DUMP_VBAT,
 	ADC_DUMP_IBAT,
 	ADC_DUMP_VSYS,
+	ADC_DUMP_WLSVIN,
+	ADC_DUMP_WLSIIN,
 	ADC_DUMP_MAX,
 };
 
@@ -917,6 +1203,10 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 		{ .chan = ADC_CHAN_VBAT, .name = "VBAT", .unit = "mV" },
 		{ .chan = ADC_CHAN_IBAT, .name = "IBAT", .unit = "mA" },
 		{ .chan = ADC_CHAN_VSYS, .name = "VSYS", .unit = "mV" },
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+		{ .chan = ADC_CHAN_WLSVIN, .name = "WLSVIN", .unit = "mV" },
+		{ .chan = ADC_CHAN_WLSIIN, .name = "WLSIIN", .unit = "mA" },
+#endif
 	};
 	static const struct {
 		const u16 reg;
@@ -931,6 +1221,7 @@ static int mt6379_dump_registers(struct charger_device *chgdev)
 		{ .reg = MT6379_REG_CHG_WDT, .name = "CHG_WDT" },
 		{ .reg = MT6379_REG_CHG_HD_BUBO5, .name = "HD_BUBO5" },
 		{ .reg = MT6379_REG_CHG_HD_TRIM6, .name = "HD_TRIM6" },
+		{ .reg = MT6379_REG_CHG_IPREC, .name = "CHG_IPREC" },
 	};
 
 	if (cdata->id == CHARGER_ID_MT6720) {
@@ -1344,6 +1635,106 @@ static int mt6379_set_boot_volt_times(struct charger_device *chgdev, u32 val)
 	return ret;
 }
 
+static int mt6379_enable_otg_regulator(struct charger_device *chgdev, bool en)
+{
+	int ret;
+	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
+	pr_err("%s en=%d\n", __func__, en);
+	if (en)
+		ret = mt6379_otg_regulator_enable(cdata->rdev);
+	else
+		ret = mt6379_otg_regulator_disable(cdata->rdev);
+	return ret;
+}
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+static int mi_mt6379_after_get_bc12_type(struct charger_device *chgdev, int port, int *type)
+{
+	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
+	int ret = 0;
+	u32 val = 0;
+	struct sc2201_chip *chip = NULL;
+
+	dev_info(cdata->dev, "%s, after port-%d\n", __func__, port);
+
+	if (port == 0) {
+		ret = mt6379_charger_field_set(cdata, F_BC12_VBUS_EN_OPT, 0);
+		ret = mt6379_charger_field_set(cdata, F_BC12_EN, false);
+		ret = mt6379_charger_field_set(cdata, F_BC12_EN, true);
+		if (ret) {
+			dev_err(cdata->dev, "%s, Failed to set bc12 port:%d\n", __func__, ret);
+			return ret;
+		} else
+			dev_info(cdata->dev, "%s, success set port-%d bc12\n", __func__, port);
+
+		msleep(300);
+
+		ret = mt6379_charger_field_get(cdata, F_PORT_STAT, &val);
+		if (ret) {
+			dev_err(cdata->dev, "%s, Failed to get bc12 port %d\n", __func__, ret);
+			return ret;
+		} else
+			dev_info(cdata->dev, "%s, PORT_STAT value: 0x%02X\n", __func__, val);
+
+		switch (val) {
+			case PORT_STAT_SDP:
+				*type = POWER_SUPPLY_TYPE_USB;
+				break;
+			case PORT_STAT_CDP:
+				*type = POWER_SUPPLY_TYPE_USB_CDP;
+				break;
+			case PORT_STAT_APPLE_5W:
+			case PORT_STAT_APPLE_10W:
+			case PORT_STAT_APPLE_12W:
+			case PORT_STAT_SS_TA:
+			case PORT_STAT_DCP:
+			case PORT_STAT_UNKNOWN_TA:
+				*type = POWER_SUPPLY_TYPE_USB_DCP;
+				break;
+			default:
+				*type = POWER_SUPPLY_USB_TYPE_UNKNOWN;
+				break;
+		}
+		ret = mt6379_charger_field_set(cdata, F_BC12_VBUS_EN_OPT, 1);
+	} else if (port == 1) {
+		if (IS_ERR_OR_NULL(cdata->sc2201_psy)) {
+			cdata->sc2201_psy = power_supply_get_by_name("sc2201");
+			dev_err(cdata->dev, "%s, get sc2201_psy rdy\n", __func__);
+		}
+		if (cdata->sc2201_psy != NULL) {
+			chip = power_supply_get_drvdata(cdata->sc2201_psy);
+			sc2201_inter_force_dpdm(chip);
+			dev_info(cdata->dev, "%s, get sc2201 bc12 type\n", __func__);
+			msleep(300);
+			xm_get_chg_type(chip);
+			*type = chip->psy_desc_type;
+		}
+	}
+	dev_info(cdata->dev, "%s, after port-%d bc12 value: %d\n", __func__, port, *type);
+	return ret;
+}
+
+static int mi_sc2201_rerun_bc12(struct charger_device *chgdev)
+{
+	struct mt6379_charger_data *cdata = charger_get_data(chgdev);
+	struct sc2201_chip *chip = NULL;
+	int ret = 0;
+
+	if (IS_ERR_OR_NULL(cdata->sc2201_psy)) {
+			cdata->sc2201_psy = power_supply_get_by_name("sc2201");
+			dev_err(cdata->dev, "%s, get sc2201_psy rdy fail\n", __func__);
+		}
+	if (cdata->sc2201_psy != NULL) {
+		chip = power_supply_get_drvdata(cdata->sc2201_psy);
+		ret = sc2201_rerun_bc12(chip);
+		if (ret)
+			dev_err(cdata->dev, "%s, rerun bc12 fail\n", __func__);
+	}
+	dev_err(cdata->dev, "%s, rerun bc12 success\n", __func__);
+	return ret;
+}
+#endif
+
 static const struct charger_ops mt6379_charger_ops = {
 	/* cable plug in/out */
 	.plug_in = mt6379_plug_in,
@@ -1374,6 +1765,10 @@ static const struct charger_ops mt6379_charger_ops = {
 	.get_ibat_adc = mt6379_get_ibat,
 	.get_tchg_adc = mt6379_get_tchg,
 	.get_zcv = mt6379_get_zcv,
+	.get_ts_temp = mt6379_get_ts_temp,
+	.get_sub_temp = mt6379_get_sub_temp,
+	.get_short_ts_temp = mt6379_get_short_ts_temp,
+	.get_short_sub_temp = mt6379_get_short_sub_temp,
 	/* charging termination */
 	.set_eoc_current = mt6379_set_ieoc,
 	.enable_termination = mt6379_enable_te,
@@ -1409,8 +1804,18 @@ static const struct charger_ops mt6379_charger_ops = {
 	.set_usbid_rup = mt6379_set_usbid_rup,
 	.set_usbid_src_ton = mt6379_set_usbid_src_ton,
 	.enable_usbid_floating = mt6379_enable_usbid_floating,
+	/* OTG */
+	.enable_otg_regulator = mt6379_enable_otg_regulator,
 	/* set boot volt times */
 	.set_boot_volt_times = mt6379_set_boot_volt_times,
+	.set_dpdm_voltage = mi_mt6379_set_dpdm_voltage,
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	/* after get bc12 type */
+	.after_get_bc12_type = mi_mt6379_after_get_bc12_type,
+	/* rerun bc12*/
+	.set_rerun_bc12 = mi_sc2201_rerun_bc12,
+#endif
 };
 
 static const struct charger_properties mt6379_charger_props = {

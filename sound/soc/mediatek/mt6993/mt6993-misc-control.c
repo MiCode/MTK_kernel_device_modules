@@ -866,10 +866,15 @@ static int mt6993_afe_vow_scp_dmic_set(struct snd_kcontrol *kcontrol,
 	int val = ucontrol->value.integer.value[0];
 
 	dev_info(afe->dev, "%s(), %d\n", __func__, val);
-	if (val == true)
+	if (val == true) {
+		mt6993_afe_gpio_request(afe, true, MT6993_GPIO_TOP_DMIC_POWER, 0);
+		mt6993_afe_gpio_request(afe, true, MT6993_GPIO_BOT_DMIC_POWER, 0);
 		mt6993_afe_gpio_request(afe, true, MT6993_DAI_VOW_SCP_DMIC, 0);
-	else if (val == false)
+	} else if (val == false) {
 		mt6993_afe_gpio_request(afe, false, MT6993_DAI_VOW_SCP_DMIC, 0);
+		mt6993_afe_gpio_request(afe, false, MT6993_GPIO_TOP_DMIC_POWER, 0);
+		mt6993_afe_gpio_request(afe, false, MT6993_GPIO_BOT_DMIC_POWER, 0);
+	}
 	return 0;
 }
 

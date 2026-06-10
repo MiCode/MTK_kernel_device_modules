@@ -110,7 +110,6 @@ static inline u32 copy_from_adsp_shared_memory(void *buf, u32 offset,
 }
 
 #if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 static u32 write_mem_header(void *buf, size_t size, const char *mem_name, u32 mem_size)
 {
 	struct adsp_mem_header hd = {0};
@@ -229,7 +228,6 @@ static int dump_buffer(struct adsp_exception_control *ctrl, int coredump_id)
 		 __func__, total, buf, n);
 	return n;
 }
-#endif /* CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT */
 
 static void adsp_exception_dump(struct adsp_exception_control *ctrl)
 {
@@ -237,9 +235,7 @@ static void adsp_exception_dump(struct adsp_exception_control *ctrl)
 	int db_opt = DB_OPT_DEFAULT;
 	char *aed_type;
 	bool dump_flag = true;
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 	int ret = 0;
-#endif
 	int n = 0, coredump_id = 0, coredump_size = 0;
 	struct adsp_priv *pdata = (struct adsp_priv *)ctrl->priv_data;
 	struct adsp_coredump *coredump;
@@ -276,19 +272,16 @@ static void adsp_exception_dump(struct adsp_exception_control *ctrl)
 		msleep(20);
 		return;
 	}
-
 	if (aee_get_mode() >= AEE_MODE_CUSTOMER_USER) {
 		dump_flag = false;
 		pr_info("%s, bypass coredump, aee customer user mode", __func__);
 	}
 
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 	if (dump_flag) {
 		ret = dump_buffer(ctrl, coredump_id);
 		if (ret < 0)
 			pr_info("%s, excep dump fail ret(%d)", __func__, ret);
 	}
-#endif
 
 	n += snprintf(detail + n, ADSP_AED_STR_LEN - n, "%s %s\n",
 		      pdata->name, aed_type);
@@ -316,7 +309,6 @@ static void adsp_exception_dump(struct adsp_exception_control *ctrl)
 			      coredump->assert_log);
 	}
 	pr_info("%s", detail);
-
 	/* adsp aed api, only detail information available*/
 	aed_common_exception_api("adsp", (const int *)coredump, coredump_size,
 				 NULL, 0, detail, db_opt);
@@ -581,7 +573,6 @@ EXPORT_SYMBOL(get_adsp_aee_buffer);
  * sysfs bin_attribute node
  */
 
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 static ssize_t adsp_dump_show(struct file *filep, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t offset, size_t size)
@@ -608,7 +599,7 @@ static ssize_t adsp_dump_show(struct file *filep, struct kobject *kobj,
 
 	return n;
 }
-
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 static ssize_t adsp_dump_ke_show(struct file *filep, struct kobject *kobj,
 				struct bin_attribute *attr,
 				char *buf, loff_t offset, size_t size)
@@ -664,7 +655,6 @@ static ssize_t adsp_dump_log_show(struct file *filep, struct kobject *kobj,
 }
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 static struct bin_attribute bin_attr_adsp_dump = {
 	.attr = {
 		.name = "adsp_dump",
@@ -673,7 +663,7 @@ static struct bin_attribute bin_attr_adsp_dump = {
 	.size = 0,
 	.read = adsp_dump_show,
 };
-
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 static struct bin_attribute bin_attr_adsp_dump_ke = {
 	.attr = {
 		.name = "adsp_dump_ke",
@@ -709,8 +699,8 @@ DEVICE_ATTR_WO(suppress_ee);
 #endif
 
 static struct bin_attribute *adsp_excep_bin_attrs[] = {
-#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 	&bin_attr_adsp_dump,
+#if IS_ENABLED(CONFIG_MTK_AUDIODSP_DEBUG_SUPPORT)
 	&bin_attr_adsp_dump_ke,
 	&bin_attr_adsp_dump_log,
 #endif

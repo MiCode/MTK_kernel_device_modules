@@ -346,6 +346,7 @@ struct tcpc_ofdata {
 	u8 lp_rplvl_sel_mask;
 	bool new_auto_idle;
 	bool vconn_clmt;
+	bool src_both_rp;
 	int (*post_irq_handler)(void *data);
 };
 
@@ -1478,8 +1479,12 @@ static int mt6379_floating_ground_evt_process(struct mt6379_tcpc_data *ddata)
 	ret = mt6379_read8(ddata, MT6379_REG_WD0SET, &data);
 	if (ret < 0)
 		return ret;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	return tcpci_notify_wd0_state(ddata->tcpc, !!(data & MT6379_MSK_WD0PULL_STS), true);
+#else
 	return tcpci_notify_wd0_state(ddata->tcpc,
 				      !!(data & MT6379_MSK_WD0PULL_STS));
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 }
 
 /*
@@ -1752,6 +1757,7 @@ static int mt6379_set_cc(struct tcpc_device *tcpc, int pull)
 	u8 data = 0;
 	int rp_lvl = TYPEC_CC_PULL_GET_RP_LVL(pull), pull1, pull2;
 	struct mt6379_tcpc_data *ddata = tcpc_get_dev_data(tcpc);
+	const struct tcpc_ofdata *ofdata = ddata->ofdata;
 
 	MT6379_INFO("%d\n", pull);
 	pull = TYPEC_CC_PULL_GET_RES(pull);
@@ -1773,10 +1779,12 @@ static int mt6379_set_cc(struct tcpc_device *tcpc, int pull)
 
 		if (pull == TYPEC_CC_RP &&
 		    tcpc->typec_state == typec_attached_src) {
-			if (tcpc->typec_polarity)
-				pull1 = TYPEC_CC_RD;
-			else
-				pull2 = TYPEC_CC_RD;
+			if (!ofdata->src_both_rp) {
+				if (tcpc->typec_polarity)
+					pull1 = TYPEC_CC_RD;
+				else
+					pull2 = TYPEC_CC_RD;
+			}
 		}
 		data = TCPC_V10_REG_ROLE_CTRL_RES_SET(0, rp_lvl, pull1, pull2);
 		ret = mt6379_write8(ddata, TCPC_V10_REG_ROLE_CTRL, data);
@@ -2800,6 +2808,7 @@ static const struct tcpc_ofdata mt6379_tcpc_ofdata = {
 	.lp_rplvl_sel_mask = 0x30,
 	.new_auto_idle = false,
 	.vconn_clmt = true,
+	.src_both_rp = false,
 	.post_irq_handler = mt6379_tcpc_post_irq_handler,
 };
 
@@ -2808,6 +2817,7 @@ static const struct tcpc_ofdata mt6720_tcpc_ofdata = {
 	.lp_rplvl_sel_mask = 0x10,
 	.new_auto_idle = true,
 	.vconn_clmt = false, /* Auto Enable in soft-start only */
+	.src_both_rp = true,
 };
 
 static const struct of_device_id __maybe_unused mt6379_tcpc_of_match[] = {

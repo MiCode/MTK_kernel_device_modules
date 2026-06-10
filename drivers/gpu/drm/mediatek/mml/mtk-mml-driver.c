@@ -3181,7 +3181,7 @@ static int mml_probe(struct platform_device *pdev)
 		}
 	}
 
-#if defined(MML_DL_SUPPORT)
+#if defined(MML_DL_SUPPORT) || defined(CONFIG_MML_DL_SUPPORT)
 	mml->dl_en = of_property_read_bool(dev->of_node, "dl-enable");
 	mml->dl_vdo = of_property_read_bool(dev->of_node, "dl-vdo");
 	if (mml->dl_en || mml->dl_vdo)

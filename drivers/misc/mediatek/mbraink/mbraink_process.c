@@ -183,11 +183,6 @@ void mbraink_get_process_stat_info(pid_t current_pid, unsigned int cnt,
 		}
 	}
 
-	if (process_stat_buffer->pid == 0)
-		pr_info("%s: current_pid = %u, count = %u, current_count=%u\n",
-			__func__, process_stat_buffer->pid, process_stat_buffer->pid_count,
-			process_stat_buffer->current_cnt);
-
 	read_unlock(&tasklist_lock);
 }
 
@@ -214,7 +209,7 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 	spin_lock_irqsave(&monitor_pidlist_lock, flags);
 	if (mbraink_monitor_pidlist_data.is_set == 0) {
 		spin_unlock_irqrestore(&monitor_pidlist_lock, flags);
-		pr_notice("the monitor pid list is unavailable now !!!\n");
+		//pr_notice("the monitor pid list is unavailable now !!!\n");
 		ret = -1;
 		return;
 	}
@@ -235,15 +230,15 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 		parent_pid = find_get_pid(processlist_temp[index]);
 
 		if (parent_pid == NULL) {
-			pr_info("%s: parent_pid %u = NULL\n",
-				__func__, processlist_temp[index]);
+			//pr_info("%s: parent_pid %u = NULL\n",
+			//	__func__, processlist_temp[index]);
 			continue;
 		} else {
 			t = get_pid_task(parent_pid, PIDTYPE_PID);
 			if (t == NULL) {
 				put_pid(parent_pid);
-				pr_info("%s: task pid %u = NULL\n",
-					__func__, processlist_temp[index]);
+				//pr_info("%s: task pid %u = NULL\n",
+				//	__func__, processlist_temp[index]);
 				continue;
 			}
 		}
@@ -301,8 +296,6 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 					break;
 				}
 			}
-		} else {
-			pr_info("This pid of task is kernel thread and has no children thread.\n");
 		}
 		put_task_struct(t);
 		put_pid(parent_pid);
@@ -312,11 +305,6 @@ void mbraink_get_thread_stat_info(pid_t current_pid_idx, pid_t current_tid,
 			break;
 		}
 	}
-
-	if (thread_stat_buffer->tid == 0)
-		pr_info("%s: current_tid = %u, current_pid_idx = %u, current_count=%u\n",
-			__func__, thread_stat_buffer->tid, thread_stat_buffer->pid_idx,
-			thread_stat_buffer->current_cnt);
 
 	read_unlock(&tasklist_lock);
 }
@@ -413,7 +401,7 @@ void mbraink_processname_to_pid(unsigned short monitor_process_count,
 		put_task_struct(t);
 
 		if (!cmdline) {
-			pr_info("%s: cmdline is NULL\n", __func__);
+			//pr_info("%s: cmdline is NULL\n", __func__);
 			continue;
 		}
 
@@ -440,9 +428,9 @@ setting:
 		for (index = 0; index < count; index++) {
 			mbraink_monitor_binder_pidlist_data.monitor_pid[index] =
 								processlist_temp[index];
-			pr_info("monitor_binder_pidlist_data.monitor_pid[%d] = %u, count = %u\n",
-				index, processlist_temp[index],
-				mbraink_monitor_binder_pidlist_data.monitor_process_count);
+			//pr_info("monitor_binder_pidlist_data.monitor_pid[%d] = %u, count = %u\n",
+			//	index, processlist_temp[index],
+			//	mbraink_monitor_binder_pidlist_data.monitor_process_count);
 		}
 		mbraink_monitor_binder_pidlist_data.is_set = 1;
 		spin_unlock_irqrestore(&monitor_binder_pidlist_lock, flags);
@@ -451,88 +439,13 @@ setting:
 		mbraink_monitor_pidlist_data.monitor_process_count = count;
 		for (index = 0; index < count; index++) {
 			mbraink_monitor_pidlist_data.monitor_pid[index] = processlist_temp[index];
-			pr_info("mbraink_monitor_pidlist_data.monitor_pid[%d] = %u, count = %u\n",
-				index, processlist_temp[index],
-				mbraink_monitor_pidlist_data.monitor_process_count);
+			//pr_info("mbraink_monitor_pidlist_data.monitor_pid[%d] = %u, count = %u\n",
+			//	index, processlist_temp[index],
+			//	mbraink_monitor_pidlist_data.monitor_process_count);
 		}
 		mbraink_monitor_pidlist_data.is_set = 1;
 		spin_unlock_irqrestore(&monitor_pidlist_lock, flags);
 	}
-}
-
-void mbraink_show_process_info(void)
-{
-	struct task_struct *t = NULL;
-	struct task_struct *s = NULL;
-	struct mm_struct *mm = NULL;
-	const struct cred *cred = NULL;
-	int priority = 0;
-	u64 stime = 0, utime = 0, cutime = 0, cstime = 0;
-	char *cmdline = NULL;
-	unsigned int counter = 0;
-
-	read_lock(&tasklist_lock);
-	for_each_process(t) {
-		stime = utime = 0;
-		mm = t->mm;
-		counter++;
-		if (mm) {
-			get_task_struct(t);
-			read_unlock(&tasklist_lock);
-			/*This function might sleep, cannot be called during atomic context*/
-			cmdline = kstrdup_quotable_cmdline(t, GFP_KERNEL);
-			read_lock(&tasklist_lock);
-			put_task_struct(t);
-
-			cutime = t->signal->cutime;
-			cstime = t->signal->cstime;
-			thread_group_cputime_adjusted(t, &utime, &stime);
-			cred = get_task_cred(t);
-			priority = t->prio - MAX_RT_PRIO;
-
-			if (cmdline) {
-				pr_info(PROCESS_INFO_STR,
-					t->pid, cred->uid.val, priority, nsec_to_clock_t(utime),
-					nsec_to_clock_t(stime), nsec_to_clock_t(cutime),
-					nsec_to_clock_t(cstime), cmdline);
-				kfree(cmdline);
-			} else {
-				pr_info(PROCESS_INFO_STR,
-					t->pid, cred->uid.val, priority, nsec_to_clock_t(utime),
-					nsec_to_clock_t(stime), nsec_to_clock_t(cutime),
-					nsec_to_clock_t(cstime), "NULL");
-			}
-
-			put_cred(cred);
-			for_each_thread(t, s) {
-				cred = get_task_cred(s);
-				cutime = cstime = stime = utime = 0;
-				cutime = s->signal->cutime;
-				cstime = s->signal->cstime;
-				task_cputime_adjusted(s, &utime, &stime);
-				priority = s->prio - MAX_RT_PRIO;
-
-				pr_info(THREAD_INFO_STR,
-					s->pid, cred->uid.val, priority, nsec_to_clock_t(utime),
-					nsec_to_clock_t(stime), nsec_to_clock_t(cutime),
-					nsec_to_clock_t(cstime), s->comm);
-				put_cred(cred);
-			}
-		} else {
-			cred = get_task_cred(t);
-			cutime = t->signal->cutime;
-			cstime = t->signal->cstime;
-			task_cputime_adjusted(t, &utime, &stime);
-			priority = t->prio - MAX_RT_PRIO;
-			pr_info(PROCESS_INFO_STR,
-				t->pid, cred->uid.val, priority, nsec_to_clock_t(utime),
-				nsec_to_clock_t(stime), nsec_to_clock_t(cutime),
-				nsec_to_clock_t(cstime), t->comm);
-			put_cred(cred);
-		}
-	}
-	read_unlock(&tasklist_lock);
-	pr_info("total task list element number = %u\n", counter);
 }
 
 /*****************************************************************
@@ -698,8 +611,8 @@ static void mbraink_sched_process_fork(void *data, struct task_struct *self,
 		}
 
 		if (i == MAX_TRACE_NUM) {
-			pr_info("%s pid=%u:%s, pidlist is full !\n",
-					__func__, p->pid, p->comm);
+			//pr_info("%s pid=%u:%s, pidlist is full !\n",
+			//		__func__, p->pid, p->comm);
 			mbraink_sched_process_data_send();
 
 			for (i = 0; i < MAX_TRACE_NUM; i++) {
@@ -792,9 +705,9 @@ static void mbraink_sched_process_exit(void *data, struct task_struct *t)
 				}
 			}
 			if (i == MAX_TRACE_NUM) {
-				pr_info("%s pid=%u:%s, jiffies=%llu pidlist is full !\n",
-					__func__, t->pid, t->comm,
-					mbraink_get_specific_process_jiffies(t));
+				//pr_info("%s pid=%u:%s, jiffies=%llu pidlist is full !\n",
+				//	__func__, t->pid, t->comm,
+				//	mbraink_get_specific_process_jiffies(t));
 
 				mbraink_sched_process_data_send();
 
@@ -894,7 +807,7 @@ static void mbraink_binder_transaction(void *data,
 			int n = 0;
 			int pos = 0;
 
-			pr_info("%s: binder string record is full %d\n", __func__, idx);
+			//pr_info("%s: binder string record is full %d\n", __func__, idx);
 
 			for (idx = 0; idx < MAX_BINDER_TRACE_NUM; idx++) {
 				if (idx % 16 == 0) {
@@ -1293,7 +1206,7 @@ static void mbraink_trace_android_vh_mm_may_oom_exit(void *data,
 	int idx = 0;
 	struct timespec64 tv = { 0 };
 	u64 timestamp;
-	int n = 0;
+	//int n = 0;
 
 	ktime_get_real_ts64(&tv);
 	timestamp = (tv.tv_sec*1000)+(tv.tv_nsec/1000000);
@@ -1316,10 +1229,10 @@ static void mbraink_trace_android_vh_mm_may_oom_exit(void *data,
 	mbraink_oom_tracelist_data[idx].stage = 10;
 	mbraink_oom_tracelist_data[idx].did_some_progress =
 		did_some_progress;
-	n = snprintf(mbraink_oom_tracelist_data[idx].nodemask, 32, "%*pbl",
+	snprintf(mbraink_oom_tracelist_data[idx].nodemask, 32, "%*pbl",
 		nodemask_pr_args(oc->nodemask));
-	if (n < 0 || n > 32)
-		pr_info("%s : snprintf error n = %d\n", __func__, n);
+	//if (n < 0 || n > 32)
+	//	pr_info("%s : snprintf error n = %d\n", __func__, n);
 	mbraink_oom_tracelist_data[idx].order = oc->order;
 	mbraink_oom_tracelist_data[idx].gfp_mask = oc->gfp_mask;
 	mbraink_oom_tracelist_data[idx].dirty = true;
@@ -1564,11 +1477,6 @@ void mbraink_get_tracing_pid_info(unsigned short current_idx,
 			}
 		}
 	}
-
-	if (tracing_pid_buffer->tracing_idx == 0)
-		pr_info("%s: current_idx = %u, count = %u\n",
-			__func__, tracing_pid_buffer->tracing_idx,
-			tracing_pid_buffer->tracing_count);
 
 	spin_unlock_irqrestore(&tracing_pidlist_lock, flags);
 }

@@ -694,6 +694,16 @@ static void adsp_dpsw_ack_timeout_ipi_handler(int id, void *data, unsigned int l
 	BUG_ON(1);
 }
 
+static void adsp_dpsw_ack_switch_800m(int id, void *data, unsigned int len)
+{
+	pr_info("%s(), ADSP system switch to 800M\n", __func__);
+}
+
+static void adsp_dpsw_ack_switch_400m(int id, void *data, unsigned int len)
+{
+	pr_info("%s(), ADSP system switch to 400M\n", __func__);
+}
+
 static int adsp_system_init(void)
 {
 	int ret = 0;
@@ -712,6 +722,14 @@ static int adsp_system_init(void)
 	adsp_ipi_registration(ADSP_IPI_DPSW_ACK_TIMEOUT,
 			      adsp_dpsw_ack_timeout_ipi_handler,
 			      "adsp_dpsw_ack_timeout");
+	/* ipi of dpsw ack timeout */
+	adsp_ipi_registration(ADSP_IPI_DPSW_SWICH_800M,
+			      adsp_dpsw_ack_switch_800m,
+			      "adsp_dpsw_switch_800m");
+	/* ipi of dpsw ack timeout */
+	adsp_ipi_registration(ADSP_IPI_DPSW_SWICH_400M,
+			      adsp_dpsw_ack_switch_400m,
+			      "adsp_dpsw_switch_400m");
 	/* time sync with adsp */
 	adsp_timesync_init();
 

@@ -1863,8 +1863,9 @@ static s32 wrot_config_frame(struct mml_comp *comp, struct mml_task *task,
 	/* Set the fixed ALPHA as 0xff */
 	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_DITHER], 0xff000000, U32_MAX);
 
-	/* Set VIDO_RSV_1 */
-	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_RSV_1], 0x80000000, 0x80000000);
+	/* Set VIDO_RSV_1 except DC mode */
+	if (!mml_isdc(cfg->info.mode))
+		cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_RSV_1], 0x80000000, 0x80000000);
 
 	/* Set VIDO_FIFO_TEST */
 	cmdq_pkt_write(pkt, NULL, base_pa + wrot->reg[VIDO_FIFO_TEST], wrot->data->fifo, U32_MAX);
@@ -2666,6 +2667,10 @@ static s32 wrot_wait(struct mml_comp *comp, struct mml_task *task,
 
 	/* wait wrot frame done */
 	cmdq_pkt_wfe(pkt, wrot->event_eof);
+
+	/* clear VIDO_INT bit0 after EOF */
+	if (mml_isdc(task->config->info.mode))
+		cmdq_pkt_write(pkt, NULL, comp->base_pa + wrot->reg[VIDO_INT], 0x1, 0x1);
 
 	if (task->config->info.mode == MML_MODE_RACING && wrot_frm->wdone[idx].eol) {
 		wrot_config_inlinerot(comp, task, ccfg, idx);

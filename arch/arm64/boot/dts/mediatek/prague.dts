@@ -1,0 +1,2510 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 MediaTek Inc.
+ */
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/mt6993-pinfunc.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/iio/mt635x-auxadc.h>
+#include <dt-bindings/thermal/thermal.h>
+#include "prague-sensor-common.dtsi"
+#include "mediatek/xiaomi_prague_t1_chip.dtsi"
+
+&chosen {
+	bootargs_ext = "";
+};
+
+&ise_lpm {
+	ise-wakelock = <0>;
+	ise-lpm-freerun = <0>;
+	ise-lpm-deinit-bypass = <0>;
+	ise-lpm-vote-dram = <0>;
+};
+
+&ise_mbox {
+	mediatek,real-drv = <0>;
+};
+
+&ise_trusty {
+	mediatek,real-drv = <0>;
+};
+
+&mtk_leds {
+	compatible = "mediatek,disp-leds";
+
+	backlight {
+		max-brightness = <16383>;
+		min-brightness = <1>;
+		max-hw-brightness = <16383>;
+		led_mode = <4>;
+		default-state = "cust_lk_backlight";
+		lk_backlight = <940>;
+	};
+};
+
+&peak_power_budget {
+	system-uvlo = <2100>;
+};
+
+&mt6661_dynamic_loading_throttling {
+	uvlo-level = <2100>;
+};
+
+&pio {
+	mtkfb_pins_lcd_bias_enp1: lcd-bias-enp1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO118__FUNC_GPIO118>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO118__FUNC_GPIO118>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcd_bias_enn1: lcd-bias-enn1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO118__FUNC_GPIO118>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO118__FUNC_GPIO118>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_rst_out1_gpio: lcm-rst-out1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO89__FUNC_GPIO89>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	mtkfb_pins_lcm_rst_out0_gpio: lcm-rst-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO89__FUNC_GPIO89>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_dsi_te: lcm-dsi-te {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO88__FUNC_DSI_TE>;
+		};
+	};
+	mtkfb_pins_lcm_led_en1: lcm-led-en1-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO105__FUNC_GPIO105>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO105__FUNC_GPIO105>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+&mtkfb {
+	pinctrl-names = "lcd_bias_enp1_gpio", "lcd_bias_enp0_gpio",
+		"lcd_bias_enn1_gpio", "lcd_bias_enn0_gpio",
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te", "lcm_led_en1_gpio", "lcm_led_en0_gpio",
+		"mode_te_te1";
+	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp1>;
+	pinctrl-1 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-2 = <&mtkfb_pins_lcd_bias_enn1>;
+	pinctrl-3 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-4 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-7 = <&mtkfb_pins_lcm_led_en1>;
+	pinctrl-8 = <&mtkfb_pins_lcm_led_en0>;
+	status = "okay";
+};
+
+&dispsys_config {
+	pinctrl-names = "mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+
+	helper-name-proj = "MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN",
+		"MTK_DRM_OPT_DSI_UNDERRUN_AEE",
+		"MTK_DRM_OPT_RES_SWITCH",
+		"MTK_DRM_OPT_RES_SWITCH_ON_AP",
+		"MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE",
+		"MTK_DRM_OPT_WAIT_EPT",
+		"MTK_DRM_OPT_FRAME_SUBMIT";
+
+	helper-value-proj = <1>, /*MTK_DRM_OPT_VIDLE_MTCMOS_DT_EN*/
+		<1>, /*MTK_DRM_OPT_DSI_UNDERRUN_AEE*/
+		<0>, /*MTK_DRM_OPT_RES_SWITCH*/
+		<0>, /*MTK_DRM_OPT_RES_SWITCH_ON_AP*/
+		<1>, /*MTK_DRM_OPT_OVL_WCG_BY_COLOR_MODE*/
+		<0>, /*MTK_DRM_OPT_WAIT_EPT*/
+		<0>; /*MTK_DRM_OPT_FRAME_SUBMIT*/
+
+	operating-points-v2 = <&opp_table_disp>, <&opp_table_disp_b0>;
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	prague_42_02_0a_dsc_cmd: panel1@0 {
+		compatible = "p12_42_02_0a_dsc_cmd,lcm";
+		reg = <0>;
+		reset-gpios = <&pio 89 0>;
+		mi,esd-err-irq-gpio = <&pio 8 0x2002>;
+		lane-swap-setting = <1 2 0 3 4 2>;
+		pn-swap-setting = <1 1 1 1 1 1>;
+		pinctrl-names = "default";
+		vcn18io-supply = <&mt6661_3_ln60_7>;
+		vci3io-supply = <&mt6661_5_ldc0_4>;
+		dvdd-gpios = <&pio 105 0>;
+		nt335_0p8-gpios = <&pio 187 0>;
+		nt335_1p8-gpios = <&pio 37 0>;
+		nt335_xtal1p8-gpios = <&pio 204 0>;
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out1>;
+			};
+		};
+	};
+	prague_36_0d_0b_dsc_cmd: panel2@1 {
+		compatible = "p12_36_0d_0b_dsc_cmd,lcm";
+		reg = <1>;
+		reset-gpios = <&pio 89 0>;
+		mi,esd-err-irq-gpio = <&pio 8 0x2002>;
+		lane-swap-setting = <1 2 0 3 4 2>;
+		pn-swap-setting = <1 1 1 1 1 1>;
+		pinctrl-names = "default";
+		vcn18io-supply = <&mt6661_3_ln60_7>;
+		vci3io-supply = <&mt6661_5_ldc0_4>;
+		dvdd-gpios = <&pio 105 0>;
+		nt335_0p8-gpios = <&pio 187 0>;
+		nt335_1p8-gpios = <&pio 37 0>;
+		nt335_xtal1p8-gpios = <&pio 204 0>;
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out2>;
+			};
+		};
+	};
+	ports {
+		port {
+			dsi_out1: endpoint@0 {
+				remote-endpoint = <&panel_in1>;
+			};
+			/* dsi_out2 but dsi_out1 fixes warning. It only allows pairing endpoints.*/
+			dsi_out2: endpoint@1 {
+				remote-endpoint = <&panel_in2>;
+			};
+		};
+	};
+};
+
+&pcie0 {
+	pinctrl-names = "init", "default", "sleep", "pd";
+	pinctrl-0 = <&pcie0_pins_init>;
+	pinctrl-1 = <&pcie0_pins_default>;
+	pinctrl-2 = <&pcie0_pins_sleep>;
+	pinctrl-3 = <&pcie0_pins_pd>;
+	max-link-speed = <4>;
+	mediatek,suspend-mode-l12;
+	status = "okay";
+};
+
+&pcie1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pcie1_pins_default>;
+	max-link-speed = <4>;
+	status = "disabled";
+};
+
+&pciephy0 {
+	mediatek,short-reach;
+	status = "okay";
+};
+
+&pciephy1 {
+	status = "disabled";
+};
+
+/* PCIe pinmux start */
+/* skyhawk use waken to control DFD_EN, PCIe0 don't need to control it */
+&pio {
+	pcie0_pins_init: pcie0-init {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO245__FUNC_GPIO245>;
+			output-low;
+		};
+
+		pins-cmd-dat1 {
+			pinmux = <PINMUX_GPIO247__FUNC_GPIO247>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	pcie0_pins_default: pcie0-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO245__FUNC_PCIE_PERSTN>,
+				 <PINMUX_GPIO247__FUNC_PCIE_CLKREQN>;
+			bias-pull-up;
+		};
+	};
+
+	pcie0_pins_sleep: pcie0-sleep {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO245__FUNC_GPIO245>;
+			output-low;
+		};
+
+		pins-cmd-dat1 {
+			pinmux = <PINMUX_GPIO247__FUNC_GPIO247>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+
+	pcie0_pins_pd: pcie0-pd {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO245__FUNC_GPIO245>;
+			output-low;
+		};
+
+		pins-cmd-dat1 {
+			pinmux = <PINMUX_GPIO247__FUNC_GPIO247>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+
+	pcie1_pins_default: pcie1-default {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO132__FUNC_PCIE_WAKEN_1P>,
+				 <PINMUX_GPIO133__FUNC_PCIE_PERSTN_1P>,
+				 <PINMUX_GPIO134__FUNC_PCIE_CLKREQN_1P>;
+			bias-pull-up;
+		};
+	};
+};
+/* PCIe pinmux end */
+
+/* usb typec mux start */
+&pio {
+	ps_enable: ps-enable {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO204__FUNC_GPIO204>;
+			output-high;
+		};
+	};
+
+	ps_disable: ps-disable {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO204__FUNC_GPIO204>;
+			output-low;
+		};
+	};
+};
+
+&mt6661_6_auxadc {
+		mt6661-6-vin3-100k {
+				channel = <AUXADC_VIN3>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+		};
+		mt6661-6-vin5-100k {
+				channel = <AUXADC_VIN5>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+		};
+};
+
+//thermal add
+&odm {
+	thermal_message: thermal-message {
+		board-sensor = "VIRTUAL-SENSOR";
+		board-sensor-trip-enable = <1>;
+		trip-point-high = <41000>;
+		trip-point-low = <40000>;
+		sysfs-nodes {
+			foreground_app_name {
+				mode-flag = <2>;
+				data-flag = <0>;
+			};
+			therm_log_enable {
+				mode-flag = <2>;
+				data-flag = <1>;
+				default = <0>;
+			};
+			boost_daily_track {
+				mode-flag = <2>;
+				data-flag = <0>;
+			};
+			boost_perapp_track {
+				mode-flag = <2>;
+				data-flag = <0>;
+			};
+			config_daily_track {
+				mode-flag = <2>;
+				data-flag = <0>;
+			};
+			board_sensor_headroom_lvl {
+				mode-flag = <2>;
+				data-flag = <1>;
+				default = <0>;
+			};
+			board_sensor_headroom_raw {
+				mode-flag = <2>;
+				data-flag = <1>;
+				default = <999>;
+			};
+			board_sensor_headroom_dbg {
+				mode-flag = <2>;
+				data-flag = <1>;
+				default = <255>;
+			};
+		};
+	};
+};
+
+&mt6661_6_auxadc {
+		mt6661-6-vin1-100k {
+				channel = <AUXADC_VIN1>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+		};
+		mt6661-6-vin2-100k {
+				channel = <AUXADC_VIN2>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+		};
+		mt6661-6-vin4-100k {
+				channel = <AUXADC_VIN4>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+		};
+};
+
+&tboard_thermistor4 {
+	compatible = "mediatek,thermal-auxadc-sensor";
+	#thermal-sensor-cells = <0>;
+	io-channels = <&mt6661_5_auxadc (ADC_PURES_100K_MASK | AUXADC_VIN4_POLL)>;
+	io-channel-names = "sensor-channel";
+	temperature-lookup-table =
+			<(-40000) 4397119>,
+			<(-39000) 4092874>,
+			<(-38000) 3811717>,
+			<(-37000) 3551749>,
+			<(-36000) 3311236>,
+			<(-35000) 3088599>,
+			<(-34000) 2882396>,
+			<(-33000) 2691310>,
+			<(-32000) 2514137>,
+			<(-31000) 2349778>,
+			<(-30000) 2197225>,
+			<(-29000) 2055558>,
+			<(-28000) 1923932>,
+			<(-27000) 1801573>,
+			<(-26000) 1687773>,
+			<(-25000) 1581881>,
+			<(-24000) 1483100>,
+			<(-23000) 1391113>,
+			<(-22000) 1305413>,
+			<(-21000) 1225531>,
+			<(-20000) 1151037>,
+			<(-19000) 1081535>,
+			<(-18000) 1016661>,
+			<(-17000) 956080>,
+			<(-16000) 899481>,
+			<(-15000) 846579>,
+			<(-14000) 797111>,
+			<(-13000) 750834>,
+			<(-12000) 707524>,
+			<(-11000) 666972>,
+			<(-10000) 628988>,
+			<(-9000) 593342>,
+			<(-8000) 559931>,
+			<(-7000) 528602>,
+			<(-6000) 499212>,
+			<(-5000) 471632>,
+			<(-4000) 445772>,
+			<(-3000) 421480>,
+			<(-2000) 398652>,
+			<(-1000) 377193>,
+			<0 357012>,
+			<1000 338006>,
+			<2000 320122>,
+			<3000 303287>,
+			<4000 287434>,
+			<5000 272500>,
+			<6000 258426>,
+			<7000 245160>,
+			<8000 232649>,
+			<9000 220847>,
+			<10000 209710>,
+			<11000 199196>,
+			<12000 189268>,
+			<13000 179890>,
+			<14000 171027>,
+			<15000 162651>,
+			<16000 154726>,
+			<17000 147232>,
+			<18000 140142>,
+			<19000 133432>,
+			<20000 127080>,
+			<21000 121066>,
+			<22000 115368>,
+			<23000 109970>,
+			<24000 104852>,
+			<25000 100000>,
+			<26000 95398>,
+			<27000 91032>,
+			<28000 86889>,
+			<29000 82956>,
+			<30000 79222>,
+			<31000 75675>,
+			<32000 72306>,
+			<33000 69104>,
+			<34000 66061>,
+			<35000 63167>,
+			<36000 60415>,
+			<37000 57797>,
+			<38000 55306>,
+			<39000 52934>,
+			<40000 50677>,
+			<41000 48528>,
+			<42000 46482>,
+			<43000 44533>,
+			<44000 42675>,
+			<45000 40904>,
+			<46000 39213>,
+			<47000 37601>,
+			<48000 36063>,
+			<49000 34595>,
+			<50000 33195>,
+			<51000 31859>,
+			<52000 30584>,
+			<53000 29366>,
+			<54000 28203>,
+			<55000 27091>,
+			<56000 26028>,
+			<57000 25013>,
+			<58000 24042>,
+			<59000 23113>,
+			<60000 22224>,
+			<61000 21374>,
+			<62000 20560>,
+			<63000 19782>,
+			<64000 19036>,
+			<65000 18322>,
+			<66000 17640>,
+			<67000 16986>,
+			<68000 16360>,
+			<69000 15759>,
+			<70000 15184>,
+			<71000 14631>,
+			<72000 14100>,
+			<73000 13591>,
+			<74000 13103>,
+			<75000 12635>,
+			<76000 12187>,
+			<77000 11756>,
+			<78000 11343>,
+			<79000 10946>,
+			<80000 10565>,
+			<81000 10199>,
+			<82000 9847>,
+			<83000 9509>,
+			<84000 9184>,
+			<85000 8872>,
+			<86000 8572>,
+			<87000 8283>,
+			<88000 8005>,
+			<89000 7738>,
+			<90000 7481>,
+			<91000 7234>,
+			<92000 6997>,
+			<93000 6769>,
+			<94000 6548>,
+			<95000 6337>,
+			<96000 6132>,
+			<97000 5934>,
+			<98000 5744>,
+			<99000 5561>,
+			<100000 5384>,
+			<101000 5214>,
+			<102000 5051>,
+			<103000 4893>,
+			<104000 4741>,
+			<105000 4594>,
+			<106000 4453>,
+			<107000 4316>,
+			<108000 4184>,
+			<109000 4057>,
+			<110000 3934>,
+			<111000 3816>,
+			<112000 3701>,
+			<113000 3591>,
+			<114000 3484>,
+			<115000 3380>,
+			<116000 3281>,
+			<117000 3185>,
+			<118000 3093>,
+			<119000 3003>,
+			<120000 2916>,
+			<121000 2832>,
+			<122000 2751>,
+			<123000 2672>,
+			<124000 2596>,
+			<125000 2522>;
+};
+
+&tboard_thermistor6 {
+		compatible = "mediatek,thermal-auxadc-sensor";
+		#thermal-sensor-cells = <0>;
+		io-channels = <&mt6661_5_auxadc (ADC_PURES_100K_MASK | AUXADC_AGPIO4_POLL)>;
+		io-channel-names = "sensor-channel";
+		temperature-lookup-table =
+			<(-40000) 4397119>,
+			<(-39000) 4092874>,
+			<(-38000) 3811717>,
+			<(-37000) 3551749>,
+			<(-36000) 3311236>,
+			<(-35000) 3088599>,
+			<(-34000) 2882396>,
+			<(-33000) 2691310>,
+			<(-32000) 2514137>,
+			<(-31000) 2349778>,
+			<(-30000) 2197225>,
+			<(-29000) 2055558>,
+			<(-28000) 1923932>,
+			<(-27000) 1801573>,
+			<(-26000) 1687773>,
+			<(-25000) 1581881>,
+			<(-24000) 1483100>,
+			<(-23000) 1391113>,
+			<(-22000) 1305413>,
+			<(-21000) 1225531>,
+			<(-20000) 1151037>,
+			<(-19000) 1081535>,
+			<(-18000) 1016661>,
+			<(-17000) 956080>,
+			<(-16000) 899481>,
+			<(-15000) 846579>,
+			<(-14000) 797111>,
+			<(-13000) 750834>,
+			<(-12000) 707524>,
+			<(-11000) 666972>,
+			<(-10000) 628988>,
+			<(-9000) 593342>,
+			<(-8000) 559931>,
+			<(-7000) 528602>,
+			<(-6000) 499212>,
+			<(-5000) 471632>,
+			<(-4000) 445772>,
+			<(-3000) 421480>,
+			<(-2000) 398652>,
+			<(-1000) 377193>,
+			<0 357012>,
+			<1000 338006>,
+			<2000 320122>,
+			<3000 303287>,
+			<4000 287434>,
+			<5000 272500>,
+			<6000 258426>,
+			<7000 245160>,
+			<8000 232649>,
+			<9000 220847>,
+			<10000 209710>,
+			<11000 199196>,
+			<12000 189268>,
+			<13000 179890>,
+			<14000 171027>,
+			<15000 162651>,
+			<16000 154726>,
+			<17000 147232>,
+			<18000 140142>,
+			<19000 133432>,
+			<20000 127080>,
+			<21000 121066>,
+			<22000 115368>,
+			<23000 109970>,
+			<24000 104852>,
+			<25000 100000>,
+			<26000 95398>,
+			<27000 91032>,
+			<28000 86889>,
+			<29000 82956>,
+			<30000 79222>,
+			<31000 75675>,
+			<32000 72306>,
+			<33000 69104>,
+			<34000 66061>,
+			<35000 63167>,
+			<36000 60415>,
+			<37000 57797>,
+			<38000 55306>,
+			<39000 52934>,
+			<40000 50677>,
+			<41000 48528>,
+			<42000 46482>,
+			<43000 44533>,
+			<44000 42675>,
+			<45000 40904>,
+			<46000 39213>,
+			<47000 37601>,
+			<48000 36063>,
+			<49000 34595>,
+			<50000 33195>,
+			<51000 31859>,
+			<52000 30584>,
+			<53000 29366>,
+			<54000 28203>,
+			<55000 27091>,
+			<56000 26028>,
+			<57000 25013>,
+			<58000 24042>,
+			<59000 23113>,
+			<60000 22224>,
+			<61000 21374>,
+			<62000 20560>,
+			<63000 19782>,
+			<64000 19036>,
+			<65000 18322>,
+			<66000 17640>,
+			<67000 16986>,
+			<68000 16360>,
+			<69000 15759>,
+			<70000 15184>,
+			<71000 14631>,
+			<72000 14100>,
+			<73000 13591>,
+			<74000 13103>,
+			<75000 12635>,
+			<76000 12187>,
+			<77000 11756>,
+			<78000 11343>,
+			<79000 10946>,
+			<80000 10565>,
+			<81000 10199>,
+			<82000 9847>,
+			<83000 9509>,
+			<84000 9184>,
+			<85000 8872>,
+			<86000 8572>,
+			<87000 8283>,
+			<88000 8005>,
+			<89000 7738>,
+			<90000 7481>,
+			<91000 7234>,
+			<92000 6997>,
+			<93000 6769>,
+			<94000 6548>,
+			<95000 6337>,
+			<96000 6132>,
+			<97000 5934>,
+			<98000 5744>,
+			<99000 5561>,
+			<100000 5384>,
+			<101000 5214>,
+			<102000 5051>,
+			<103000 4893>,
+			<104000 4741>,
+			<105000 4594>,
+			<106000 4453>,
+			<107000 4316>,
+			<108000 4184>,
+			<109000 4057>,
+			<110000 3934>,
+			<111000 3816>,
+			<112000 3701>,
+			<113000 3591>,
+			<114000 3484>,
+			<115000 3380>,
+			<116000 3281>,
+			<117000 3185>,
+			<118000 3093>,
+			<119000 3003>,
+			<120000 2916>,
+			<121000 2832>,
+			<122000 2751>,
+			<123000 2672>,
+			<124000 2596>,
+			<125000 2522>;
+	};
+
+&tboard_thermistor8 {
+	compatible = "generic-adc-thermal";
+	#thermal-sensor-cells = <0>;
+	io-channels = <&mt6661_6_auxadc AUXADC_VIN1>;
+	io-channel-names = "sensor-channel";
+	temperature-lookup-table =
+		<(-40000) 1799>,
+		<(-39000) 1797>,
+		<(-38000) 1794>,
+		<(-37000) 1790>,
+		<(-36000) 1787>,
+		<(-35000) 1783>,
+		<(-34000) 1779>,
+		<(-33000) 1775>,
+		<(-32000) 1771>,
+		<(-31000) 1766>,
+		<(-30000) 1761>,
+		<(-29000) 1756>,
+		<(-28000) 1751>,
+		<(-27000) 1745>,
+		<(-26000) 1739>,
+		<(-25000) 1733>,
+		<(-24000) 1726>,
+		<(-23000) 1719>,
+		<(-22000) 1712>,
+		<(-21000) 1705>,
+		<(-20000) 1696>,
+		<(-19000) 1688>,
+		<(-18000) 1678>,
+		<(-17000) 1669>,
+		<(-16000) 1659>,
+		<(-15000) 1649>,
+		<(-14000) 1640>,
+		<(-13000) 1628>,
+		<(-12000) 1617>,
+		<(-11000) 1605>,
+		<(-10000) 1592>,
+		<(-9000) 1580>,
+		<(-8000) 1567>,
+		<(-7000) 1554>,
+		<(-6000) 1539>,
+		<(-5000) 1526>,
+		<(-4000) 1509>,
+		<(-3000) 1493>,
+		<(-2000) 1477>,
+		<(-1000) 1460>,
+		<0 1445>,
+		<1000 1427>,
+		<2000 1409>,
+		<3000 1391>,
+		<4000 1373>,
+		<5000 1354>,
+		<6000 1335>,
+		<7000 1314>,
+		<8000 1295>,
+		<9000 1276>,
+		<10000 1255>,
+		<11000 1233>,
+		<12000 1212>,
+		<13000 1190>,
+		<14000 1169>,
+		<15000 1147>,
+		<16000 1125>,
+		<17000 1104>,
+		<18000 1082>,
+		<19000 1059>,
+		<20000 1039>,
+		<21000 1016>,
+		<22000 993>,
+		<23000 971>,
+		<24000 942>,
+		<25000 920>,
+		<26000 899>,
+		<27000 878>,
+		<28000 856>,
+		<29000 835>,
+		<30000 814>,
+		<31000 794>,
+		<32000 773>,
+		<33000 753>,
+		<34000 733>,
+		<35000 714>,
+		<36000 694>,
+		<37000 676>,
+		<38000 656>,
+		<39000 638>,
+		<40000 620>,
+		<41000 602>,
+		<42000 587>,
+		<43000 570>,
+		<44000 551>,
+		<45000 534>,
+		<46000 518>,
+		<47000 503>,
+		<48000 488>,
+		<49000 473>,
+		<50000 459>,
+		<51000 444>,
+		<52000 431>,
+		<53000 417>,
+		<54000 404>,
+		<55000 392>,
+		<56000 379>,
+		<57000 368>,
+		<58000 356>,
+		<59000 345>,
+		<60000 334>,
+		<61000 323>,
+		<62000 313>,
+		<63000 303>,
+		<64000 293>,
+		<65000 284>,
+		<66000 275>,
+		<67000 266>,
+		<68000 258>,
+		<69000 250>,
+		<70000 242>,
+		<71000 234>,
+		<72000 226>,
+		<73000 219>,
+		<74000 212>,
+		<75000 206>,
+		<76000 199>,
+		<77000 193>,
+		<78000 187>,
+		<79000 181>,
+		<80000 175>,
+		<81000 169>,
+		<82000 164>,
+		<83000 159>,
+		<84000 154>,
+		<85000 149>,
+		<86000 144>,
+		<87000 140>,
+		<88000 136>,
+		<89000 131>,
+		<90000 127>,
+		<91000 123>,
+		<92000 120>,
+		<93000 116>,
+		<94000 112>,
+		<95000 109>,
+		<96000 105>,
+		<97000 102>,
+		<98000 99>,
+		<99000 96>,
+		<100000 93>,
+		<101000 90>,
+		<102000 88>,
+		<103000 85>,
+		<104000 82>,
+		<105000 80>,
+		<106000 78>,
+		<107000 75>,
+		<108000 73>,
+		<109000 71>,
+		<110000 69>,
+		<111000 67>,
+		<112000 65>,
+		<113000 63>,
+		<114000 61>,
+		<115000 59>,
+		<116000 58>,
+		<117000 56>,
+		<118000 55>,
+		<119000 53>,
+		<120000 51>,
+		<121000 50>,
+		<122000 49>,
+		<123000 47>,
+		<124000 46>,
+		<125000 45>;
+};
+
+&tboard_thermistor9 {
+	compatible = "generic-adc-thermal";
+	#thermal-sensor-cells = <0>;
+	io-channels = <&mt6661_6_auxadc AUXADC_VIN2>;
+	io-channel-names = "sensor-channel";
+	temperature-lookup-table =
+		<(-40000) 1799>,
+		<(-39000) 1797>,
+		<(-38000) 1794>,
+		<(-37000) 1790>,
+		<(-36000) 1787>,
+		<(-35000) 1783>,
+		<(-34000) 1779>,
+		<(-33000) 1775>,
+		<(-32000) 1771>,
+		<(-31000) 1766>,
+		<(-30000) 1761>,
+		<(-29000) 1756>,
+		<(-28000) 1751>,
+		<(-27000) 1745>,
+		<(-26000) 1739>,
+		<(-25000) 1733>,
+		<(-24000) 1726>,
+		<(-23000) 1719>,
+		<(-22000) 1712>,
+		<(-21000) 1705>,
+		<(-20000) 1696>,
+		<(-19000) 1688>,
+		<(-18000) 1678>,
+		<(-17000) 1669>,
+		<(-16000) 1659>,
+		<(-15000) 1649>,
+		<(-14000) 1640>,
+		<(-13000) 1628>,
+		<(-12000) 1617>,
+		<(-11000) 1605>,
+		<(-10000) 1592>,
+		<(-9000) 1580>,
+		<(-8000) 1567>,
+		<(-7000) 1554>,
+		<(-6000) 1539>,
+		<(-5000) 1526>,
+		<(-4000) 1509>,
+		<(-3000) 1493>,
+		<(-2000) 1477>,
+		<(-1000) 1460>,
+		<0 1445>,
+		<1000 1427>,
+		<2000 1409>,
+		<3000 1391>,
+		<4000 1373>,
+		<5000 1354>,
+		<6000 1335>,
+		<7000 1314>,
+		<8000 1295>,
+		<9000 1276>,
+		<10000 1255>,
+		<11000 1233>,
+		<12000 1212>,
+		<13000 1190>,
+		<14000 1169>,
+		<15000 1147>,
+		<16000 1125>,
+		<17000 1104>,
+		<18000 1082>,
+		<19000 1059>,
+		<20000 1039>,
+		<21000 1016>,
+		<22000 993>,
+		<23000 971>,
+		<24000 942>,
+		<25000 920>,
+		<26000 899>,
+		<27000 878>,
+		<28000 856>,
+		<29000 835>,
+		<30000 814>,
+		<31000 794>,
+		<32000 773>,
+		<33000 753>,
+		<34000 733>,
+		<35000 714>,
+		<36000 694>,
+		<37000 676>,
+		<38000 656>,
+		<39000 638>,
+		<40000 620>,
+		<41000 602>,
+		<42000 587>,
+		<43000 570>,
+		<44000 551>,
+		<45000 534>,
+		<46000 518>,
+		<47000 503>,
+		<48000 488>,
+		<49000 473>,
+		<50000 459>,
+		<51000 444>,
+		<52000 431>,
+		<53000 417>,
+		<54000 404>,
+		<55000 392>,
+		<56000 379>,
+		<57000 368>,
+		<58000 356>,
+		<59000 345>,
+		<60000 334>,
+		<61000 323>,
+		<62000 313>,
+		<63000 303>,
+		<64000 293>,
+		<65000 284>,
+		<66000 275>,
+		<67000 266>,
+		<68000 258>,
+		<69000 250>,
+		<70000 242>,
+		<71000 234>,
+		<72000 226>,
+		<73000 219>,
+		<74000 212>,
+		<75000 206>,
+		<76000 199>,
+		<77000 193>,
+		<78000 187>,
+		<79000 181>,
+		<80000 175>,
+		<81000 169>,
+		<82000 164>,
+		<83000 159>,
+		<84000 154>,
+		<85000 149>,
+		<86000 144>,
+		<87000 140>,
+		<88000 136>,
+		<89000 131>,
+		<90000 127>,
+		<91000 123>,
+		<92000 120>,
+		<93000 116>,
+		<94000 112>,
+		<95000 109>,
+		<96000 105>,
+		<97000 102>,
+		<98000 99>,
+		<99000 96>,
+		<100000 93>,
+		<101000 90>,
+		<102000 88>,
+		<103000 85>,
+		<104000 82>,
+		<105000 80>,
+		<106000 78>,
+		<107000 75>,
+		<108000 73>,
+		<109000 71>,
+		<110000 69>,
+		<111000 67>,
+		<112000 65>,
+		<113000 63>,
+		<114000 61>,
+		<115000 59>,
+		<116000 58>,
+		<117000 56>,
+		<118000 55>,
+		<119000 53>,
+		<120000 51>,
+		<121000 50>,
+		<122000 49>,
+		<123000 47>,
+		<124000 46>,
+		<125000 45>;
+};
+
+&tboard_thermistor10 {
+	compatible = "generic-adc-thermal";
+	#thermal-sensor-cells = <0>;
+	io-channels = <&mt6661_6_auxadc AUXADC_VIN4>;
+	io-channel-names = "sensor-channel";
+	temperature-lookup-table =
+		<(-40000) 1799>,
+		<(-39000) 1797>,
+		<(-38000) 1794>,
+		<(-37000) 1790>,
+		<(-36000) 1787>,
+		<(-35000) 1783>,
+		<(-34000) 1779>,
+		<(-33000) 1775>,
+		<(-32000) 1771>,
+		<(-31000) 1766>,
+		<(-30000) 1761>,
+		<(-29000) 1756>,
+		<(-28000) 1751>,
+		<(-27000) 1745>,
+		<(-26000) 1739>,
+		<(-25000) 1733>,
+		<(-24000) 1726>,
+		<(-23000) 1719>,
+		<(-22000) 1712>,
+		<(-21000) 1705>,
+		<(-20000) 1696>,
+		<(-19000) 1688>,
+		<(-18000) 1678>,
+		<(-17000) 1669>,
+		<(-16000) 1659>,
+		<(-15000) 1649>,
+		<(-14000) 1640>,
+		<(-13000) 1628>,
+		<(-12000) 1617>,
+		<(-11000) 1605>,
+		<(-10000) 1592>,
+		<(-9000) 1580>,
+		<(-8000) 1567>,
+		<(-7000) 1554>,
+		<(-6000) 1539>,
+		<(-5000) 1526>,
+		<(-4000) 1509>,
+		<(-3000) 1493>,
+		<(-2000) 1477>,
+		<(-1000) 1460>,
+		<0 1445>,
+		<1000 1427>,
+		<2000 1409>,
+		<3000 1391>,
+		<4000 1373>,
+		<5000 1354>,
+		<6000 1335>,
+		<7000 1314>,
+		<8000 1295>,
+		<9000 1276>,
+		<10000 1255>,
+		<11000 1233>,
+		<12000 1212>,
+		<13000 1190>,
+		<14000 1169>,
+		<15000 1147>,
+		<16000 1125>,
+		<17000 1104>,
+		<18000 1082>,
+		<19000 1059>,
+		<20000 1039>,
+		<21000 1016>,
+		<22000 993>,
+		<23000 971>,
+		<24000 942>,
+		<25000 920>,
+		<26000 899>,
+		<27000 878>,
+		<28000 856>,
+		<29000 835>,
+		<30000 814>,
+		<31000 794>,
+		<32000 773>,
+		<33000 753>,
+		<34000 733>,
+		<35000 714>,
+		<36000 694>,
+		<37000 676>,
+		<38000 656>,
+		<39000 638>,
+		<40000 620>,
+		<41000 602>,
+		<42000 587>,
+		<43000 570>,
+		<44000 551>,
+		<45000 534>,
+		<46000 518>,
+		<47000 503>,
+		<48000 488>,
+		<49000 473>,
+		<50000 459>,
+		<51000 444>,
+		<52000 431>,
+		<53000 417>,
+		<54000 404>,
+		<55000 392>,
+		<56000 379>,
+		<57000 368>,
+		<58000 356>,
+		<59000 345>,
+		<60000 334>,
+		<61000 323>,
+		<62000 313>,
+		<63000 303>,
+		<64000 293>,
+		<65000 284>,
+		<66000 275>,
+		<67000 266>,
+		<68000 258>,
+		<69000 250>,
+		<70000 242>,
+		<71000 234>,
+		<72000 226>,
+		<73000 219>,
+		<74000 212>,
+		<75000 206>,
+		<76000 199>,
+		<77000 193>,
+		<78000 187>,
+		<79000 181>,
+		<80000 175>,
+		<81000 169>,
+		<82000 164>,
+		<83000 159>,
+		<84000 154>,
+		<85000 149>,
+		<86000 144>,
+		<87000 140>,
+		<88000 136>,
+		<89000 131>,
+		<90000 127>,
+		<91000 123>,
+		<92000 120>,
+		<93000 116>,
+		<94000 112>,
+		<95000 109>,
+		<96000 105>,
+		<97000 102>,
+		<98000 99>,
+		<99000 96>,
+		<100000 93>,
+		<101000 90>,
+		<102000 88>,
+		<103000 85>,
+		<104000 82>,
+		<105000 80>,
+		<106000 78>,
+		<107000 75>,
+		<108000 73>,
+		<109000 71>,
+		<110000 69>,
+		<111000 67>,
+		<112000 65>,
+		<113000 63>,
+		<114000 61>,
+		<115000 59>,
+		<116000 58>,
+		<117000 56>,
+		<118000 55>,
+		<119000 53>,
+		<120000 51>,
+		<121000 50>,
+		<122000 49>,
+		<123000 47>,
+		<124000 46>,
+		<125000 45>;
+};
+
+&thermal_zones {
+	FAN_therm: FAN_therm {
+		polling-delay = <0>; /* milliseconds */
+		polling-delay-passive = <0>; /* milliseconds */
+		thermal-sensors = <&tboard_thermistor4>;
+
+		trips {
+			FAN_therm_crit: FAN-therm-crit {
+				temperature = <119000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+	wifi_therm: wifi_therm {
+		polling-delay = <0>; /* milliseconds */
+		polling-delay-passive = <0>; /* milliseconds */
+		thermal-sensors = <&tboard_thermistor5>;
+
+		trips {
+			wifi_therm_crit: wifi-therm-crit {
+				temperature = <119000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+	X7_therm: X7_therm {
+		polling-delay = <0>; /* milliseconds */
+		polling-delay-passive = <0>; /* milliseconds */
+		thermal-sensors = <&tboard_thermistor6>;
+
+		trips {
+			X7_therm_crit: X7-therm-crit {
+				temperature = <119000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+	flash_therm: flash_therm {
+		polling-delay = <0>; /* milliseconds */
+		polling-delay-passive = <0>; /* milliseconds */
+		thermal-sensors = <&tboard_thermistor7>;
+
+		trips {
+			flash_therm_crit: flash-therm-crit {
+				temperature = <119000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+	quiet_therm: quiet_therm {
+		polling-delay = <0>; /* milliseconds */
+		polling-delay-passive = <0>; /* milliseconds */
+		thermal-sensors = <&tboard_thermistor8>;
+
+		trips {
+			quiet_therm_crit: quiet-therm-crit {
+				temperature = <119000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+	charger1_therm: charger1_therm {
+		polling-delay = <0>; /* milliseconds */
+		polling-delay-passive = <0>; /* milliseconds */
+		thermal-sensors = <&tboard_thermistor9>;
+
+		trips {
+			charger1_therm_crit: charger1-therm-crit {
+				temperature = <119000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+	display_therm: display_therm {
+		polling-delay = <0>; /* milliseconds */
+		polling-delay-passive = <0>; /* milliseconds */
+		thermal-sensors = <&tboard_thermistor10>;
+
+		trips {
+			display_therm_crit: display-therm-crit {
+				temperature = <119000>;
+				hysteresis = <2000>;
+				type = "passive";
+			};
+		};
+	};
+};
+
+&peak_power_budget {
+			compatible = "mediatek,peak_power_budget";
+			bootmode = <&chosen>;
+			gauge = <&mtk_gauge>;
+
+			soc-max-level = <3>;
+			soc-max-tb-num = <2>;
+			soc-hpt-volt-tb0-lv0 = <1>;
+			soc-hpt-volt-tb0-lv1 = <1>;
+			soc-hpt-volt-tb0-lv2 = <0>;
+			soc-hpt-volt-tb0-lv3 = <0>;
+
+			soc-hpt-volt-tb1-lv0 = <1>;
+			soc-hpt-volt-tb1-lv1 = <1>;
+			soc-hpt-volt-tb1-lv2 = <0>;
+			soc-hpt-volt-tb1-lv3 = <0>;
+};
+
+&low_battery_throttling {
+			compatible = "mediatek,low_battery_throttling";
+			lvsys-thd-enable = <1>;
+			vbat-thd-enable = <0>;
+
+			lvsys-thd-volt-l-size = <2>;
+			lvsys-thd-volt-h-size = <2>;
+			lvsys-thd-volt-l = <3200 2600
+					3200 2600
+					3200 2600
+					3200 2600>;
+			lvsys-thd-volt-h = <3300 2900
+					3300 2900
+					3300 2900
+					3300 2900>;
+
+			temperature-stage-threshold = <25 10 0>;
+
+			bat0-aging-threshold = <500 1000>;
+			bat0-aging-volts-t0 =  <0 0>;
+			bat0-aging-volts-t1 =  <0 0>;
+			bat0-aging-volts-t2 =  <0 0>;
+			bat0-aging-volts-t3 =  <0 0>;
+			bat1-aging-threshold = <500 1000>;
+			bat1-aging-volts-t0 =  <0 0>;
+			bat1-aging-volts-t1 =  <0 0>;
+			bat1-aging-volts-t2 =  <0 0>;
+			bat1-aging-volts-t3 =  <0 0>;
+
+			lvsys-aging-threshold = <500 1000>;
+			lvsys-aging-volts-t0 =  <0 0>;
+			lvsys-aging-volts-t1 =  <0 0>;
+			lvsys-aging-volts-t2 =  <0 0>;
+			lvsys-aging-volts-t3 =  <0 0>;
+
+			pt-shutdown-enable = <0>;
+
+			throttle-level = <0 1 2>,
+							<0 1 3>,
+							<0 1 3>,
+							<0 4 5>;
+
+			bootmode = <&chosen>;
+			gauge = <&mtk_gauge>;
+			lbat-thl-enable-pct0 = <30 30 30 30>;
+
+			nvmem-cells =<&fab_info>;
+			nvmem-cell-names = "fab_info";
+};
+
+&cpu_power_throttling {
+			compatible = "mediatek,cpu-power-throttling";
+			bootmode = <&chosen>;
+			lbat-max-level = <5>;
+			lbat-max-tb-num = <3>;
+
+			lbat-limit-freq-lv1 = < 2400000 2800000 3050000>;
+			lbat-limit-freq-lv2 = < 2100000 2100000 2100000>;
+			lbat-limit-freq-lv3 = < 2100000 1800000 1800000>;
+			lbat-limit-freq-lv4 = < 2400000 2400000 3050000>;
+			lbat-limit-freq-lv5 = < 2100000 1800000 1800000>;
+
+			lbat-limit-freq-tb1-lv1 = < 2400000 2800000 3050000>;
+			lbat-limit-freq-tb1-lv2 = < 2100000 2100000 2100000>;
+			lbat-limit-freq-tb1-lv3 = < 2100000 1800000 1800000>;
+			lbat-limit-freq-tb1-lv4 = < 2400000 2400000 3050000>;
+			lbat-limit-freq-tb1-lv5 = < 2100000 1800000 1800000>;
+
+			lbat-limit-freq-tb2-lv1 = < 2400000 2800000 3050000>;
+			lbat-limit-freq-tb2-lv2 = < 2100000 2100000 2100000>;
+			lbat-limit-freq-tb2-lv3 = < 2100000 1800000 1800000>;
+			lbat-limit-freq-tb2-lv4 = < 2400000 2400000 3050000>;
+			lbat-limit-freq-tb2-lv5 = < 2100000 1800000 1800000>;
+
+			oc-max-level = <2>;
+			oc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
+			oc-limit-freq-lv2 = < 2147483647  2147483647 2147483647>;
+
+			soc-max-level = <3>;
+			soc-core-active-lv1 = < 1 1 1 1 1 1 1 1 >;
+			soc-core-active-lv2 = < 1 1 1 1 1 1 1 1 >;
+			soc-core-active-lv3 = < 1 1 1 1 1 1 1 1 >;
+			soc-limit-freq-lv1 = < 2147483647  2147483647 2147483647>;
+			soc-limit-freq-lv2 = < 2100000 2100000 2100000>;
+			soc-limit-freq-lv3 = < 2100000 1800000 1800000>;
+
+			soc-limit-cmep-lv1 = <0>;
+			soc-limit-cmep-lv2 = <0>;
+			soc-limit-cmep-lv3 = <0>;
+
+			mpmm-enable = <1>;
+			mpmm-gear = <0>;
+
+			bootup-throttle-level = <1 1 2>, //boot temperature stage 0
+						<2 2 2>, //boot temperature stage 1
+						<2 2 2>; //boot temperature stage 2
+			bootup-temperature-stage-threshold = <0 (-10)>;
+			bootup-voltage-threshold = <3700 3500>;
+			bootup-delay-release-time = <10>;
+			limit-freq-bootmode0-lv1 = <2200000 2800000 3000000>;
+			limit-freq-bootmode0-lv2 = <2200000 2200000 2200000>;
+
+			nvmem-cells =<&fab_info>;
+			nvmem-cell-names = "fab_info";
+};
+
+&gpu_power_throttling {
+			compatible = "mediatek,gpu-power-throttling";
+			bootmode = <&chosen>;
+			lbat-max-level = <5>;
+			lbat-max-tb-num = <3>;
+
+			lbat-limit-freq-lv1 = <702000>;
+			lbat-limit-freq-lv2 = <702000>;
+			lbat-limit-freq-lv3 = <702000>;
+			lbat-limit-freq-lv4 = <702000>;
+			lbat-limit-freq-lv5 = <702000>;
+
+			lbat-limit-freq-tb1-lv1 = <702000>;
+			lbat-limit-freq-tb1-lv2 = <702000>;
+			lbat-limit-freq-tb1-lv3 = <702000>;
+			lbat-limit-freq-tb1-lv4 = <702000>;
+			lbat-limit-freq-tb1-lv5 = <702000>;
+
+			lbat-limit-freq-tb2-lv1 = <702000>;
+			lbat-limit-freq-tb2-lv2 = <702000>;
+			lbat-limit-freq-tb2-lv3 = <702000>;
+			lbat-limit-freq-tb2-lv4 = <702000>;
+			lbat-limit-freq-tb2-lv5 = <702000>;
+
+			oc-max-level = <2>;
+			oc-limit-freq-lv1 = <2147483647>;
+			oc-limit-freq-lv2 = <2147483647>;
+
+			soc-max-level = <3>;
+			soc-limit-freq-lv1 = <2147483647>;
+			soc-limit-freq-lv2 = <806000>;
+			soc-limit-freq-lv3 = <806000>;
+
+			nvmem-cells =<&fab_info>;
+			nvmem-cell-names = "fab_info";
+
+			bootup-delay-release-time = <20>;
+};
+
+&apu_power_throttling {
+			compatible = "mediatek,apu-power-throttling";
+			lbat-max-level = <5>;
+			lbat-max-tb-num = <3>;
+
+			lbat-limit-opp-lv1 = <7>;
+			lbat-limit-opp-lv2 = <7>;
+			lbat-limit-opp-lv3 = <7>;
+			lbat-limit-opp-lv4 = <8>;
+			lbat-limit-opp-lv5 = <9>;
+
+			lbat-limit-opp-tb1-lv1 = <7>;
+			lbat-limit-opp-tb1-lv2 = <7>;
+			lbat-limit-opp-tb1-lv3 = <7>;
+			lbat-limit-opp-tb1-lv4 = <8>;
+			lbat-limit-opp-tb1-lv5 = <9>;
+
+			lbat-limit-opp-tb2-lv1 = <7>;
+			lbat-limit-opp-tb2-lv2 = <7>;
+			lbat-limit-opp-tb2-lv3 = <7>;
+			lbat-limit-opp-tb2-lv4 = <8>;
+			lbat-limit-opp-tb2-lv5 = <9>;
+
+			oc-max-level = <2>;
+			oc-limit-opp-lv1 = <0>;
+			oc-limit-opp-lv2 = <0>;
+
+			soc-max-level = <3>;
+			soc-limit-opp-lv1 = <0>;
+			soc-limit-opp-lv2 = <7>;
+			soc-limit-opp-lv3 = <9>;
+
+			nvmem-cells =<&fab_info>;
+			nvmem-cell-names = "fab_info";
+};
+
+&md_power_throttling {
+			compatible = "mediatek,md-power-throttling";
+			lbat-dedicate-volts = <3400 3200 3000 2800>;
+			lbat-max-level = <3>;
+			lbat-reduce-tx-lv1 = <0>;
+			lbat-reduce-tx-lv2 = <2>;
+			lbat-reduce-tx-lv3 = <2>;
+
+			oc-max-level = <2>;
+			oc-reduce-tx-lv1 = <0>;
+			oc-reduce-tx-lv2 = <0>;
+
+			soc-max-level = <3>;
+			soc-reduce-tx-lv1 = <0>;
+			soc-reduce-tx-lv2 = <0>;
+			soc-reduce-tx-lv3 = <0>;
+
+			lbat-dedicate-temperature = <25 10 0>;
+};
+
+&bp_thl {
+			compatible = "mediatek,mtk-bp-thl";
+			max-throttle-level = <3>;
+			soc-throttle-level = <0 1 2 2>, //temperature stage 0
+							<0 1 2 2>, //temperature stage 1
+							<0 1 2 2>, //temperature stage 2
+							<0 1 3 3>; //temperature stage 3
+
+			soc-max-stage = <3>;
+			soc-limit-threshold = <30 7 3>;
+
+			temperature-max-stage = <3>;
+			temperature-stage-threshold = <25 10 0>;
+
+			md-thl-enable;
+
+			nvmem-cells =<&fab_info>;
+			nvmem-cell-names = "fab_info";
+};
+
+&mt6379_typec {
+	tcpc,rp-level = <0>;
+	tcpc,en_floatgnd;
+	/* 0:16x, 1:128x, 2:512x, 3:1024x */
+	wd,wd0_tsleep = <1>;
+	/* 0:400us, 1:1ms, 2:2ms, 3:4ms, 4:10ms, 5:40ms, 6:100ms, 7:400ms */
+	wd,wd0_tdet = <3>;
+	/* example wd0_tsleep = 512x, wd0_tdet = 4ms, wd0 polling time = 512*4ms */
+	port {
+		tcpc_typec_usb: endpoint {
+			remote-endpoint = <&ssusb_mux>;
+		};
+	};
+
+	pd-data {
+		pd,source-cap-ext = /bits/ 8 <0xcf 0x29 0x79 0x63
+						0x00 0x00 0x00 0x00
+						0x00 0x00 0x00 0x00
+						0x00 0x00 0x00 0x00
+						0x00 0x00 0x00 0x00
+						0x00 0x00 0x01 0x05
+						0x00>;
+		pd,charging-policy = <0x2>;
+		pd,source-pdo-data = <0x00019064>; /* 5V, 1000 mA */
+		pd,sink-pdo-size = <3>;
+		pd,sink-pdo-data = <0x0001912c 0x0002d12c 0xc1902464>;
+		pd,support-direct-cap-change;
+		pd,support-quick-revchg;
+	};
+};
+
+&typec_mux_switch {
+	orientation-switch;
+	mode-switch;
+	accessory;
+	port {
+		ssusb_mux: endpoint {
+			remote-endpoint = <&tcpc_typec_usb>;
+		};
+	};
+};
+
+&ps5170 {
+	pinctrl-names = "enable", "disable";
+	pinctrl-0 = <&ps_enable>;
+	pinctrl-1 = <&ps_disable>;
+	status = "disable";
+};
+
+&usb_dp_selector {
+	status = "okay";
+};
+/* usb typec mux end */
+
+&mt6661keys {
+	pinctrl-names = "kpcol0_mode";
+	pinctrl-0 = <&kpcol0_pins_gpio_mode>;
+	home2 {
+		linux,keycodes = <115>;
+		wakeup-source;
+	};
+};
+
+&pio {
+	kpcol0_pins_gpio_mode: gpio-mode {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO40__FUNC_GPIO40>;
+			input-enable;
+		};
+	};
+};
+
+&connfem {
+	sku {
+		hw-names =
+			"vc536421_qm45655_ps_prague";	/* [0] VC536421/QM45655, 2G+2A, BT/Wi-Fi AntSwap */
+
+		/***************************************************************
+		 * [HW][0] VC536421/QM45655, 2G+2A, BT/Wi-Fi AntSwap
+		 **************************************************************/
+		hw-0 {
+			using-fems =
+				<&vc536421>,
+				<&qm45655>;
+
+			layout-flag = <0x00000000>;
+			layout =
+				<&g_wf0_bt0_vc536421>,
+				<&g_wf1_bt1_vc536421>,
+				<&a_wf0_qm45655>,
+				<&a_wf1_qm45655>;
+
+			common {
+				flags {
+					fe-ant-cnt = [85];
+					fe-conn-dpdt-sp3t = [80];
+					fe-conn-spdt = [80];
+					fe-bt-wf-usage = [80];
+					fe-conn-spdt-2 = [80];
+				};
+			};
+
+			wifi {
+				using-states =
+					<&vc536421_rxh>,
+					<&qm45655_rxl_rxh>;
+			};
+
+			bt {
+				flags {
+					efem-mode = [03]; /* 3:epa_elna, 2:epa, 1:elna, 0:bypass */
+					rx-mode = [20]; /* 0x20: G-band RxH */
+				};
+			};
+		};
+	};
+};
+
+
+&i2c0 {
+/*
+	spk1: speaker_amp@5c {
+		compatible = "richtek,rt5512";
+		#sound-dai-cells = <0>;
+		reg = <0x5c>;
+		status = "okay";
+		sound-name-prefix = "Left";
+	};
+
+	spk2: speaker_amp@5d {
+		compatible = "richtek,rt5512";
+		#sound-dai-cells = <0>;
+		reg = <0x5d>;
+		status = "okay";
+		sound-name-prefix = "Right";
+	};
+*/
+       clock-frequency = <400000>;
+       spk1: speaker_amp@34 {
+               status = "okay";
+               compatible = "tfa,tfa98xx";
+               #sound-dai-cells = <0>;
+               reg = <0x34>;
+               reset-gpio = <&pio 106 0>;
+               spk-sw-gpio = <&pio 192 0>;
+               reset-polarity=<0>;
+               irq-gpio = <&pio 138 0>;
+       };
+
+       spk2: speaker_amp@36 {
+               status = "okay";
+               compatible = "tfa,tfa98xx";
+               #sound-dai-cells = <0>;
+               reg = <0x36>;
+               reset-gpio = <&pio 176 0>;
+               reset-polarity=<0>;
+               irq-gpio = <&pio 107 0>;
+       };
+};
+
+&sound {
+	mediatek,spk-i2s = <25 24>;
+	mediatek,speaker-codec {
+		sound-dai = <&spk1>, <&spk2>;
+	};
+};
+
+/* usb typec mux end */
+&pio {
+	awinic_reset_low: awinic_reset_reset {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO49__FUNC_GPIO49>;
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+	awinic_reset_high: awinic_reset_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO49__FUNC_GPIO49>;
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+	awinic_interrupt: awinic_interrupt_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO231__FUNC_GPIO231>;
+			drive-strength = <2>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+};
+
+&aud_gpio_ap_dmic1_on {
+	pins-cmd3-dat {
+		pinmux = <PINMUX_GPIO12__FUNC_DMIC1_CLK>;
+		input-schmitt-enable;
+		drive-strength = <2>;
+		bias-disable;
+		};
+	pins-cmd4-dat {
+		pinmux = <PINMUX_GPIO13__FUNC_DMIC1_DAT>;
+		input-schmitt-enable;
+		bias-disable;
+		};
+};
+
+&aud_gpio_ap_dmic2_on{
+	pins-cmd1-dat {
+		pinmux = <PINMUX_GPIO46__FUNC_DMIC2_CLK>;
+		input-schmitt-enable;
+		drive-strength = <1>;
+		bias-disable;
+	};
+	pins-cmd2-dat {
+		pinmux = <PINMUX_GPIO47__FUNC_DMIC2_DAT>;
+		input-schmitt-enable;
+		bias-disable;
+	};
+};
+
+&i2c1 {
+	clock-frequency = <400000>;
+	haptic_hv_r@5A {
+		compatible = "awinic,haptic_hv";
+		reg = <0x5A>;
+		#sound-dai-cells = <0>;
+		sound-name-prefix = "HAPTIC_SPK";
+		irq-gpio = <&pio 231 1>;
+		reset-gpio = <&pio 49 1>;
+		pinctrl-names = "awinic_reset_reset","awinic_reset_active","awinic_interrupt_active";
+		pinctrl-0 = <&awinic_reset_low>;
+		pinctrl-1 = <&awinic_reset_high>;
+		pinctrl-2 = <&awinic_interrupt>;
+		f0_pre = < 1700 >;
+		mode = /bits/ 8 < 5 >;
+/***************************** aw8693x ******************************/
+		aw8693x_f0_cali_percent = /bits/ 8 < 15 >;
+		aw8693x_gain_bypass = /bits/ 8 < 1 >;
+		aw8693x_uvlo_vol_default = /bits/ 8 < 0 >;
+		aw8693x_cont_smart_loop = /bits/ 8 < 0 >;
+		aw8693x_cont_drv1_lvl = /bits/ 8 < 0x7F >;
+		aw8693x_cont_drv2_lvl = /bits/ 8 < 0x38 >;
+		aw8693x_cont_lra_vrms = < 1200 >;
+		aw8693x_cont_drv_width = /bits/ 8 <0x8A>;
+		aw8693x_cont_drv1_time = /bits/ 8 < 0x04 >;
+		aw8693x_cont_drv2_time = /bits/ 8 < 0x14 >;
+		aw8693x_cont_track_margin = /bits/ 8 < 0x0F >;
+		aw8693x_cont_brk_gain = /bits/ 8 < 0x08 >;
+		aw8693x_cont_brk_time = /bits/ 8 < 0x08 >;
+		aw8693x_duration_time = /bits/ 8 < 20 30 60 >;
+		aw8693x_d2s_gain = /bits/ 8 < 0x07 >;
+		aw8693x_algo_d2s_gain = /bits/ 8 < 0x01 >;
+		aw8693x_drv_width = /bits/ 8 < 0x6A >;
+		aw8693x_trig_config = /bits/ 8 < 0 0 0 1 0 2 0 0
+						 0 0 0 1 0 2 0 0
+						 0 0 0 1 0 2 0 0 >;
+		aw8693x_bst_vol_default = < 8500 >;
+		aw8693x_is_enabled_track_en;
+		aw8693x_vib_effect_max = < 197 >; /*vib_effect_max must bigger than vib_effect_id*/
+		/* aw8693x_is_enabled_auto_bst; */
+		/* aw8693x_is_enabled_one_wire; */
+	};
+};
+
+#if 0
+&scp_i2c1 {
+	clock-frequency = <1000000>;
+	#address-cells = <1>;
+	#size-cells = <0>;
+	mt6681_pmic: mt6681-pmic@6b {
+		status = "okay";
+		compatible = "mediatek,mt6681_pmic";
+		reg = <0x6b>;
+	    pinctrl-names = "codec-en-off",
+		"codec-en-on";
+		pinctrl-0 = <&codec_en_off>;
+		pinctrl-1 = <&codec_en_on>;
+		mt6681_sound: mt6681-sound {
+			compatible = "mediatek,mt6681-sound";
+			mediatek,dmic-mode = <0>;
+			mediatek,mic-type-0 = <3>;
+			mediatek,mic-type-1 = <3>;
+			mediatek,mic-type-2 = <3>;
+			io-channels = <&mt6681_auxadc AUXADC_HPOFS_CAL>;
+			io-channel-names = "pmic_hpofs_cal";
+			nvmem = <&mt6681_efuse>;
+			nvmem-names = "pmic-hp-efuse";
+			reg-vaud18-supply = <&mt6681_vaud18>;
+			audio-r-miso1-enable = <1>;
+		};
+		regulators {
+			compatible = "mediatek,mt6681-regulator";
+			mt6681_vaud18: vaud18 {
+				regulator-compatible = "VAUD18";
+				regulator-name = "mt6681_vaud18";
+			};
+		};
+		mt6681_efuse: mt6681-efuse {
+			compatible = "mediatek,mt6681-efuse";
+			#address-cells = <1>;
+			#size-cells = <1>;
+		};
+		mt6681_auxadc: mt6681-auxadc {
+			compatible = "mediatek,mt6681-auxadc";
+			#io-channel-cells = <1>;
+			reg-vaud18-supply = <&mt6681_vaud18>;
+			chip-temp {
+				channel = <AUXADC_CHIP_TEMP>;
+			};
+			accdet {
+				channel = <AUXADC_ACCDET>;
+			};
+			hpofs-cal {
+				channel = <AUXADC_HPOFS_CAL>;
+				avg-num = <256>;
+			};
+		};
+		mt6681_accdet: mt6681-accdet {
+			compatible = "mediatek,mt6681-accdet";
+			accdet-name = "mt6681-accdet";
+			accdet-mic-vol = <8>;
+			accdet-plugout-debounce = <1>;
+			accdet-mic-mode = <2>;
+			eint-use-ext-res = <0>;
+			headset-mode-setting = <0x500 0x500 1 0x1f0
+						0x800 0x800 0x20 0x44
+						0x4 0x1
+						0x5 0x3 0x3 0x5 0xe>;
+			headset-use-ap-eint = <0>;
+			headset-eint-num = <0>;
+			headset-eint-trig-mode = <1>;
+			headset-key-mode = <0>;
+			headset-three-key-threshold = <0 80 220 400>;
+			headset-three-key-threshold-CDD = <0 121 192 600>;
+			headset-four-key-threshold = <0 58 121 192 400>;
+			io-channels = <&mt6681_auxadc AUXADC_ACCDET>;
+			io-channel-names = "pmic_accdet";
+			nvmem = <&mt6681_efuse>;
+			nvmem-names = "mt63xx-accdet-efuse";
+			interrupt-parent = <&pio>;
+			interrupts = <11 IRQ_TYPE_LEVEL_LOW>;
+			interrupt-names = "ap_eint";
+			pinctrl-names = "state_eint_as_int";
+			pinctrl-0 = <&accdet_pins_eint_as_int>;
+			/*nvmem-cells = <&efuse_spare5>;*/
+			/*nvmem-cell-names = "efuse_spare5";*/
+			accdet-efuse-check = <0>;
+			app-wakelock-time = <1000>;
+			accdet-irq-gpio-enable = <1>;
+			status = "okay";
+		};
+	};
+};
+#endif
+
+&pio {
+	codec_en_off: codec-en-off {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
+			input-enable;
+			bias-pull-down;
+		};
+	};
+	codec_en_on: codec-en-on {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO9__FUNC_GPIO9>;
+			output-high;
+		};
+	};
+};
+
+&pio {
+	accdet_pins_eint_as_int: accdet-eint {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO11__FUNC_GPIO11>;
+			bias-pull-up;
+			input-enable;
+		};
+	};
+};
+
+&mmlsys2_config {
+	dl-enable;
+};
+
+&disp_dpc {
+	vidle-mask = <0x11>;
+};
+
+&mt6661_6_buck1 {
+	regulator-always-on;
+};
+
+&mt6661_6_buck5 {
+	regulator-always-on;
+};
+
+&mt6661_5_lnc0_10 {
+	regulator-always-on;
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+};
+
+&mt6661_6_ln60_7 {
+	regulator-always-on;
+};
+
+/* charger start */
+&i2c8 {
+	status = "ok";
+	hl7603_2@76 {
+		compatible = "hl7603_2";
+		reg = <0x76>;
+		vout_threshold = <3450>;
+		enable_toff_fast;
+	};
+	hl7603_3@77 {
+		compatible = "hl7603_3";
+		reg = <0x77>;
+		vout_threshold = <3450>;
+		enable_toff_fast;
+	};
+};
+
+&i2c9 {
+	clock-frequency = <400000>;
+	status = "okay";
+	bq28z610@55 {
+	compatible = "bq28z610";
+	reg = <0x55>;
+	enable_shutdown_delay;
+	normal_shutdown_vbat_1s = <3400>;
+	critical_shutdown_vbat_1s = <3340>;
+	report_full_rsoc_1s = <9700>;
+	soc_gap_1s = <2>;
+	//slave_connect_gpio = <&pio 75 0x1>;
+	soc_decimal_rate = <
+		0  38
+		10 35
+		20 33
+		30 33
+		40 33
+		50 33
+		60 33
+		70 30
+		80 25
+		90 20
+		95 10 >;
+
+    dynamic_shutdown_voltage_support_v2;
+    dod_temp_range = <
+        (-200)  (-61)
+        (-60)   (-1)
+        0        99
+        100      600>;
+    dod_shutdown_voltage_0 = <
+        0     89    2500    2600    2650
+        90    168   2600    2650    2700
+        169   451   2700    2750    2800
+        452   1050  2750    2800    2850
+        1051  5000  2850    2900    2950 >;
+    dod_shutdown_voltage_1 = <
+        0     89    2500    2600    2650
+        90    168   2600    2650    2700
+        169   451   2700    2750    2800
+        452   1050  2850    2900    2950
+        1051  5000  2950    3000    3050 >;
+    dod_shutdown_voltage_2 = <
+        0     89    2600    2650    2650
+        90    168   2800    2850    2850
+        169   451   2900    2950    2950
+        452   1050  3000    3050    3050
+        1051  5000  3060    3110    3110 >;
+    dod_shutdown_voltage_3 = <
+        0     89    2800    2850    2850
+        90    168   2970    3020    3020
+        169   451   3070    3120    3120
+        452   1050  3150    3200    3200
+        1051  5000  3200    3250    3250 >;
+
+    cycle_temp_range = <
+        (-200)	(-61)
+        (-60)	(-1)
+        0	99
+        100	600>;
+    cycle_shutdown_voltage_0 = <
+        0     400    2500    2600    2650
+        401   800    2600    2650    2700
+        801   1200   2700    2750    2800
+        1201  5000   2750    2800    2850 >;
+    cycle_shutdown_voltage_1 = <
+        0     400    2500    2600    2650
+        401   800    2600    2650    2700
+        801   1200   2700    2750    2800
+        1201  5000   2850    2900    2950 >;
+    cycle_shutdown_voltage_2 = <
+        0     400    2600    2650    2650
+        401   800    2800    2850    2850
+        801   1200   2900    2950    2950
+        1201  5000   3000    3050    3050 >;
+    cycle_shutdown_voltage_3 = <
+        0     400    2800    2850    2850
+        401   800    2970    3020    3020
+        801   1200   3070    3120    3120
+        1201  5000   3150    3200    3200 >;
+    };
+};
+
+&i2c13 {
+	clock-frequency = <400000>;
+	status = "okay";
+	sc858x-charger@6E{
+		compatible = "sc,sc858x-standalone";
+		reg = <0x6E>;
+		sc,sc858x,irq-gpio = <&pio 27 IRQ_TYPE_EDGE_FALLING>;
+
+		sc,sc858x,bat-ovp-disable = <0>;
+		sc,sc858x,bat-ovp-threshold = <11>;/*4450 + val * 25*/
+		sc,sc858x,usb-ovp-threshold = <15>;/*11000 + val * 1000; 15:7.5*/
+		sc,sc858x,wpc-ovp-threshold = <11>;/*11000 + val * 1000*/
+		sc,sc858x,bus-ovp-threshold = <9>;/*15000 + val * 800*/
+		sc,sc858x,out-ovp-threshold = <1>;/*4800 + val * 200*/
+		sc,sc858x,bus-ocp-disable = <0>;
+		sc,sc858x,bus-ocp-threshold = <15>;/*2500 + val * 125*/
+		sc,sc858x,bus-ucp-fall-dg = <1>;/*0:8us 1:5ms 2:20ms 3:50ms*/
+		sc,sc858x,pmid2out-ovp-threshold = <2>;/*200 + val * 100*/
+		sc,sc858x,pmid2out-uvp-threshold = <7>;/*100 + val * 50*/
+		sc,sc858x,fsw-set = <7>;/*180 + val * 60*/
+		sc,sc858x,acdrv-hi-en = <1>;/*0:5V, 1:9V*/
+		sc,sc858x,ss-timeout = <5>;/*0:dis 3:320ms 4:1.28s 5:5.12s 6:20.48s 7:81.92s*/
+		sc,sc858x,wd-timeout = <0>;/*0:dis 1:0.2s 2:0.5s 3:1s 4:5s 5:30s*/
+		sc,sc858x,mode = <1>;/*0:(4:1 chg) 1:(2:1 chg) 2:(1:1 chg) 4:(1:4 con) 5:(1:2 con) 6:(1:1 con)*/
+		sc,sc858x,tsbat-flt-disable = <1>;
+		sc,sc858x,tshut-disable = <1>;
+		sc,sc858x,wpc-ovp-disable = <0>;
+		sc,sc858x,usb-ovp-disable = <0>;
+		sc,sc858x,bus-ovp-disable = <0>;
+		sc,sc858x,out-ovp-disable = <0>;
+		sc,sc858x,sense-r-mohm = <1>;/*0:1m  1:2m*/
+	};
+};
+
+&mt6661_4_ldc0_3 {
+	regulator-always-on;
+};
+
+&charger {
+	max_charger_voltage = <12000000>;
+    /* charging current */
+    usb_charger_current = <500000>;
+    ac_charger_current = <1600000>;
+    ac_charger_input_current = <1600000>;
+    charging_host_charger_current = <900000>;
+    step_fallback_hyst = <125>;
+    step_forward_hyst = <0>;
+    jeita_fallback_hyst = <10>;
+    jeita_forward_hyst = <10>;
+    //mt6368_moscon1_control;
+    mt6661_moscon1_control;
+    pmic_ffc_forbid;
+    en_floatgnd;
+    enable_pdtest_mode = <1>;
+    support_quick_revchg;
+    support_revcable;
+    smart_snschg_v2_support;
+    chg_slidedata_report_support;
+    pd2_input_current = <1700000>;
+    min_charger_voltage_1 = <4200000>;
+    min_charger_voltage_2 = <4500000>;
+    ffc_low_tbat = <180>;
+    ffc_medium_tbat = <230>;
+    ffc_warm_tbat = <350>;
+    ffc_little_high_tbat = <400>;
+    ffc_high_tbat = <480>;
+    ffc_high_soc = <95>;
+    adapter_power = <100>;
+    support_pchg_policy;
+    support-direct-cap-change;
+    vdm_adapter_close_vbus_support;
+    step_normal_chg;
+    en_pmic_dec_vote;
+    max_step_low = <3>;
+    max_step_normal = <1>;
+    dec_gap = <13>;
+    io-channels = <&mt6661_5_auxadc (ADC_PURES_100K_MASK | AUXADC_AGPIO3_POLL)>;
+    io-channel-names = "slave_connector_auxadc";
+    /* CN battery paremeter */
+    fv = <4530>;
+    fv_normal = <4510>;
+    fv_normal_warm = <4500>;
+    fv_normal_high = <4490>;
+    fv_ffc = <4560>;
+    iterm_cold = <181>;
+    iterm_cool = <181>;
+    iterm = <454>;
+    iterm_warm = <454>;
+    jeita_fcc_cfg = <(-100) (-20)   4000    327    327
+                    (-19)   30      4000    654    409
+                    31      80      4000    982     654
+                    81      130     3900    2454    1636
+                    131     180     3900    4908    3272
+                    181     470     4190    17600   17600
+                    471     600     4100    4090    4090>;
+    jeita_fv_cfg = <(-100)  (-20)   4520
+                    (-19)    30     4520
+                    31      80      4530
+                    81      130     4530
+                    131     180     4530
+                    181     470     4560
+                    471     600     4100>;
+    /* NVT START */
+    iterm_ffc_1_cycle = <1259>;
+    iterm_ffc_little_warm_1_cycle = <1530>;
+    iterm_ffc_warm_1_cycle = <2409>;
+    iterm_ffc_hot_1_cycle = <3636>;
+    /* NVT 18-23C cycle step */
+    /* 1-100cls */
+    step_chg_cfg_1_cycle = <3000    3900    12270
+                            3901    4000    8998
+                            4001    4150    6544
+                            4151    4560    3272>;
+    /* 100-300cls */
+    step_chg_cfg_100_cycle = <3000  3900    12270
+                            3901    4000    8998
+                            4001    4150    6544
+                            4151    4560    3272>;
+    /* 300-800cls */
+    step_chg_cfg_300_cycle = <3000  3900    12270
+                            3901    4000    8998
+                            4001    4150    6544
+                            4151    4560    3272>;
+    /* >800cls */
+    step_chg_cfg_800_cycle = <3000  3900    9816
+                            3901    4000    7198
+                            4001    4130    5235
+                            4131    4560    2618>;
+    /* NVT 23-48C cycle step */
+    /* 1-100cls */
+    step_chg_cfg_warm_1_cycle = <3000    4185    17400
+                                 4186    4350    12400
+                                 4351    4500    9816
+                                 4501    4560    6544>;
+    /* 101-300cls */
+    step_chg_cfg_warm_100_cycle = <3000    4140    17400
+                                   4141    4320    11780
+                                   4321    4500    9325
+                                   4501    4560    6217>;
+    /* 301-800cls */
+    step_chg_cfg_warm_300_cycle = <3000    4140    17400
+                                   4141    4320    11160
+                                   4321    4500    8831
+                                   4501    4560    5890>;
+    /* >800cls */
+    step_chg_cfg_warm_800_cycle = <3000    4140    17400
+                                   4141    4320    9920
+                                   4321    4480    7853
+                                   4481    4560    5235>;
+    /* NVT END */
+    /* COS START */
+    iterm_ffc_1_cycle_cos = <908>;
+    iterm_ffc_little_warm_1_cycle_cos = <1181>;
+    iterm_ffc_warm_1_cycle_cos = <1725>;
+    iterm_ffc_hot_1_cycle_cos = <2430>;
+    /* COS 18-23C cycle step */
+    /* 1-100cls */
+    step_chg_cfg_1_cycle_cos = <3000    3900    12390
+                                3901    4000    9086
+                                4001    4150    6608
+                                4151    4560    3304>;
+    /* 100-300cls */
+    step_chg_cfg_100_cycle_cos = <3000    3900    12390
+                                  3901    4000    8632
+                                  4001    4150    6278
+                                  4151    4560    3139>;
+    /* 300-800cls */
+    step_chg_cfg_300_cycle_cos = <3000    3900    12390
+                                  3901    4000    8177
+                                  4001    4150    5947
+                                  4151    4560    2974>;
+    /* >800cls */
+    step_chg_cfg_800_cycle_cos = <3000    3900    9912
+                                  3901    4000    7269
+                                  4001    4130    5286
+                                  4131    4560    2643>;
+    /* COS 23-48C cycle step */
+    /* 1-100cls */
+    step_chg_cfg_warm_1_cycle_cos = <3000   4270    17400
+                                    4271    4350    12400
+                                    4351    4500    9912
+                                    4501    4560    6608>;
+    /* 100-300cls */
+    step_chg_cfg_warm_100_cycle_cos = <3000 4220    17400
+                                    4221    4320    11780
+                                    4321    4500    9416
+                                    4501    4560    6278>;
+    /* 300-800cls */
+    step_chg_cfg_warm_300_cycle_cos = <3000 4220    17400
+                                    4221    4320    11160
+                                    4321    4500    8921
+                                    4501    4560    5947>;
+    /* >800cls */
+    step_chg_cfg_warm_800_cycle_cos = <3000 4220    17400
+                                    4221    4320    9920
+                                    4321    4480    7930
+                                    4481    4560    5286>;
+    /* COS END */
+    /* ATL normal step start */
+    /* 18-23C cycle normal step */
+    /* 1-100cls */
+    step_normal_chg_cfg_1_cycle = <3000    3900    12270
+                3901    4510    3272>;
+    /* 101-300cls */
+    step_normal_chg_cfg_100_cycle = <3000    3900    12270
+                3901    4510    3272>;
+    /* 301-800cls */
+    step_normal_chg_cfg_300_cycle = <3000    3900    12270
+                3901    4510    3272>;
+    /* >800cls */
+    step_normal_chg_cfg_800_cycle = <3000    3900    9816
+                3901    4510    2618>;
+    /* 23-48C cycle normal step */
+    /* 1-100cls */
+    step_normal_chg_cfg_warm_1_cycle = <3000    4190    17600
+                4191    4510    6544>;
+    /* 101-300cls */
+    step_normal_chg_cfg_warm_100_cycle = <3000    4140    17600
+                4141    4510    6217>;
+    /* 301-800cls */
+    step_normal_chg_cfg_warm_300_cycle = <3000    4140    17600
+                4141    4510    5890>;
+    /* >800cls */
+    step_normal_chg_cfg_warm_800_cycle = <3000    4140    17600
+                4141    4510    5235>;
+    /* ATL mormal step end */
+
+    /* COS mormal step start */
+    /* 18-23C cycle step */
+    /* 1-100cls */
+    step_normal_chg_cfg_1_cycle_cos = <3000    3900    12390
+                3901    4510    3304>;
+    /* 101-300cls */
+    step_normal_chg_cfg_100_cycle_cos = <3000    3900    12390
+                3901    4510    3304>;
+    /* 301-800cls */
+    step_normal_chg_cfg_300_cycle_cos = <3000    3900    12390
+                3901    4510    3304>;
+    /* >800cls */
+    step_normal_chg_cfg_800_cycle_cos = <3000    3900    9912
+                3901    4510    2643>;
+    /* 23-48C cycle step */
+    /* 1-100cls */
+    step_normal_chg_cfg_warm_1_cycle_cos = <3000    4270    17600
+                4271    4510    6608>;
+    /* 101-300cls */
+    step_normal_chg_cfg_warm_100_cycle_cos = <3000    4220    17600
+                4221    4510    6278>;
+    /* 301-800cls */
+    step_normal_chg_cfg_warm_300_cycle_cos = <3000    4220    17600
+                4221    4510    5947>;
+    /* >800cls */
+    step_normal_chg_cfg_warm_800_cycle_cos = <3000    4220    17600
+                4221    4510    5286>;
+    /* COS mormal step end */
+    thermal_limit_dcp = <1900 1900 1900 1900 1900 1900 1900 1900 1900 1900 1900 1900 1500 1400 1200 1000>;
+    thermal_limit_qc2 = <2500 2500 2500 2500 2500 2500 2500 2500 2500 2500 2500 2000 1500 1500 1000 500>;
+    thermal_limit_qc3_18w = <2500 2500 2500 2500 2500 2500 2400 2300 2200 2100 1500 1000 800 700 600 500>;
+    thermal_limit_qc3_27w = <2500 2500 2500 2500 2500 2500 2400 2300 2200 2100 1500 1000 800 700 600 500>;
+    thermal_limit_qc35 = <2500 2500 2500 2500 2500 2500 2400 2300 2200 2100 1500 1000 800 700 600 500>;
+    thermal_limit_pd = <17600 13500 11000 9000 8000 7000 6000 5000 4500 3500 3000 2500 2000 1500 1000 500>;
+    smart_bypass_support;
+    smart_bypass_entry_soc = <20>;
+    smart_bypass_exit_soc = <90>;
+    smart_bypass_fallback_hyst = <5>; // board_temp(0.1 degree) hyst
+    smart_bypass_forward_hyst = <5>;
+    smart_bypass_high_lmt_cfg = <(-100)     250     3000
+                    251     280     2500
+                    281     300     2000
+                    301     330     1600
+                    331     370     1200
+                    371     800     900>;
+    smart_bypass_med_lmt_cfg = <(-100)      150     17600
+                    151     200     17600
+                    201     250     17600
+                    251     300     8000
+                    301     370     5000
+                    371     800     2000>;
+    smart_bypass_low_lmt_cfg = <(-100)      150     17600
+                    151     200     17600
+                    201     250     17600
+                    251     300     17600
+                    301     370     17600
+                    371     800     17600>;
+};
+
+&lk_charger {
+	non-std-ac-charger-current = <1000000>;
+	ac-charger-current = <1600000>;
+	ac-charger-input-current = <2000000>;
+	/* battery temperature protection */
+	temp-t4-threshold = <58>;
+	temp-t3-threshold = <45>;
+	temp-t1-threshold = <(-10)>;
+	boot-battery-voltage-max = <3650000>;
+	boot-battery-voltage = <3200000>;
+	pre-charger-current = <650000>;
+	boot-voltage-level = <3000 3100 3200 3200 3400>;
+	ta-capability-level = <1900 1350 850 500 0>;
+	extrem-boot-battery-voltage = <2850000>;
+	fast-charge-voltage = <2800000>;
+	show-anime-voltage = <3000000>;
+};
+
+&pd_cp_manager {
+		compatible = "pd_cp_manager";
+		fv = <4502>;
+		fv_ffc = <4552>;
+		max_fcc = <17600>;
+		max_vbus = <20000>;
+		max_ibus = <4400>;
+		fcc_low_hyst = <150>;
+		fcc_high_hyst = <10>;
+		low_tbat = <100>;
+		high_tbat = <480>;
+		high_vbat = <4400>;
+		high_soc = <95>;
+		low_fcc = <2000>;
+		cv_vbat = <4480>;
+		cv_vbat_ffc = <4510>;
+		cv_ibat = <2000>;
+		min_pdo_vbus = <8000>;
+		max_pdo_vbus = <21000>;
+		mt6375_control_gpio = <&pio 19 0x0>;
+		support_4_1_mode;
+		support_pmic_parachg;
+		switch1_1_enter = <2500>;
+		switch1_1_exit = <3700>;
+		switch2_1_enter = <4200>;
+		switch2_1_exit = <6500>;
+		pdm_ibus_gap = <0>;
+		pdm_bypass_ibus_gap = <2600>;
+		adapter_power = <100>;
+		fv_hyst = <9>;
+		support_pchg_policy;
+};
+
+&mtk_gauge {
+	disable-mtkbattery = <(1)>;
+	FIXED_BATTERY_TEMPERATURE = <(25)>;
+};
+
+&mt6379_eusb2_repeater {
+	mediatek,discth = <0xf>;
+	mediatek,equalization = <0x4>;
+	mediatek,intr-ofs = "2";
+	mediatek,pre-emphasis = <0x5>;
+	mediatek,rx-sqth = <0x1>;
+	mediatek,term-ofs = "4";
+	mediatek,vrt-sel = <0x2>;
+
+	mediatek,host-discth = <0xd>;
+	mediatek,host-equalization = <0x4>;
+	mediatek,host-intr-ofs = "0";
+	mediatek,host-pre-emphasis = <0x2>;
+	mediatek,host-rx-sqth = <0x5>;
+	mediatek,host-term-ofs = "0";
+	mediatek,host-vrt-sel = <0x1>;
+	status = "okay";
+};
+/* charger end */
+
+/* svp start */
+&mtee_svp {
+	mtee: MTEE {
+		compatible = "mediatek,mtk_svp_on_mtee_support";
+	};
+
+	svp: SecureVideoPath {
+		compatible = "mediatek,mtk_sec_video_path_support";
+	};
+};
+
+&mtkheap_page_svp {
+	status = "ok";
+};
+
+&mtkheap_page_tee {
+	status = "ok";
+};
+/* svp end */
+
+#include "mediatek/xiaomi_prague_mt6993_mitee.dtsi"
+#include "prague/cust.dtsi"
+#include "xiaomi_prague_mt6993_touch.dtsi"
+#include "mediatek/prague_mt6993_camera_v4l2.dtsi"
+#include "mediatek/cust_k6993_connfem.dtsi"
+#include "mediatek/xiaomi_prague_mt6993_fan.dtsi"
+#include "mediatek/xiaomi_mt6993_fingerprint.dtsi"
+#include "mediatek/cust_mt6993_nfc_nxp.dtsi"
+#include "xiaomi_prague_nt72336_display.dtsi"
+/*End of this file, DO NOT ADD ANYTHING HERE*/
+

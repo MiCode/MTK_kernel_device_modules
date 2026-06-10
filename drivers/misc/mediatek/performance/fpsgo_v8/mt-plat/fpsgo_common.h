@@ -20,6 +20,7 @@ enum FPSGO_TRACE_TYPE {
 };
 
 extern int powerhal_tid;
+extern int sf_pid;
 
 void __fpsgo_systrace_c(int type, pid_t pid, unsigned long long bufID,
 	int value, const char *name, ...);

@@ -937,6 +937,7 @@ static void mtu3_state_reset(struct mtu3 *mtu)
 	mtu->test_mode = false;
 	mtu->u2_lpm_reject = MTU3_U2_LPM_DEFAULT;
 	mtu->qmu_err_count = 0;
+	mtu->usb_pd = false;
 	mtu->gadget_suspend = false;
 }
 

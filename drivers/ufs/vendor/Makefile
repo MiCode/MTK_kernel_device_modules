@@ -10,7 +10,6 @@ ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor/
 ccflags-y += -I$(srctree)/drivers/ufs/
 ccflags-y += -I$(srctree)/drivers/ufs/core/
 ccflags-y += -I$(srctree)/drivers/ufs/host/
-
 # UFS KO without iSE
 # obj-$(CONFIG_DEVICE_MODULES_SCSI_UFS_MEDIATEK)  += ufs-mediatek-mod.o
 # ifeq ($(CONFIG_UFS_MEDIATEK_MT6893),y)

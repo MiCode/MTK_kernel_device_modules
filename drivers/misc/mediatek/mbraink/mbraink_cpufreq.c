@@ -248,10 +248,10 @@ mbraink_get_cpufreq_notifier_info(unsigned short current_cluster_idx,
 			break;
 		current_idx = 0;
 	}
-	pr_info("%s: current_cluster_idx = %u, current_idx= %u, count = %u\n",
-			__func__, cpufreq_notify_buffer->notify_cluster_idx,
-			cpufreq_notify_buffer->notify_idx,
-			cpufreq_notify_buffer->notify_count);
+	//pr_info("%s: current_cluster_idx = %u, current_idx= %u, count = %u\n",
+	//		__func__, cpufreq_notify_buffer->notify_cluster_idx,
+	//		cpufreq_notify_buffer->notify_idx,
+	//		cpufreq_notify_buffer->notify_count);
 	spin_unlock_irqrestore(&cpufreq_lock, flags);
 }
 

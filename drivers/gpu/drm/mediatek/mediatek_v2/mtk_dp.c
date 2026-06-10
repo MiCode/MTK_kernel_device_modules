@@ -2325,6 +2325,62 @@ bool mdrv_DPTx_TrainingChangeMode(struct mtk_dp *mtk_dp)
 	return true;
 }
 
+int mdrv_DPTx_CalcLinkRate(struct mtk_dp *mtk_dp, u8 ubLinkRate, u8 ubLaneCount)
+{
+	int ret;
+	struct drm_display_mode *mode;
+	unsigned int chose_linkrate = 0;
+	unsigned int adjusted_clock = 0;
+	unsigned int adjusted_bandwidth = 0;
+
+	if (!mtk_dp->edid) {
+		DPTXERR("No edid\n");
+		return ubLinkRate;
+	}
+
+	drm_connector_update_edid_property(&mtk_dp->conn, mtk_dp->edid);
+	ret = drm_add_edid_modes(&mtk_dp->conn, mtk_dp->edid);
+	DPTXMSG("%s modes = %d\n", __func__, ret);
+
+	list_for_each_entry(mode, &mtk_dp->conn.probed_modes, head) {
+		if (adjusted_clock < mode->clock)
+			adjusted_clock = mode->clock;
+	}
+	DPTXMSG("adjusted_clock = %d\n", adjusted_clock);
+
+	adjusted_clock = adjusted_clock * 1024 / 1000; // fec function add 2.4% bandwidth in spec
+	adjusted_clock = (adjusted_clock > 595000) ? 595000 : adjusted_clock;
+	DPTXMSG("adjusted_clock = %d\n", adjusted_clock);
+
+	adjusted_bandwidth = ubLinkRate * 27000 * ubLaneCount;
+	for (chose_linkrate = ubLinkRate; adjusted_bandwidth > adjusted_clock;) {
+		chose_linkrate = ubLinkRate;
+		switch (ubLinkRate) {
+		case DP_LINKRATE_RBR:
+			break;
+		case DP_LINKRATE_HBR:
+			ubLinkRate = DP_LINKRATE_RBR;
+			break;
+		case DP_LINKRATE_HBR2:
+			ubLinkRate = DP_LINKRATE_HBR;
+			break;
+		case DP_LINKRATE_HBR3:
+			ubLinkRate = DP_LINKRATE_HBR2;
+			break;
+		default:
+			ubLinkRate = DP_LINKRATE_RBR;
+			break;
+		}
+		if (ubLinkRate == DP_LINKRATE_RBR)
+			break;
+		adjusted_bandwidth = ubLinkRate * 27000 * ubLaneCount;
+		DPTXMSG("adjusted_bandwidth = %d\n", adjusted_bandwidth);
+	}
+
+	DPTXMSG("chose_linkrate = 0x%x\n", chose_linkrate);
+	return chose_linkrate;
+}
+
 int mdrv_DPTx_SetTrainingStart(struct mtk_dp *mtk_dp)
 {
 	u8 ret = DPTX_NOERR;
@@ -2361,6 +2417,10 @@ int mdrv_DPTx_SetTrainingStart(struct mtk_dp *mtk_dp)
 		ubLinkRate = mtk_dp->rx_cap[1];
 		ubLaneCount = mtk_dp->rx_cap[2] & 0x1F;
 		DPTXMSG("RX support ubLinkRate = 0x%x,ubLaneCount = %x",
+			ubLinkRate, ubLaneCount);
+
+		ubLinkRate = mdrv_DPTx_CalcLinkRate(mtk_dp, ubLinkRate, ubLaneCount);
+		DPTXMSG("Calc RX support ubLinkRate = 0x%x,ubLaneCount = %x",
 			ubLinkRate, ubLaneCount);
 
 #if !ENABLE_DPTX_FIX_LRLC
@@ -3790,6 +3850,11 @@ static int mtk_dp_dt_parse_pdata(struct mtk_dp *mtk_dp,
 		}
 	} else
 		DPTXMSG("dts dp-max-linkrate not found, use default\n");
+#if defined(CONFIG_MI_DP_AUX_PN_SWAP)
+	mtk_dp->genpd_dp_sel = of_get_named_gpio(pdev->dev.of_node, "dp-sel", 0);
+	mtk_dp->genpd_dp_noe = of_get_named_gpio(pdev->dev.of_node, "dp-noe", 0);
+	mtk_dp->genpd_dp_auxn = regulator_get(dev, "dpauxn");
+#endif
 
 	return 0;
 }
@@ -4552,6 +4617,33 @@ void mtk_dp_HPDInterruptSet(int bstatus)
 			// DRM will skip all AUX processes
 			drm_dp_dpcd_set_powered(&g_mtk_dp->aux, g_mtk_dp->bPowerOn);
 		}
+
+#if defined(CONFIG_MI_DP_AUX_PN_SWAP)
+		ret = gpio_request(g_mtk_dp->genpd_dp_noe, "dp_noe");
+		ret = gpio_request(g_mtk_dp->genpd_dp_sel, "dp_sel");
+
+		if (bstatus == HPD_CONNECT) {
+			regulator_set_voltage(g_mtk_dp->genpd_dp_auxn, 3300000, 3300000);
+			ret = regulator_enable(g_mtk_dp->genpd_dp_auxn);
+			if (ret < 0)
+				DPTXERR("%s: dp auxn 3.3V not initial\n", __func__);
+			if (aux_swap) {
+				ret = gpio_direction_output(g_mtk_dp->genpd_dp_noe, 0);
+				ret = gpio_direction_output(g_mtk_dp->genpd_dp_sel, 0);
+			} else {
+				ret = gpio_direction_output(g_mtk_dp->genpd_dp_noe, 0);
+				ret = gpio_direction_output(g_mtk_dp->genpd_dp_sel, 1);
+			}
+		} else if (bstatus == HPD_DISCONNECT) {
+			ret = gpio_direction_output(g_mtk_dp->genpd_dp_noe, 1);
+			ret = regulator_disable(g_mtk_dp->genpd_dp_auxn);
+			if (ret < 0)
+				DPTXERR("%s: dp auxn disable failed\n", __func__);
+		}
+
+		gpio_free(g_mtk_dp->genpd_dp_noe);
+		gpio_free(g_mtk_dp->genpd_dp_sel);
+#endif
 
 		mdrv_DPTx_USBC_HPD_Event(bstatus);
 		return;

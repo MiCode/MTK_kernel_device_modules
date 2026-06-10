@@ -32,6 +32,7 @@ CHIP_NAME = [
     "mt6379",
     "rt1711h",
     "rt1718s",
+    "sc2150",
 ]
 
 define_mgk_ddk_ko(
@@ -131,7 +132,11 @@ define_mgk_ddk_ko(
     ],
     includes = ["inc", "."],
     hdrs = glob(["inc/*.h", "pd_dpm_prv.h"]),
-    ko_deps = [":tcpc_class"],
+    ko_deps = [
+        ":tcpc_class",
+        "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_framework".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+        ],
     copts = [
         "-Wall",
         "-Werror",

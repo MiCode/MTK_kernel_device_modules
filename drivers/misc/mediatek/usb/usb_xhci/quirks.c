@@ -115,6 +115,7 @@ static const struct mtk_usb_audio_quirk mtk_usb_audio_quirk_list[] = {
 	/* SS USBC Headset (AKG) */
 	{DEV_OPTION(0x04e8, 0xa051), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY)},
 	{DEV_OPTION(0x04e8, 0xa057), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY)},
+	{DEV_OPTION(0x04e8, 0xa05e), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY)},
 	/* MH147 */
 	{DEV_OPTION(0x22d9, 0x9101), QUIRK_PARAM(QUIRK_FLAG_CTL_MSG_DELAY_5M)},
 	/* Comtrue Devices */
@@ -735,6 +736,7 @@ static void uac_ctrl_req_submit(struct urb *urb)
 {
 	struct uac_ctrl_req *uac_req;
 	struct usb_ctrlrequest *ctrl;
+	unsigned long flags;
 
 	/* Check if the request is neither USB_REQ_SET_INTERFACE nor UAC_SET_CUR */
 	ctrl = (struct usb_ctrlrequest *)urb->setup_packet;
@@ -742,7 +744,7 @@ static void uac_ctrl_req_submit(struct urb *urb)
 			ctrl->wValue == 0)
 		return;
 
-	spin_lock(&uac_ctrl_lock);
+	spin_lock_irqsave(&uac_ctrl_lock, flags);
 
 	/* Check if the crequests has reached the maximum allowed to avoid stack overflow */
 	if (!uac_ctrl_req_free)
@@ -759,7 +761,7 @@ static void uac_ctrl_req_submit(struct urb *urb)
 	uac_ctrl_req_free--;
 
 err_out:
-	spin_unlock(&uac_ctrl_lock);
+	spin_unlock_irqrestore(&uac_ctrl_lock, flags);
 }
 
 static void uac_ctrl_req_complete(struct urb *urb, bool timeout_reset)
@@ -767,8 +769,9 @@ static void uac_ctrl_req_complete(struct urb *urb, bool timeout_reset)
 	struct uac_ctrl_req *uac_req, *tmp;
 	struct device *dev = &urb->dev->dev;
 	bool urb_timeout = false;
+	unsigned long flags;
 
-	spin_lock(&uac_ctrl_lock);
+	spin_lock_irqsave(&uac_ctrl_lock, flags);
 
 	list_for_each_entry_safe(uac_req, tmp, &uac_ctrl_list, list) {
 		if (uac_req->urb == urb) {
@@ -803,7 +806,7 @@ static void uac_ctrl_req_complete(struct urb *urb, bool timeout_reset)
 		WARN_ON(1);
 	}
 
-	spin_unlock(&uac_ctrl_lock);
+	spin_unlock_irqrestore(&uac_ctrl_lock, flags);
 }
 
 static void xhci_trace_ep_urb_enqueue(void *data, struct urb *urb)

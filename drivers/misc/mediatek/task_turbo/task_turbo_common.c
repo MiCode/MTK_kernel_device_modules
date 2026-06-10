@@ -366,7 +366,6 @@ void task_turbo_select_task_rq_fair(struct task_struct *p, int *target_cpu)
 	if (get_vip_task_prio(p) != NOT_VIP)
 		return;
 #endif
-
 	*target_cpu = select_turbo_cpu(p);
 }
 

@@ -60,6 +60,9 @@ static inline void pd_parse_pdata_bat_info(
 	if (ret < 0) {
 		bat_cap->bat_design_cap = PD_BCDB_BAT_CAP_UNKNOWN;
 		pr_err("%s get bat,dsn_cat fail\n", __func__);
+	} else if (pd_port->support_quick_revchg) {
+		bat_cap->bat_design_cap = PD_BCDB_BAT_CAP_UNKNOWN;
+		pr_err("%s get bat,dsn_cat unknow for revchg\n", __func__);
 	} else {
 		bat_cap->bat_design_cap = (uint16_t)
 			PD_BCDB_BAT_CAP_RAW(design_cap);
@@ -450,6 +453,10 @@ static int pd_parse_pdata(struct pd_port *pd_port)
 		pd_port->dpm_charging_policy = val;
 		pd_port->dpm_charging_policy_default = val;
 		pr_info("%s charging_policy = 0x%02x\n", __func__, val);
+		pd_port->support_quick_revchg = of_property_read_bool(np, "pd,support-quick-revchg");
+		pr_info("%s support_quick_revchg = %d\n", __func__, pd_port->support_quick_revchg);
+		pd_port->direct_cap_change_support = of_property_read_bool(np, "pd,support-direct-cap-change");
+		pr_info("%s direct_cap_change_support = %d\n", __func__, pd_port->direct_cap_change_support);
 
 #if CONFIG_USB_PD_REV30_BAT_INFO
 		ret = pd_parse_pdata_bats(pd_port, np);
@@ -1420,5 +1427,34 @@ struct pd_battery_info *pd_get_battery_info(
 	/* TODO: for swap battery */
 	return NULL;
 }
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+void pd_add_miss_msg(struct pd_port *pd_port,struct pd_event *pd_event,
+                uint8_t msg)
+{
+    struct pd_msg *pd_msg = pd_event->pd_msg;
+    struct pd_msg * miss_msg = NULL;
+    uint8_t sop_type = 0;
+    struct pd_event evt = {
+        .event_type = PD_EVT_CTRL_MSG,
+        .msg = msg,
+        .pd_msg = NULL,
+    };
+    if (pd_msg != NULL) {
+        sop_type = pd_msg->frame_type;
+    }
+    pd_put_event(pd_port->tcpc,&evt);
+    miss_msg = pd_alloc_msg(pd_port->tcpc);
+    if (miss_msg == NULL) {
+        return;
+    }
+    if (pd_msg != NULL)
+        memcpy(miss_msg,pd_msg,sizeof(struct pd_msg));
+
+    pd_put_pd_msg_event(pd_port->tcpc,miss_msg);
+    pd_port->pe_data.msg_id_rx[sop_type]--;
+    return;
+}
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 #endif	/* CONFIG_USB_PD_REV30 */

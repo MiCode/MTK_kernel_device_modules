@@ -1375,8 +1375,13 @@ static int mt6375_floating_ground_evt_process(struct mt6375_tcpc_data *ddata)
 	ret = mt6375_read8(ddata, MT6375_REG_WD0SET, &data);
 	if (ret < 0)
 		return ret;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	return tcpci_notify_wd0_state(ddata->tcpc,
+				      !!(data & MT6375_MSK_WD0PULL_STS), true);
+#else
 	return tcpci_notify_wd0_state(ddata->tcpc,
 				      !!(data & MT6375_MSK_WD0PULL_STS));
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 }
 
 /*

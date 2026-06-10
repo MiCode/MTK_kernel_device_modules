@@ -3680,6 +3680,11 @@ static int mtk_pcie_pre_init_6993(struct mtk_pcie_port *port)
 		val = readl_relaxed(port->pextpcfg + PEXTP_REQ_CTRL);
 		val |= RG_PCIE26M_BYPASS;
 		writel_relaxed(val, port->pextpcfg + PEXTP_REQ_CTRL);
+
+		/* Deault MD voting to prevent MD can't voting(Tablet) */
+		val = readl_relaxed(port->pextpcfg + PEXTP_PWRCTL_4);
+		val |= PCIE_HWMODE_EN;
+		writel_relaxed(val, port->pextpcfg + PEXTP_PWRCTL_4);
 	}
 
 	return 0;

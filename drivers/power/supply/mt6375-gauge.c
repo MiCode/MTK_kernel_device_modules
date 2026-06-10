@@ -2168,20 +2168,23 @@ static int zcv_intr_en_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field
 			   int en)
 {
 	static int cnt;
+	struct mt6375_priv *priv = container_of(gauge, struct mt6375_priv, gauge);
+	int ret;
 
 	bm_debug(gauge->gm, "%s %d %d\n", __func__, cnt, en);
 
 	cnt = en ? cnt + 1 : cnt - 1;
 
-	if (en == 0) {
-		disable_gauge_irq(gauge, ZCV_IRQ);
-		regmap_update_bits(gauge->regmap, RG_FGADC_CON0, FG_ZCV_DET_EN_MASK, 0);
-		mdelay(1);
-	} else if (en == 1) {
+	if (en) {
 		enable_gauge_irq(gauge, ZCV_IRQ);
-		regmap_update_bits(gauge->regmap, RG_FGADC_CON0, FG_ZCV_DET_EN_MASK,
-				   FG_ZCV_DET_EN_MASK);
-	}
+		ret = regmap_update_bits(gauge->regmap, RG_FGADC_CON0,
+					 FG_ZCV_DET_EN_MASK, FG_ZCV_DET_EN_MASK);
+		if (ret) {
+			dev_info(priv->dev, "%s, Failed to enable zcv_det\n", __func__);
+			return ret;
+		}
+	} else
+		disable_gauge_irq(gauge, ZCV_IRQ);
 
 	bm_debug(gauge->gm, "[FG_ZCV_INT][fg_set_zcv_intr_en] En %d\n", en);
 

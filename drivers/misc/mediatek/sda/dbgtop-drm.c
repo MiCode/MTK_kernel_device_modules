@@ -26,6 +26,8 @@ static unsigned int is_sec_write;
 
 static unsigned long rg_white_list[] = {
 	MTK_DBGTOP_MODE,
+	MTK_DBGTOP_NONRST1,
+	MTK_DBGTOP_NONRST2,
 	MTK_DBGTOP_DEBUG_CTL,
 	MTK_DBGTOP_DEBUG_CTL2,
 	MTK_DBGTOP_DEBUG_CTL3,
@@ -75,6 +77,52 @@ static int mtk_dbgtop_drm_update_status(unsigned long offset, unsigned int val)
 
 	return 0;
 }
+
+int mtk_dbgtop_read_non_reset_reg(int reg)
+{
+	struct dbgtop_drm *drm;
+
+	if (!global_dbgtop_drm)
+		return -1;
+
+	if (reg != MTK_DBGTOP_NONRST1 && reg != MTK_DBGTOP_NONRST2) {
+		pr_info("%s: This api reads DRM non reset regs only!\n", __func__);
+		return -1;
+	}
+
+	drm = global_dbgtop_drm;
+
+	return readl(drm->base + reg);
+}
+EXPORT_SYMBOL(mtk_dbgtop_read_non_reset_reg);
+
+int mtk_dbgtop_write_non_reset_reg(int reg, int value)
+{
+	struct dbgtop_drm *drm;
+
+	if (!global_dbgtop_drm)
+		return -1;
+
+	if (reg != MTK_DBGTOP_NONRST1 && reg != MTK_DBGTOP_NONRST2) {
+		pr_info("%s: This api writes DRM non reset regs only!\n", __func__);
+		return -1;
+	}
+
+	drm = global_dbgtop_drm;
+
+	mtk_dbgtop_drm_update_status(reg, value);
+
+	if (reg == MTK_DBGTOP_NONRST1) {
+		pr_info("%s: MTK_DBGTOP_NONRST1(0x%x)\n", __func__,
+			readl(drm->base + MTK_DBGTOP_NONRST1));
+	} else if (reg == MTK_DBGTOP_NONRST2) {
+		pr_info("%s: MTK_DBGTOP_NONRST2(0x%x)\n", __func__,
+			readl(drm->base + MTK_DBGTOP_NONRST2));
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_dbgtop_write_non_reset_reg);
 
 /* For GPU DFD */
 int mtk_dbgtop_mfg_pwr_on(int value)
@@ -216,6 +264,8 @@ static int mtk_dbgtop_drm_probe(struct platform_device *pdev)
 	global_dbgtop_drm = drm;
 
 	dev_info(&pdev->dev, "base %p\n", drm->base);
+
+	mtk_dbgtop_write_non_reset_reg(MTK_DBGTOP_NONRST1, 0xdeadbeef);
 
 	return 0;
 }

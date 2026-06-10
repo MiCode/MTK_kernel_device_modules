@@ -116,6 +116,9 @@ static inline bool pd_process_ctrl_msg(
 		if (PE_MAKE_STATE_TRANSIT_SINGLE(
 			PE_SNK_READY, PE_SNK_NOT_SUPPORTED_RECEIVED))
 			return true;
+		if (pd_port->pe_data.pe_state_flags &
+			PE_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER)
+			return false;
 		break;
 
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL

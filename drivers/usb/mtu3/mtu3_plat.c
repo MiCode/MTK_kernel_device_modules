@@ -27,6 +27,8 @@
 #include "mtu3_dr.h"
 #include "mtu3_debug.h"
 
+#define SUSPEND_SLEEP_RETRY_MAX 5
+
 #define VS_VOTER_EN_LO 0x0
 #define VS_VOTER_EN_LO_SET 0x1
 #define VS_VOTER_EN_LO_CLR 0x2
@@ -1891,7 +1893,7 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 
 	/* workaround for pm runtime*/
 	if (ssusb->clk_mgr && !ssusb->is_host)
-		return 0;
+		goto suspend;
 
 	ssusb->is_suspended = true;
 
@@ -1976,15 +1978,24 @@ static int mtu3_suspend_common(struct device *dev, pm_message_t msg)
 	clk_bulk_disable_unprepare(BULK_CLKS_CNT, ssusb->clks);
 	ssusb_wakeup_set(ssusb, true);
 suspend:
+	/* reset retry count on successful suspend */
+	ssusb->suspend_sleep_retry = 0;
 	return 0;
 
 sleep_err:
+	/* increment retry count when entering sleep_err */
+	ssusb->suspend_sleep_retry++;
+	dev_info(ssusb->dev, "%s sleep_err occurred, retry_count=%u\n",
+		__func__, ssusb->suspend_sleep_retry);
 	ssusb_clear_host_low_speed_bypass(ssusb);
 	resume_ip_and_ports(ssusb, msg);
 	if (ssusb->is_host) {
 		/* hold wakelock 2000 ms to avoid suspend too early */
 		pm_wakeup_event(ssusb->dev, 2000);
-		ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST, true);
+		if (ssusb->suspend_sleep_retry < SUSPEND_SLEEP_RETRY_MAX)
+			ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_HOST, true);
+		else
+			ssusb_set_mode(&ssusb->otg_switch, USB_ROLE_NONE, true);
 	}
 err:
 	ssusb_clear_host_low_speed_bypass(ssusb);

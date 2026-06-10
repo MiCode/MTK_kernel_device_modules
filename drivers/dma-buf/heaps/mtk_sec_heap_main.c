@@ -1335,6 +1335,7 @@ static int __init mtk_sec_heap_init(void)
 	mtk_dmabuf_release_register_notifier(&mtk_sec_dmabuf_release_notifier_nb);
 #endif
 
+	is_sec_heap_dmabuf = is_mtk_sec_heap_dmabuf;
 	pr_info("%s-\n", __func__);
 
 	return 0;
@@ -1348,6 +1349,7 @@ err:
 
 static void __exit mtk_sec_heap_exit(void)
 {
+	is_sec_heap_dmabuf = NULL;
 	kfree(mtk_sec_heap_page);
 	kfree(mtk_sec_heap_region);
 

@@ -527,7 +527,8 @@ static void xgf_update_policy_cmd(struct xgf_render_if *iter)
 	struct xgf_policy_cmd *policy;
 
 	iter->ema2_enable = 0;
-	iter->filter_dep_task_enable = 0;
+	iter->filter_dep_task_enable = (1 << XGF_FILTER_KERNEL |
+			1 << XGF_FILTER_DL | 1 << XGF_FILTER_RT);
 
 	mutex_lock(&xgf_policy_cmd_lock);
 
@@ -861,7 +862,8 @@ static struct xgf_render_if *xgf_get_render_if(int pid, unsigned long long bufID
 	iter->dep_list = RB_ROOT;
 	iter->dep_list_size = 0;
 	iter->ema2_enable = 0;
-	iter->filter_dep_task_enable = 0;
+	iter->filter_dep_task_enable = (1 << XGF_FILTER_KERNEL |
+		1 << XGF_FILTER_DL | 1 << XGF_FILTER_RT);
 	iter->master_type = master_type;
 
 	hlist_add_head(&iter->hlist, &xgf_render_if_list);
@@ -966,43 +968,59 @@ static void xgf_add_spid2dep(struct xgf_render_if *render)
 	}
 }
 
-static int xgf_non_cfs_task(int tid)
+static int xgf_filter_dep_task(int tid, unsigned long filter_dep_task_mask, int r_tgid)
 {
-	int ret = 0;
+	int filter = 1;
+	int reason = 0;
 	struct task_struct *tsk = NULL;
 
 	rcu_read_lock();
 
 	tsk = find_task_by_vpid(tid);
 	if (!tsk) {
-		ret = 1;
-		goto out;
+		rcu_read_unlock();
+		return filter;
 	}
 
 	get_task_struct(tsk);
-	if ((tsk->flags & PF_KTHREAD) || rt_task(tsk) || dl_task(tsk))
-		ret = 1;
-	put_task_struct(tsk);
-
-out:
 	rcu_read_unlock();
-	return ret;
-}
-
-static int xgf_filter_dep_task(int tid, struct xgf_render_if *render_iter)
-{
-	int ret = 0;
-
-	ret = xgf_non_cfs_task(tid);
-	if (ret)
+	if (test_bit(XGF_FILTER_KERNEL, &filter_dep_task_mask) &&
+		(tsk->flags & PF_KTHREAD)) {
+		reason = 1 << XGF_FILTER_KERNEL;
 		goto out;
+	}
 
-	if (render_iter->filter_dep_task_enable &&
-		xgf_get_process_id(tid) != render_iter->tgid)
-		ret = 1;
+	if (test_bit(XGF_FILTER_DL, &filter_dep_task_mask) &&
+		dl_task(tsk)) {
+		reason = 1 << XGF_FILTER_DL;
+		goto out;
+	}
 
+	if (test_bit(XGF_FILTER_RT, &filter_dep_task_mask) &&
+		rt_task(tsk)) {
+		reason = 1 << XGF_FILTER_RT;
+		goto out;
+	}
+
+	if (test_bit(XGF_FILTER_SF, &filter_dep_task_mask) &&
+		tsk->tgid == sf_pid) {
+		reason = 1 << XGF_FILTER_SF;
+		goto out;
+	}
+
+	if (test_bit(XGF_FILTER_NON_APP, &filter_dep_task_mask) &&
+		tsk->tgid != r_tgid) {
+		reason = 1 << XGF_FILTER_NON_APP;
+		goto out;
+	}
+
+	/* task meets specifications*/
+	filter = 0;
 out:
-	return ret;
+	put_task_struct(tsk);
+	fpsgo_systrace_c_xgf(tid, 0, reason, "xgf_filter");
+	fpsgo_systrace_c_xgf(tid, 0, 0, "xgf_filter");
+	return filter;
 }
 
 static int xgf_get_specific_action_spid(int target_action, int max_num,
@@ -1539,11 +1557,11 @@ EXPORT_SYMBOL(fpsgo_other2xgf_set_critical_tasks);
  * @pid: one key of render_info data strcutre
  * @max_num: max number of critical tasks which user want to get
  * @arr: pid list of critical tasks
- * @filter_non_cfs: bool value whether filter non cfs tasks
+ * @filter_enable: bool value whether filter tasks in xgf
  * @bufID: one key of render_info data structure
  */
 int fpsgo_other2xgf_get_critical_tasks(int pid, int max_num,
-	struct task_info *arr, int filter_non_cfs, unsigned long long bufID)
+	struct task_info *arr, int filter_enable, unsigned long long bufID)
 {
 	int index = 0;
 	struct xgf_render_if *render_iter = NULL;
@@ -1563,7 +1581,8 @@ int fpsgo_other2xgf_get_critical_tasks(int pid, int max_num,
 
 	for (rbn = rb_first(&render_iter->dep_list); rbn; rbn = rb_next(rbn)) {
 		xd_iter = rb_entry(rbn, struct xgf_dep, rb_node);
-		if (filter_non_cfs && xgf_filter_dep_task(xd_iter->tid, render_iter))
+		if (filter_enable && xgf_filter_dep_task(xd_iter->tid,
+			(unsigned long)render_iter->filter_dep_task_enable, render_iter->tgid))
 			continue;
 		if (index < max_num) {
 			arr[index].pid = xd_iter->tid;
@@ -1585,37 +1604,74 @@ EXPORT_SYMBOL(fpsgo_other2xgf_get_critical_tasks);
  * @request_attr: user setting of FPSGO XGF algorithm,
  *          mode 0 by process control, mode 1 by render control
  */
-int fpsgo_other2xgf_set_attr(int set, struct xgf_policy_cmd *request_attr)
+int fpsgo_other2xgf_set_attr(struct xgf_policy_cmd *request_attr)
 {
+	struct xgf_policy_cmd *iter;
+
 	if (!request_attr)
 		return -EINVAL;
 
 	mutex_lock(&xgf_policy_cmd_lock);
 	xgf_set_policy_cmd(0, request_attr->mode,
 		request_attr->mode ? request_attr->pid : request_attr->tgid,
-		set ? request_attr->ema2_enable : BY_PID_DEFAULT_VAL,
-		set,
+		request_attr->ema2_enable,
+		1,
 		request_attr->mode ? request_attr->bufid : 0);
 	xgf_set_policy_cmd(1, request_attr->mode,
 		request_attr->mode ? request_attr->pid : request_attr->tgid,
-		set ? request_attr->filter_dep_task_enable : BY_PID_DEFAULT_VAL,
-		set,
+		request_attr->filter_dep_task_enable,
+		1,
 		request_attr->mode ? request_attr->bufid : 0);
 	xgf_set_policy_cmd(2, request_attr->mode,
 		request_attr->mode ? request_attr->pid : request_attr->tgid,
-		set ? request_attr->calculate_dep_enable : BY_PID_DEFAULT_VAL,
-		set,
+		request_attr->calculate_dep_enable,
+		1,
 		request_attr->mode ? request_attr->bufid : 0);
 	xgf_set_policy_cmd(3, request_attr->mode,
 		request_attr->mode ? request_attr->pid : request_attr->tgid,
-		set ? request_attr->xgf_extra_sub : BY_PID_DEFAULT_VAL,
-		set,
+		request_attr->xgf_extra_sub,
+		1,
 		request_attr->mode ? request_attr->bufid : 0);
+
+	iter = xgf_get_policy_cmd(request_attr->mode,
+		request_attr->mode ? request_attr->pid : request_attr->tgid,
+		request_attr->mode ? request_attr->bufid : 0, 0);
+
+	if (iter)
+		xgf_delete_policy_cmd(request_attr->mode, iter);
 	mutex_unlock(&xgf_policy_cmd_lock);
 
 	return 0;
 }
 EXPORT_SYMBOL(fpsgo_other2xgf_set_attr);
+
+int fpsgo_other2xgf_get_attr(struct xgf_policy_cmd *request_attr)
+{
+	struct xgf_policy_cmd *iter;
+
+	if (!request_attr)
+		return -EINVAL;
+
+	mutex_lock(&xgf_policy_cmd_lock);
+	iter = xgf_get_policy_cmd(request_attr->mode,
+		request_attr->mode ? request_attr->pid : request_attr->tgid,
+		request_attr->mode ? request_attr->bufid : 0, 0);
+
+	if (iter) {
+		request_attr->ema2_enable = iter->ema2_enable;
+		request_attr->filter_dep_task_enable = iter->filter_dep_task_enable;
+		request_attr->calculate_dep_enable = iter->calculate_dep_enable;
+		request_attr->xgf_extra_sub = iter->xgf_extra_sub;
+	} else {
+		request_attr->ema2_enable = BY_PID_DEFAULT_VAL;
+		request_attr->filter_dep_task_enable = BY_PID_DEFAULT_VAL;
+		request_attr->calculate_dep_enable = BY_PID_DEFAULT_VAL;
+		request_attr->xgf_extra_sub = BY_PID_DEFAULT_VAL;
+	}
+	mutex_unlock(&xgf_policy_cmd_lock);
+	return 0;
+}
+EXPORT_SYMBOL(fpsgo_other2xgf_get_attr);
 
 int fpsgo_ktf2xgf_atomic_set(int op, int value)
 {
@@ -2587,10 +2643,10 @@ static KOBJ_ATTR_WO(xgf_ema2_enable_by_process);
 XGF_SYSFS_WRITE_POLICY_CMD_BY_RENDER(xgf_ema2_enable_by_render, 0, 0, 1);
 static KOBJ_ATTR_WO(xgf_ema2_enable_by_render);
 
-XGF_SYSFS_WRITE_POLICY_CMD_BY_PROCESS(xgf_filter_dep_task_enable_by_process, 1, 0, 1);
+XGF_SYSFS_WRITE_POLICY_CMD_BY_PROCESS(xgf_filter_dep_task_enable_by_process, 1, -1, 31);
 static KOBJ_ATTR_WO(xgf_filter_dep_task_enable_by_process);
 
-XGF_SYSFS_WRITE_POLICY_CMD_BY_RENDER(xgf_filter_dep_task_enable_by_render, 1, 0, 1);
+XGF_SYSFS_WRITE_POLICY_CMD_BY_RENDER(xgf_filter_dep_task_enable_by_render, 1, -1, 31);
 static KOBJ_ATTR_WO(xgf_filter_dep_task_enable_by_render);
 
 XGF_SYSFS_WRITE_POLICY_CMD_BY_PROCESS(xgf_calculate_dep_enable_by_process, 2, 0, 1);

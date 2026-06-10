@@ -203,7 +203,6 @@
 		clocks =
 			<&imp_iic_wrap_s_clk IMPS_I2C0_I2C>,
 			<&imp_iic_wrap_s_clk IMPS_I2C3_I2C>,
-			<&imp_iic_wrap_s_clk IMPS_I2C6_I2C>,
 			<&imp_iic_wrap_s_clk IMPS_I2C10_I2C>;
 	};
 

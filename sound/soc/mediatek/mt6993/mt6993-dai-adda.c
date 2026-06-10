@@ -1756,6 +1756,7 @@ static const struct snd_soc_dapm_route mtk_dai_adda_routes[] = {
 	{"ADDA CH56 Capture", NULL, "VS1_VOTER_UL"},
 
 #endif
+	{"AP DMIC CH56 Capture", NULL, "VCORE_REQ"},
 	{"AP DMIC CH56 Capture", NULL, "ADDA Enable"},
 	{"AP DMIC CH56 Capture", NULL, "ADDA CH56 Capture Enable"},
 	{"AP DMIC CH56 Capture", NULL, "ADDA_CH56_FIFO"},

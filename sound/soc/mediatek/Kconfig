@@ -543,3 +543,10 @@ config SND_SOC_MTK_CQDMA_SUPPORT
           between memory and peripheral devices.
           Select Y if you have such a device.
 	  If unsure, select "N".
+
+config DMIC_GPIO_LOW_POWER
+    tristate "DMIC GPIO initialization defaults to low level"
+	help
+	  This option enables the DMIC GPIO initialization defaults to low level.
+	  Select Y if you have such a device.
+	  If unsure, select "N"."

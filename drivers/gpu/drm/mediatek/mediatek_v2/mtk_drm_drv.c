@@ -88,6 +88,14 @@
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
 #include "mtk_drm_edp/mtk_drm_edp_api.h"
 #endif
+#ifdef CONFIG_MI_DISP
+#include "mi_disp/mi_disp_feature.h"
+#include "mi_disp/mi_disp_log.h"
+#endif
+#if defined(CONFIG_VIS_DISPLAY_V2_D2)
+//Novatek ASIC
+#include "V2/D2/vis_display.h"
+#endif
 //#include "swpm_me.h"
 //#include "include/pmic_api_buck.h"
 #include <../drivers/gpu/drm/mediatek/mml/mtk-mml.h>
@@ -1075,8 +1083,34 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 		}
 	}
 
+#ifdef CONFIG_MI_DISP
+	/* if aod layer changed, decide if bypass pq or skip pq update */
+	if (mtk_crtc->aod_layer_changed) {
+		/* crtc active false after update dsi state, skip bypass pq */
+		if (!crtc->state->active && stage == 1)
+			return;
+		/* crtc active true before update dsi state, skip bypass pq */
+		else if (crtc->state->active && stage == 0)
+			return;
+		if (mtk_crtc->has_aod_layer) {
+			mtk_crtc->aod_layer_changed = 0;
+			bypass = 1;
+			DDPINFO("%s: has aod layer, bypass pq\n", __func__);
+		} else if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+			mtk_crtc->aod_layer_changed = 0;
+			bypass = 0;
+			DDPINFO("%s: doze active false, unbypass pq\n", __func__);
+		} else {
+			return;
+		}
+	/* if doze status changed, decide if bypass pq or skip pq update */
+	} else if (mtk_state->doze_changed) {
+		/* doze active false and no aod layer, unbypass pq or skip pq update */
+		if ((!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) && (!mtk_crtc->has_aod_layer)) {
+#else
 	if (mtk_state->doze_changed) {
 		if (!mtk_state->prop_val[CRTC_PROP_DOZE_ACTIVE]) {
+#endif
 			if (!crtc->state->active && stage == 1)
 				return;
 			else if (crtc->state->active && stage == 0)
@@ -1110,6 +1144,10 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 	cb_data->crtc = crtc;
 	cb_data->cmdq_handle = cmdq_handle;
 
+#ifdef CONFIG_MI_DISP
+	mtk_vidle_user_power_keep_by_gce(DISP_VIDLE_USER_EXT_CLIENT_CFG, cmdq_handle, 0);
+#endif
+
 	if (mtk_crtc_is_frame_trigger_mode(crtc))
 		cmdq_pkt_wait_no_clear(cmdq_handle,
 			mtk_crtc->gce_obj.event[EVENT_STREAM_EOF]);
@@ -1128,6 +1166,10 @@ static void mtk_atomic_doze_update_pq(struct drm_crtc *crtc, unsigned int stage,
 				mtk_ddp_comp_bypass(comp, bypass, PQ_FEATURE_KRN_DOZE, cmdq_handle);
 		}
 	}
+
+#ifdef CONFIG_MI_DISP
+	mtk_vidle_user_power_release_by_gce(DISP_VIDLE_USER_EXT_CLIENT_CFG, cmdq_handle);
+#endif
 
 	if (cmdq_pkt_flush_threaded(cmdq_handle, pq_bypass_cmdq_cb, cb_data) < 0)
 		DDPPR_ERR("failed to flush user_cmd\n");
@@ -1220,16 +1262,16 @@ static void mtk_atomic_doze_finish(struct drm_device *dev,
 					 struct drm_atomic_state *old_state)
 {
 	struct drm_crtc *crtc;
-	struct drm_connector *connector;
-	struct drm_connector_state *old_conn_state;
+	struct drm_crtc_state  *old_crtc_state;
 	int i;
 	struct mtk_drm_crtc *mtk_crtc = NULL;
 	struct mtk_ddp_comp *comp = NULL;
 
-	for_each_new_connector_in_state(old_state, connector,
-		old_conn_state, i) {
-
-		crtc = connector->state->crtc;
+	/* iterate crtc other than connector to fix issue BUGP10-9396,
+	   since there is no connector event when leaving aod with no 
+	   power mode changed */
+	for_each_new_crtc_in_state(old_state, crtc,
+		old_crtc_state, i) {
 		if (!crtc) {
 			DDPPR_ERR("%s connector has no crtc\n", __func__);
 			continue;
@@ -1240,11 +1282,21 @@ static void mtk_atomic_doze_finish(struct drm_device *dev,
 		mtk_crtc = to_mtk_crtc(crtc);
 		comp = mtk_ddp_comp_request_output(mtk_crtc);
 
+#ifdef CONFIG_MI_DISP
+		/* also go with aod layer changed */
+		if (comp && comp->id == DDP_COMPONENT_DSI0 && (old_state->crtcs[0].old_state || mtk_crtc->aod_layer_changed))
+#else
 		if (comp && comp->id == DDP_COMPONENT_DSI0 && old_state->crtcs[0].old_state)
+#endif
 			mtk_atomic_doze_update_pq(crtc, 1,
 				old_state->crtcs[0].old_state->active);
 
+#ifdef CONFIG_MI_DISP
+		/* also go with aod layer changed */
+		if (comp && comp->id == DDP_COMPONENT_DSI1 && (old_state->crtcs[3].old_state || mtk_crtc->aod_layer_changed))
+#else
 		if (comp && comp->id == DDP_COMPONENT_DSI1 && old_state->crtcs[3].old_state)
+#endif
 			mtk_atomic_doze_update_pq(crtc, 1,
 				old_state->crtcs[3].old_state->active);
 	}
@@ -4247,7 +4299,11 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ddp_main_bringup[] = {
 	DDP_COMPONENT_SPLITTER0_OUT_CB0,
 #elif defined(PQ_PATH_11)
 	DDP_COMPONENT_MDP_RSZ0,		DDP_COMPONENT_TDSHP0,
+#if !IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
 	DDP_COMPONENT_AAL0,		DDP_COMPONENT_DMDP_AAL0,
+#else
+	DDP_COMPONENT_DMDP_AAL0,	DDP_COMPONENT_AAL0,
+#endif
 	DDP_COMPONENT_COLOR0,		DDP_COMPONENT_CCORR0,
 	DDP_COMPONENT_C3D0,		DDP_COMPONENT_CCORR1,
 	DDP_COMPONENT_C3D1,		DDP_COMPONENT_GAMMA0,
@@ -4334,7 +4390,7 @@ static const enum mtk_ddp_comp_id mt6993_mtk_ddp_dual_main_bringup[] = {
 	DDP_COMPONENT_SYS_B_PQ0_OUT_CB4,
 #elif defined(PQ_PATH_11)
 	DDP_COMPONENT_SYS_B_MDP_RSZ0,		DDP_COMPONENT_SYS_B_TDSHP0,
-	DDP_COMPONENT_SYS_B_AAL0,		DDP_COMPONENT_SYS_B_DMDP_AAL0,
+	DDP_COMPONENT_SYS_B_DMDP_AAL0,		DDP_COMPONENT_SYS_B_AAL0,
 	DDP_COMPONENT_SYS_B_COLOR0,		DDP_COMPONENT_SYS_B_CCORR0,
 	DDP_COMPONENT_SYS_B_C3D0,		DDP_COMPONENT_SYS_B_CCORR1,
 	DDP_COMPONENT_SYS_B_C3D1,		DDP_COMPONENT_SYS_B_GAMMA0,
@@ -8505,6 +8561,17 @@ void mtk_drm_top_clk_prepare_enable(struct drm_crtc *crtc)
 
 		/* Enable IRQs and QOS config. Call only after power_state is set to true. */
 		mtk_crtc_vdisp_ao_config(crtc);
+	} else {
+		struct drm_crtc *crtc0 = priv->crtc[0];
+		struct mtk_drm_crtc *mtk_crtc0 = to_mtk_crtc(priv->crtc[0]);
+
+		if (bif_enabled(crtc0)) {
+			enum BIF_STAGE stage = get_bif_stage(mtk_crtc0);
+
+			if (stage == BIF_READ_MODE)
+				mtk_crtc_bif_apsrc_ddren_control(mtk_crtc0, NULL, true);
+			set_bif_enable(crtc0, false, __LINE__);
+		}
 	}
 
 	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_FULL_SCENARIO)) {
@@ -10322,9 +10389,11 @@ static int mtk_drm_pm_notifier(struct notifier_block *notifier, unsigned long pm
 			DDPMSG("%s PM_SUSPEND_PREPARE but wakelock is held, interrupt the suspend flow\n", __func__);
 			return NOTIFY_BAD;
 		}
+#if !IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
 		DDPMSG("%s PM_SUSPEND_PREPARE, Disabling CRTC wakelock\n", __func__);
 		atomic_set(&kernel_pm->status, KERNEL_PM_SUSPEND);
 		wake_up_interruptible(&kernel_pm->wq);
+#endif
 		return NOTIFY_OK;
 	case PM_POST_SUSPEND:
 #if !IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
@@ -10344,7 +10413,11 @@ static int mtk_drm_vcp_notifier(struct notifier_block *vcp_nb, unsigned long vcp
 	switch (vcp_event) {
 	case VCP_EVENT_READY:
 	case VCP_EVENT_STOP:
+		break;
 	case VCP_EVENT_SUSPEND:
+		DDPMSG("%s VCP_EVENT_SUSPEND, Disabling CRTC wakelock\n", __func__);
+		atomic_set(&kernel_pm->status, KERNEL_PM_SUSPEND);
+		wake_up_interruptible(&kernel_pm->wq);
 		break;
 	case VCP_EVENT_RESUME:
 		atomic_set(&kernel_pm->status, KERNEL_PM_RESUME);
@@ -13875,6 +13948,10 @@ static int __init mtk_drm_init(void)
 	int i;
 
 	DDPINFO("%s+\n", __func__);
+#ifdef CONFIG_MI_DISP
+	mi_disp_feature_init();
+#endif
+
 	for (i = 0; i < ARRAY_SIZE(mtk_drm_drivers); i++) {
 		DDPINFO("%s register %s driver\n",
 			__func__, mtk_drm_drivers[i]->driver.name);
@@ -13885,6 +13962,14 @@ static int __init mtk_drm_init(void)
 			goto err;
 		}
 	}
+
+#if defined(CONFIG_VIS_DISPLAY_V2_D2)
+	if (is_mi_dev_support_nova()) {
+		vis_display_host_init();
+		vis_display_ops_set_idlemgr_notify(nvt_set_idlemgr);
+		vis_display_ops_set_pq_trigger_notify(nvt_set_pq_trigger);
+	}
+#endif
 	DDPINFO("%s-\n", __func__);
 
 	return 0;
@@ -13902,6 +13987,14 @@ static void __exit mtk_drm_exit(void)
 
 	for (i = ARRAY_SIZE(mtk_drm_drivers) - 1; i >= 0; i--)
 		platform_driver_unregister(mtk_drm_drivers[i]);
+
+#if defined(CONFIG_VIS_DISPLAY_V2_D2)
+	if (is_mi_dev_support_nova()) {
+		vis_display_ops_set_idlemgr_notify(NULL);
+		vis_display_ops_set_pq_trigger_notify(NULL);
+		vis_display_host_exit();
+	}
+#endif
 }
 module_init(mtk_drm_init);
 module_exit(mtk_drm_exit);

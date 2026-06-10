@@ -5,3 +5,9 @@ config MTK_DPC
 	  This driver is used to optimize the power control
 	  of display vidle, it has low latency MTCMOS ctrl
 	  and flexible display triggers.
+
+config VIDLE_ENABLE
+	bool "MTK Vidle Feature Switch"
+	default n
+	help
+	  This is used to config support Vidle

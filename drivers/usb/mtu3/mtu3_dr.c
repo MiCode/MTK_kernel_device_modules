@@ -959,6 +959,25 @@ static ssize_t gen2_txdeemph_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(gen2_txdeemph);
 
+static ssize_t force_disconnect_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t count)
+{
+	struct ssusb_mtk *ssusb = dev_get_drvdata(dev);
+	struct otg_switch_mtk *otg_sx = &ssusb->otg_switch;
+
+	ssusb_role_sw_set(otg_sx->role_sw, USB_ROLE_NONE);
+	return count;
+}
+
+static ssize_t force_disconnect_show(struct device *dev,
+				struct device_attribute *attr,
+				char *buf)
+{
+	return 0;
+}
+static DEVICE_ATTR_RW(force_disconnect);
+
 static struct attribute *ssusb_dr_attrs[] = {
 	&dev_attr_mode.attr,
 	&dev_attr_role_mode.attr,
@@ -970,6 +989,7 @@ static struct attribute *ssusb_dr_attrs[] = {
 	&dev_attr_phy_prop.attr,
 	&dev_attr_gen1_txdeemph.attr,
 	&dev_attr_gen2_txdeemph.attr,
+	&dev_attr_force_disconnect.attr,
 	NULL
 };
 

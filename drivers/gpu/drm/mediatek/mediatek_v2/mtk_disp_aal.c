@@ -972,9 +972,9 @@ static bool disp_aal_write_dre3_curve(struct mtk_ddp_comp *comp, bool force_writ
 	/* Write Local Gain Curve for DRE 3 */
 	AALIRQ_LOG("start\n");
 	if (aal_data->data->aal_dre3_curve_sram &&
-	    !atomic_read(&aal_data->primary_data->dre30_write) && !force_write) {
-		AALIRQ_LOG("no need to write dre3\n");
-		return true;
+	    (aal_data->primary_data->dre30_curve_updated == 0) && !force_write) {
+		DDPMSG("%s: no need to write dre3\n", __func__);
+		return false;
 	}
 	if (aal_data->data->aal_dre3_curve_sram) {
 		sram_waddr = DMDP_AAL_CURVE_SRAM_WADDR;
@@ -1000,7 +1000,7 @@ static bool disp_aal_write_dre3_curve(struct mtk_ddp_comp *comp, bool force_writ
 static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 	 bool check_sram)
 {
-	bool result = false;
+	bool result = false, dre3_curve_write = false;
 	unsigned long flags;
 	int dre_blk_x_num, dre_blk_y_num;
 	unsigned int read_value;
@@ -1081,9 +1081,11 @@ static int disp_aal_update_dre3_sram(struct mtk_ddp_comp *comp,
 		mtk_drm_trace_begin("write_dre3_curve");
 		if (!atomic_read(&aal_data->first_frame)) {
 			mutex_lock(&aal_data->primary_data->config_lock);
-			disp_aal_write_dre3_curve(comp, false);
+			dre3_curve_write = disp_aal_write_dre3_curve(comp, false);
 			if (comp1)
-				disp_aal_write_dre3_curve(comp1, false);
+				dre3_curve_write = disp_aal_write_dre3_curve(comp1, false);
+			if (dre3_curve_write)
+				atomic_set(&aal_data->primary_data->dre30_write, 0);
 			mutex_unlock(&aal_data->primary_data->config_lock);
 		}
 		mtk_drm_trace_end();
@@ -1312,7 +1314,7 @@ void disp_aal_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 	phys_addr_t dre3_pa = disp_aal_dre3_pa(comp);
 	struct mtk_disp_aal *aal_data = comp_to_aal(comp);
 	bool aal_dre3_curve_sram = aal_data->data->aal_dre3_curve_sram;
-	int dre30_write = atomic_read(&aal_data->primary_data->dre30_write);
+	int dre30_curve_updated = aal_data->primary_data->dre30_curve_updated;
 	atomic_t *curve_sram_apb = &aal_data->force_curve_sram_apb;
 
 	if (!aal_data->primary_data->aal_fo->mtk_dre30_support)
@@ -1336,7 +1338,7 @@ void disp_aal_flip_sram(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 	if (aal_dre3_curve_sram && aal_data->primary_data->aal_param.local_curve_trigger) {
 		AALFLOW_LOG("%s %d FLIP LOCAL_CURVE_SRAM\n", __func__, __LINE__);
-		if (dre30_write) {
+		if (dre30_curve_updated) {
 			if (atomic_cmpxchg(curve_sram_apb, 0, 1) == 0) {
 				curve_apb = 0;
 				curve_int = 1;
@@ -1440,6 +1442,12 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 		mtk_drm_trace_end();
 		return;
 	}
+
+	// dre30_curve_updated only used in aal_sof thread
+	aal_data->primary_data->dre30_curve_updated = 0;
+	aal_data->primary_data->dre30_curve_updated =
+		atomic_read(&aal_data->primary_data->dre30_write);
+
 	ret = disp_aal_update_dre3_sram(comp, true);
 	if (!pm_ret)
 		mtk_vidle_pq_power_put(__func__);
@@ -1451,11 +1459,10 @@ static void disp_aal_sof_handle_by_cpu(struct mtk_ddp_comp *comp)
 	    (first_frame == 1 || atomic_read(&aal_data->primary_data->event_en) == 1))
 		mtk_crtc_user_cmd_impl(&comp->mtk_crtc->base, comp, FLIP_SRAM, NULL, false);
 
-	if (atomic_read(&aal_data->primary_data->dre30_write) == 1 ||
-	    (first_frame == 1 && aal_data->primary_data->dre30_enabled)) {
+	if (aal_data->primary_data->dre30_curve_updated == 1 ||
+		(first_frame == 1 && aal_data->primary_data->dre30_enabled))
 		mtk_crtc_check_trigger(comp->mtk_crtc, true, false);
-		atomic_set(&aal_data->primary_data->dre30_write, 0);
-	}
+
 	DDP_MUTEX_UNLOCK_CONDITION(&comp->mtk_crtc->lock, __func__, __LINE__, false);
 	if (first_frame == 1) {
 		atomic_set(&aal_data->first_frame, 0);
@@ -2065,15 +2072,11 @@ static int disp_aal_set_dre3_curve(struct mtk_ddp_comp *comp,
 
 	AALFLOW_LOG("\n");
 	if (atomic_read(&aal_data->primary_data->change_to_dre30) == 0x3) {
-
 		if (copy_from_user(dre30_gain, (struct DISP_DRE30_PARAM *)param->dre30_gain,
-				    sizeof(struct DISP_DRE30_PARAM)) == 0) {
-			mutex_lock(&aal_data->primary_data->config_lock);
+				    sizeof(struct DISP_DRE30_PARAM)) == 0)
 			memcpy(&aal_data->primary_data->dre30_gain, dre30_gain, sizeof(struct DISP_DRE30_PARAM));
-			mutex_unlock(&aal_data->primary_data->config_lock);
-		} else {
+		else
 			return -1;
-		}
 	}
 
 	return 0;
@@ -2108,8 +2111,10 @@ int disp_aal_set_param(struct mtk_ddp_comp *comp, struct cmdq_pkt *handle,
 
 	if (aal_data->primary_data->aal_fo->mtk_dre30_support &&
 		aal_data->primary_data->dre30_enabled && param->local_curve_trigger) {
+		mutex_lock(&aal_data->primary_data->config_lock);
 		ret = disp_aal_set_dre3_curve(comp, handle, param);
 		atomic_set(&aal_data->primary_data->dre30_write, 1);
+		mutex_unlock(&aal_data->primary_data->config_lock);
 	}
 
 	if (param->global_curve_trigger)
@@ -2971,6 +2976,7 @@ static void disp_aal_primary_data_init(struct mtk_ddp_comp *comp)
 	//aal_data->primary_data->led_type = TYPE_FILE;
 	aal_data->primary_data->relay_state = 0x0 << PQ_FEATURE_DEFAULT;
 	aal_data->primary_data->pre_enable = 0;
+	aal_data->primary_data->dre30_curve_updated = 0;
 
 	aal_data->primary_data->refresh_wq = create_singlethread_workqueue("aal_refresh_trigger");
 	INIT_WORK(&aal_data->primary_data->refresh_task.task, disp_aal_refresh_trigger);

@@ -327,6 +327,7 @@ struct usb_offload_policy {
 	bool support_idle_lowpwr;
 	bool all_on_sram;
 	bool ready_for_xhci;
+	bool support_uac30;
 	int smc_suspend;
 	int smc_resume;
 	enum uo_source_type main_sram;

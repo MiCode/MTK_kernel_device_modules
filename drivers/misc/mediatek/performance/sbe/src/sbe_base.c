@@ -238,6 +238,8 @@ struct sbe_info *sbe_get_info(int pid, int force)
 	tmp->pid = pid;
 	tmp->ux_crtl_type = 0;
 	tmp->ux_scrolling = 0;
+	tmp->filter_dep_task_enable_saved = 0;
+	tmp->xgf_force_update_started = 0;
 
 	rb_link_node(&tmp->entry, parent, p);
 	rb_insert_color(&tmp->entry, &sbe_info_tree);
@@ -478,6 +480,8 @@ struct sbe_render_info *sbe_get_render_info(int pid,
 	tmp->affinity_task_mask_cnt = 0;
 	tmp->calculate_dy_enhance_idx = 0;
 	tmp->core_ctl_ignore_vip_task = 0;
+	tmp->calculate_dep_enable_saved = 0;
+	tmp->xgf_extra_sub_saved = 0;
 	memset(tmp->aff_dep_arr, 0, sizeof(int) * MAX_TASK_NUM);
 
 	INIT_LIST_HEAD(&(tmp->scroll_list));
@@ -520,7 +524,8 @@ void sbe_delete_render_info(struct sbe_render_info *iter)
 	xgf_attr_iter.mode = 1;
 	xgf_attr_iter.pid = iter->pid;
 	xgf_attr_iter.bufid = iter->buffer_id;
-	fpsgo_other2xgf_set_attr(0, &xgf_attr_iter);
+	fpsgo_other2xgf_get_attr(&xgf_attr_iter);
+	fpsgo_other2xgf_set_attr(&xgf_attr_iter);
 	set_fpsgo_attr(1, iter->pid, 0, &attr_iter);
 
 	sbe_del_ux(iter);

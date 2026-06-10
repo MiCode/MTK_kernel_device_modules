@@ -89,6 +89,16 @@
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_EDPTX_AUTO_SUPPORT)
 #include "mtk_drm_edp/mtk_drm_edp_api.h"
 #endif
+
+#ifdef CONFIG_MI_DISP
+#include "mi_disp/mi_disp_feature.h"
+#include "mi_disp/mi_disp_log.h"
+#endif
+#if defined(CONFIG_VIS_DISPLAY_DALI)
+//Novatek ASIC
+#include "vis_display.h"
+#endif
+
 //#include "swpm_me.h"
 //#include "include/pmic_api_buck.h"
 #include <../drivers/gpu/drm/mediatek/mml/mtk-mml.h>
@@ -13142,6 +13152,10 @@ static int __init mtk_drm_init(void)
 	int i;
 
 	DDPINFO("%s+\n", __func__);
+#ifdef CONFIG_MI_DISP
+	mi_disp_feature_init();
+#endif
+
 	for (i = 0; i < ARRAY_SIZE(mtk_drm_drivers); i++) {
 		DDPINFO("%s register %s driver\n",
 			__func__, mtk_drm_drivers[i]->driver.name);

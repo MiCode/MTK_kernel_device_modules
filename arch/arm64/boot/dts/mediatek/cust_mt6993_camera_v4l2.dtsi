@@ -236,16 +236,16 @@
 	};
 	camera_pins_cam0_tofvdd_0: camera-pins-cam0-tofvdd-0 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO183__FUNC_GPIO183>;
-			slew-rate = <1>;
-			output-low;
+			//pinmux = <PINMUX_GPIO183__FUNC_GPIO183>;
+			//slew-rate = <1>;
+			//output-low;
 		};
 	};
 	camera_pins_cam0_tofvdd_1: camera-pins-cam0-tofvdd-1 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO183__FUNC_GPIO183>;
-			slew-rate = <1>;
-			output-high;
+			//pinmux = <PINMUX_GPIO183__FUNC_GPIO183>;
+			//slew-rate = <1>;
+			//output-high;
 		};
 	};
 	camera_pins_cam1_mclk_off: camera-pins-cam1-mclk-off {
@@ -358,22 +358,22 @@
 	};
 	camera_pins_cam2_scl_ap: cam2@2 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO200__FUNC_SCL9>;
+			//pinmux = <PINMUX_GPIO200__FUNC_SCL9>;
 		};
 	};
 	camera_pins_cam2_scl_scp: cam2@3 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO200__FUNC_SCP_SCL7>;
+			//pinmux = <PINMUX_GPIO200__FUNC_SCP_SCL7>;
 		};
 	};
 	camera_pins_cam2_sda_ap: cam2@4 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO201__FUNC_SDA9>;
+			//pinmux = <PINMUX_GPIO201__FUNC_SDA9>;
 		};
 	};
 	camera_pins_cam2_sda_scp: cam2@5 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO201__FUNC_SCP_SDA7>;
+			//pinmux = <PINMUX_GPIO201__FUNC_SCP_SDA7>;
 		};
 	};
 	camera_pins_cam4_mclk_off: camera-pins-cam4-mclk-off {
@@ -451,7 +451,7 @@
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		enable-active-high;
-		gpio = <&pio 182 0x0>;
+		//gpio = <&pio 182 0x0>;
 	};
 
 	camera_pin_cam0_tof:camera-pin-cam0-tof {
@@ -460,7 +460,7 @@
 		regulator-min-microvolt = <1800000>;
 		regulator-max-microvolt = <1800000>;
 		enable-active-high;
-		gpio = <&pio 184 0x0>;
+		//gpio = <&pio 184 0x0>;
 	};
 
 	camera_pin_cam0_dvdd:camera-pin-cam0-dvdd {
@@ -710,7 +710,7 @@
 	};
 };
 
-&i2c9 {
+&i2c10 {
 	status = "okay";
 	clock-frequency = <1000000>;
 

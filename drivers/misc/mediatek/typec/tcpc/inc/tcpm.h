@@ -332,6 +332,9 @@ struct tcp_ny_typec_otp {
 
 struct tcp_ny_wd0_state {
 	bool wd0;
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	bool is_typec_port0;
+#endif
 };
 
 struct tcp_notify {
@@ -928,6 +931,9 @@ extern bool tcpm_inquire_pd_prev_connected(
 extern uint8_t tcpm_inquire_pd_data_role(
 	struct tcpc_device *tcpc);
 
+extern uint8_t tcpm_inquire_pd_state_curr(
+	struct tcpc_device *tcpc_dev);
+
 extern uint8_t tcpm_inquire_pd_power_role(
 	struct tcpc_device *tcpc);
 
@@ -971,6 +977,10 @@ extern bool tcpm_extract_power_cap_val(
 
 extern int tcpm_get_remote_power_cap(struct tcpc_device *tcpc,
 	struct tcpm_remote_power_cap *cap);
+
+extern void tcpm_set_adapter_dcc_support(struct tcpc_device *tcpc, bool support);
+extern void tcpm_set_direct_cap_change_over(struct tcpc_device *tcpc);
+extern bool tcpm_get_direct_cap_change_status(struct tcpc_device *tcpc);
 
 extern int tcpm_inquire_select_source_cap(
 	struct tcpc_device *tcpc, struct tcpm_power_cap_val *cap_val);
@@ -1411,6 +1421,12 @@ static inline bool tcpm_inquire_pd_prev_connected(
 
 static inline uint8_t tcpm_inquire_pd_data_role(
 	struct tcpc_device *tcpc)
+{
+	return 0;
+}
+
+static inline uint8_t tcpm_inquire_pd_state_curr(
+	struct tcpc_device *tcpc_dev)
 {
 	return 0;
 }

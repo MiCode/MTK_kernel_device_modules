@@ -319,24 +319,52 @@ static inline void engine_wait_smmu_prot_off(struct engine_control_t *ctrl)
 	} while ((reg_val & ZRAM_SMMU_PROT_EN) == ZRAM_SMMU_PROT_EN);
 }
 
-static inline void engine_wait_smmu_prot_on(struct engine_control_t *ctrl)
+#define SMMU_PROT_ON_TIMEOUT_MS (100)
+static inline bool engine_wait_smmu_prot_on(struct engine_control_t *ctrl)
 {
 	void __iomem *reg = ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_PWR_PROT_EN_0;
 	uint32_t reg_val = zram_readl(reg);
+	unsigned long timeout = jiffies + msecs_to_jiffies(SMMU_PROT_ON_TIMEOUT_MS);
 
 	/* Enable SMMU prot */
 	reg_val |= ZRAM_SMMU_PROT_EN;
 	zram_writel(reg_val, reg);
 
 	/* Wait for ready */
-	do {
-		reg_val = zram_readl(reg);
-	} while ((reg_val & ZRAM_SMMU_PROT_EN) != ZRAM_SMMU_PROT_EN);
+	reg_val = zram_readl(reg);
+	while ((reg_val & ZRAM_SMMU_PROT_EN) != ZRAM_SMMU_PROT_EN) {
 
-	reg = ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_PWR_PROT_RDY_0;
-	do {
+		cpu_relax();
+		if (time_after(jiffies, timeout)) {
+			pr_info("%s: Wait for SMMU prot on en timeout\n", __func__);
+			goto smmu_prot_off;
+		}
+
 		reg_val = zram_readl(reg);
-	} while ((reg_val & ZRAM_SMMU_PROT_EN) != ZRAM_SMMU_PROT_EN);
+	}
+
+	timeout = jiffies + msecs_to_jiffies(SMMU_PROT_ON_TIMEOUT_MS);
+	reg = ctrl->zram_config_base + ZRAM_CONFIG_ZRAM_PWR_PROT_RDY_0;
+	reg_val = zram_readl(reg);
+	while ((reg_val & ZRAM_SMMU_PROT_EN) != ZRAM_SMMU_PROT_EN) {
+
+		cpu_relax();
+		if (time_after(jiffies, timeout)) {
+			pr_info("%s: Wait for SMMU prot on rdy timeout\n", __func__);
+			goto smmu_prot_off;
+		}
+
+		reg_val = zram_readl(reg);
+	}
+
+	/* Success */
+	return true;
+
+smmu_prot_off:
+
+	/* Fail */
+	engine_wait_smmu_prot_off(ctrl);
+	return false;
 }
 
 /* Power on only - no reference count */
@@ -373,13 +401,16 @@ int engine_power_on(struct engine_control_t *ctrl)
 
 /* Power off only - no reference count */
 #define ZRAM_SSYS_SRAM_DORMANT_MASK	(~(0x7UL << 13))
-void engine_power_off(struct engine_control_t *ctrl)
+bool engine_power_off(struct engine_control_t *ctrl)
 {
 	void __iomem *reg = ctrl->zram_pm_base + ZRAM_SSYSPM_CON;
 	uint32_t reg_val = zram_readl(reg);
 
 	/* Wait for SMMU prot on */
-	engine_wait_smmu_prot_on(ctrl);
+	if (!engine_wait_smmu_prot_on(ctrl)) {
+		pr_info("%s: Failed to set SMMU prot on\n", __func__);
+		return false;
+	}
 
 	/* POWER off */
 	reg_val |= ZRAM_SSYS_RTFF_GRP_EN;
@@ -399,6 +430,8 @@ void engine_power_off(struct engine_control_t *ctrl)
 #ifdef ZRAM_ENGINE_DEBUG
 	pr_info("%s: REG(%lx) VAL(%x)\n", __func__, (unsigned long)reg, (uint32_t)reg_val);
 #endif
+
+	return true;
 }
 
 #define RSC_BUS_PLL_REQ	(1UL << 14)

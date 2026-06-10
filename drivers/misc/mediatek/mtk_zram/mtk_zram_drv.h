@@ -60,7 +60,6 @@ enum zram_pageflags {
 
 	ZRAM_COMP_PRIORITY_BIT1, /* First bit of comp priority index */
 	ZRAM_COMP_PRIORITY_BIT2, /* Second bit of comp priority index */
-
 	/*
 	 * This is used to stand for HWCOMP_NORMAL with compressible size.
 	 * No dst copy: Table entries involve hwcomp_buf_t.
@@ -186,5 +185,4 @@ struct zram {
 #endif
 	wait_queue_head_t hw_wait;
 };
-
 #endif

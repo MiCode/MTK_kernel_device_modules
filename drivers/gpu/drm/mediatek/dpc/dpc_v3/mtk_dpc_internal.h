@@ -606,6 +606,7 @@ static int dpc_vidle_power_keep_v3(const enum mtk_vidle_voter_user _user);
 static void dpc_vidle_power_release_v3(const enum mtk_vidle_voter_user _user);
 static void dpc_ap_ref_cnt(bool add, const enum mtk_vidle_voter_user user, bool lock);
 static void dpc_ap_vote_mmpc(bool add, const enum mtk_vidle_voter_user user);
+static int dpc_toggle_cg_fsm(struct cmdq_pkt *pkt, int line);
 
 struct mtk_dpc {
 	struct platform_device *pdev;

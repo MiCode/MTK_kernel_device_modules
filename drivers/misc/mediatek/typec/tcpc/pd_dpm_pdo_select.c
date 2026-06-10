@@ -257,11 +257,17 @@ bool dpm_find_match_req_info(struct pd_port *pd_port,
 		break;
 	}
 
-	for (i = 0; i < cnt; i++) {
-		dpm_extract_pdo_info(src_pdos[i], &source);
+	if (pd_port->direct_cap_change_support && pd_port->direct_cap_change_active) {
+		select.pos = pd_port->pe_data.selected_cap;
+		pr_err("%s: direct cap change active, select pos:%d\n", __func__, select.pos);
+	}
+	else {
+		for (i = 0; i < cnt; i++) {
+			dpm_extract_pdo_info(src_pdos[i], &source);
 
-		if (select_pdo_fun(&select, sink, &source))
-			select.pos = i+1;
+			if (select_pdo_fun(&select, sink, &source))
+				select.pos = i+1;
+		}
 	}
 
 	if (select.pos > 0) {
@@ -280,6 +286,11 @@ bool dpm_find_match_req_info(struct pd_port *pd_port,
 			req_info->mismatch = source.ma < sink->ma;
 			req_info->max_ma = sink->ma;
 			req_info->oper_ma = MIN(sink->ma, source.ma);
+		}
+		if (pd_port->direct_cap_change_support && pd_port->direct_cap_change_active) {
+			req_info->mismatch = false;
+			req_info->max_ma = source.ma;
+			pd_port->request_i_apdo = source.ma;
 		}
 
 #if CONFIG_USB_PD_REV30_PPS_SINK

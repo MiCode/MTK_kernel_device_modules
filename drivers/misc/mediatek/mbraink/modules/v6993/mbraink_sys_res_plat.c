@@ -694,7 +694,7 @@ static void mbraink_sys_res_log(unsigned int scene)
 				continue;
 
 			if (sys_res_log_size > LOG_BUF_OUT_SZ - 45) {
-				pr_info("[Mbraink][SPM] %s", sys_res_log_buf);
+				//pr_info("[Mbraink][SPM] %s", sys_res_log_buf);
 				sys_res_log_size = 0;
 			}
 
@@ -712,7 +712,7 @@ static void mbraink_sys_res_log(unsigned int scene)
 				LOG_BUF_OUT_SZ - sys_res_log_size,
 				"]; ");
 	}
-	pr_info("[Mbraink][SPM] %s", sys_res_log_buf);
+	//pr_info("[Mbraink][SPM] %s", sys_res_log_buf);
 	spin_unlock_irqrestore(&sys_res_lock, flag);
 }
 

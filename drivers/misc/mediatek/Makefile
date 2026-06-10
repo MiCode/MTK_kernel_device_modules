@@ -63,6 +63,8 @@ obj-$(CONFIG_MTK_PMIC_PROTECT) += pmic_protect/
 obj-$(CONFIG_MTK_PMIC_TIA) += pmic_tia/
 obj-$(CONFIG_MTK_MDPM) += mdpm/
 obj-$(CONFIG_MTK_MDPM_LEGACY) += mdpm_v1/
+obj-$(CONFIG_MTK_PWM)	    += pwm/
+obj-$(CONFIG_MTK_IRTX_PWM_SUPPORT) += irtx/
 obj-$(CONFIG_MTK_PBM) += pbm/
 # obj-$(CONFIG_MTK_CG_PEAK_POWER_THROTTLING) += cg_ppt/
 obj-$(CONFIG_MTK_CCU) += ccu/src/
@@ -122,3 +124,6 @@ obj-$(CONFIG_ARM) += arm_div/
 obj-$(CONFIG_MTK_KCOMPRESSD) += kcompressd/
 obj-$(CONFIG_ROOTFS_CHECK) += rootfs_check/
 obj-$(CONFIG_MTK_SPM_VHOST_DMABUF_PHYS) += vhost_dmabuf_phys/
+obj-$(CONFIG_MI_CAMLOG) += cam_log/
+
+subdir-ccflags-y += -D__XIAOMI_CAMERA__

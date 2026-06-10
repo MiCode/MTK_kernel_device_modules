@@ -378,10 +378,11 @@ static int __init mrdump_panic_init(void)
 	mrdump_module_init_mboot_params();
 #endif
 
-#if IS_ENABLED(CONFIG_MTK_AEE_UT)
-	init_register_callback(&aee_rr_rec_last_init_func_name);
-	shutdown_register_callback(&aee_rr_rec_last_shutdown_device);
-#endif
+//avoid XM OGKI build error
+//#if IS_ENABLED(CONFIG_MTK_AEE_UT)
+//	init_register_callback(&aee_rr_rec_last_init_func_name);
+//	shutdown_register_callback(&aee_rr_rec_last_shutdown_device);
+//#endif
 
 	if (mrdump_parse_chosen(&mparams) < 0)
 		return 0;

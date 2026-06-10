@@ -1025,6 +1025,9 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 		mtk_crtc_bif_slbc_request(mtk_crtc, SLBC_REQUEST, __LINE__);
 	}
 
+	/* store if leave idle need submit mml dl layer */
+	mtk_crtc->bif_info->mml_dl_lye = state->lye_state.mml_dl_lye;
+
 	if (perf)
 		start_time = local_clock();
 
@@ -1069,7 +1072,7 @@ static void mtk_drm_vdo_mode_enter_idle(struct drm_crtc *crtc)
 			cmdq_pkt_clear_event(handle, mtk_crtc->bif_info->wb_frame_done_event);
 
 			/* stop mml dl to make mml stop during hs idle */
-			if (state->lye_state.mml_dl_lye) {
+			if (mtk_crtc->bif_info->mml_dl_lye) {
 				struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
 
 				CRTC_MMP_MARK(0, mml_dbg, (unsigned long)handle, DISP_MML_IR_CLEAR);
@@ -1179,7 +1182,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 			mtk_disp_set_hrt_bw(mtk_crtc, mtk_crtc->qos_ctx->last_hrt_req);
 		set_bif_stage(mtk_crtc, BIF_DEFAULT_MODE);
 
-		if (crtc_state->lye_state.mml_dl_lye &&
+		if (mtk_crtc->bif_info->mml_dl_lye &&
 			mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_MML_DL_SUB_CFG_CLINET))
 			client_type = CLIENT_SUB_CFG;
 
@@ -1195,7 +1198,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		mtk_crtc_pkt_create(&handle, crtc, client);
 
 	/* restore mml dl task and sync with disp */
-	if (stage == BIF_READ_MODE && crtc_state->lye_state.mml_dl_lye) {
+	if (stage == BIF_READ_MODE && mtk_crtc->bif_info->mml_dl_lye) {
 		struct mml_drm_ctx *mml_ctx = mtk_drm_get_mml_drm_ctx(crtc->dev, crtc);
 
 		if (mml_ctx) {
@@ -1239,7 +1242,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 		CRTC_MMP_MARK(0, leave_idle, 0, (unsigned long)handle);
 
 		mtk_crtc_wait_frame_done(mtk_crtc, handle, DDP_FIRST_PATH, 0);
-		if (crtc_state->lye_state.mml_dl_lye && mtk_crtc->mml_cfg->info.disp_done_event)
+		if (mtk_crtc->bif_info->mml_dl_lye && mtk_crtc->mml_cfg->info.disp_done_event)
 			cmdq_pkt_set_event(handle, mtk_crtc->mml_cfg->info.disp_done_event);
 
 		if (priv->data->bif_path_remove)
@@ -1265,7 +1268,7 @@ static void mtk_drm_vdo_mode_leave_idle(struct drm_crtc *crtc)
 			cb_data->crtc = crtc;
 			cb_data->cmdq_handle = handle;
 
-			if (crtc_state->lye_state.mml_dl_lye)
+			if (mtk_crtc->bif_info->mml_dl_lye)
 				mtk_drm_wait_mml_submit_done(&mtk_crtc->mml_cb);
 
 			if (cmdq_pkt_flush_async(handle, vdo_leave_idle_cb, cb_data) < 0)

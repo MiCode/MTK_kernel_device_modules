@@ -115,7 +115,7 @@ int get_battery_voltage(struct mtk_charger *info)
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		chr_err("%s retry to get bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge");
+		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge1");
 		info->bat_psy = bat_psy;
 	}
 
@@ -133,8 +133,7 @@ int get_battery_voltage(struct mtk_charger *info)
 		ret = prop.intval / 1000;
 	}
 
-	chr_debug("%s:%d\n", __func__,
-		ret);
+	chr_info("%s:%d\n", __func__, ret);
 	return ret;
 }
 
@@ -185,7 +184,7 @@ int get_battery_temperature(struct mtk_charger *info)
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		chr_err("%s retry to get bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge");
+		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge1");
 		info->bat_psy = bat_psy;
 	}
 
@@ -200,8 +199,7 @@ int get_battery_temperature(struct mtk_charger *info)
 		ret = prop.intval / 10;
 	}
 
-	chr_debug("%s:%d\n", __func__,
-		ret);
+	chr_info("%s:%d\n", __func__, ret);
 	return ret;
 }
 
@@ -216,7 +214,7 @@ int get_battery_current(struct mtk_charger *info)
 
 	if (bat_psy == NULL || IS_ERR(bat_psy)) {
 		chr_err("%s retry to get bat_psy\n", __func__);
-		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge");
+		bat_psy = devm_power_supply_get_by_phandle(&info->pdev->dev, "gauge1");
 		info->bat_psy = bat_psy;
 	}
 
@@ -231,8 +229,7 @@ int get_battery_current(struct mtk_charger *info)
 		ret = prop.intval / 1000;
 	}
 
-	chr_debug("%s:%d\n", __func__,
-		ret);
+	chr_info("%s:%d\n", __func__, ret);
 	return ret;
 }
 
@@ -407,7 +404,13 @@ bool is_charger_exist(struct mtk_charger *info)
 int get_charger_type(struct mtk_charger *info)
 {
 	union power_supply_propval prop = {0};
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	int port0_temp = 0, port1_temp = 0;
 	union power_supply_propval prop2 = {0};
+	static union power_supply_propval last_prop2 = {0};
+#else
+	union power_supply_propval prop2 = {0};
+#endif
 	union power_supply_propval prop3 = {0};
 	static struct power_supply *bc12_psy;
 	int ret;
@@ -438,18 +441,33 @@ int get_charger_type(struct mtk_charger *info)
 		if (ret < 0)
 			chr_debug("%s: %d\n", __func__, ret);
 
-		if (prop.intval == 0 ||
+		if (((prop.intval == 0) && (info->input_suspend == 0)) ||
 		    (prop2.intval == POWER_SUPPLY_TYPE_USB &&
 		    prop3.intval == POWER_SUPPLY_USB_TYPE_UNKNOWN))
 			prop2.intval = POWER_SUPPLY_TYPE_UNKNOWN;
 	}
 
-	chr_debug("%s online:%d type:%d usb_type:%d\n", __func__,
+	chr_info("%s online:%d type:%d usb_type:%d\n", __func__,
 		prop.intval,
 		prop2.intval,
 		prop3.intval);
-
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	usb_get_property(USB_PROP_TYPEC_PORT1_PLUGIN, &port1_temp);
+	usb_get_property(USB_PROP_TYPEC_PORT0_PLUGIN, &port0_temp);
+	if (prop2.intval == POWER_SUPPLY_TYPE_UNKNOWN &&
+		((port0_temp == 0 && port1_temp == 0) ||
+		(port0_temp == 0 && port1_temp == 3) ||
+		(port0_temp == 3 && port1_temp == 0))) {
+		last_prop2 = prop2;
+		chr_err("%s: unknown charger type\n", __func__);
+	} else if (prop2.intval != POWER_SUPPLY_TYPE_UNKNOWN) {
+		last_prop2 = prop2;
+		chr_err("%s: keep last charger type\n", __func__);
+	}
+	return last_prop2.intval;
+#else
 	return prop2.intval;
+#endif
 }
 
 int get_usb_type(struct mtk_charger *info)
@@ -630,3 +648,28 @@ int disable_hw_ovp(struct mtk_charger *info, int en)
 
 	return 0;
 }
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+int check_after_plugin_bc12_type(struct mtk_charger *info)
+{
+	int after_port_num = 0, after_type = 0;
+	int ret = 0;
+
+	if (info->typec_port0_after_plugin == 1) {
+		after_port_num = 0;
+	} else if (info->typec_port1_after_plugin == 1) {
+		after_port_num = 1;
+	} else {
+		chr_info("%s no after port\n", __func__);
+		return after_type;
+	}
+
+	ret = charger_dev_after_get_bc12_type(info->chg1_dev, after_port_num, &after_type);
+	if (ret) {
+		chr_err("%s get after port-%d type fail\n", __func__, after_port_num);
+		return 0;
+	} else
+		chr_info("%s get after port-%d type:%d\n", __func__, after_port_num, after_type);
+	return after_type;
+}
+#endif

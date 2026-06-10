@@ -596,6 +596,7 @@ bool vow_ipi_rceive_ack(unsigned int msg_id,
 	case IPIMSG_VOW_PCM_DUMP_ON:
 	case IPIMSG_VOW_PCM_DUMP_OFF:
 	case IPIMSG_VOW_SET_FLAG:
+	case IPIMSG_VOW_ONESHOT_SUPPORT:
 		result = true;
 		break;
 	case IPIMSG_VOW_SET_BARGEIN_ON:
@@ -1339,6 +1340,23 @@ static void vow_register_vendor_feature(int uuid)
 #endif
 }
 
+static void vow_set_oneshotsupport(unsigned int status) {
+	unsigned int enable;
+        int ipi_ret;
+	if (status == VOWControlCmd_Oneshot_Enable) {
+		enable = 1;
+	} else {
+		enable = 0;
+	}
+	ipi_ret = vow_ipi_send(IPIMSG_VOW_ONESHOT_SUPPORT,
+				   1,
+				   &enable,
+				   VOW_IPI_BYPASS_ACK);
+	if (ipi_ret == IPI_SCP_SEND_FAIL || ipi_ret == IPI_SCP_NO_SUPPORT) {
+		VOWDRV_DEBUG("[vow oneshot]set oneshot support fail, ret = %d\n", ipi_ret);
+	}
+}
+
 static void vow_deregister_vendor_feature(int uuid)
 {
 #if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
@@ -1359,6 +1377,45 @@ static void vow_deregister_vendor_feature(int uuid)
 #else
 	VOWDRV_DEBUG("%s(), vow: SCP no support\n\r", __func__);
 #endif
+}
+
+static int vow_set_customKeyword(unsigned long arg) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+	int ipi_ret;
+#endif
+	uint32_t vow_ipi_buf[VOW_MAX_CUSTOM_KEYWORD_NUM];
+	if (copy_from_user((void*)(&vow_ipi_buf[0]),
+	   				   (const void __user *)arg,
+					   sizeof(uint32_t) * VOW_MAX_CUSTOM_KEYWORD_NUM)) {
+		VOWDRV_DEBUG("vow set custom keyword fail\n");
+		return -EFAULT;
+	}
+	if (vow_ipi_buf[0] <= 0 || vow_ipi_buf[0] == 10001) {
+		VOWDRV_DEBUG("vow set custom keyword fail, invalid value %d\n", vow_ipi_buf[0]);
+		return -EFAULT;
+	}
+	VOWDRV_DEBUG("vow set custom keyword\n");
+	for (int i = 0; i < VOW_MAX_CUSTOM_KEYWORD_NUM; i++) {
+		VOWDRV_DEBUG("%d ", vow_ipi_buf[i]);
+	}
+	VOWDRV_DEBUG("\n");
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_SCP_SUPPORT)
+	if (!vow_check_scp_status()) {
+		VOWDRV_DEBUG("%s(): SCP is off\n", __func__);
+		return -EFAULT;
+	}
+	ipi_ret = vow_ipi_send(IPIMSG_VOW_SET_CUSTOM_KEYWORD,
+				   VOW_MAX_CUSTOM_KEYWORD_NUM,
+				   &vow_ipi_buf[0],
+				   VOW_IPI_BYPASS_ACK);
+	if (ipi_ret == IPI_SCP_SEND_FAIL || ipi_ret == IPI_SCP_NO_SUPPORT) {
+		VOWDRV_DEBUG("[vow custom keyword]set custom keyword fail, ret = %d\n", ipi_ret);
+		return -EFAULT;
+	}
+#else
+	VOWDRV_DEBUG("%s(), vow: SCP no support\n\r", __func__);
+#endif
+	return 0;
 }
 
 static bool vow_service_SetModelStatus(bool enable, unsigned long arg)
@@ -3197,6 +3254,10 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg_da
 		case VOWControlCmd_GetDump:
 			vow_service_ReadDumpData();
 			break;
+		case VOWControlCmd_Oneshot_Enable:
+		case VOWControlCmd_Oneshot_Disable:
+			vow_set_oneshotsupport(arg);
+			break;
 		default:
 			VOWDRV_DEBUG("VOW_SET_CONTROL no such command = %lu",
 				     arg);
@@ -3428,6 +3489,10 @@ static long VowDrv_ioctl(struct file *fp, unsigned int cmd, unsigned long arg_da
 		mutex_unlock(&vow_payloaddump_mutex);
 		vowserv.payloaddump_enable = true;
 	}
+		break;
+	case VOW_SET_CUSTOM_KEYWORD:
+		VOWDRV_DEBUG("VOW_SET_CUSTOM_KEYWORD(%lu)", arg);
+		vow_set_customKeyword(arg);
 		break;
 	case VOW_SET_VOW_DUAL_CH_TRANSFER:
 		VOWDRV_DEBUG("VOW_SET_VOW_DUAL_CH_TRANSFER(%lu)", arg);

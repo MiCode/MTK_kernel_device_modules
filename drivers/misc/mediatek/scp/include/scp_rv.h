@@ -64,6 +64,8 @@
 #define PIN_IN_SIZE_TOUCH_CTRL          2
 #define PIN_OUT_SIZE_TOUCH_NOTIFY       2
 #define PIN_IN_SIZE_TOUCH_NOTIFY       58
+#define PIN_OUT_SIZE_HOST_SCP_THP        10
+#define PIN_IN_SIZE_SCP_HOST_THP         3
 
 /* scp Core ID definition */
 enum scp_core_id {
@@ -125,11 +127,15 @@ enum {
 	IPI_IN_KASAN_CHECK	  = 49,
 	IPI_OUT_CAMFE_SCP_CAMBE   = 50,
 	IPI_IN_SCP_CAMBE_CAMFE    = 51,
-	IPI_OUT_TOUCH_CTRL       = 52,
-	IPI_IN_TOUCH_CTRL        = 53,
-	IPI_OUT_TOUCH_NOTIFY     = 54,
-	IPI_IN_TOUCH_NOTIFY      = 55,
-	IPI_OUT_TIME_SYNC        = 56,
+	IPI_OUT_TOUCH_CTRL        = 52,
+	IPI_IN_TOUCH_CTRL         = 53,
+	IPI_OUT_TOUCH_NOTIFY      = 54,
+	IPI_IN_TOUCH_NOTIFY       = 55,
+	IPI_OUT_TIME_SYNC         = 56,
+	IPI_OUT_LID_HALL          = 57,
+	IPI_IN_LID_HALL           = 58,
+	IPI_OUT_TABLE_HALL        = 59,
+	IPI_IN_TABLE_HALL         = 60,
 	SCP_IPI_COUNT
 };
 
@@ -212,6 +218,7 @@ enum scp_reserve_mem_id_t {
 	SCP_LOW_PWR_DBG_MEM_ID,
 	SCP_DBI_MEM_ID = 20,
 	SCP_TMON_DBG_MEM_ID,
+	SCP_THP_MEM_ID,
 	NUMS_MEM_ID,
 };
 

@@ -118,6 +118,9 @@ static inline bool pd_process_ctrl_msg(
 		if (PE_MAKE_STATE_TRANSIT_SINGLE(
 			PE_SRC_READY, PE_SRC_NOT_SUPPORTED_RECEIVED))
 			return true;
+		if (pd_port->pe_data.pe_state_flags &
+			PE_STATE_FLAG_ENABLE_VDM_RESPONSE_TIMER)
+			return false;
 		break;
 
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
@@ -447,6 +450,13 @@ static inline bool pd_process_timer_msg(
 	case PD_TIMER_CK_NOT_SUPPORTED:
 		return PE_MAKE_STATE_TRANSIT_SINGLE(
 			PE_SRC_CHUNK_RECEIVED, PE_SRC_SEND_NOT_SUPPORTED);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+	case PD_TIMER_RQC_BOOST_DELAY:
+		if (pd_port->pe_state_curr == PE_SRC_TRANSITION_SUPPLY2) {
+			pd_send_sop_ctrl_msg(pd_port, PD_CTRL_PS_RDY);
+		}
+		break;
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 #endif	/* CONFIG_USB_PD_REV30 */
 	}
 

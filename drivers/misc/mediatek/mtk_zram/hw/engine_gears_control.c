@@ -154,8 +154,8 @@ static inline void __engine_gear_disable_clock_by_cnt(struct engine_control_t *c
 
 		/* Try to power off HW engine */
 		if (engine_power_efficiency_enabled()) {
-			engine_power_off(ctrl);
-			gear_ctrl->power_on = false;
+			if (gear_ctrl->power_on && engine_power_off(ctrl))
+				gear_ctrl->power_on = false;
 		}
 
 		/* It's safe to disable clock now */

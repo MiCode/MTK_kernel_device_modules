@@ -12,6 +12,10 @@
 #include <linux/sysfs.h>
 #include <linux/timer.h>
 #include <linux/types.h>
+// MIUI ADD: Game_LogEnhance
+#include <trace/events/power.h>
+#include <linux/topology.h>
+// END Game_LogEnhance
 #define CREATE_TRACE_POINTS
 #include "thermal_trace.h"
 #include <linux/math64.h>
@@ -79,6 +83,13 @@ static struct thermal_trace thermal_trace_data;
 static struct thermal_cpu_info cpu_info;
 static struct thermal_gpu_info gpu_info;
 static struct thermal_apu_info apu_info;
+
+// MIUI ADD: Game_LogEnhance
+#define LL_CLUSTER_ID	0
+#define BL_CLUSTER_ID	1
+#define B_CLUSTER_ID	2
+#define MAX_CLUSTERS	3
+// END Game_LogEnhance
 
 /*==================================================
  * Throughput calculator local function
@@ -262,6 +273,38 @@ static void get_cpu_info(void)
 				readl(thermal_csram_base + CPU_B_MAX_TEMP_OFFSET), 31);
 	}
 }
+
+// MIUI ADD: Game_LogEnhance
+static int get_cluster_limit_info(unsigned int cluster_id, unsigned int *new_max)
+{
+	int is_tcm_ready = 0;
+	void __iomem *base;
+	int ret = 0;
+
+	if (thermal_cputcm_base)
+		is_tcm_ready = readl(thermal_cputcm_base + TCM_BUF_OFFSET);
+
+	base = is_tcm_ready ? thermal_cputcm_base : thermal_csram_base;
+	switch (cluster_id) {
+		case LL_CLUSTER_ID:
+			*new_max = readl(base + CPU_LL_LIMIT_FREQ_TCM_OFFSET);
+			break;
+		case BL_CLUSTER_ID:
+			*new_max = readl(base + CPU_BL_LIMIT_FREQ_TCM_OFFSET);
+			break;
+		case B_CLUSTER_ID:
+			*new_max = readl(base + CPU_B_LIMIT_FREQ_TCM_OFFSET);
+			break;
+		default:
+			pr_err("[%s] invalid cluster_id=%d\n", __func__, cluster_id);
+			ret = -1;
+			break;
+	}
+
+	return ret;
+}
+// END Game_LogEnhance
+
 static void get_gpu_info(void)
 {
 
@@ -519,6 +562,23 @@ static struct attribute_group thermal_trace_attr_group = {
 	.attrs	= thermal_trace_attrs,
 };
 
+// MIUI ADD: Game_LogEnhance
+static void thermal_trace_cpu_frequency(void *unused, unsigned int frequency, unsigned int cpu_id) {
+	unsigned int cid = MAX_CLUSTERS;
+	unsigned int max = 0;
+
+	if (trace_thermal_cluster_limit_enabled()) {
+		cid = topology_cluster_id(cpu_id);
+		if (unlikely(cid >= MAX_CLUSTERS))
+			return;
+
+		if (unlikely(get_cluster_limit_info(cid, &max)))
+			return;
+		trace_thermal_cluster_limit(cid, max);
+	}
+}
+// END Game_LogEnhance
+
 static int __init thermal_trace_init(void)
 {
 	int i, ret;
@@ -538,6 +598,11 @@ static int __init thermal_trace_init(void)
 	ret = sysfs_create_group(kernel_kobj, &thermal_trace_attr_group);
 	if (ret)
 		pr_info("failed to create thermal_trace sysfs, ret=%d!\n", ret);
+
+// MIUI ADD: Game_LogEnhance
+	if (register_trace_cpu_frequency(thermal_trace_cpu_frequency, NULL))
+		pr_info("failed to register trace_cpu_frequency!\n");
+// END Game_LogEnhance
 
 	return ret;
 }

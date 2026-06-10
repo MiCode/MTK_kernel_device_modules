@@ -296,5 +296,8 @@ void aee_register_api(struct aee_kernel_api *aee_api);
 extern void slog(const char *fmt, ...);
 extern int mtk_slog_init(void);
 extern void mtk_slog_exit(void);
+#if IS_ENABLED(CONFIG_SECURITY_SELINUX) && IS_ENABLED(CONFIG_MTK_AEE_SECURITY)
+extern void security_cred_getsecid(const struct cred *c, u32 *secid);
+#endif
 
 #endif

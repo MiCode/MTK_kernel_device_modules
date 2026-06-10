@@ -1183,6 +1183,20 @@ void mt_pwm_dump_regs(void)
 }
 EXPORT_SYMBOL(mt_pwm_dump_regs);
 
+void mt_pwm_clk_sel(u32 pwm_no, bool pmic_pad, u32 clk_src)
+{
+	mt_pwm_power_on(pwm_no, pmic_pad);
+
+	if (mt_get_pwm_version()) {
+		pr_err("mt_pwm_clk_sel_hal:%d\n", clk_src);
+		mt_pwm_clk_sel_hal(pwm_no, clk_src);
+	} else {
+		pr_err("mt_pwm_26M_clk_enable_hal:1\n");
+		mt_pwm_26M_clk_enable_hal(1);
+	}
+}
+EXPORT_SYMBOL(mt_pwm_clk_sel);
+
 struct platform_device pwm_plat_dev = {
 	.name = "mt-pwm",
 };

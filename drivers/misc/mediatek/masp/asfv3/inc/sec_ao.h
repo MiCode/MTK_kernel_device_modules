@@ -17,6 +17,7 @@
 
 /* boot misc2 flags */
 #define BOOT_MISC2_VERITY_ERR (0x1 << 0)
+#define BOOT_MISC2_DM_VERITY_ERR_MAGIC  (0x444D2D45)  // "DM-E"
 
 /******************************************************************************
  * HARDWARE DEFINITIONS

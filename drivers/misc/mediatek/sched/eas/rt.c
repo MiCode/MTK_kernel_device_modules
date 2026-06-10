@@ -461,7 +461,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 			continue;
 
 		for_each_cpu_and(cpu, lowest_mask, &cpu_array[order_index][cluster][reverse]) {
-
 			track_sched_cpu_util(p, cpu, min_cap, max_cap);
 
 			if (!cpumask_test_cpu(cpu, p->cpus_ptr))
@@ -480,7 +479,6 @@ static void mtk_rt_energy_aware_wake_cpu(struct task_struct *p,
 #else
 			cpu_has_lt = is_task_latency_sensitive(cpu_rq(cpu)->curr);
 #endif
-
 			/*
 			 * When the best cpu is suitable and the current is not,
 			 * skip it
@@ -802,6 +800,8 @@ void mtk_find_lowest_rq(void *data, struct task_struct *p, struct task_struct *e
 		select_reason = LB_RT_LOWEST_PRIO_RT;
 		goto out;
 	}
+
+	irq_log_store();
 
 	irq_log_store();
 

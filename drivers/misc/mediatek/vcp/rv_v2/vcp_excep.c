@@ -24,6 +24,7 @@
 #include "vcp_feature_define.h"
 #include "vcp_reservedmem_define.h"
 #include "vcp_status.h"
+#include "dbgtop.h"
 
 #define POLLING_RETRY 100
 
@@ -479,6 +480,7 @@ void vcp_aed(enum VCP_RESET_TYPE type, enum vcp_core_id id)
 			writel(0x24741001, VCP_NON_RESET);
 			pr_notice("[VCP] set vcp ke flag %x\n", readl(VCP_NON_RESET));
 		}
+		mtk_dbgtop_write_non_reset_reg(MTK_DBGTOP_NONRST1, 0x24741001);
 		BUG_ON(1);
 	}
 

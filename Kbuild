@@ -34,6 +34,8 @@ obj-y += drivers/leds/
 
 obj-y += drivers/power/supply/
 
+obj-y += drivers/power/mca/
+
 obj-y += drivers/rtc/
 
 obj-y += drivers/remoteproc/
@@ -78,6 +80,8 @@ obj-y += drivers/devfreq/
 
 obj-y += drivers/misc/mediatek/
 
+obj-y += drivers/misc/xiaomi/
+
 obj-y += sound/soc/codecs/
 
 obj-y += sound/soc/mediatek/
@@ -91,5 +95,6 @@ obj-y += drivers/media/virtio/
 obj-y += drivers/video/backlight/
 
 obj-y += drivers/hooks/geniezone_vendor_hooks/
+
 
 endif

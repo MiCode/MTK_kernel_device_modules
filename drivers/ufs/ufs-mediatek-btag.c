@@ -8,13 +8,13 @@
 
 #include <linux/async.h>
 #include <scsi/scsi_cmnd.h>
-#include <ufs/ufshcd.h>
 #include "ufs-mediatek.h"
 #include "ufs-mediatek-sysfs.h"
 #include <mt-plat/mtk_blocktag.h>
 #if IS_ENABLED(CONFIG_SCSI_UFS_HPB)
 #include "ufshpb.h"
 #endif
+#include <ufs/ufshcd.h>
 
 static bool ufs_mtk_is_data_cmd(struct scsi_cmnd *cmd)
 {

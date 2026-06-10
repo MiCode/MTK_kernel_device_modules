@@ -32,6 +32,9 @@
 #include "mtk_disp_pmqos.h"
 #include "slbc_ops.h"
 #include "mtk_disp_pq_helper.h"
+#ifdef CONFIG_MI_DISP
+#include "mi_disp/mi_disp_esd_check.h"
+#endif
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 enum logo_layer_state {
@@ -96,6 +99,7 @@ typedef int (*vhost_disp_event_handler_t)(unsigned int comp_id, unsigned int eve
 
 #define HBM_BYPASS_PQ 0x10000
 #define DOZE_BYPASS_PQ 0x1
+#define ESD_TRIGGERED_BY_CMDQ_TIMEOUT 2
 
 /* TODO: BW report module should not hardcode */
 enum DISP_PMQOS_SLOT {
@@ -561,6 +565,11 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_COLOR_TRANSFORM,
 	CRTC_PROP_USER_SCEN,
 	CRTC_PROP_HDR_ENABLE,
+#ifdef CONFIG_MI_DISP
+#ifdef CONFIG_VIS_DISPLAY_DALI
+	CRTC_PROP_EXT_MV,
+#endif
+#endif
 	/*Msync 2.0*/
 	CRTC_PROP_MSYNC2_0_ENABLE,
 	CRTC_PROP_EPT,
@@ -579,6 +588,10 @@ enum MTK_CRTC_PROP {
 	CRTC_PROP_DBI_COUNT_BLOCK_H,
 	CRTC_PROP_DBI_COUNT_BLOCK_V,
 	CRTC_PROP_DBI_COUNT_FENCE_IDX,
+#ifdef CONFIG_MI_DISP_FOD_SYNC
+	/*MI FOD SYNC*/
+	CRTC_PROP_MI_FOD_SYNC_INFO,
+#endif
 	CRTC_PROP_MAX,
 };
 
@@ -1369,6 +1382,9 @@ struct mtk_drm_crtc {
 
 	bool capturing;
 	bool recovery_flg;
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+	struct mi_esd_ctx *mi_esd_ctx;
+#endif
 	atomic_t underrun_recovery_level;
 	wait_queue_head_t signal_underrun_recovery_wq;
 
@@ -1407,6 +1423,9 @@ struct mtk_drm_crtc {
 	bool reset_path;
 
 	struct dbi_count_data dbi_data;
+#ifdef CONFIG_MI_DISP
+	bool doze_into_suspend;
+#endif
 
 #if IS_ENABLED(CONFIG_DRM_MEDIATEK_AUTO)
 	int se_panel;	/* 1 << */
@@ -1865,3 +1884,8 @@ void mtk_bwm_get_compress_ratio(struct drm_crtc *crtc,
 struct mtk_ddp_comp *mtk_disp_get_wdma_comp_by_scn(struct drm_crtc *crtc, enum addon_scenario scn);
 enum addon_scenario mtk_crtc_wb_get_scn(struct mtk_crtc_state *state);
 #endif /* MTK_DRM_CRTC_H */
+#ifdef CONFIG_MI_DISP
+#ifdef CONFIG_VIS_DISPLAY_DALI
+void mtk_crtc_extmv_notify(struct mtk_drm_crtc *mtk_crtc);
+#endif
+#endif

@@ -67,6 +67,7 @@ struct zram_table_entry {
 #ifdef CONFIG_ZRAM_TRACK_ENTRY_ACTIME
 	ktime_t ac_time;
 #endif
+	spinlock_t lock;
 	union {
 		unsigned long handle;
 		unsigned long element;

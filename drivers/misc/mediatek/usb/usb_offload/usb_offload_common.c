@@ -75,15 +75,17 @@ static void check_valid_device(struct usb_device *rhdev,
 	struct usb_device *udev, bool *support, bool *bypass);
 
 /* driver event sync */
-#define DRV_STAGE_IDLE       (1U << 0)
-#define DRV_STAGE_FILE_OPS   (1U << 1)
-#define DRV_STAGE_ALSA_OPS   (1U << 2)
-#define DRV_STAGE_XHCI_TRACE (1U << 3)
-#define DRV_STAGE_ADSP_STOP	 (1U << 4)
+enum {
+	DRV_STAGE_IDLE = 0,
+	DRV_STAGE_FILE_OPS,
+	DRV_STAGE_ALSA_OPS,
+	DRV_STAGE_XHCI_TRACE,
+	DRV_STAGE_ADSP_STOP,
+};
 
 #define WAIT_IDLE_TIMEOUT_NS 1000000000 /* 1 sec */
-static int stage_occupy(unsigned long stage);
-static inline void stage_vacate(unsigned long stage);
+static int stage_occupy(unsigned long stage, const char *caller);
+static inline void stage_vacate(unsigned long stage, const char *caller);
 
 /* audio interface */
 static void uaudio_dev_intf_cleanup(struct intf_info *info);
@@ -219,11 +221,11 @@ static int usb_offload_event_receive(struct notifier_block *this, unsigned long 
 		/* disable xHCI interrupter */
 		adsp_ee_recovery();
 
-		if (stage_occupy(DRV_STAGE_ADSP_STOP) < 0)
+		if (stage_occupy(DRV_STAGE_ADSP_STOP, __func__) < 0)
 			goto error;
 
 		usb_offload_self_recycle();
-		stage_vacate(DRV_STAGE_ADSP_STOP);
+		stage_vacate(DRV_STAGE_ADSP_STOP, __func__);
 	}
 error:
 	usb_offload_status();
@@ -326,12 +328,12 @@ static void sound_usb_connect(struct snd_usb_audio *chip)
 	struct usb_interface *intf = NULL;
 	struct usb_device *rhdev;
 	bool support, on_hub;
-	int if_idx;
+	int if_idx, uac_protocol;
 
 	USB_OFFLOAD_INFO("++ chip:%p udev:%p card_num:%d\n",
 		chip, chip->dev, chip->card->number);
 
-	if (stage_occupy(DRV_STAGE_ALSA_OPS) < 0)
+	if (stage_occupy(DRV_STAGE_ALSA_OPS, __func__) < 0)
 		goto busy;
 
 	if (usb_offload_link_xhci(uodev->dev) < 0) {
@@ -343,6 +345,11 @@ static void sound_usb_connect(struct snd_usb_audio *chip)
 	if (chip->num_interfaces > 0 && chip->intf[chip->num_interfaces - 1]) {
 		if_idx = (chip->num_interfaces - 1);
 		intf = chip->intf[if_idx];
+		uac_protocol = intf->altsetting[0].desc.bInterfaceProtocol;
+		if (!uodev->policy.support_uac30 && uac_protocol >= UAC_VERSION_3) {
+			USB_OFFLOAD_ERR("Not Support UAC3.0\n");
+			goto err;
+		}
 	}
 
 	if (!intf) {
@@ -368,7 +375,7 @@ static void sound_usb_connect(struct snd_usb_audio *chip)
 
 	uo_mbrain_update(UO_PHASE_CONNECT, UO_ERROR_SUCCESS);
 err:
-	stage_vacate(DRV_STAGE_ALSA_OPS);
+	stage_vacate(DRV_STAGE_ALSA_OPS, __func__);
 busy:
 	USB_OFFLOAD_INFO("--\n");
 }
@@ -383,7 +390,7 @@ static void sound_usb_disconnect(struct snd_usb_audio *chip)
 
 	card_num = chip->card->number;
 	USB_OFFLOAD_INFO("++ card_num:%d\n", card_num);
-	if (stage_occupy(DRV_STAGE_ALSA_OPS) < 0)
+	if (stage_occupy(DRV_STAGE_ALSA_OPS, __func__) < 0)
 		goto busy;
 
 	if (card_num >= SNDRV_CARDS) {
@@ -412,7 +419,7 @@ static void sound_usb_disconnect(struct snd_usb_audio *chip)
 	atomic_set(&uadev[card_num].connected, 0);
 	uodev->total_connected--;
 err:
-	stage_vacate(DRV_STAGE_ALSA_OPS);
+	stage_vacate(DRV_STAGE_ALSA_OPS, __func__);
 busy:
 	USB_OFFLOAD_INFO("-- total_connected:%d\n", uodev->total_connected);
 }
@@ -430,7 +437,7 @@ static void monitor_alloc_virt_device(void *unused, struct xhci_virt_device *vde
 	else
 		goto not_match;
 
-	if (stage_occupy(DRV_STAGE_XHCI_TRACE) < 0)
+	if (stage_occupy(DRV_STAGE_XHCI_TRACE, __func__) < 0)
 		goto busy;
 
 	sb = dev->sb;
@@ -443,7 +450,7 @@ static void monitor_alloc_virt_device(void *unused, struct xhci_virt_device *vde
 		}
 	}
 
-	stage_vacate(DRV_STAGE_XHCI_TRACE);
+	stage_vacate(DRV_STAGE_XHCI_TRACE, __func__);
 busy:
 not_match:
 	return;
@@ -461,10 +468,10 @@ static void monitor_free_virt_device(void *unused, struct xhci_virt_device *vdev
 	else
 		goto not_match;
 
-	if (stage_occupy(DRV_STAGE_XHCI_TRACE) < 0)
+	if (stage_occupy(DRV_STAGE_XHCI_TRACE, __func__) < 0)
 		goto busy;
 
-	stage_vacate(DRV_STAGE_XHCI_TRACE);
+	stage_vacate(DRV_STAGE_XHCI_TRACE, __func__);
 busy:
 not_match:
 	return;
@@ -2545,7 +2552,7 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 	int i, ret = 0;
 
 	USB_OFFLOAD_INFO("++\n");
-	if (stage_occupy(DRV_STAGE_FILE_OPS) < 0) {
+	if (stage_occupy(DRV_STAGE_FILE_OPS, __func__) < 0) {
 		ret = -EBUSY;
 		goto busy;
 	}
@@ -2570,12 +2577,12 @@ static int usb_offload_open(struct inode *ip, struct file *fp)
 
 	USB_OFFLOAD_INFO("-- support offloading!!\n");
 
-	stage_vacate(DRV_STAGE_FILE_OPS);
+	stage_vacate(DRV_STAGE_FILE_OPS, __func__);
 	uo_mbrain_update(UO_PHASE_OPEN, UO_ERROR_SUCCESS);
 	return ret;
 
 not_support:
-	stage_vacate(DRV_STAGE_FILE_OPS);
+	stage_vacate(DRV_STAGE_FILE_OPS, __func__);
 busy:
 	USB_OFFLOAD_INFO("-- unsupport offloading!!\n");
 	return ret;
@@ -2586,14 +2593,15 @@ static int usb_offload_release(struct inode *ip, struct file *fp)
 	int ret = 0;
 
 	USB_OFFLOAD_INFO("++\n");
-	if (stage_occupy(DRV_STAGE_FILE_OPS) < 0) {
+	if (stage_occupy(DRV_STAGE_FILE_OPS, __func__) < 0) {
 		ret = -EBUSY;
 		goto busy;
 	}
 
 	usb_offload_self_recycle();
 	usb_offload_status();
-	stage_vacate(DRV_STAGE_FILE_OPS);
+
+	stage_vacate(DRV_STAGE_FILE_OPS, __func__);
 busy:
 	USB_OFFLOAD_INFO("--\n");
 	return ret;
@@ -2637,7 +2645,7 @@ static long usb_offload_ioctl(struct file *fp,
 
 	USB_OFFLOAD_INFO("%s ++\n", name);
 
-	if (stage_occupy(DRV_STAGE_FILE_OPS) < 0) {
+	if (stage_occupy(DRV_STAGE_FILE_OPS, __func__) < 0) {
 		ret = -EBUSY;
 		goto busy;
 	}
@@ -2717,7 +2725,7 @@ static long usb_offload_ioctl(struct file *fp,
 	}
 
 fail:
-	stage_vacate(DRV_STAGE_FILE_OPS);
+	stage_vacate(DRV_STAGE_FILE_OPS, __func__);
 busy:
 	USB_OFFLOAD_INFO("%s ret:%ld --\n", name, ret);
 	return ret;
@@ -2789,30 +2797,42 @@ dram_mode:
 	return mode;
 }
 
-static int stage_occupy(unsigned long target)
+static int stage_occupy(unsigned long target, const char *caller)
 {
-	unsigned long idle = DRV_STAGE_IDLE;
-	int retval;
+	int retval = -EBUSY;
+	u64 t_start = ktime_get_ns();
 
-	spin_lock(&uodev->dev_lock);
+	do {
+		if (spin_trylock(&uodev->dev_lock)) {
+			if (test_bit(DRV_STAGE_IDLE, &uodev->stage)) {
+				retval = 0;
+				clear_bit(DRV_STAGE_IDLE, &uodev->stage);
+				set_bit(target, &uodev->stage);
+			}
+			spin_unlock(&uodev->dev_lock);
+		} else
+			mdelay(1);
 
-	retval = wait_condition(!test_bit(~idle, &uodev->stage), WAIT_IDLE_TIMEOUT_NS);
-	if (retval == 0) {
-		set_bit(target, &uodev->stage);
-		USB_OFFLOAD_DBG("driver's idle, set stage:0x%lx\n", uodev->stage);
-	}
+	} while ((ktime_get_ns() - t_start) < WAIT_IDLE_TIMEOUT_NS && retval != 0);
 
-	if (retval < 0)
-		USB_OFFLOAD_ERR("driver's busy, stage(cur:0x%lx target:0x%lx)\n",
-			uodev->stage, target);
+	if (retval == 0)
+		USB_OFFLOAD_DBG("%s => driver's idle, set target bit%ld (stage:0x%lx) spd:%lldns\n",
+			caller, target, uodev->stage, ktime_get_ns() - t_start);
+	else if (retval < 0)
+		USB_OFFLOAD_ERR("%s => driver's busy, stage:0x%lx, target bit%ld, spd:%lldns\n",
+			caller, uodev->stage, target, ktime_get_ns() - t_start);
 
-	spin_unlock(&uodev->dev_lock);
 	return retval;
 }
 
-static inline void stage_vacate(unsigned long stage)
+static inline void stage_vacate(unsigned long stage, const char *caller)
 {
+	spin_lock(&uodev->dev_lock);
 	clear_bit(stage, &uodev->stage);
+	set_bit(DRV_STAGE_IDLE, &uodev->stage);
+	USB_OFFLOAD_DBG("%s => clear target bit:%ld, stage:0x%lx\n",
+		caller, stage, uodev->stage);
+	spin_unlock(&uodev->dev_lock);
 }
 
 static int usb_offload_probe(struct platform_device *pdev)
@@ -2907,7 +2927,7 @@ static int usb_offload_probe(struct platform_device *pdev)
 		}
 
 		/* driver stage sync */
-		uodev->stage = 0;
+		set_bit(DRV_STAGE_IDLE, &uodev->stage);
 		spin_lock_init(&uodev->dev_lock);
 
 		/* interrupter sync */

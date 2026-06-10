@@ -144,7 +144,24 @@ static inline int need_wait_esd_eof(struct drm_crtc *crtc,
 
 	return ret;
 }
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+static atomic_t panel_dead;
+int get_panel_dead_flag(void) {
+	return atomic_read(&panel_dead);
+}
+EXPORT_SYMBOL(get_panel_dead_flag);
+
+void set_panel_dead_flag(int value) {
+	atomic_set(&panel_dead, value);
+}
+EXPORT_SYMBOL(set_panel_dead_flag);
+#endif
+
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+int mtk_drm_esd_recover(struct drm_crtc *crtc);
+#else
 static int mtk_drm_esd_recover(struct drm_crtc *crtc);
+#endif
 
 static void esd_cmdq_timeout_cb(struct cmdq_cb_data data)
 {
@@ -325,9 +342,9 @@ static void esd_check_done_cb(struct cmdq_cb_data data)
 
 		DDPPR_ERR("[ESD%u]esd check fail, will do esd recovery. try=%d\n",
 			index, recovery_cnt);
+		mtk_crtc->recovery_flg = true;
 		mtk_drm_esd_recover(crtc);
 		esd_ctx->recovery_flag = 1;
-		mtk_crtc->recovery_flg = true;
 		_mtk_esd_check_read(crtc);
 	}else
 		recovery_cnt = 0;
@@ -660,7 +677,11 @@ done:
 	return ret;
 }
 
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+int mtk_drm_esd_recover(struct drm_crtc *crtc)
+#else
 static int mtk_drm_esd_recover(struct drm_crtc *crtc)
+#endif
 {
 	struct mtk_drm_crtc *mtk_crtc = to_mtk_crtc(crtc);
 	struct mtk_ddp_comp *output_comp;
@@ -671,6 +692,10 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	struct mtk_dsi *dsi = NULL;
 	bool skip_refresh = false;
 	int wakelock_cnt;
+
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+	set_panel_dead_flag(1);
+#endif
 
 	CRTC_MMP_EVENT_START(index, esd_recovery, 0, 0);
 	if (crtc->state && !crtc->state->active) {
@@ -688,6 +713,23 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 	mtk_drm_trace_begin("esd recover");
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+  	/* stop MML IR & DL before display disable */
+	if (mtk_drm_helper_get_opt(priv->helper_opt, MTK_DRM_OPT_VIDLE_TOP_EN)) {
+		if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+			mtk_crtc_mml_racing_stop_sync(crtc, NULL, true);
+		}
+	} else {
+		/* stop MML IR & DL before display disable */
+		if (mtk_crtc->is_mml || mtk_crtc->is_mml_dl) {
+			mtk_crtc_pkt_create(&cmdq_handle, crtc, mtk_crtc->gce_obj.client[CLIENT_CFG]);
+			mtk_crtc_mml_racing_stop_sync(crtc, cmdq_handle,
+							mtk_crtc_is_frame_trigger_mode(crtc) ? true : false);
+			/* flush cmdq with stop_vdo_mode before it set DSI_START to 0 */
+		}
+	}
+#endif
+
 	if (mtk_vidle_is_ff_enabled()) {
 		mtk_vidle_config_ff(false);
 		if (!mtk_vidle_is_ff_enabled())
@@ -695,6 +737,7 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 		CRTC_MMP_MARK(index, esd_recovery, 0, 0x11);
 	}
 
+#ifndef CONFIG_MI_DISP_ESD_CHECK
 	atomic_set(&mtk_crtc->esd_notice_status, 1);
 	wake_up_interruptible(&mtk_crtc->esd_notice_wq);
 
@@ -705,6 +748,7 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 					      mtk_crtc_is_frame_trigger_mode(crtc) ? true : false);
 		/* flush cmdq with stop_vdo_mode before it set DSI_START to 0 */
 	}
+#endif
 
 	mtk_ddp_comp_io_cmd(output_comp, cmdq_handle, CONNECTOR_PANEL_DISABLE, NULL);
 	if (is_bdg_supported()) {
@@ -735,6 +779,9 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 		}
 	}
 
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+	mdelay(150);
+#endif
 	wakelock_cnt = atomic_read(&priv->kernel_pm.wakelock_cnt);
 
 	mtk_drm_crtc_enable(crtc, true);
@@ -763,35 +810,38 @@ static int mtk_drm_esd_recover(struct drm_crtc *crtc)
 
 	CRTC_MMP_MARK(index, esd_recovery, 0, 4);
 
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+	mtk_ddp_comp_io_cmd(output_comp, NULL, ESD_RESTORE_BACKLIGHT, NULL);
+#endif
+
 	mtk_crtc_hw_block_ready(crtc);
 
+	/* is_mml: is mml mode or not
+	   is_mml_dl: is mml direct link mode or not
+	   skip_check_trigger: is skip check trigger or not */
 	skip_refresh = mtk_crtc->is_mml || mtk_crtc->is_mml_dl || mtk_crtc->skip_check_trigger;
+	/* mtk_crtc_is_frame_trigger_mode: is cmd mode or not
+	   skip_refresh: is skip refresh or not
+	   if cmd mode and not skip refresh, then trigger a repaint
+	   to refresh a full frame after esd recovery */
 	if (mtk_crtc_is_frame_trigger_mode(crtc) && !skip_refresh) {
-		struct cmdq_pkt *cmdq_handle;
-
-		mtk_crtc_pkt_create(&cmdq_handle, &mtk_crtc->base,
-			mtk_crtc->gce_obj.client[CLIENT_CFG]);
-
-		CRTC_MMP_MARK(index, set_dirty, ESD_RECOVERY, (unsigned long)cmdq_handle);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_STREAM_DIRTY]);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_CABC_EOF]);
-		cmdq_pkt_set_event(cmdq_handle,
-			mtk_crtc->gce_obj.event[EVENT_ESD_EOF]);
-
-		cmdq_pkt_flush(cmdq_handle);
-		cmdq_pkt_destroy(cmdq_handle);
+		drm_trigger_repaint(DRM_REPAINT_FOR_IDLE, crtc->dev);
 	}
 	mtk_drm_idlemgr_kick(__func__, &mtk_crtc->base, 0);
 	CRTC_MMP_MARK(index, esd_recovery, 0, 5);
 
 done:
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+	set_panel_dead_flag(0);
+#endif
 	CRTC_MMP_EVENT_END(index, esd_recovery, 0, ret);
 	mtk_drm_trace_end();
 
 	return 0;
 }
+#ifdef CONFIG_MI_DISP_ESD_CHECK
+EXPORT_SYMBOL(mtk_drm_esd_recover);
+#endif
 
 int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 {
@@ -855,9 +905,9 @@ int mtk_drm_esd_testing_process(struct mtk_drm_esd_ctx *esd_ctx, bool need_lock)
 
 			DDPPR_ERR("[ESD%u]esd check fail, will do esd recovery. try=%d\n",
 				crtc_idx, i);
+			mtk_crtc->recovery_flg = true;
 			mtk_drm_esd_recover(crtc);
 			recovery_flg = 1;
-			mtk_crtc->recovery_flg = true;
 			mtk_drm_trace_end();
 		} while (++i < ESD_TRY_CNT);
 

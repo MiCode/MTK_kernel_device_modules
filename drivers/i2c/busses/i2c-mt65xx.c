@@ -1940,8 +1940,6 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 	if ((i2c->ch_offset_i2c) && (left_num > 0)) {
 		dev_info(i2c->dev, "i2c_multi-ch not_support,ch_offset:%d,num:%d,left_num:%d\n",
 					i2c->ch_offset_i2c, num, left_num);
-		if (i2c->op == I2C_MASTER_CONTINUOUS_WR)
-			kfree(msgs->buf);
 		return -EPERM;
 	}
 	if (i2c->dev_comp->apdma_sync &&
@@ -1968,8 +1966,6 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 		if (i2c->ch_offset_i2c == i2c->i2c_offset_scp) {
 			dev_dbg(i2c->dev, "Not_support_dma! msgs->len:%d,fifo_size:%d\n",
 					msgs->len, i2c->dev_comp->fifo_size);
-			if (i2c->op == I2C_MASTER_CONTINUOUS_WR)
-				kfree(msgs->buf);
 			return -EPERM;
 		}
 		isDMA = true;
@@ -2161,10 +2157,8 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 
 			wpaddr = dma_map_single(i2c->dev, msgs->buf,
 						msgs->len, DMA_TO_DEVICE);
-			if (dma_mapping_error(i2c->dev, wpaddr)) {
-				kfree(msgs->buf);
+			if (dma_mapping_error(i2c->dev, wpaddr))
 				return -ENOMEM;
-			}
 
 			if (i2c->dev_comp->max_dma_support > 32) {
 				reg_4g_mode = upper_32_bits(wpaddr);
@@ -2392,10 +2386,6 @@ static int mtk_i2c_do_transfer(struct mtk_i2c *i2c, struct i2c_msg *msgs,
 		mb();
 		writel(I2C_DMA_CLR_FLAG, i2c->pdmabase + OFFSET_INT_FLAG);
 	}
-
-	if (i2c->op == I2C_MASTER_CONTINUOUS_WR) {
-		kfree(msgs->buf);
-	}
 	if (i2c->ch_offset_i2c == i2c->i2c_offset_ap) {
 		i2c->complete_flag = 3;
 		i2c->complete_time = sched_clock();
@@ -2415,7 +2405,7 @@ dma_unmap:
 			dma_unmap_single(i2c->dev, rpaddr,
 					 msgs->len, DMA_FROM_DEVICE);
 			if (dma_realign_buffer) {
-				memcpy(dma_safe_msg_buf, dma_realign_buffer, msgs->len);
+				memcpy(dma_safe_msg_buf, dma_rd_buf, msgs->len);
 				kfree(dma_realign_buffer);
 				dma_realign_buffer = NULL;
 			}
@@ -2430,7 +2420,7 @@ dma_unmap:
 					 DMA_FROM_DEVICE);
 
 			if (dma_realign_buffer) {
-				memcpy(dma_safe_msg_buf, dma_realign_buffer, (msgs + 1)->len);
+				memcpy(dma_safe_msg_buf, dma_rd_buf, (msgs + 1)->len);
 				kfree(dma_realign_buffer);
 				dma_realign_buffer = NULL;
 			}
@@ -2532,6 +2522,7 @@ static int mtk_i2c_transfer(struct i2c_adapter *adap,
 
 			i2c->ignore_restart_irq = false;
 			ret = mtk_i2c_do_transfer(i2c, multi_msg, num, 0);
+			kfree(dma_multi_wr_buf); /* free continuous wr mem */
 			if (ret < 0)
 				goto err_exit;
 			ret = num;

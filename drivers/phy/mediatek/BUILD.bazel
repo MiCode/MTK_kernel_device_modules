@@ -52,6 +52,13 @@ define_mgk_ddk_ko(
         "phy-mtk-io.h",
     ],
     includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/extcon:extcon-mtk-usb".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/hwid",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/extcon",
+    ],
 )
 
 define_mgk_ddk_ko(

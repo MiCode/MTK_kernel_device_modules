@@ -307,7 +307,7 @@ void engine_free_interrupts(struct platform_device *pdev, struct engine_control_
 			struct engine_irq_t *irqs, unsigned int count);
 
 int engine_power_on(struct engine_control_t *ctrl);
-void engine_power_off(struct engine_control_t *ctrl);
+bool engine_power_off(struct engine_control_t *ctrl);
 
 int engine_request_resource(struct engine_control_t *ctrl);
 void engine_release_resource(struct engine_control_t *ctrl);

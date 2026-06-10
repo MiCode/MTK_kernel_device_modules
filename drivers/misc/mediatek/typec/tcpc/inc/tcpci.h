@@ -29,6 +29,23 @@
 #define MIN(a, b)       (((a) < (b)) ? (a) : (b))
 #endif
 
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+#define SOUTHCHIP_PD_VER    0X3116
+
+/********************** product define *********************/
+#define SOUTHCHIP_PD_VID	0x311C
+#define SC2150_PID			0x2150
+#define SC2150A_DID			0x0000
+#define SC2150A_1P2_DID 	0x0001
+#define SC2150P_DID			0x0003
+
+#define SC660X_PID			0x6600
+#define SC660X_DID			0x0000
+/***********************************************************/
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
+
+#define TCPC_LOW_RP_DUTY		(100)		/* 10 % */
+
 /* provide to TCPC interface */
 extern int tcpci_report_usb_port_attached(struct tcpc_device *tcpc);
 extern int tcpci_report_usb_port_detached(struct tcpc_device *tcpc);
@@ -82,6 +99,9 @@ int tcpci_set_low_power_mode(struct tcpc_device *tcpc, bool en);
 int tcpci_alert_vendor_defined_handler(struct tcpc_device *tcpc);
 int tcpci_set_auto_dischg_discnt(struct tcpc_device *tcpc, bool en);
 int tcpci_get_vbus_voltage(struct tcpc_device *tcpc, u32 *vbus);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+int tcpci_set_watchdog(struct tcpc_device *tcpc, bool en);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 #if CONFIG_WATER_DETECTION
 int tcpci_set_water_protection(struct tcpc_device *tcpc, bool en);
@@ -96,7 +116,11 @@ int tcpci_notify_cable_type(struct tcpc_device *tcpc);
 int tcpci_notify_typec_otp(struct tcpc_device *tcpc);
 
 int tcpci_set_cc_hidet(struct tcpc_device *tcpc, bool en);
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+int tcpci_notify_wd0_state(struct tcpc_device *tcpc, bool wd0_state, bool typec_port_stat);
+#else
 int tcpci_notify_wd0_state(struct tcpc_device *tcpc, bool wd0_state);
+#endif
 int tcpci_set_vbus_short_cc(struct tcpc_device *tcpc, bool cc1, bool cc2);
 int tcpci_notify_vbus_short_cc_status(struct tcpc_device *tcpc, int vsc_status);
 
@@ -125,6 +149,12 @@ int tcpci_retransmit(struct tcpc_device *tcpc);
 #if CONFIG_TYPEC_DIRECT_CHARGE
 int tcpci_notify_direct_charge(struct tcpc_device *tcpc, bool en);
 #endif	/* CONFIG_TYPEC_DIRECT_CHARGE */
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+int tcpci_get_chip_id(struct tcpc_device *tcpc,uint32_t *chip_id);
+int tcpci_get_chip_pid(struct tcpc_device *tcpc,uint32_t *chip_pid);
+int tcpci_get_chip_vid(struct tcpc_device *tcpc,uint32_t *chip_vid);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 int tcpci_notify_typec_state(struct tcpc_device *tcpc);
 

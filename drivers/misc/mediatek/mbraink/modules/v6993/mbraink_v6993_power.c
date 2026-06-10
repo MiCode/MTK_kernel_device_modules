@@ -749,9 +749,7 @@ static void mbraink_v6993_power_send_spml1(long long last_resume_timestamp)
 		g_spm_l1_data[13]
 	);
 
-	if (n < 0 || n > NETLINK_EVENT_MESSAGE_SIZE)
-		pr_info("%s : snprintf error n = %d\n", __func__, n);
-	else
+	if ( (n > 0) && (n <= NETLINK_EVENT_MESSAGE_SIZE) )
 		mbraink_netlink_send_msg(netlink_buf);
 
 	spin_unlock_irqrestore(&spm_l1_lock, flags);
@@ -1131,7 +1129,7 @@ void smap2mbrain_notify(struct smap_mbrain *smap_mbrain_data)
 	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
 		return;
 
-	pr_info("%s(%d) [%s]\n", __func__, __LINE__, netlink_buf);
+	//pr_info("%s(%d) [%s]\n", __func__, __LINE__, netlink_buf);
 
 	mbraink_netlink_send_msg(netlink_buf);
 }
@@ -1212,7 +1210,7 @@ void pt2mbrain_hpt_notify_func(void)
 	if (n < 0 || n >= NETLINK_EVENT_MESSAGE_SIZE - pos)
 		return;
 
-	pr_info("[%s] send (%s)\n", __func__, netlink_buf);
+	//pr_info("[%s] send (%s)\n", __func__, netlink_buf);
 	mbraink_netlink_send_msg(netlink_buf);
 }
 

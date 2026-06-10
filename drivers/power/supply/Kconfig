@@ -149,6 +149,14 @@ config CHARGER_RT9758
 	  high voltage application. The maximum charge current is up to 5A.
 	  Say N to disable.
 
+config CHARGER_SC2201
+	tristate "sc2201 changer driver"
+	help
+	  Say Y to enable support for the MT6375 charger.
+	  The driver supports sending and receiving of the UFCS protocol.
+	  The device is compliant with the USB Battery Charging Specification
+	  Revision 1.2.
+
 config BATTERY_MT6357
 	tristate "MT6357 fuel gauge support"
 	depends on DEVICE_MODULES_MFD_MT6397
@@ -268,6 +276,12 @@ config GAUGE_BQ28Z610
 	  Select Alpha gauge Platform is mt6985
 	  Say N to disable.
 
+config RUST_DETECTION
+	bool "support rust detection"
+	default n
+	help
+	support rust detection.
+
 config CHARGER_TYPE_MT6357
 	tristate "MT6357 Charger Type Detection Driver"
 	depends on DEVICE_MODULES_MFD_MT6397
@@ -314,4 +328,35 @@ config CHARGER_SGM41516D
 	  and config MTK_SWCHR_SUPPORT
 	  Set to Yes if SGM41516D is used.
 
+config SUPPORT_DUAL_BATTERY
+	tristate "xmext use mpc8011b gauge"
+	help
+	  Say yes here to enable xmext use mpc8011b gauge driver.
+	  Say no if not using xmext use mpc8011b gauge driver.
+
+config SUPPORT_MT6720_TS
+	bool "support mt6720 ts temp param"
+	default n
+	help
+	support mt6720 ts temp param.
+
+config WLS_SUPPORT_TX_Q_CHECK
+	bool "wls pen support tx q value"
+	default n
+	help
+	wls pen support tx q value.
+
+config TARGET_PRODUCT_WARHOL
+	bool "support project warhol"
+	default n
+	help
+		project warhol.
+
+config TARGET_PRODUCT_PRAGUE
+	bool "support project prague"
+	default n
+	help
+		project prague.
+
 source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/ufcs/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/wireless_chg/Kconfig"

@@ -177,7 +177,18 @@
 #define P2D_RG_AVALID		BIT(2)
 #define P2D_RG_IDDIG		BIT(1)
 
+#define SSPXTP_DIG_GLB_00		((SSPXTP_SIFSLV_DIG_GLB) + 0x000)
+#define RG_XTP_PHYD_PRB_HI_EXT		GENMASK(3, 0)
+#define RG_XTP_PHYD_PRB_LO_EXT		GENMASK(7, 4)
+#define RG_XTP_PHYD_PRB_HI		GENMASK(15, 8)
+#define RG_XTP_PHYD_PRB_LO		GENMASK(23, 16)
+#define RG_XTP_PHYD_PRB_TEST		GENMASK(31, 24)
+
 #define SSPXTP_DIG_GLB_04		((SSPXTP_SIFSLV_DIG_GLB) + 0x04)
+#define RG_SSPXTP0_FRC_PIPE_DISABLE        BIT(0)
+#define RG_SSPXTP0_PIPE_DISABLE            BIT(1)
+#define RG_SSPXTP0_FRC_PIPE_RESET_B        BIT(2)
+#define RG_SSPXTP0_PIPE_RESET_B            BIT(3)
 
 #define SSPXTP_DIG_GLB_28		((SSPXTP_SIFSLV_DIG_GLB) + 0x028)
 #define RG_XTP_DAIF_GLB_TXPLL_IR		GENMASK(17, 13)
@@ -185,29 +196,104 @@
 #define SSPXTP_DIG_GLB_38		((SSPXTP_SIFSLV_DIG_GLB) + 0x038)
 #define RG_XTP_DAIF_GLB_SPLL_IR		GENMASK(17, 13)
 
+#define SSPXTP_DIG_GLB_88		((SSPXTP_SIFSLV_DIG_GLB) + 0x088)
+#define RG_XTP_PHYD_PRB_ATT 	        GENMASK(7, 5)
+#define RG_XTP_PHYD_PRB_ATT_OFST	(5)
+#define RG_XTP_PHYD_PRB_CTLE            GENMASK(15, 11)
+#define RG_XTP_PHYD_PRB_CTLE_OFST       (11)
+#define RG_XTP_PHYD_PRB_VGA             GENMASK(7, 3)
+#define RG_XTP_PHYD_PRB_VGA_OFST        (3)
+#define RG_XTP_PHYD_PRB_DFE_TP7		GENMASK(15, 11)
+#define RG_XTP_PHYD_PRB_DFE_TP7_OFST	(11)
+#define RG_XTP_PHYD_PRB_DFE_TP6		GENMASK(7, 3)
+#define RG_XTP_PHYD_PRB_DFE_TP6_OFST	(3)
+#define RG_XTP_PHYD_PRB_DFE_TP5		GENMASK(15, 11)
+#define RG_XTP_PHYD_PRB_DFE_TP5_OFST	(11)
+#define RG_XTP_PHYD_PRB_DFE_TP4		GENMASK(7, 3)
+#define RG_XTP_PHYD_PRB_DFE_TP4_OFST	(3)
+#define RG_XTP_PHYD_PRB_DFE_TP3		GENMASK(15, 10)
+#define RG_XTP_PHYD_PRB_DFE_TP3_OFST	(10)
+#define RG_XTP_PHYD_PRB_DFE_TP2		GENMASK(7, 2)
+#define RG_XTP_PHYD_PRB_DFE_TP2_OFST	(2)
+#define RG_XTP_PHYD_PRB_DFE_TP1		GENMASK(15, 9)
+#define RG_XTP_PHYD_PRB_DFE_TP1_OFST	(9)
+#define RG_XTP_PHYD_PRB_OUT_LO          GENMASK(7, 0)
+#define RG_XTP_PHYD_PRB_OUT_LO_OFST     (0)
+#define RG_XTP_PHYD_PRB_OUT_HI          GENMASK(15, 8)
+#define RG_XTP_PHYD_PRB_OUT_HI_OFST     (8)
+#define RG_XTP_PHYD_PRB_EDGE_EQ         GENMASK(13, 8)
+#define RG_XTP_PHYD_PRB_EDGE_EQ_OFST    (8)
+#define RG_XTP_PHYD_PRB_RX_CAL_LO       GENMASK(6, 0)
+#define RG_XTP_PHYD_PRB_RX_CAL_LO_OFST  (0)
+#define RG_XTP_PHYD_PRB_RX_CAL_HI       GENMASK(13, 8)
+#define RG_XTP_PHYD_PRB_RX_CAL_HI_OFST  (8)
+#define RG_XTP_PHYD_PRB_RX_CAL_ST       GENMASK(3, 0)
+#define RG_XTP_PHYD_PRB_RX_CAL_ST_OFST  (0)
+#define RG_XTP_PHYD_PRB_SAOS            GENMASK(6, 0)
+#define RG_XTP_PHYD_PRB_SAOS_OFST       (0)
+#define RG_XTP_PHYD_PRB_AD_ATT            GENMASK(2, 0)
+#define RG_XTP_PHYD_PRB_AD_ATT_OFST       (0)
+#define RG_XTP_PHYD_PRB_AD_VGA            GENMASK(4, 0)
+#define RG_XTP_PHYD_PRB_AD_VGA_OFST       (0)
+#define RG_XTP_PHYD_PRB_AD_CTLE            GENMASK(12, 8)
+#define RG_XTP_PHYD_PRB_AD_CTLE_OFST       (8)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP1            GENMASK(6, 0)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP1_OFST       (0)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP2            GENMASK(13, 8)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP2_OFST       (8)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP3            GENMASK(5, 0)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP3_OFST       (0)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP4            GENMASK(12, 8)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP4_OFST       (8)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP5            GENMASK(4, 0)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP5_OFST       (0)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP6            GENMASK(12, 8)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP6_OFST       (8)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP7            GENMASK(4, 0)
+#define RG_XTP_PHYD_PRB_AD_DFE_TAP7_OFST       (0)
+
 #define SSPXTP_PHYA_GLB_00		((SSPXTP_SIFSLV_PHYA_GLB) + 0x00)
 #define RG_XTP_GLB_BIAS_INTR_CTRL		GENMASK(21, 16)
 
 #define SSPXTP_PHYA_GLB_14		((SSPXTP_SIFSLV_PHYA_GLB) + 0x14)
 #define RG_XTP_GLB_BIAS_V2V_VTRIM		GENMASK(30, 27)
 
+#define SSPXTP_DAIG_LN_TOP_00	((SSPXTP_SIFSLV_DIG_LN_TOP) + 0x00)
+#define RG_XTP0_PHYD_LANE_PRB_SEL_HI	GENMASK(15, 0)
+#define RG_XTP0_PHYD_LANE_PRB_SEL_LO	GENMASK(31, 16)
+#define RG_XTP0_PHYD_LANE_PRB_SEL_HI_1	GENMASK(7, 0)
+#define RG_XTP0_PHYD_LANE_PRB_SEL_HI_2	GENMASK(15, 8)
+#define RG_XTP0_PHYD_LANE_PRB_SEL_LO_1	GENMASK(23, 16)
+#define RG_XTP0_PHYD_LANE_PRB_SEL_LO_2	GENMASK(31, 24)
 #define SSPXTP_DAIG_LN_TOP_04	((SSPXTP_SIFSLV_DIG_LN_TOP) + 0x04)
+#define RG_XTP0_PIPE_SEL                BIT(0)
+#define RG_XTP0_PIPE_SEL_PWRDOWN        GENMASK(23, 22)
+#define RG_XTP0_PIPE_SEL_TX_RATE        BIT(24)
+#define RG_XTP0_PIPE_SEL_TX_ELECIDLE    BIT(30)
+
+
 
 #define SSPXTP_DAIG_LN_TOP_10	((SSPXTP_SIFSLV_DIG_LN_TOP) + 0x010)
+#define RG_XTP0_TR2LB_EN			BIT(15)
 
 #define SSPXTP_DAIG_LN_TOP_24	((SSPXTP_SIFSLV_DIG_LN_TOP) + 0x024)
+#define RG_XTP0_T2RLB_PATTYPE			GENMASK(6, 3)
+#define RG_XTP0_T2RLB_TSEQCNT			GENMASK(26, 15)
+
 
 #define SSPXTP_DAIG_LN_TOP_80	((SSPXTP_SIFSLV_DIG_LN_TOP) + 0x080)
 #define RG_XTP0_RESERVED_0			GENMASK(31, 0)
 
 #define SSPXTP_DAIG_LN_TOP_A0	((SSPXTP_SIFSLV_DIG_LN_TOP) + 0x0a0)
 #define RG_XTP0_T2RLB_ERR_CNT			GENMASK(19, 4)
+#define RG_XTP0_T2RLB_ERR_CNT_OFST		(4)
 #define RG_XTP0_T2RLB_ERR			BIT(3)
 #define RG_XTP0_T2RLB_PASSTH			BIT(2)
 #define RG_XTP0_T2RLB_PASS			BIT(1)
 #define RG_XTP0_T2RLB_LOCK			BIT(0)
 
 #define SSPXTP_DAIG_LN_RX0_40	((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x040)
+#define RG_XTP0_FRC_RX_LFPS_TREG_EN		BIT(0)
 
 #define SSPXTP_DAIG_LN_RX0_48   ((SSPXTP_SIFSLV_DIG_LN_RX0) + 0x048)
 #define RG_XTP0_U1_U2_EXIT_EQUAL		BIT(19)
@@ -226,6 +312,15 @@
 
 #define SSPXTP_DAIG_LN_DAIF_04	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x04)
 #define RG_XTP0_DAIF_FRC_LN_RX_AEQ_ATT		BIT(17)
+#define RG_XTP0_DAIF_FRC_LN_RX_AEQ_CTLE		BIT(18)
+#define RG_XTP0_DAIF_FRC_LN_RX_AEQ_VGA		BIT(19)
+#define RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP7	BIT(20)
+#define RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP6	BIT(21)
+#define RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP5	BIT(22)
+#define RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP4	BIT(23)
+#define RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP3	BIT(24)
+#define RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP2	BIT(25)
+#define RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP1	BIT(26)
 
 #define SSPXTP_DAIG_LN_DAIF_08	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x008)
 #define RG_XTP0_DAIF_LN_TX_LCTXCM1		GENMASK(12, 7)
@@ -240,6 +335,24 @@
 
 #define SSPXTP_DAIG_LN_DAIF_14	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x014)
 #define RG_XTP0_DAIF_LN_RX_AEQ_ATT		GENMASK(20, 18)
+#define RG_XTP0_DAIF_LN_RX_AEQ_CTLE		GENMASK(25, 21)
+#define RG_XTP0_DAIF_LN_RX_AEQ_VGA		GENMASK(30, 26)
+
+#define SSPXTP_DAIG_LN_DAIF_18	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x018)
+#define RG_XTP0_DAIF_LN_RX_AEQ_DFETP7		GENMASK(4, 0)
+#define RG_XTP0_DAIF_LN_RX_AEQ_DFETP6		GENMASK(9, 5)
+#define RG_XTP0_DAIF_LN_RX_AEQ_DFETP5		GENMASK(14, 10)
+#define RG_XTP0_DAIF_LN_RX_AEQ_DFETP4		GENMASK(19, 15)
+#define RG_XTP0_DAIF_LN_RX_AEQ_DFETP3		GENMASK(25, 20)
+#define RG_XTP0_DAIF_LN_RX_AEQ_DFETP2		GENMASK(31, 26)
+
+#define SSPXTP_DAIG_LN_DAIF_70	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x070)
+#define RG_XTP0_DAIF_LN_G1_RX_AEQ_OFORCE	GENMASK(11, 0)
+#define RG_XTP0_DAIF_LN_G2_RX_AEQ_OFORCE	GENMASK(23, 12)
+
+
+#define SSPXTP_DAIG_LN_DAIF_1C	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x01C)
+#define RG_XTP0_DAIF_LN_RX_AEQ_DFETP1		GENMASK(6, 0)
 
 #define SSPXTP_DAIG_LN_DAIF_20	((SSPXTP_SIFSLV_DIG_LN_DAIF) + 0x020)
 #define RG_XTP0_DAIF_LN_G1_RX_SGDT_HF		GENMASK(23, 22)
@@ -280,7 +393,30 @@
 #define SSPXTP_PHYA_LN_14	((SSPXTP_SIFSLV_PHYA_LN) + 0x014)
 #define RG_XTP_LN0_RX_IMPSEL		GENMASK(3, 0)
 
+#define SSPXTP_PHYA_LN_18	((SSPXTP_SIFSLV_PHYA_LN) + 0x018)
+#define RG_XTP_LN0_RX_EYES_EN                   BIT(7)
+#define RG_XTP_LN0_RX_EYES_CAL_EN               BIT(8)
+#define RG_XTP_LN0_RX_EYES_ERR_STEP             BIT(9)
+#define RG_XTP_LN0_RX_EYES_ERR_CLR              BIT(10)
+#define RG_XTP_LN0_RX_EYES_ERR_EN               BIT(11)
+#define RG_XTP_LN0_RX_EYES_YOFFSET              GENMASK(24, 16)
+#define RG_XTP_LN0_RX_EYES_YOFFSET_OFST         (16)
+#define RX_XTP_LN0_RX_EYES_XOFFSET              GENMASK(31, 25)
+#define RG_XTP_LN0_RX_EYES_XOFFSET_OFST         (25)
+
+#define SSPXTP_PHYA_LN_2C	((SSPXTP_SIFSLV_PHYA_LN) + 0x02C)
+#define RG_XTP_LN0_RX_SAOSMUX		GENMASK(31, 28)
+
 #define SSPXTP_PHYA_LN_30	((SSPXTP_SIFSLV_PHYA_LN) + 0x030)
+#define RG_XTP_LN0_RX_AEQ_DFETP1	BIT(5)
+#define RG_XTP_LN0_RX_AEQ_DFETP2	BIT(6)
+#define RG_XTP_LN0_RX_AEQ_DFETP3	BIT(7)
+#define RG_XTP_LN0_RX_AEQ_DFETP4	BIT(8)
+#define RG_XTP_LN0_RX_AEQ_DFETP5	BIT(9)
+#define RG_XTP_LN0_RX_AEQ_DFETP6	BIT(10)
+#define RG_XTP_LN0_RX_AEQ_DFETP7	BIT(11)
+#define RG_XTP_LN0_RX_AEQ_VGA		BIT(12)
+#define RG_XTP_LN0_RX_AEQ_CTLE		BIT(13)
 #define RG_XTP_LN0_RX_AEQ_ATT		BIT(14)
 
 #define SSPXTP_PHYA_LN_3C	((SSPXTP_SIFSLV_PHYA_LN) + 0x03C)
@@ -289,6 +425,9 @@
 #define SSPXTP_PHYA_LN_58	((SSPXTP_SIFSLV_PHYA_LN) + 0x058)
 #define RX_XTP_LN0_TX_IMPSEL_PMOS		GENMASK(5, 1)
 #define RX_XTP_LN0_TX_IMPSEL_NMOS               GENMASK(10, 6)
+
+#define SSPXTP_PHYA_LN_60	((SSPXTP_SIFSLV_PHYA_LN) + 0x060)
+#define RG_XTP_LN0_RX_EYE_CK_PI         GENMASK(25, 23)
 
 #define SSPXTP_PHYA_LN_70	((SSPXTP_SIFSLV_PHYA_LN) + 0x070)
 #define RX_XTP_LN0_RX_LEQ_RL_CTLE_CAL		GENMASK(17, 13)
@@ -322,6 +461,12 @@
 #define TX_LCTXC0_STR "tx_lctxc0"
 #define TX_LCTXCP1_STR "tx_lctxcp1"
 #define EQ_OS_STR "eq_os"
+#define EYESCAN_SWEEP_STR "eyescan_sweep"
+#define EYESCAN_SIMPLE_SWEEP_STR "eyescan_simple_sweep"
+#define EYESCAN_INIT_STR "eyescan_init"
+#define EYESCAN_GEN2_INIT_STR "eyescan_gen2_init"
+#define EYESCAN_AEQ_PARAM_STR "eyescan_aeq_param"
+#define EYESCAN_RANGE_STR "eyescan_range"
 
 #define XSP_MODE_UART_STR "usb2uart_mode=1"
 #define XSP_MODE_JTAG_STR "usb2jtag_mode=1"
@@ -331,6 +476,28 @@
 
 #define XSPHY_SUB_CLASS	1
 #define RPTR_SUB_CLASS	2
+/* Range definition of SW eyescan */
+#define EYE_X_DEFAULT_LEFT_MIN 112
+#define EYE_X_DEFAULT_LEFT_MAX 127
+#define EYE_X_DEFAULT_RIGHT_MIN 0
+#define EYE_X_DEFAULT_RIGHT_MAX 16
+#define EYE_Y_DEFAULT_BOTTOM_MIN 464
+#define EYE_Y_DEFAULT_BOTTOM_MAX 511
+#define EYE_Y_DEFAULT_UPPER_MIN 0
+#define EYE_Y_DEFAULT_UPPER_MAX 47
+
+#define EYE_X_LEFT_MIN 64
+#define EYE_X_LEFT_MAX 127
+#define EYE_X_RIGHT_MIN 0
+#define EYE_X_RIGHT_MAX 63
+#define EYE_Y_BOTTOM_MIN 256
+#define EYE_Y_BOTTOM_MAX 511
+#define EYE_Y_UPPER_MIN 0
+#define EYE_Y_UPPER_MAX 255
+#define EYE_SWEEP_MAX_RANGE (((EYE_X_LEFT_MAX - EYE_X_LEFT_MIN + 1) +\
+			     (EYE_X_RIGHT_MAX - EYE_X_RIGHT_MIN + 1)) *\
+			     ((EYE_Y_BOTTOM_MAX - EYE_Y_BOTTOM_MIN + 1) +\
+			     (EYE_Y_UPPER_MAX - EYE_Y_UPPER_MIN + 1)))
 
 enum mtk_xsphy_mode {
 	XSP_MODE_USB = 0,
@@ -377,6 +544,20 @@ enum mtk_phy_efuse {
 	HSTX_IMPP,
 };
 
+struct eye_aeq_param {
+	bool configured;
+	unsigned char att;
+	unsigned char ctle;
+	unsigned char vga;
+	unsigned char dfetp7;
+	unsigned char dfetp6;
+	unsigned char dfetp5;
+	unsigned char dfetp4;
+	unsigned char dfetp3;
+	unsigned char dfetp2;
+	unsigned char dfetp1;
+};
+
 static char *efuse_name[24] = {
 	"intr_cal",
 	"term_cal",
@@ -404,6 +585,26 @@ static char *efuse_name[24] = {
 	"hstx_impp",
 };
 
+struct eyescan_idx {
+	s16 x;
+	s16 y;
+	s16 x_left_min;
+	s16 x_left_max;
+	s16 x_right_min;
+	s16 x_right_max;
+	s16 y_bottom_min;
+	s16 y_bottom_max;
+	s16 y_upper_min;
+	s16 y_upper_max;
+	u16 scan_up;
+	u16 scan_done;
+	u16 tmp_eye_h;
+	u16 eye_h;
+	u16 tmp_eye_w;
+	u16 eye_w;
+	bool is_gen2;
+	struct eye_aeq_param aeq_params;
+};
 struct xsphy_instance {
 	struct phy *phy;
 	void __iomem *port_base;
@@ -472,6 +673,9 @@ struct xsphy_instance {
 	u32 uart_usb_sel_reg;
 	u32 uart_usb_sel_mask;
 	u32 uart_usb_sel_val;
+	struct mutex eyescan_lock;
+	struct eye_aeq_param aeq_params;
+	struct eyescan_idx ei;
 };
 
 struct mtk_xsphy {
@@ -962,6 +1166,1159 @@ static const struct proc_ops proc_tx_lctxcp1_fops = {
 	.proc_release = single_release,
 };
 
+static int proc_g2_t2rlb_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
+	void __iomem *pbase = inst->port_base;
+	void __iomem *glb_base = xsphy->glb_base;
+	u32 tmp, lb_flag, lb_errcnt;
+
+	/* Disable serial loopback */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_10, RG_XTP0_TR2LB_EN);
+
+	/* Set PIPE to P2 */
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_PWRDOWN, 0x02);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_TX_ELECIDLE);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_TX_RATE); /* 0: gen1, 1: gen2 */
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL);
+
+	/* Force sspxtp_fsm in P0_LTR */
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_RX0_40, RG_XTP0_FRC_RX_LFPS_TREG_EN);
+#if 0
+	/* Set Tx EQ */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXCM1);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXC0, 0x28);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXCP1, 0x08);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXC0);
+
+	udelay(100);
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXCP1);
+#endif
+	/* PIPE reset*/
+	mtk_phy_set_bits(glb_base + SSPXTP_DIG_GLB_04, RG_SSPXTP0_FRC_PIPE_DISABLE);
+	mtk_phy_set_bits(glb_base + SSPXTP_DIG_GLB_04, RG_SSPXTP0_PIPE_DISABLE);
+	mtk_phy_set_bits(glb_base + SSPXTP_DIG_GLB_04, RG_SSPXTP0_FRC_PIPE_RESET_B);
+	mtk_phy_clear_bits(glb_base + SSPXTP_DIG_GLB_04, RG_SSPXTP0_PIPE_RESET_B);
+	mdelay(1);
+	mtk_phy_clear_bits(glb_base + SSPXTP_DIG_GLB_04, RG_SSPXTP0_PIPE_DISABLE);
+	mtk_phy_set_bits(glb_base + SSPXTP_DIG_GLB_04, RG_SSPXTP0_PIPE_RESET_B);
+
+	/* Enable pattern gen and transition to p0 */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_24, RG_XTP0_T2RLB_PATTYPE);
+	udelay(100);
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_24, RG_XTP0_T2RLB_TSEQCNT); /* gen2*/
+
+	/* Set PIPE to P0 */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_PWRDOWN);
+	udelay(100);
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_TX_ELECIDLE);
+
+	/* Set serial loopback */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_10, RG_XTP0_TR2LB_EN);
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_TOP_10, RG_XTP0_TR2LB_EN);
+
+	/* Release sspxtp_fsm */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_RX0_40, RG_XTP0_FRC_RX_LFPS_TREG_EN);
+
+
+
+	mdelay(100);
+	/* Check loopback result */
+	tmp = readl(pbase + SSPXTP_DAIG_LN_TOP_A0);
+	lb_flag = tmp & 0xF;
+	lb_errcnt = (tmp & RG_XTP0_T2RLB_ERR_CNT) >> RG_XTP0_T2RLB_ERR_CNT_OFST;
+	seq_printf(s, "ssxtp0_t2rlb[03:00]\n -> %x\n", lb_flag);
+	seq_printf(s, "ssxtp0_t2rlb[19:04]\n -> %x\n", lb_errcnt);
+
+	return 0;
+}
+
+static int proc_g1_t2rlb_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	/* struct device *dev = &inst->phy->dev; */
+	/* struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent); */
+	void __iomem *pbase = inst->port_base;
+	/* void __iomem *glb_base = xsphy->glb_base; */
+	u32 tmp, lb_flag, lb_errcnt;
+
+	/* Disable serial loopback */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_10, RG_XTP0_TR2LB_EN);
+
+	/* Set PIPE to P2 */
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_PWRDOWN, 0x02);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_TX_ELECIDLE);
+
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_TX_RATE);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL);
+
+	/* Force sspxtp_fsm in P0_LTR */
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_RX0_40, RG_XTP0_FRC_RX_LFPS_TREG_EN);
+#if 0
+	/* Set Tx EQ */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXCM1);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXC0, 0x28);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_08, RG_XTP0_DAIF_LN_TX_LCTXCP1, 0x08);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXCM1);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXC0);
+
+	udelay(100);
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_00, RG_XTP0_DAIF_FRC_LN_TX_LCTXCP1);
+#endif
+	udelay(100);
+	/* Enable pattern gen */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_24, RG_XTP0_T2RLB_PATTYPE);
+
+	udelay(100);
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_TOP_24, RG_XTP0_T2RLB_TSEQCNT, 0x0FF);
+
+	/* Set PIPE to P0, Release sspxtp_fsm */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_PWRDOWN);
+
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_04, RG_XTP0_PIPE_SEL_TX_ELECIDLE);
+
+	/* Release sspxtp_fsm */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_RX0_40, RG_XTP0_FRC_RX_LFPS_TREG_EN);
+
+	/* Set serial loopback */
+	mtk_phy_clear_bits(pbase + SSPXTP_DAIG_LN_TOP_10, RG_XTP0_TR2LB_EN);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_TOP_10, RG_XTP0_TR2LB_EN);
+
+	mdelay(100);
+	/* Check loopback result */
+	tmp = readl(pbase + SSPXTP_DAIG_LN_TOP_A0);
+	lb_flag = tmp & 0xF;
+	lb_errcnt = (tmp & RG_XTP0_T2RLB_ERR_CNT) >> RG_XTP0_T2RLB_ERR_CNT_OFST;
+	seq_printf(s, "ssxtp0_t2rlb[03:00]\n -> %x\n", lb_flag);
+	seq_printf(s, "ssxtp0_t2rlb[19:04]\n -> %x\n", lb_errcnt);
+
+	return 0;
+}
+#if 0
+static void phyd_lane_prb_set_hi(void __iomem *pbase, u8 hi_1, u8 hi_2)
+{
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_TOP_00, RG_XTP0_PHYD_LANE_PRB_SEL_HI_1, hi_1);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_TOP_00, RG_XTP0_PHYD_LANE_PRB_SEL_HI_2, hi_2);
+
+}
+
+static void phyd_lane_prb_set_lo(void __iomem *pbase, u8 lo_1, u8 lo_2)
+{
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_TOP_00, RG_XTP0_PHYD_LANE_PRB_SEL_LO_1, lo_1);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_TOP_00, RG_XTP0_PHYD_LANE_PRB_SEL_LO_2, lo_2);
+
+}
+#endif
+
+static void phyd_prb_set_hi(void __iomem *glb_base, u8 hi_ext, u8 hi)
+{
+	mtk_phy_update_field(glb_base + SSPXTP_DIG_GLB_00, RG_XTP_PHYD_PRB_HI_EXT, hi_ext);
+
+	mtk_phy_update_field(glb_base + SSPXTP_DIG_GLB_00, RG_XTP_PHYD_PRB_HI, hi);
+}
+
+static void phyd_prb_set_lo(void __iomem *glb_base, u8 lo_ext, u8 lo)
+{
+	mtk_phy_update_field(glb_base + SSPXTP_DIG_GLB_00, RG_XTP_PHYD_PRB_LO_EXT, lo_ext);
+
+	mtk_phy_update_field(glb_base + SSPXTP_DIG_GLB_00, RG_XTP_PHYD_PRB_LO, lo);
+}
+
+static int proc_eq_tuning_read_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
+	void __iomem *glb_base = xsphy->glb_base;
+	/* void __iomem *pbase = inst->port_base; */
+	u32 tmp;
+
+	phyd_prb_set_hi(glb_base, 0, 0x10);
+	phyd_prb_set_lo(glb_base, 0, 0x11);
+	mdelay(1);
+
+	phyd_prb_set_hi(glb_base, 0, 0);
+	phyd_prb_set_lo(glb_base, 0, 0x8d);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	inst->aeq_params.att =
+					(u8)(((tmp & RG_XTP_PHYD_PRB_AD_ATT) >> RG_XTP_PHYD_PRB_AD_ATT_OFST) & 0xFF);
+	seq_printf(s, "AD ATT = ssxtp_glb_phyd_prb_out[02:00] -> %x\n", inst->aeq_params.att);
+
+	phyd_prb_set_hi(glb_base, 0, 0x8f);
+	phyd_prb_set_lo(glb_base, 0, 0x8e);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	inst->aeq_params.vga =
+			(u8)(((tmp & RG_XTP_PHYD_PRB_AD_VGA) >> RG_XTP_PHYD_PRB_AD_VGA_OFST) & 0xFF);
+	inst->aeq_params.ctle =
+			(u8)(((tmp & RG_XTP_PHYD_PRB_AD_CTLE) >> RG_XTP_PHYD_PRB_AD_CTLE_OFST) & 0xFF);
+	seq_printf(s, "AD VGA = ssxtp_glb_phyd_prb_out[04:00] -> %x\n", inst->aeq_params.vga);
+	seq_printf(s, "AD CTLE = ssxtp_glb_phyd_prb_out[12:08] -> %x\n", inst->aeq_params.ctle);
+
+	phyd_prb_set_hi(glb_base, 0, 0x91);
+	phyd_prb_set_lo(glb_base, 0, 0x90);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	inst->aeq_params.dfetp1 =
+			(u8)(((tmp & RG_XTP_PHYD_PRB_AD_DFE_TAP1) >> RG_XTP_PHYD_PRB_AD_DFE_TAP1_OFST) & 0xFF);
+	inst->aeq_params.dfetp2 =
+			(u8)(((tmp & RG_XTP_PHYD_PRB_AD_DFE_TAP2) >> RG_XTP_PHYD_PRB_AD_DFE_TAP2_OFST) & 0xFF);
+	seq_printf(s, "AD DFE_TAP1 = ssxtp_glb_phyd_prb_out[06:00] -> %x\n", inst->aeq_params.dfetp1);
+	seq_printf(s, "AD DFE_TAP2 = ssxtp_glb_phyd_prb_out[13:08] -> %x\n", inst->aeq_params.dfetp2);
+
+	phyd_prb_set_hi(glb_base, 0, 0x93);
+	phyd_prb_set_lo(glb_base, 0, 0x92);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	inst->aeq_params.dfetp3 =
+			(u8)(((tmp & RG_XTP_PHYD_PRB_AD_DFE_TAP3) >> RG_XTP_PHYD_PRB_AD_DFE_TAP3_OFST) & 0xFF);
+	inst->aeq_params.dfetp4 =
+			(u8)(((tmp & RG_XTP_PHYD_PRB_AD_DFE_TAP4) >> RG_XTP_PHYD_PRB_AD_DFE_TAP4_OFST) & 0xFF);
+	seq_printf(s, "AD DFE_TAP3 = ssxtp_glb_phyd_prb_out[05:00] -> %x\n", inst->aeq_params.dfetp3);
+	seq_printf(s, "AD DFE_TAP4 = ssxtp_glb_phyd_prb_out[12:08] -> %x\n", inst->aeq_params.dfetp4);
+
+	phyd_prb_set_hi(glb_base, 0, 0x95);
+	phyd_prb_set_lo(glb_base, 0, 0x94);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	inst->aeq_params.dfetp5 =
+			(u8)(((tmp & RG_XTP_PHYD_PRB_AD_DFE_TAP5) >> RG_XTP_PHYD_PRB_AD_DFE_TAP5_OFST) & 0xFF);
+	inst->aeq_params.dfetp6 =
+			(u8)(((tmp & RG_XTP_PHYD_PRB_AD_DFE_TAP6) >> RG_XTP_PHYD_PRB_AD_DFE_TAP6_OFST) & 0xFF);
+	seq_printf(s, "AD DFE_TAP5 = ssxtp_glb_phyd_prb_out[04:00] -> %x\n", inst->aeq_params.dfetp5);
+	seq_printf(s, "AD DFE_TAP6 = ssxtp_glb_phyd_prb_out[12:08] -> %x\n", inst->aeq_params.dfetp6);
+
+	phyd_prb_set_hi(glb_base, 0, 0x97);
+	phyd_prb_set_lo(glb_base, 0, 0x96);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	inst->aeq_params.dfetp7 =
+			(u8)(((tmp & RG_XTP_PHYD_PRB_AD_DFE_TAP7) >> RG_XTP_PHYD_PRB_AD_DFE_TAP7_OFST) & 0xFF);
+	seq_printf(s, "AD DFE_TAP7 = ssxtp_glb_phyd_prb_out[04:00] -> %x\n", inst->aeq_params.dfetp7);
+	/* We are going to use these aeq params to do eye sweep */
+	inst->aeq_params.configured = true;
+	return 0;
+}
+
+static u32 saos_mux_set_and_read(void __iomem *glb_base, void __iomem *pbase, u8 mux)
+{
+	mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_2C, RG_XTP_LN0_RX_SAOSMUX, mux);
+	mdelay(10);
+
+	return readl(glb_base + SSPXTP_DIG_GLB_88);
+}
+
+static int proc_rx_ofst_cal_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
+	void __iomem *pbase = inst->port_base;
+	void __iomem *glb_base = xsphy->glb_base;
+	u32 tmp;
+
+	/* Read ad_rx_cal_compos/ ad_rx_cal_lvshos */
+	phyd_prb_set_hi(glb_base, 0, 0x74);
+	phyd_prb_set_lo(glb_base, 0, 0x73);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	seq_printf(s, "ad_rx_cal_compos = ssxtp_glb_phyd_prb_out[05:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_LO) >> RG_XTP_PHYD_PRB_RX_CAL_LO_OFST);
+	seq_printf(s, "ad_rx_cal_lvshos = ssxtp_glb_phyd_prb_out[13:08] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_HI) >> RG_XTP_PHYD_PRB_RX_CAL_HI_OFST);
+
+	/* Read ad_rx_cal_ctle1ios/ ad_rx_cal_ctle1vos */
+	phyd_prb_set_hi(glb_base, 0, 0x76);
+	phyd_prb_set_lo(glb_base, 0, 0x75);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	seq_printf(s, "ad_rx_cal_ctle1ios = ssxtp_glb_phyd_prb_out[05:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_LO) >> RG_XTP_PHYD_PRB_RX_CAL_LO_OFST);
+	seq_printf(s, "ad_rx_cal_ctle1vos = ssxtp_glb_phyd_prb_out[13:08] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_HI) >> RG_XTP_PHYD_PRB_RX_CAL_HI_OFST);
+
+	/* Read ad_rx_cal_ctle2ios/ ad_rx_cal_ctle2vos */
+	phyd_prb_set_hi(glb_base, 0, 0x78);
+	phyd_prb_set_lo(glb_base, 0, 0x77);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	seq_printf(s, "ad_rx_cal_ctle2ios = ssxtp_glb_phyd_prb_out[05:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_LO) >> RG_XTP_PHYD_PRB_RX_CAL_LO_OFST);
+	seq_printf(s, "ad_rx_cal_ctle2vos = ssxtp_glb_phyd_prb_out[13:08] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_HI) >> RG_XTP_PHYD_PRB_RX_CAL_HI_OFST);
+
+
+	/* Read ad_rx_cal_ctle2ios/ ad_rx_cal_ctle2vos */
+	phyd_prb_set_hi(glb_base, 0, 0x78);
+	phyd_prb_set_lo(glb_base, 0, 0x77);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	seq_printf(s, "ad_rx_cal_ctle2ios = ssxtp_glb_phyd_prb_out[05:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_LO) >> RG_XTP_PHYD_PRB_RX_CAL_LO_OFST);
+	seq_printf(s, "ad_rx_cal_ctle2vos = ssxtp_glb_phyd_prb_out[13:08] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_HI) >> RG_XTP_PHYD_PRB_RX_CAL_HI_OFST);
+
+	/* Read ad_rx_cal_vga1ios/ ad_rx_cal_vga1vos */
+	phyd_prb_set_hi(glb_base, 0, 0x7A);
+	phyd_prb_set_lo(glb_base, 0, 0x79);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	seq_printf(s, "ad_rx_cal_vga1ios = ssxtp_glb_phyd_prb_out[05:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_LO) >> RG_XTP_PHYD_PRB_RX_CAL_LO_OFST);
+	seq_printf(s, "ad_rx_cal_vga1vos = ssxtp_glb_phyd_prb_out[13:08] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_HI) >> RG_XTP_PHYD_PRB_RX_CAL_HI_OFST);
+
+	/* Read ad_rx_cal_vga2ios/ ad_rx_cal_vga2vos */
+	phyd_prb_set_hi(glb_base, 0, 0x7C);
+	phyd_prb_set_lo(glb_base, 0, 0x7B);
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	seq_printf(s, "ad_rx_cal_vga2ios = ssxtp_glb_phyd_prb_out[05:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_LO) >> RG_XTP_PHYD_PRB_RX_CAL_LO_OFST);
+	seq_printf(s, "ad_rx_cal_vga2vos = ssxtp_glb_phyd_prb_out[13:08] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_RX_CAL_HI) >> RG_XTP_PHYD_PRB_RX_CAL_HI_OFST);
+
+	/* saos mux */
+	phyd_prb_set_lo(glb_base, 0, 0x8C);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0);
+	seq_printf(s, "saos_h11h ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x01);
+	seq_printf(s, "saos_111h ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x02);
+	seq_printf(s, "saos_1hh1 ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x03);
+	seq_printf(s, "saos_hhh1 ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x04);
+	seq_printf(s, "saos_e0 ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x05);
+	seq_printf(s, "saos_e1 ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x06);
+	seq_printf(s, "saos_d01 ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x07);
+	seq_printf(s, "saos_d0h ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x08);
+	seq_printf(s, "saos_d11 ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x09);
+	seq_printf(s, "saos_d1h ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x0A);
+	seq_printf(s, "saos_e01 ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x0B);
+	seq_printf(s, "saos_e0h ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x0C);
+	seq_printf(s, "saos_e11 ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	tmp = saos_mux_set_and_read(glb_base, pbase, 0x0D);
+	seq_printf(s, "saos_e1h ssxtp_glb_phyd_prb_out[06:00] -> %lx\n",
+		(tmp & RG_XTP_PHYD_PRB_SAOS) >> RG_XTP_PHYD_PRB_SAOS_OFST);
+
+	return 0;
+}
+
+static int proc_eyescan_cal_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
+	void __iomem *pbase = inst->port_base;
+	void __iomem *glb_base = xsphy->glb_base;
+	u32 tmp;
+
+	/* Start eye scan cal */
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_EN);
+
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_CAL_EN);
+
+	mdelay(1);
+
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_CAL_EN);
+
+	phyd_prb_set_hi(glb_base, 0, 0x7D);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	seq_printf(s, "ssxtp_glb_phyd_prb_out[14:08] -> %lx\n",
+		(tmp & GENMASK(14, 8)) >> 8);
+
+	return 0;
+}
+
+#define EYE_AEQ_BUFFER_SIZE 128
+ssize_t proc_eyeaeq_write(struct file *file, const char __user *buffer, size_t count, loff_t *pos)
+{
+	struct seq_file *s = file->private_data;
+	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	char input[EYE_AEQ_BUFFER_SIZE];
+	unsigned long values[10];
+
+	if (count >= EYE_AEQ_BUFFER_SIZE) {
+		dev_info(dev, "Input too long\n");
+		return -EINVAL;
+	}
+
+	if (copy_from_user(input, buffer, count)) {
+		dev_info(dev, "Failed to copy data from user space\n");
+		return -EFAULT;
+	}
+
+	input[count] = '\0'; // Null-terminate the input string.
+
+	// Parse the input string into 10 hexadecimal values.
+	if (sscanf(input, "%lx %lx %lx %lx %lx %lx %lx %lx %lx %lx",
+				&values[0], &values[1], &values[2], &values[3],
+				&values[4], &values[5], &values[6], &values[7],
+				&values[8], &values[9]) != 10) {
+		dev_info(dev, "Invalid input format\n");
+		return -EINVAL;
+	}
+
+	// Define maximum allowed values based on bits and check them.
+	if ((values[0] > 0x7) || (values[1] > 0x1F) || (values[2] > 0x1F) ||
+		(values[3] > 0x7F) || (values[4] > 0x3F) || (values[5] > 0x3F) ||
+		(values[6] > 0x1F) || (values[7] > 0x1F) || (values[8] > 0x1F) ||
+		(values[9] > 0x1F)) {
+		dev_info(dev, "One or more values exceed allowed range\n");
+		return -EINVAL;
+	}
+
+	// Assign the parsed values to the corresponding struct fields if they are within range.
+	inst->ei.aeq_params.att = (unsigned char)values[0];
+	inst->ei.aeq_params.ctle = (unsigned char)values[1];
+	inst->ei.aeq_params.vga = (unsigned char)values[2];
+	inst->ei.aeq_params.dfetp1 = (unsigned char)values[3];
+	inst->ei.aeq_params.dfetp2 = (unsigned char)values[4];
+	inst->ei.aeq_params.dfetp3 = (unsigned char)values[5];
+	inst->ei.aeq_params.dfetp4 = (unsigned char)values[6];
+	inst->ei.aeq_params.dfetp5 = (unsigned char)values[7];
+	inst->ei.aeq_params.dfetp6 = (unsigned char)values[8];
+	inst->ei.aeq_params.dfetp7 = (unsigned char)values[9];
+	inst->ei.aeq_params.configured = true;
+	dev_info(dev, "Values written: att=%u, ctle=%u, vga=%u, dfetp1=%u, dfetp2=%u, dfetp3=%u, dfetp4=%u, dfetp5=%u, dfetp6=%u, dfetp7=%u\n",
+		inst->aeq_params.att, inst->aeq_params.ctle, inst->aeq_params.vga, inst->aeq_params.dfetp1, inst->aeq_params.dfetp2, inst->aeq_params.dfetp3,
+		inst->aeq_params.dfetp4, inst->aeq_params.dfetp5, inst->aeq_params.dfetp6, inst->aeq_params.dfetp7);
+
+	return count;
+}
+
+static int proc_eyeaeq_show(struct seq_file *s, void *unused)
+{
+	return 0;
+}
+
+static int proc_eyeaeq_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_eyeaeq_show, pde_data(inode));
+}
+
+static const struct  proc_ops proc_eyeaeq_fops = {
+	.proc_open = proc_eyeaeq_open,
+	.proc_write = proc_eyeaeq_write,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static int proc_force_rx_eq_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	void __iomem *pbase = inst->port_base;
+	struct eye_aeq_param *force_eq_params;
+
+	if (inst->ei.aeq_params.configured) {
+		seq_puts(s, "apply user rx aeq params\n");
+		force_eq_params = &inst->ei.aeq_params;
+	} else {
+		seq_puts(s, "apply default rx aeq params\n");
+		force_eq_params = &inst->aeq_params;
+	}
+	seq_printf(s,
+		"aeq_params: att=%u, ctle=%u, vga=%u, dfetp1=%u, dfetp2=%u, dfetp3=%u, "
+		"dfetp4=%u, dfetp5=%u, dfetp6=%u, dfetp7=%u\n",
+		force_eq_params->att, force_eq_params->ctle, force_eq_params->vga,
+		force_eq_params->dfetp1, force_eq_params->dfetp2, force_eq_params->dfetp3,
+		force_eq_params->dfetp4, force_eq_params->dfetp5, force_eq_params->dfetp6,
+		force_eq_params->dfetp7
+	);
+	/* Force RX AEQ*/
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_14, RG_XTP0_DAIF_LN_RX_AEQ_ATT, force_eq_params->att);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_14, RG_XTP0_DAIF_LN_RX_AEQ_CTLE, force_eq_params->ctle);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_14, RG_XTP0_DAIF_LN_RX_AEQ_VGA, force_eq_params->vga);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_04, RG_XTP0_DAIF_FRC_LN_RX_AEQ_ATT);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_04, RG_XTP0_DAIF_FRC_LN_RX_AEQ_CTLE);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_04, RG_XTP0_DAIF_FRC_LN_RX_AEQ_VGA);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_70, 0x7U << 8);
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_70, 0x7U << 20);
+
+	/* Force RX DFE */
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_18, RG_XTP0_DAIF_LN_RX_AEQ_DFETP7, force_eq_params->dfetp7);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_18, RG_XTP0_DAIF_LN_RX_AEQ_DFETP6, force_eq_params->dfetp6);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_18, RG_XTP0_DAIF_LN_RX_AEQ_DFETP5, force_eq_params->dfetp5);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_18, RG_XTP0_DAIF_LN_RX_AEQ_DFETP4, force_eq_params->dfetp4);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_18, RG_XTP0_DAIF_LN_RX_AEQ_DFETP3, force_eq_params->dfetp3);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_18, RG_XTP0_DAIF_LN_RX_AEQ_DFETP2, force_eq_params->dfetp2);
+
+	mtk_phy_update_field(pbase + SSPXTP_DAIG_LN_DAIF_1C, RG_XTP0_DAIF_LN_RX_AEQ_DFETP1, force_eq_params->dfetp1);
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_04,
+			 (RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP7 | RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP6 |
+			  RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP5 | RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP4 |
+			  RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP3 | RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP2 |
+			  RG_XTP0_DAIF_FRC_LN_RX_AEQ_DFETP1));
+#if 0
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_30,
+			 (RG_XTP_LN0_RX_AEQ_DFETP7 | RG_XTP_LN0_RX_AEQ_DFETP6 |
+			  RG_XTP_LN0_RX_AEQ_DFETP5 | RG_XTP_LN0_RX_AEQ_DFETP4 |
+			  RG_XTP_LN0_RX_AEQ_DFETP3 | RG_XTP_LN0_RX_AEQ_DFETP2 |
+			  RG_XTP_LN0_RX_AEQ_DFETP1));
+#endif
+
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_70, 0x7FU << 1);
+	mtk_phy_set_bits(pbase + SSPXTP_DAIG_LN_DAIF_70, 0x7FU << 13);
+
+	return 0;
+}
+
+static u16 rx_eye_get_x(void __iomem *pbase)
+{
+	u32 tmp;
+
+	tmp = readl(pbase + SSPXTP_PHYA_LN_18);
+	return ((tmp & RX_XTP_LN0_RX_EYES_XOFFSET) >> RG_XTP_LN0_RX_EYES_XOFFSET_OFST);
+}
+
+static u16 rx_eye_get_y(void __iomem *pbase)
+{
+	u32 tmp;
+
+	tmp = readl(pbase + SSPXTP_PHYA_LN_18);
+	return ((tmp & RG_XTP_LN0_RX_EYES_YOFFSET) >> RG_XTP_LN0_RX_EYES_YOFFSET_OFST);
+}
+
+static void rx_eye_set_y(void __iomem *pbase, u16 offset)
+{
+	mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_YOFFSET, offset);
+}
+
+static void rx_eye_set_x(void __iomem *pbase, u16 offset)
+{
+	mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_18, RX_XTP_LN0_RX_EYES_XOFFSET, offset);
+}
+
+static int proc_eyescan_gen2_init_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	void __iomem *pbase = inst->port_base;
+
+	inst->ei.is_gen2 = true;
+	/* 0_sphy2_usb_g2_t2rlb */
+	proc_g2_t2rlb_show(s, unused);
+	/* 1_sphy2_usb_EQ_tuning_read */
+	proc_eq_tuning_read_show(s, unused);
+	/* 2_sphy2_usb_rx_offset_calibration */
+	proc_rx_ofst_cal_show(s, unused);
+	/* 3_sphy2_usb_eyescan_cal */
+	proc_eyescan_cal_show(s, unused);
+	/* 4_sphy2_usb_force_rx_eq */
+	proc_force_rx_eq_show(s, unused);
+	/* 5_sphy2_usb_eye_scan_init */
+	/* Init eye scan */
+	mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_60, RG_XTP_LN0_RX_EYE_CK_PI, 0x03);
+
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_EN);
+
+	rx_eye_set_x(pbase, 0);
+	rx_eye_set_y(pbase, 0);
+
+	return 0;
+}
+
+static int proc_eyescan_gen2_init_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_eyescan_gen2_init_show, pde_data(inode));
+}
+
+static const struct  proc_ops proc_eyescan_gen2_init_fops = {
+	.proc_open = proc_eyescan_gen2_init_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static int proc_eyescan_init_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+	void __iomem *pbase = inst->port_base;
+
+	inst->ei.is_gen2 = false;
+	/* 0_sphy2_usb_g1_t2rlb */
+	proc_g1_t2rlb_show(s, unused);
+	/* 1_sphy2_usb_EQ_tuning_read */
+	proc_eq_tuning_read_show(s, unused);
+	/* 2_sphy2_usb_rx_offset_calibration */
+	proc_rx_ofst_cal_show(s, unused);
+	/* 3_sphy2_usb_eyescan_cal */
+	proc_eyescan_cal_show(s, unused);
+	/* 4_sphy2_usb_force_rx_eq */
+	proc_force_rx_eq_show(s, unused);
+	/* 5_sphy2_usb_eye_scan_init */
+	/* Init eye scan */
+	mtk_phy_update_field(pbase + SSPXTP_PHYA_LN_60, RG_XTP_LN0_RX_EYE_CK_PI, 0x03);
+
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_EN);
+
+	rx_eye_set_x(pbase, 0);
+	rx_eye_set_y(pbase, 0);
+
+	return 0;
+}
+
+static int proc_eyescan_init_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_eyescan_init_show, pde_data(inode));
+}
+
+static const struct  proc_ops proc_eyescan_init_fops = {
+	.proc_open = proc_eyescan_init_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static u32 rx_eye_get_errcnt(void __iomem *pbase, void __iomem *glb_base,
+							struct seq_file *s)
+{
+	u32 tmp;
+	u32 err_evn_19_16, err_evn_15_0, errcnt;;
+	u16 x, y;
+
+	x = rx_eye_get_x(pbase);
+	y = rx_eye_get_y(pbase);
+
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_CLR);
+	mdelay(1);
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_CLR);
+
+	mdelay(1);
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_CLR);
+
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_EN);
+
+	mdelay(5);
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_EN);
+
+	phyd_prb_set_hi(glb_base, 0x01, 0x02);
+
+	mdelay(1);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	err_evn_19_16 = ((tmp & GENMASK(11, 8)) >> 8);
+
+	phyd_prb_set_hi(glb_base, 0x01, 0x03);
+	phyd_prb_set_lo(glb_base, 0x01, 0x04);
+
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	err_evn_15_0 = (tmp & GENMASK(15, 0));
+
+	errcnt = (err_evn_19_16 << 16) | err_evn_15_0;
+	seq_printf(s, "%d,%d,%d,%d\n", x, y, errcnt, errcnt);
+
+	return errcnt;
+}
+
+static void *eyescan_sweep_seq_start(struct seq_file *s, loff_t *pos)
+{
+	struct xsphy_instance *inst = s->private;
+	void __iomem *pbase = inst->port_base;
+	struct eyescan_idx *ei = &inst->ei;
+	s16 x, y;
+
+	mutex_lock(&inst->eyescan_lock);
+
+	if (*pos == 0) {
+		for (x = ei->x_left_max; x >= ei->x_left_min; x--)
+			rx_eye_set_x(pbase, (u16)x);
+
+		for (y = ei->y_bottom_max; y >= ei->y_bottom_min; y--)
+			rx_eye_set_y(pbase, (u16)y);
+
+		ei->x = ei->x_left_min;
+		ei->y = ei->y_bottom_min;
+		ei->scan_up = 1;
+		ei->scan_done = 0;
+		ei->tmp_eye_h = 0;
+		ei->eye_h = 0;
+		ei->tmp_eye_w = 0;
+		ei->eye_w = 0;
+	} else if (ei->scan_done || *pos > EYE_SWEEP_MAX_RANGE) {
+		*pos = 0;
+		return NULL;
+	}
+	return ei;
+
+}
+
+static void update_eye_height_width(struct eyescan_idx *ei)
+{
+	if (ei->tmp_eye_h > ei->eye_h)
+		ei->eye_h = ei->tmp_eye_h;
+	if (ei->tmp_eye_w)
+		ei->eye_w++;
+	ei->tmp_eye_h = 0;
+	ei->tmp_eye_w = 0;
+}
+
+static void *eyescan_sweep_seq_next(struct seq_file *s, void *v, loff_t *pos)
+{
+	struct xsphy_instance *inst = s->private;
+	void __iomem *pbase = inst->port_base;
+	struct eyescan_idx *ei = NULL;
+
+	ei = (struct eyescan_idx *)v;
+
+	(*pos)++;
+
+	if (*pos > EYE_SWEEP_MAX_RANGE || ei->scan_done) {
+		ei->scan_done = 1;
+		return NULL;
+	} else if (ei->y == ei->y_upper_max && ei->scan_up == 1) {
+		update_eye_height_width(ei);
+		if (ei->x == ei->x_right_max)
+			ei->scan_done = 1;
+		else if (ei->x == ei->x_left_max) {
+			ei->x = ei->x_right_min;
+			rx_eye_set_x(pbase, (u16)ei->x);
+		} else {
+			ei->x++;
+			rx_eye_set_x(pbase, (u16)ei->x);
+		}
+		ei->scan_up = 0;
+
+	} else if (ei->y == ei->y_bottom_max && ei->scan_up == 1) {
+		ei->y = ei->y_upper_min;
+		rx_eye_set_y(pbase, (u16)ei->y);
+
+	} else if (ei->y == ei->y_bottom_min && ei->scan_up == 0) {
+		update_eye_height_width(ei);
+		if (ei->x == ei->x_right_max) {
+			ei->scan_done = 1;
+		} else if (ei->x == ei->x_left_max) {
+			ei->x = ei->x_right_min;
+			rx_eye_set_x(pbase, (u16)ei->x);
+		} else {
+			ei->x++;
+			rx_eye_set_x(pbase, (u16)ei->x);
+		}
+		ei->scan_up = 1;
+
+	} else if (ei->y == ei->y_upper_min && ei->scan_up == 0) {
+		ei->y = ei->y_bottom_max;
+		rx_eye_set_y(pbase, (u16)ei->y);
+
+	} else if (ei->scan_up == 1) {
+		ei->y++;
+		rx_eye_set_y(pbase, (u16)ei->y);
+	} else {
+		ei->y--;
+		rx_eye_set_y(pbase, (u16)ei->y);
+	}
+	return ei;
+}
+
+static void eyescan_sweep_seq_stop(struct seq_file *s, void *v)
+{
+	struct xsphy_instance *inst = s->private;
+
+	mutex_unlock(&inst->eyescan_lock);
+}
+
+static u32 rx_eye_get_errcnt_g2(void __iomem *pbase, void __iomem *glb_base,
+								struct seq_file *s)
+{
+	u32 tmp;
+	u32 err_evn_19_16, err_evn_15_0, err_odd_19_16, err_odd_15_0;
+	u16 x, y;
+
+	x = rx_eye_get_x(pbase);
+	y = rx_eye_get_y(pbase);
+	/* step = 0 */
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_STEP);
+
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_CLR);
+
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_CLR);
+
+	mdelay(1);
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_CLR);
+
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_EN);
+
+	mdelay(5);
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_EN);
+
+	/* step = 1 */
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_STEP);
+
+	mtk_phy_set_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_EN);
+
+	mdelay(5);
+	mtk_phy_clear_bits(pbase + SSPXTP_PHYA_LN_18, RG_XTP_LN0_RX_EYES_ERR_EN);
+
+	mdelay(1);
+	phyd_prb_set_hi(glb_base, 0x01, 0x02);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	err_evn_19_16 = ((tmp & GENMASK(11, 8)) >> 8);
+
+	phyd_prb_set_hi(glb_base, 0x01, 0x05);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	err_odd_19_16 = ((tmp & GENMASK(11, 8)) >> 8);
+
+
+	phyd_prb_set_hi(glb_base, 0x01, 0x03);
+	phyd_prb_set_lo(glb_base, 0x01, 0x04);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	err_evn_15_0 = (tmp & GENMASK(15, 0));
+
+	phyd_prb_set_hi(glb_base, 0x01, 0x06);
+	phyd_prb_set_lo(glb_base, 0x01, 0x07);
+	tmp = readl(glb_base + SSPXTP_DIG_GLB_88);
+	err_odd_15_0 = (tmp & GENMASK(15, 0));
+
+	seq_printf(s, "%d,%d,%d,%d\n", x, y,
+								((err_evn_19_16 << 16) | (err_odd_19_16 << 16) | err_evn_15_0 | err_odd_15_0),
+								((err_evn_19_16 << 16) | err_evn_15_0));
+
+	return ((err_evn_19_16 << 16) | (err_odd_19_16 << 16) | err_evn_15_0 | err_odd_15_0);
+}
+
+static int eyescan_sweep_seq_show(struct seq_file *s, void *v)
+{
+	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	struct mtk_xsphy *xsphy = dev_get_drvdata(dev->parent);
+	void __iomem *pbase = inst->port_base;
+	void __iomem *glb_base = xsphy->glb_base;
+	u32 errcnt;
+	struct eyescan_idx *ei = NULL;
+
+	ei = (struct eyescan_idx *)v;
+
+	if (ei->scan_done) {
+		seq_printf(s, "eye height = %d\n", ei->eye_h);
+		seq_printf(s, "eye width = %d\n", ei->eye_w);
+
+	} else {
+
+		if (ei->is_gen2)
+			errcnt = rx_eye_get_errcnt_g2(pbase, glb_base, s);
+		else
+			errcnt = rx_eye_get_errcnt(pbase, glb_base, s);
+
+		if (!errcnt) {
+			ei->tmp_eye_h++;
+			ei->tmp_eye_w = 1;
+		}
+	}
+
+	return 0;
+}
+
+static const struct seq_operations eyescan_sweep_seq_ops = {
+	.start = eyescan_sweep_seq_start,
+	.show = eyescan_sweep_seq_show,
+	.next = eyescan_sweep_seq_next,
+	.stop = eyescan_sweep_seq_stop,
+};
+
+static int proc_eyescan_sweep_open(struct inode *inode, struct file *file)
+{
+	int ret = seq_open(file, &eyescan_sweep_seq_ops);
+	struct seq_file *seq = file->private_data;
+
+	if (!ret)
+		seq->private = pde_data(inode);
+
+	return ret;
+}
+
+static const struct proc_ops proc_eyescan_sweep_fops = {
+	.proc_open = proc_eyescan_sweep_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = seq_release
+};
+
+static void *eyescan_simple_sweep_seq_start(struct seq_file *s, loff_t *pos)
+{
+	struct xsphy_instance *inst = s->private;
+	void __iomem *pbase = inst->port_base;
+	struct eyescan_idx *ei = &inst->ei;
+	s16 x;
+
+	mutex_lock(&inst->eyescan_lock);
+
+	if (*pos == 0) {
+		for (x = ei->x_left_max; x >= ei->x_left_min; x--)
+			rx_eye_set_x(pbase, (u16)x);
+
+		ei->x = ei->x_left_min;
+		ei->y = ei->y_upper_min;
+		rx_eye_set_y(pbase, (u16)ei->y);
+		ei->scan_up = 0;
+		ei->scan_done = 0;
+		ei->tmp_eye_h = 0;
+		ei->eye_h = 0;
+		ei->tmp_eye_w = 0;
+		ei->eye_w = 0;
+	} else if (ei->scan_done || *pos > EYE_SWEEP_MAX_RANGE) {
+		*pos = 0;
+		return NULL;
+	}
+	return ei;
+
+}
+
+static void update_eye_height_width_simple(struct eyescan_idx *ei)
+{
+	if (ei->tmp_eye_h && ei->scan_up)
+		ei->eye_h++;
+	if (ei->tmp_eye_w && !ei->scan_up)
+		ei->eye_w++;
+	ei->tmp_eye_h = 0;
+	ei->tmp_eye_w = 0;
+}
+
+static void *eyescan_simple_sweep_seq_next(struct seq_file *s, void *v, loff_t *pos)
+{
+	struct xsphy_instance *inst = s->private;
+	struct device *dev = &inst->phy->dev;
+	void __iomem *pbase = inst->port_base;
+	struct eyescan_idx *ei = NULL;
+
+	ei = (struct eyescan_idx *)v;
+
+	(*pos)++;
+
+	if (*pos > EYE_SWEEP_MAX_RANGE || ei->scan_done) {
+		dev_info(dev, "Eye scan done x: %d, y: %d\n", ei->x, ei->y);
+		return NULL;
+	} else if (ei->y == ei->y_upper_min && ei->scan_up == 0) {
+		if (ei->x == ei->x_right_max) {
+			ei->x = ei->x_right_min;
+			rx_eye_set_x(pbase, (u16)ei->x);
+			for (ei->y = ei->y_bottom_max; ei->y >= ei->y_bottom_min; ei->y--)
+				rx_eye_set_y(pbase, (u16)ei->y);
+			ei->y = ei->y_bottom_min;
+			ei->scan_up = 1;
+
+		} else if (ei->x == ei->x_left_max) {
+			ei->x = ei->x_right_min;
+			rx_eye_set_x(pbase, (u16)ei->x);
+		} else {
+			ei->x++;
+			rx_eye_set_x(pbase, (u16)ei->x);
+		}
+		dev_info(dev, "Eye scan right x: %d, y: %d left_min: %d left_max: %d right_min: %d right_max: %d\n",
+			ei->x, ei->y, ei->x_left_min, ei->x_left_max, ei->x_right_min, ei->x_right_max);
+	} else if (ei->x == ei->x_right_min && ei->scan_up == 1) {
+		if (ei->y == ei->y_upper_max) {
+			ei->scan_done = 1;
+		} else if (ei->y == ei->y_bottom_max) {
+			ei->y = ei->y_upper_min;
+			rx_eye_set_y(pbase, (u16)ei->y);
+		} else {
+			ei->y++;
+			rx_eye_set_y(pbase, (u16)ei->y);
+		}
+		dev_info(dev, "Eye scan up x: %d, y: %d\n", ei->x, ei->y);
+	} else {
+		dev_info(dev, "Eye scan fault case\n");
+		ei->scan_done = 1;
+	}
+	update_eye_height_width_simple(ei);
+	return ei;
+}
+
+static const struct seq_operations eyescan_simple_sweep_seq_ops = {
+	.start = eyescan_simple_sweep_seq_start,
+	.show = eyescan_sweep_seq_show,
+	.next = eyescan_simple_sweep_seq_next,
+	.stop = eyescan_sweep_seq_stop,
+};
+
+static int proc_eyescan_simple_sweep_open(struct inode *inode, struct file *file)
+{
+	int ret = seq_open(file, &eyescan_simple_sweep_seq_ops);
+	struct seq_file *seq = file->private_data;
+
+	if (!ret)
+		seq->private = pde_data(inode);
+
+	return ret;
+}
+
+static const struct proc_ops proc_eyescan_simple_sweep_fops = {
+	.proc_open = proc_eyescan_simple_sweep_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = seq_release
+};
+
+static bool validate_and_assign(s16 *dest, s16 value, s16 min, s16 max)
+{
+	if (value < min || value > max)
+		return false;
+
+	*dest = value;
+	return true;
+}
+
+ssize_t proc_eyerange_write(struct file *file, const char __user *buffer, size_t count, loff_t *pos)
+{
+	struct seq_file *s = file->private_data;
+	struct xsphy_instance *inst = s->private;
+
+	char buf[100];
+	int ret;
+	s16 values[8];
+
+	// Copy data from user space
+	if (count >= sizeof(buf)) {
+		dev_info(&inst->phy->dev, "Input too large\n");
+		return -EINVAL;
+	}
+
+	if (copy_from_user(buf, buffer, count))
+		return -EFAULT;
+
+	buf[count] = '\0';  // Null-terminate string
+
+	// Parse input string
+	ret = sscanf(buf, "%hd %hd %hd %hd %hd %hd %hd %hd",
+				&values[0], &values[1], &values[2], &values[3],
+				&values[4], &values[5], &values[6], &values[7]);
+	if (ret != 8) {
+		dev_info(&inst->phy->dev, "Invalid format\n");
+		return -EINVAL;
+	}
+
+	// Validate and assign values
+	if (!validate_and_assign(&inst->ei.x_left_min, values[0], EYE_X_LEFT_MIN, EYE_X_LEFT_MAX) ||
+		!validate_and_assign(&inst->ei.x_left_max, values[1], EYE_X_LEFT_MIN, EYE_X_LEFT_MAX) ||
+		!validate_and_assign(&inst->ei.x_right_min, values[2], EYE_X_RIGHT_MIN, EYE_X_RIGHT_MAX) ||
+		!validate_and_assign(&inst->ei.x_right_max, values[3], EYE_X_RIGHT_MIN, EYE_X_RIGHT_MAX) ||
+		!validate_and_assign(&inst->ei.y_bottom_min, values[4], EYE_Y_BOTTOM_MIN, EYE_Y_BOTTOM_MAX) ||
+		!validate_and_assign(&inst->ei.y_bottom_max, values[5], EYE_Y_BOTTOM_MIN, EYE_Y_BOTTOM_MAX) ||
+		!validate_and_assign(&inst->ei.y_upper_min, values[6], EYE_Y_UPPER_MIN, EYE_Y_UPPER_MAX) ||
+		!validate_and_assign(&inst->ei.y_upper_max, values[7], EYE_Y_UPPER_MIN, EYE_Y_UPPER_MAX)) {
+		dev_info(&inst->phy->dev, "Values out of range\n");
+		return -EINVAL;
+	}
+
+	return count;
+}
+
+static int proc_eyerange_show(struct seq_file *s, void *unused)
+{
+	struct xsphy_instance *inst = s->private;
+
+	seq_printf(s,
+				"%d %d %d %d %d %d %d %d\n",
+				inst->ei.x_left_min,
+				inst->ei.x_left_max,
+				inst->ei.x_right_min,
+				inst->ei.x_right_max,
+				inst->ei.y_bottom_min,
+				inst->ei.y_bottom_max,
+				inst->ei.y_upper_min,
+				inst->ei.y_upper_max);
+
+	return 0;
+}
+
+static int proc_eyerange_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, proc_eyerange_show, pde_data(inode));
+}
+
+static const struct  proc_ops proc_eyerange_fops = {
+	.proc_open = proc_eyerange_open,
+	.proc_write = proc_eyerange_write,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static void mtk_xsphy_eye_idx_init(struct xsphy_instance *inst)
+{
+	if (!inst)
+		return;
+
+	memset(&inst->ei, 0x0, sizeof(struct eyescan_idx));
+	inst->ei.x_left_min = EYE_X_DEFAULT_LEFT_MIN;
+	inst->ei.x_left_max = EYE_X_DEFAULT_LEFT_MAX;
+	inst->ei.x_right_min = EYE_X_DEFAULT_RIGHT_MIN;
+	inst->ei.x_right_max = EYE_X_DEFAULT_RIGHT_MAX;
+	inst->ei.y_bottom_min = EYE_Y_DEFAULT_BOTTOM_MIN;
+	inst->ei.y_bottom_max = EYE_Y_DEFAULT_BOTTOM_MAX;
+	inst->ei.y_upper_min = EYE_Y_DEFAULT_UPPER_MIN;
+	inst->ei.y_upper_max = EYE_Y_DEFAULT_UPPER_MAX;
+	inst->ei.aeq_params.configured = false;
+}
+
 static int u3_phy_procfs_init(struct mtk_xsphy *xsphy,
 			struct xsphy_instance *inst)
 {
@@ -1031,6 +2388,57 @@ static int u3_phy_procfs_init(struct mtk_xsphy *xsphy,
 		ret = -ENOMEM;
 		goto err1;
 	}
+
+	file = proc_create_data(EYESCAN_SIMPLE_SWEEP_STR, 0400,
+			phy_root, &proc_eyescan_simple_sweep_fops, inst);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", EYESCAN_SIMPLE_SWEEP_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	file = proc_create_data(EYESCAN_SWEEP_STR, 0400,
+			phy_root, &proc_eyescan_sweep_fops, inst);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", EYESCAN_SWEEP_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	file = proc_create_data(EYESCAN_INIT_STR, 0400,
+			phy_root, &proc_eyescan_init_fops, inst);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", EYESCAN_INIT_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	file = proc_create_data(EYESCAN_GEN2_INIT_STR, 0400,
+			phy_root, &proc_eyescan_gen2_init_fops, inst);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", EYESCAN_GEN2_INIT_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	file = proc_create_data(EYESCAN_AEQ_PARAM_STR, 0200,
+			phy_root, &proc_eyeaeq_fops, inst);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", EYESCAN_AEQ_PARAM_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	file = proc_create_data(EYESCAN_RANGE_STR, 0600,
+			phy_root, &proc_eyerange_fops, inst);
+	if (!file) {
+		dev_info(dev, "failed to creat proc file: %s\n", EYESCAN_RANGE_STR);
+		ret = -ENOMEM;
+		goto err1;
+	}
+
+	mtk_xsphy_eye_idx_init(inst);
+	mutex_init(&inst->eyescan_lock);
 
 	inst->phy_root = phy_root;
 	return 0;

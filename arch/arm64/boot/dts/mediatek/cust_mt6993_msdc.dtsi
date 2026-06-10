@@ -26,10 +26,10 @@
 	msdc-spm-hw-supp;
 	enable-dll;
 	cd-debounce-delay-ms = <0>;
-	cd-gpios = <&pio 50 GPIO_ACTIVE_LOW>;
-	cd-gpio-num = <50>;
-	vmmc-supply = <&mt6661_5_ldc0_4_eint_high>;
-	vqmmc-supply = <&mt6661_5_ldc0_3>;
+	//cd-gpios = <&pio 50 GPIO_ACTIVE_LOW>;
+	//cd-gpio-num = <50>;
+	//vmmc-supply = <&mt6661_5_ldc0_4_eint_high>;
+//	vqmmc-supply = <&mt6661_5_ldc0_3>;
 	no-mmc;
 	no-sdio;
 	mediatek,mmc-qos;
@@ -55,7 +55,7 @@
 	msdc-spm-hw-supp;
 	enable-dll;
 	eint-gpios = <&pio 215 GPIO_ACTIVE_LOW>;
-	vmmc-supply = <&mt6661_5_ldc0_4_eint_high>;
+	//vmmc-supply = <&mt6661_5_ldc0_4_eint_high>;
 	vqmmc-supply = <&mt6661_3_lnc0_10>;
 	no-mmc;
 	no-sd;

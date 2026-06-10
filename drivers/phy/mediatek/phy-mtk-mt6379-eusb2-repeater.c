@@ -18,8 +18,13 @@
 #include <linux/uaccess.h>
 #include <linux/pm_wakeup.h>
 #include <linux/pm_wakeirq.h>
+#include <linux/kobject.h>
+#include <linux/device.h>
+#include <linux/slab.h>
+#include <linux/string.h>
 
 #include "phy-mtk-io.h"
+#include "../../misc/mediatek/extcon/extcon-mtk-usb.h"
 
 /* MT6379 eUSB2 control registers */
 #define RG_USB_EN_SRC_SEL		(1 << 5)
@@ -208,10 +213,14 @@
 #define EUSB2_HSTX_SR_STR	"eusb2_hstx_sr"
 #define EUSB2_REV_COM		"eusb2_tx_swing_enhance"
 
+#define REPEATER_SYSFS_CLASS_NAME "usb_enhance"
+#define REPEATER_SYSFS_DEVICE_NAME "usb_enhance"
+
 struct eusb2_repeater {
 	struct device *dev;
 	struct regmap *regmap;
 	struct phy *phy;
+	struct delayed_work dwork;
 	u16 base;
 	/* sw efuse */
 	int intr_cal;
@@ -251,6 +260,35 @@ struct eusb2_repeater {
 	struct proc_dir_entry *root;
 	struct work_struct procfs_work;
 	struct workqueue_struct *wq;
+	u8			repeater_enhance_support_mode;
+	u8			repeater_enhance_state;
+	u8			repeater_current_eye_tune;
+	u8			repeater_product_enable;
+	u8			repeater_storage_enable;
+	u8			repeater_carwith_enable;
+	u8			repeater_global_enable;
+	u8			repeater_not_single_port;
+	u8			repeater_which_port;
+	u8			repeater_dynamic_adjustment;
+	u32			*param_override_seq;
+	u8			param_override_seq_cnt;
+	u32			*param_override_seq_port1;
+	u8			param_override_seq_cnt_port1;
+	u32			*param_override_seq_carwith;
+	u8			param_override_seq_cnt_carwith;
+	u32			*param_override_seq_carwith_port1;
+	u8			param_override_seq_cnt_carwith_port1;
+	u32			*host_param_override_seq;
+	u8			host_param_override_seq_cnt;
+	u32			*host_param_override_seq_port1;
+	u8			host_param_override_seq_cnt_port1;
+	u32			*host_param_override_seq_storage;
+	u8			host_param_override_seq_cnt_storage;
+	u32			*host_param_override_seq_storage_port1;
+	u8			host_param_override_seq_cnt_storage_port1;
+	/*sysfs*/
+	struct device *sysfs_dev;
+	bool otg_gender;
 };
 
 #define EUSB2_PROP_NUM 7
@@ -264,6 +302,13 @@ struct eusb2_prop_table {
 	int term_ofs;
 	int intr_ofs;
 };
+
+typedef enum{
+	TYPE_HOST_NORMAL = 0,
+	TYPE_HOST_STORAGE = 1,
+	TYPE_DEVICE_NORMAL = 0,
+	TYPE_DEVICE_CARWITH = 2,
+}Repeater_Type;
 
 static void eusb2_rptr_prop_table_parse(struct eusb2_repeater *rptr)
 {
@@ -405,6 +450,561 @@ static void eusb2_rptr_prop_apply(struct eusb2_repeater *rptr, bool is_host, int
 	}
 }
 
+static enum phy_mode new_role_value = PHY_MODE_INVALID;
+static enum phy_mode last_data_role = PHY_MODE_INVALID;
+static struct class *eusb2_repeater_class = NULL;
+
+static void eusb2_repeater_send_uevent(struct work_struct *work)
+{
+	struct eusb2_repeater *rptr = container_of(
+		work, struct eusb2_repeater, dwork.work);
+	char *envp[2];
+	char state_str[32];
+
+	rptr->repeater_enhance_state = 0;
+
+	snprintf(state_str, sizeof(state_str), "USB_ENHANCE_STATE=%d", rptr->repeater_enhance_state);
+
+	envp[0] = state_str;
+	envp[1] = NULL;
+
+	kobject_uevent_env(&rptr->dev->kobj, KOBJ_CHANGE, envp);
+	pr_err("send event %s\n", state_str);
+}
+
+static void eusb2_repeater_send_uevent_function(struct eusb2_repeater *rptr)
+{
+	char *envp[2];
+	char state_str[32];
+
+	snprintf(state_str, sizeof(state_str), "USB_ENHANCE_STATE=%d", rptr->repeater_enhance_state);
+
+	envp[0] = state_str;
+	envp[1] = NULL;
+
+	kobject_uevent_env(&rptr->dev->kobj, KOBJ_CHANGE, envp);
+	pr_err("send event %s\n", state_str);
+}
+
+static void phy_check_role_event(enum phy_mode role,struct eusb2_repeater *rptr)
+{
+	new_role_value = role;
+	pr_err("new_role %d  , last_role%d\n", new_role_value, last_data_role);
+
+	if( rptr->repeater_enhance_state == TYPE_DEVICE_CARWITH){
+		switch(last_data_role)
+		{
+			case PHY_MODE_USB_HOST:
+			{
+				switch(new_role_value)
+				{
+					case PHY_MODE_USB_HOST:
+						break;
+					case PHY_MODE_USB_DEVICE:
+						break;
+					case PHY_MODE_INVALID:
+						break;
+					default:
+						pr_err("Hi MI PHY_MODE_USB_HOST "
+							"Invalid value phy mode\n");
+						break;
+				}
+				break;
+			}
+			case PHY_MODE_USB_DEVICE:
+			{
+				switch(new_role_value)
+				{
+					case PHY_MODE_USB_HOST:
+						break;
+					case PHY_MODE_USB_DEVICE:
+						break;
+					case PHY_MODE_INVALID:
+						cancel_delayed_work(&rptr->dwork);
+						udelay(100);
+						schedule_delayed_work(&rptr->dwork,
+							msecs_to_jiffies(300000));
+						break;
+					default:
+						pr_err("Hi MI PHY_MODE_USB_DEVICE "
+							"Invalid value phy mode\n");
+						break;
+				}
+				break;
+			}
+			case PHY_MODE_INVALID:
+			{
+				switch(new_role_value)
+				{
+					case PHY_MODE_USB_HOST:
+						cancel_delayed_work(&rptr->dwork);
+						rptr->repeater_enhance_state = TYPE_HOST_NORMAL;
+						eusb2_repeater_send_uevent_function(rptr);
+						break;
+					case PHY_MODE_USB_DEVICE:
+						cancel_delayed_work(&rptr->dwork);
+						break;
+					case PHY_MODE_INVALID:
+						break;
+					default:
+						pr_err("Hi MI PHY_MODE_INVALID "
+							"Invalid value phy mode\n");
+						break;
+				}
+				break;
+			}
+			default:
+				pr_err("Hi MI Invalid value phy mode\n");
+				break;
+		}
+	}
+	last_data_role = new_role_value;
+	pr_err("phy_check_role_event done!\n");
+}
+
+static ssize_t usb_enhance_support_mode_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct eusb2_repeater *rptr = dev_get_drvdata(dev);
+
+	if (!rptr)
+		return -ENODEV;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", rptr->repeater_enhance_support_mode);
+}
+static DEVICE_ATTR_RO(usb_enhance_support_mode);
+
+static ssize_t current_eye_tune_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct eusb2_repeater *rptr = dev_get_drvdata(dev);
+
+	if (!rptr)
+		return -ENODEV;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", rptr->repeater_current_eye_tune);
+}
+static DEVICE_ATTR_RO(current_eye_tune);
+
+static ssize_t usb_enhance_state_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct eusb2_repeater *rptr = dev_get_drvdata(dev);
+
+	if (!rptr)
+		return -ENODEV;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", rptr->repeater_enhance_state);
+}
+
+static ssize_t usb_enhance_state_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct eusb2_repeater *rptr = dev_get_drvdata(dev);
+	unsigned long val;
+	int ret;
+
+	if (!rptr)
+		return -ENODEV;
+
+	ret = kstrtoul(buf, 0, &val);
+	if (ret < 0)
+		return ret;
+
+	rptr->repeater_enhance_state = val;
+	eusb2_repeater_send_uevent_function(rptr);
+
+	if(rptr->repeater_enhance_state == TYPE_DEVICE_CARWITH)
+	{
+		cancel_delayed_work(&rptr->dwork);
+		udelay(100);
+		schedule_delayed_work(&rptr->dwork, msecs_to_jiffies(300000));
+		dev_err(dev, "usb_ready_use updated to: %d\n", rptr->repeater_enhance_state);
+	}
+
+	return count;
+}
+static DEVICE_ATTR(usb_enhance_state, 0644, usb_enhance_state_show, usb_enhance_state_store);
+
+static ssize_t usb_dynamic_adjustment_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct eusb2_repeater *rptr = dev_get_drvdata(dev);
+	if (!rptr)
+		return -ENODEV;
+
+	return scnprintf(buf, PAGE_SIZE, "%d\n", rptr->repeater_dynamic_adjustment);
+}
+
+static ssize_t usb_dynamic_adjustment_store(struct device *dev,
+		struct device_attribute *attr,const char *buf, size_t count)
+{
+	struct eusb2_repeater *rptr = dev_get_drvdata(dev);
+	if (!rptr)
+		return -ENODEV;
+	unsigned long val;
+	int ret;
+
+	ret = kstrtoul(buf, 0, &val);
+	if (ret < 0)
+	    return ret;
+	if(val== 1)
+		rptr->repeater_dynamic_adjustment = 1;
+	else
+		rptr->repeater_dynamic_adjustment = 0;
+
+	dev_err(dev, "usb_ready_use updated to: %d\n", rptr->repeater_dynamic_adjustment);
+	return count;
+}
+static DEVICE_ATTR(usb_dynamic_adjustment, 0644,
+		usb_dynamic_adjustment_show, usb_dynamic_adjustment_store);
+
+static struct attribute *repeater_sysfs_attrs[] = {
+	&dev_attr_usb_enhance_support_mode.attr,
+	&dev_attr_current_eye_tune.attr,
+	&dev_attr_usb_enhance_state.attr,
+	&dev_attr_usb_dynamic_adjustment.attr,
+	NULL,
+};
+
+static struct attribute_group repeater_sysfs_attr_group = {
+	.name = NULL,
+	.attrs = repeater_sysfs_attrs,
+};
+
+static int repeater_sysfs_init(struct eusb2_repeater *rptr, struct device *dev)
+{
+	int ret;
+	struct device *my_dev;
+	bool class_created_here = false;
+
+	if (!eusb2_repeater_class) {
+		eusb2_repeater_class = class_create(REPEATER_SYSFS_CLASS_NAME);
+		if (IS_ERR(eusb2_repeater_class)) {
+			dev_err(dev, "Failed to create class %s\n", REPEATER_SYSFS_CLASS_NAME);
+			eusb2_repeater_class = NULL;
+			return PTR_ERR(eusb2_repeater_class);
+		}
+		class_created_here = true;
+	}
+
+	my_dev = device_create(eusb2_repeater_class, dev, MKDEV(0, 0), rptr,
+		REPEATER_SYSFS_DEVICE_NAME);
+
+	if (IS_ERR(my_dev)) {
+		dev_err(dev, "Failed to create sysfs device %s\n", REPEATER_SYSFS_DEVICE_NAME);
+		ret = PTR_ERR(my_dev);
+		goto device_error;
+	}
+
+	ret = sysfs_create_group(&my_dev->kobj, &repeater_sysfs_attr_group);
+	if (ret) {
+		dev_err(dev, "Failed to create sysfs attributes: %d\n", ret);
+		goto group_error;
+	}
+
+	rptr->sysfs_dev = my_dev;
+	dev_info(dev, "Sysfs nodes created for device %s\n", REPEATER_SYSFS_DEVICE_NAME);
+
+	return 0;
+
+group_error:
+	device_destroy(eusb2_repeater_class, MKDEV(0, 0));
+
+device_error:
+	if (class_created_here) {
+		class_destroy(eusb2_repeater_class);
+		eusb2_repeater_class = NULL;
+	}
+
+	return ret;
+}
+
+static void repeater_sysfs_cleanup(struct eusb2_repeater *rptr,struct device *dev)
+{
+	pr_info("Removing sysfs nodes\n");
+	if (rptr->sysfs_dev) {
+		if (eusb2_repeater_class){
+			sysfs_remove_group(&rptr->sysfs_dev->kobj, &repeater_sysfs_attr_group);
+			device_destroy(eusb2_repeater_class, MKDEV(0, 0));
+		}
+		rptr->sysfs_dev = NULL;
+	}
+
+
+	if (eusb2_repeater_class)
+		class_destroy(eusb2_repeater_class);
+
+	pr_info("Sysfs nodes removed\n");
+}
+
+static int xsphy_more_eyes_read_overrides(struct device *dev,
+	const char *prop, u32 **seq, u8 *seq_cnt)
+{
+	int num_elem, ret;
+
+	num_elem = of_property_count_elems_of_size(dev->of_node, prop, sizeof(**seq));
+	if(num_elem > 0){
+		if (num_elem % 2)
+		{
+			dev_err(dev, "invalid len for %s\n", prop);
+			return -EINVAL;
+		}
+
+		*seq_cnt = num_elem;
+		*seq = devm_kcalloc(dev, num_elem, sizeof(**seq), GFP_KERNEL);
+		if(!*seq)
+			return -ENOMEM;
+
+		ret = of_property_read_u32_array(dev->of_node, prop, *seq, num_elem);
+		if(ret){
+			dev_err(dev, "%s failed to read %d\n", prop, ret);
+		}
+	}
+
+	return 0;
+}
+
+static int xsphy_more_eyes_u2_property(struct eusb2_repeater *rptr)
+{
+	struct device *dev = rptr->dev;
+	int ret = 0;
+
+	/*device normal & factroy*/
+#ifdef CONFIG_FACTORY_BUILD
+	ret = xsphy_more_eyes_read_overrides(dev,
+			"mediatek,param-override-seq-factory",
+			&rptr->param_override_seq,
+			&rptr->param_override_seq_cnt);
+
+	pr_err("Hi MI usb_can_usb += factory devices port0!\n");
+	if(ret < 0)
+		goto err_probe;
+
+	if(rptr->repeater_not_single_port == 1){
+		ret = xsphy_more_eyes_read_overrides(dev,
+				"mediatek,param-override-seq-factory-port1",
+				&rptr->param_override_seq_port1,
+				&rptr->param_override_seq_cnt_port1);
+
+		pr_err("Hi MI usb_can_usb += factory devices port1!\n");
+		if(ret < 0)
+			goto err_probe;
+	}
+#else
+	if(rptr->repeater_global_enable == 1){
+		ret = xsphy_more_eyes_read_overrides(dev,
+				"mediatek,param-override-seq-global",
+				&rptr->param_override_seq,
+				&rptr->param_override_seq_cnt);
+
+		pr_err("Hi MI usb_can_usb += global normal devices port0!\n");
+		if(ret < 0)
+			goto err_probe;
+
+		/*device carwith*/
+		if(rptr->repeater_carwith_enable == 1){
+			ret = xsphy_more_eyes_read_overrides(dev,
+				"mediatek,param-override-seq-global-carwith",
+				&rptr->param_override_seq_carwith,
+				&rptr->param_override_seq_cnt_carwith);
+
+			rptr->repeater_enhance_support_mode |= TYPE_DEVICE_CARWITH;
+			pr_err("HI MI usb_can_use += global carwith port0!\n");
+			if(ret < 0)
+				goto err_probe;
+
+			if(rptr->repeater_not_single_port == 1){
+				ret = xsphy_more_eyes_read_overrides(dev,
+					"mediatek,param-override-seq-global-carwith-port1",
+					&rptr->param_override_seq_carwith_port1,
+					&rptr->param_override_seq_cnt_carwith_port1);
+
+				rptr->repeater_enhance_support_mode |= TYPE_DEVICE_CARWITH;
+				pr_err("Hi MI usb_can_usb += global carwith port1!\n");
+				if(ret < 0)
+					goto err_probe;
+			}
+		}
+
+		if(rptr->repeater_not_single_port == 1){
+			ret = xsphy_more_eyes_read_overrides(dev,
+				"mediatek,param-override-seq-global-port1",
+				&rptr->param_override_seq_port1,
+				&rptr->param_override_seq_cnt_port1);
+
+			pr_err("Hi MI usb_can_usb += global normal devices  port1!\n");
+			if(ret < 0)
+				goto err_probe;
+		}
+	} else {
+		ret = xsphy_more_eyes_read_overrides(dev,
+				"mediatek,param-override-seq",
+				&rptr->param_override_seq,
+				&rptr->param_override_seq_cnt);
+
+		pr_err("Hi MI usb_can_usb += normal devices port0!\n");
+		if(ret < 0)
+			goto err_probe;
+
+		/*device carwith*/
+		if(rptr->repeater_carwith_enable == 1){
+			ret = xsphy_more_eyes_read_overrides(dev,
+					"mediatek,param-override-seq-carwith",
+					&rptr->param_override_seq_carwith,
+					&rptr->param_override_seq_cnt_carwith);
+
+			rptr->repeater_enhance_support_mode |= TYPE_DEVICE_CARWITH;
+			pr_err("HI MI usb_can_use += carwith port0!\n");
+			if(ret < 0)
+				goto err_probe;
+
+			if(rptr->repeater_not_single_port == 1){
+				ret = xsphy_more_eyes_read_overrides(dev,
+						"mediatek,param-override-seq-carwith-port1",
+						&rptr->param_override_seq_carwith_port1,
+						&rptr->param_override_seq_cnt_carwith_port1);
+
+				rptr->repeater_enhance_support_mode |= TYPE_DEVICE_CARWITH;
+				pr_err("Hi MI usb_can_usb += carwith port1!\n");
+				if(ret < 0)
+					goto err_probe;
+			}
+		}
+
+		if(rptr->repeater_not_single_port == 1){
+			ret = xsphy_more_eyes_read_overrides(dev,
+					"mediatek,param-override-seq-port1",
+					&rptr->param_override_seq_port1,
+					&rptr->param_override_seq_cnt_port1);
+
+			pr_err("Hi MI usb_can_usb += normal devices port1!\n");
+			if(ret < 0)
+				goto err_probe;
+		}
+	}
+#endif
+
+    /*host normal & factroy*/
+#ifdef CONFIG_FACTORY_BUILD
+	ret = xsphy_more_eyes_read_overrides(dev,
+			"mediatek,host-param-override-seq-factory",
+			&rptr->host_param_override_seq,
+			&rptr->host_param_override_seq_cnt);
+
+	pr_err("HI MI usb_can_use += factory host port0!\n");
+	if(ret < 0)
+		goto err_probe;
+
+	if(rptr->repeater_not_single_port == 1){
+		ret = xsphy_more_eyes_read_overrides(dev,
+				"mediatek,host-param-override-seq-factory-port1",
+				&rptr->host_param_override_seq_port1,
+				&rptr->host_param_override_seq_cnt_port1);
+
+		pr_err("HI MI usb_can_use += factory host port1!\n");
+		if(ret < 0)
+			goto err_probe;
+	}
+#else
+	if(rptr->repeater_global_enable == 1){
+		ret = xsphy_more_eyes_read_overrides(dev,
+				"mediatek,host-param-override-seq-global",
+				&rptr->host_param_override_seq,
+				&rptr->host_param_override_seq_cnt);
+
+		pr_err("HI MI usb_can_use += global normal host port0!\n");
+		if(ret < 0)
+			goto err_probe;
+
+		/*host storage*/
+		if(rptr->repeater_storage_enable == 1){
+			ret = xsphy_more_eyes_read_overrides(dev,
+					"mediatek,host-param-override-seq-global-storage",
+					&rptr->host_param_override_seq_storage,
+					&rptr->host_param_override_seq_cnt_storage);
+
+			rptr->repeater_enhance_support_mode |= TYPE_HOST_STORAGE;
+			pr_err("HI MI usb_can_use += global storage port0!\n");
+			if(ret < 0)
+				goto err_probe;
+
+			if(rptr->repeater_not_single_port == 1){
+				ret = xsphy_more_eyes_read_overrides(dev,
+						"mediatek,host-param-override-seq-global-storage-port1",
+						&rptr->host_param_override_seq_storage_port1,
+						&rptr->host_param_override_seq_cnt_storage_port1);
+
+				rptr->repeater_enhance_support_mode |= TYPE_HOST_STORAGE;
+				pr_err("HI MI usb_can_use += global storage port1!\n");
+				if(ret < 0)
+					goto err_probe;
+			}
+		}
+
+		if(rptr->repeater_not_single_port == 1){
+			ret = xsphy_more_eyes_read_overrides(dev,
+					"mediatek,host-param-override-seq-global-port1",
+					&rptr->host_param_override_seq_port1,
+					&rptr->host_param_override_seq_cnt_port1);
+
+			pr_err("HI MI usb_can_use += global normal host port1!\n");
+			if(ret < 0)
+				goto err_probe;
+		}
+	} else {
+		ret = xsphy_more_eyes_read_overrides(dev,
+				"mediatek,host-param-override-seq",
+				&rptr->host_param_override_seq,
+				&rptr->host_param_override_seq_cnt);
+
+		pr_err("HI MI usb_can_use += normal host port0!\n");
+		if(ret < 0)
+			goto err_probe;
+
+		/*host storage*/
+		if(rptr->repeater_storage_enable == 1){
+			ret = xsphy_more_eyes_read_overrides(dev,
+					"mediatek,host-param-override-seq-storage",
+					&rptr->host_param_override_seq_storage,
+					&rptr->host_param_override_seq_cnt_storage);
+
+			rptr->repeater_enhance_support_mode |= TYPE_HOST_STORAGE;
+			pr_err("HI MI usb_can_use += storage port0!\n");
+			if(ret < 0)
+				goto err_probe;
+
+			if(rptr->repeater_not_single_port == 1){
+				ret = xsphy_more_eyes_read_overrides(dev,
+						"mediatek,host-param-override-seq-storage-port1",
+						&rptr->host_param_override_seq_storage_port1,
+						&rptr->host_param_override_seq_cnt_storage_port1);
+
+				rptr->repeater_enhance_support_mode |= TYPE_HOST_STORAGE;
+				pr_err("HI MI usb_can_use += storage port1!\n");
+				if(ret < 0)
+					goto err_probe;
+			}
+		}
+
+		if(rptr->repeater_not_single_port == 1){
+			ret = xsphy_more_eyes_read_overrides(dev,
+					"mediatek,host-param-override-seq-port1",
+					&rptr->host_param_override_seq_port1,
+					&rptr->host_param_override_seq_cnt_port1);
+
+			pr_err("HI MI usb_can_use += normal host port1!\n");
+			if(ret < 0)
+				goto err_probe;
+		}
+	}
+#endif
+
+err_probe:
+	return ret;
+}
+
 static void eusb2_rptr_prop_parse(struct eusb2_repeater *rptr)
 {
 	struct device *dev = rptr->dev;
@@ -417,75 +1017,78 @@ static void eusb2_rptr_prop_parse(struct eusb2_repeater *rptr)
 		rptr->usb20_fs_sr =-EINVAL;
 
 	if (device_property_read_u32(dev, "mediatek,eusb20-fsrx-hys-sel",
-				&rptr->eusb20_fsrx_hys_sel) || rptr->eusb20_fsrx_hys_sel < 0)
+		&rptr->eusb20_fsrx_hys_sel) || rptr->eusb20_fsrx_hys_sel < 0)
 		rptr->eusb20_fsrx_hys_sel =-EINVAL;
 
-	/* Device */
-	if (device_property_read_u32(dev, "mediatek,vrt-sel",
+	if(rptr->repeater_product_enable){
+		xsphy_more_eyes_u2_property(rptr);
+	} else {
+		/* Device */
+		if (device_property_read_u32(dev, "mediatek,vrt-sel",
 				&rptr->vrt_sel) || rptr->vrt_sel < 0)
-		rptr->vrt_sel =-EINVAL;
+			rptr->vrt_sel =-EINVAL;
 
-	if (device_property_read_u32(dev, "mediatek,rx-sqth",
+		if (device_property_read_u32(dev, "mediatek,rx-sqth",
 				&rptr->rx_sqth) || rptr->rx_sqth < 0)
-		rptr->rx_sqth = -EINVAL;
+			rptr->rx_sqth = -EINVAL;
 
-	if (device_property_read_u32(dev, "mediatek,discth",
+		if (device_property_read_u32(dev, "mediatek,discth",
 				&rptr->discth) || rptr->discth < 0)
-		rptr->discth = -EINVAL;
+			rptr->discth = -EINVAL;
 
-	if (device_property_read_u32(dev, "mediatek,pre-emphasis",
+		if (device_property_read_u32(dev, "mediatek,pre-emphasis",
 				&rptr->pre_emphasis) || rptr->pre_emphasis < 0)
-		rptr->pre_emphasis = -EINVAL;
+			rptr->pre_emphasis = -EINVAL;
 
-	if (device_property_read_u32(dev, "mediatek,equalization",
+		if (device_property_read_u32(dev, "mediatek,equalization",
 				&rptr->equalization) || rptr->equalization < 0)
-		rptr->equalization = -EINVAL;
+			rptr->equalization = -EINVAL;
 
-	dev_info(dev, "vrt-vref:%d, rx_sqth:%d, discth:%d, pre-emphasis:%d, eq:%d",
-		rptr->vrt_sel, rptr->rx_sqth, rptr->discth, rptr->pre_emphasis,
-		rptr->equalization);
-
-	/* Host */
-	if (device_property_read_u32(dev, "mediatek,host-vrt-sel",
+		dev_info(dev, "vrt-vref:%d, rx_sqth:%d, discth:%d, pre-emphasis:%d, eq:%d",
+			rptr->vrt_sel, rptr->rx_sqth, rptr->discth, rptr->pre_emphasis,
+			rptr->equalization);
+		/* Host */
+		if (device_property_read_u32(dev, "mediatek,host-vrt-sel",
 				&rptr->host_vrt_sel) || rptr->host_vrt_sel < 0)
-		rptr->host_vrt_sel =-EINVAL;
+			rptr->host_vrt_sel =-EINVAL;
 
-	if (device_property_read_u32(dev, "mediatek,host-rx-sqth",
+		if (device_property_read_u32(dev, "mediatek,host-rx-sqth",
 				&rptr->host_rx_sqth) || rptr->host_rx_sqth < 0)
-		rptr->host_rx_sqth = -EINVAL;
+			rptr->host_rx_sqth = -EINVAL;
 
-	if (device_property_read_u32(dev, "mediatek,host-discth",
+		if (device_property_read_u32(dev, "mediatek,host-discth",
 				&rptr->host_discth) || rptr->host_discth < 0)
-		rptr->host_discth = -EINVAL;
+			rptr->host_discth = -EINVAL;
 
-	if (device_property_read_u32(dev, "mediatek,host-pre-emphasis",
+		if (device_property_read_u32(dev, "mediatek,host-pre-emphasis",
 				&rptr->host_pre_emphasis) || rptr->host_pre_emphasis < 0)
-		rptr->host_pre_emphasis = -EINVAL;
+			rptr->host_pre_emphasis = -EINVAL;
 
-	if (device_property_read_u32(dev, "mediatek,host-equalization",
+		if (device_property_read_u32(dev, "mediatek,host-equalization",
 				&rptr->host_equalization) || rptr->host_equalization < 0)
-		rptr->host_equalization = -EINVAL;
+			rptr->host_equalization = -EINVAL;
 
-	dev_info(dev, "host-vrt-vref:%d, host-rx-sqth:%d, host-discth:%d, host-pre-emphasis:%d, host-eq:%d",
-		rptr->host_vrt_sel, rptr->host_rx_sqth, rptr->host_discth, rptr->host_pre_emphasis,
-		rptr->host_equalization);
-
-	/* HW efuse, SW mode */
-	if (device_property_read_string(dev, "mediatek,intr-ofs",
+		dev_info(dev, "host-vrt-vref:%d, host-rx-sqth:%d, host-discth:%d,"
+			"host-pre-emphasis:%d, host-eq:%d",
+			rptr->host_vrt_sel, rptr->host_rx_sqth, rptr->host_discth,
+			rptr->host_pre_emphasis, rptr->host_equalization);
+		/* HW efuse, SW mode */
+		if (device_property_read_string(dev, "mediatek,intr-ofs",
 				&ofs_str) || kstrtoint(ofs_str, 10, &rptr->intr_ofs) < 0)
-		rptr->intr_ofs = -(RG_USB20_INTR_CAL_MASK + 1);
+			rptr->intr_ofs = -(RG_USB20_INTR_CAL_MASK + 1);
 
-	if (device_property_read_string(dev, "mediatek,term-ofs",
+		if (device_property_read_string(dev, "mediatek,term-ofs",
 				&ofs_str) || kstrtoint(ofs_str, 10, &rptr->term_ofs) < 0)
-		rptr->term_ofs = -(RG_USB20_TERM_CAL_MASK + 1);
+			rptr->term_ofs = -(RG_USB20_TERM_CAL_MASK + 1);
 
-	if (device_property_read_string(dev, "mediatek,host-intr-ofs",
+		if (device_property_read_string(dev, "mediatek,host-intr-ofs",
 				&ofs_str) || kstrtoint(ofs_str, 10, &rptr->host_intr_ofs) < 0)
-		rptr->host_intr_ofs = -(RG_USB20_INTR_CAL_MASK + 1);
+			rptr->host_intr_ofs = -(RG_USB20_INTR_CAL_MASK + 1);
 
-	if (device_property_read_string(dev, "mediatek,host-term-ofs",
+		if (device_property_read_string(dev, "mediatek,host-term-ofs",
 				&ofs_str) || kstrtoint(ofs_str, 10, &rptr->host_term_ofs) < 0)
-		rptr->host_term_ofs = -(RG_USB20_TERM_CAL_MASK + 1);
+			rptr->host_term_ofs = -(RG_USB20_TERM_CAL_MASK + 1);
+	}
 
 	/* Read efuse RG to set this default value */
 	regmap_read(rptr->regmap, rptr->base + PHYA_U2_CR0_1, &val);
@@ -501,9 +1104,219 @@ static void eusb2_rptr_prop_parse(struct eusb2_repeater *rptr)
 
 }
 
+/*Load parameter configuration and handle missing and misplaced values*/
+static void xsphy_u2_update_vaule_seq(struct eusb2_repeater *rptr,
+	u32 *seq, u8 cnt)
+{
+	int i=0;
+	if(seq == NULL)
+		return;
+
+	if(rptr->repeater_dynamic_adjustment == 1)
+		return;
+
+	rptr->discth = -EINVAL;
+	rptr->equalization = -EINVAL;
+	rptr->vrt_sel = -EINVAL;
+	rptr->pre_emphasis = -EINVAL;
+	rptr->rx_sqth = -EINVAL;
+	rptr->term_ofs = -EINVAL;
+	rptr->intr_ofs = -EINVAL;
+
+	while(i<cnt/2){
+		switch(seq[i*2]){
+			case 0x1:
+				rptr->discth = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x2:
+				rptr->equalization = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x3:
+				rptr->vrt_sel = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x4:
+				rptr->pre_emphasis = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x5:
+				rptr->rx_sqth = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x6:
+				rptr->term_ofs = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x7:
+				rptr->intr_ofs = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+		}
+		i+=1;
+	}
+
+}
+
+static void xsphy_u2_update_vaule_host_seq(struct eusb2_repeater *rptr,
+	u32 *seq, u8 cnt)
+{
+	int i=0;
+	if(seq == NULL)
+		return;
+
+	if(rptr->repeater_dynamic_adjustment == 1)
+		return;
+
+	rptr->host_discth = -EINVAL;
+	rptr->host_equalization = -EINVAL;
+	rptr->host_vrt_sel = -EINVAL;
+	rptr->host_pre_emphasis = -EINVAL;
+	rptr->host_rx_sqth = -EINVAL;
+	rptr->host_term_ofs = -EINVAL;
+	rptr->host_intr_ofs = -EINVAL;
+
+	while(i<cnt/2){
+		switch(seq[i*2]){
+			case 0x1:
+				rptr->host_discth = seq[i*2+1]== 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x2:
+				rptr->host_equalization = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x3:
+				rptr->host_vrt_sel = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x4:
+				rptr->host_pre_emphasis = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x5:
+				rptr->host_rx_sqth = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x6:
+				rptr->host_term_ofs = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+			case 0x7:
+				rptr->host_intr_ofs = seq[i*2+1] == 0xff ? -EINVAL : seq[i*2+1];
+				break;
+		}
+		i+=1;
+	}
+
+}
+
+static void xsphy_u2_device_update_seq(struct eusb2_repeater *rptr)
+{
+	int final_use = 0;
+	final_use = rptr->repeater_enhance_state;
+	rptr->repeater_which_port = usb_port_use();
+	pr_err("HI MI test log rptr->repeater_which_port = %d\n",rptr->repeater_which_port);
+
+	switch(final_use){
+		case TYPE_DEVICE_NORMAL:
+			if(rptr->repeater_not_single_port == 1 &&
+				rptr->repeater_which_port == 1) {
+				xsphy_u2_update_vaule_seq(rptr,
+					rptr->param_override_seq_port1,
+					rptr->param_override_seq_cnt_port1);
+				pr_err("HI MI init device port1!\n");
+			} else {
+				xsphy_u2_update_vaule_seq(rptr,rptr->param_override_seq,
+					rptr->param_override_seq_cnt);
+				pr_err("HI MI init device port0!\n");
+			}
+			rptr->repeater_current_eye_tune = TYPE_DEVICE_NORMAL;
+			break;
+		case TYPE_DEVICE_CARWITH:
+			if(rptr->repeater_not_single_port == 1 &&
+				rptr->repeater_which_port == 1) {
+				xsphy_u2_update_vaule_seq(rptr,
+					rptr->param_override_seq_carwith_port1,
+					rptr->param_override_seq_cnt_carwith_port1);
+				pr_err("HI MI init carwith device port1!\n");
+			} else {
+				xsphy_u2_update_vaule_seq(rptr,
+					rptr->param_override_seq_carwith,
+					rptr->param_override_seq_cnt_carwith);
+				pr_err("HI MI init carwith device port0!\n");
+			}
+			rptr->repeater_current_eye_tune = TYPE_DEVICE_CARWITH;
+			break;
+		default:
+			if(rptr->repeater_not_single_port == 1 &&
+				rptr->repeater_which_port == 1) {
+				xsphy_u2_update_vaule_seq(rptr,
+					rptr->param_override_seq_port1,
+					rptr->param_override_seq_cnt_port1);
+				pr_err("HI MI init device port1!\n");
+			} else {
+				xsphy_u2_update_vaule_seq(rptr,rptr->param_override_seq,
+					rptr->param_override_seq_cnt);
+				pr_err("HI MI init device port0!\n");
+			}
+			rptr->repeater_current_eye_tune = 0;
+			break;
+    }
+
+}
+
+static void xsphy_u2_host_update_seq(struct eusb2_repeater *rptr)
+{
+	int final_use = 0;
+	final_use = rptr->repeater_enhance_state;
+	rptr->repeater_which_port = usb_port_use();
+	pr_err("HI MI test log rptr->repeater_which_port = %d\n",rptr->repeater_which_port);
+
+	switch(final_use){
+		case TYPE_HOST_STORAGE:
+			if(	rptr->repeater_storage_enable == 1 &&
+				rptr->repeater_which_port == 1) {
+				xsphy_u2_update_vaule_host_seq(rptr,
+					rptr->host_param_override_seq_storage_port1,
+					rptr->host_param_override_seq_cnt_storage_port1);
+				pr_err("HI MI init storage host port1!\n");
+			} else {
+				xsphy_u2_update_vaule_host_seq(rptr,
+					rptr->host_param_override_seq_storage,
+					rptr->host_param_override_seq_cnt_storage);
+				pr_err("HI MI init storage host port0!\n");
+			}
+			rptr->repeater_current_eye_tune = TYPE_HOST_STORAGE;
+			break;
+		case TYPE_HOST_NORMAL:
+			if(rptr->repeater_not_single_port == 1 &&
+				rptr->repeater_which_port == 1) {
+				xsphy_u2_update_vaule_host_seq(rptr,
+					rptr->host_param_override_seq_port1,
+					rptr->host_param_override_seq_cnt_port1);
+				pr_err("HI MI init host port1!\n");
+			} else{
+				xsphy_u2_update_vaule_host_seq(rptr,
+					rptr->host_param_override_seq,
+					rptr->host_param_override_seq_cnt);
+				pr_err("HI MI init host port0!\n");
+			}
+			rptr->repeater_current_eye_tune = TYPE_HOST_NORMAL;
+			break;
+		default:
+			if(rptr->repeater_not_single_port == 1 &&
+				rptr->repeater_which_port == 1) {
+				xsphy_u2_update_vaule_host_seq(rptr,
+					rptr->host_param_override_seq_port1,
+					rptr->host_param_override_seq_cnt_port1);
+				pr_err("HI MI init host port1!\n");
+			} else{
+				xsphy_u2_update_vaule_host_seq(rptr,
+					rptr->host_param_override_seq,
+					rptr->host_param_override_seq_cnt);
+				pr_err("HI MI init host port0!\n");
+			}
+			rptr->repeater_current_eye_tune = 0;
+			break;
+	}
+}
+
 static void eusb2_device_prop_set(struct eusb2_repeater *rptr)
 {
 
+	if(rptr->repeater_product_enable)
+	{
+		xsphy_u2_device_update_seq(rptr);
+	}
 	if (rptr->vrt_sel != -EINVAL)
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_0, RG_USB20_VRT_SEL,
 			rptr->vrt_sel << RG_USB20_VRT_SEL_SHIFT);
@@ -554,6 +1367,10 @@ static void eusb2_device_prop_set(struct eusb2_repeater *rptr)
 static void eusb2_host_prop_set(struct eusb2_repeater *rptr)
 {
 
+	if(rptr->repeater_product_enable)
+	{
+		xsphy_u2_host_update_seq(rptr);
+	}
 	if (rptr->host_vrt_sel != -EINVAL)
 		regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_0, RG_USB20_VRT_SEL,
 			rptr->host_vrt_sel << RG_USB20_VRT_SEL_SHIFT);
@@ -872,7 +1689,8 @@ static int eusb2_repeater_power_on(struct phy *phy)
 			/* device connected */
 			return 0;
 		} else if (rptr->submode == PHY_MODE_SUSPEND_NO_DEV) {
-			dev_info(rptr->dev, "OTG gender LP mode\n");
+			dev_info(rptr->dev, "PHY on OTG gender LP mode\n");
+			rptr->otg_gender = false;
 			/* OTG gender LP mode */
 			/* RG_USB20_HSTX_SRCTRL[1] 1'b0 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_2, RG_USB20_HSTX_SRCTRL, 0);
@@ -941,6 +1759,80 @@ static int eusb2_repeater_power_on(struct phy *phy)
 		} else {
 			regmap_update_bits(rptr->regmap, rptr->base + 0x92, 0x7, 0x7);
 			regmap_update_bits(rptr->regmap, rptr->base + 0x94, 0x2, 0x2);
+
+			if (rptr->otg_gender == true) {
+				dev_info(rptr->dev, "Wrong Status, OTG gender mode but normal pwr on...\n");
+				rptr->otg_gender = false;
+				/* RG_USB20_HSTX_SRCTRL[1] 1'b0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR1_2, RG_USB20_HSTX_SRCTRL, 0);
+
+				/* RG_USB20_REV_COM[7:6]	2'b00 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_2, RG_USB20_REV_COM, 0);
+
+				/* RG_eusb20_hsrx_bias_en_sel	2'b01 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_EU2_CR1_2,
+					RG_EUSB20_HSRX_BIAS_EN_SEL, 1 << 2);
+
+				/* RG_frc_usb20_hsrx_bias_en_sel	1'b0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR3_2,
+					RG_RFC_USB20_HSRX_BIAS_EN_SEL, 0);
+
+				/* RG_usb20_hsrx_bias_en_sel	2'b10 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR2_1,
+					RG_USB20_HSRX_BIAS_EN_SEL_LP, 0x1 << 2);
+
+				/* rg_init_sw_phy_sel	1'b1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
+					RG_INIT_SW_PHY_SEL, RG_INIT_SW_PHY_SEL);
+
+				/* RG_USB20_BC11_SW_EN 1'b0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3, RG_USB20_BC11_SW_EN, 0);
+
+				/* RG_USB20_BGR_EN 1'b1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_0, RG_USB20_BGR_EN,
+					RG_USB20_BGR_EN);
+				udelay(30);
+
+				/* RG_USB20_OSC_BUF[0] = 0x1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+					RH_USB20_OSC_BUF_0, RH_USB20_OSC_BUF_0);
+
+				/* RG_USB20_ROSC_EN = 0x1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+					RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
+
+				udelay(10);
+
+				/* RG_USB20_ROSC_EN = 0x0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+					RG_USB20_ROSC_EN, 0);
+
+				udelay(30);
+
+				/* RG_USB20_OSC_BUF[0] = 0x0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_EXT_CR1_0,
+					RH_USB20_OSC_BUF_0, 0);
+
+				/* RG_USB20_ROSC_EN = 0x1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_COM_CR0_3,
+					RG_USB20_ROSC_EN, RG_USB20_ROSC_EN);
+
+				udelay(100);
+
+				/* RG_USB20_REV_A[5]	1'b1 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYA_U2_CR0_2,
+					RG_USB20_REV_A_5, RG_USB20_REV_A_5);
+
+				/* RG_EUSB_LOGRST	1'b0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYD_DBG_CR0_1, RG_EUSB_LOGRST, 0);
+
+				/* RG_INIT_SW_PHY_SEL = 0x0 */
+				regmap_update_bits(rptr->regmap, rptr->base + PHYD_COM_CR2_1,
+					RG_INIT_SW_PHY_SEL, 0);
+
+				udelay(300);
+			}
+
 
 			/* off */
 			/* RG_USB_EN_SRC_SEL = 0x1 */
@@ -1073,6 +1965,7 @@ static int eusb2_repeater_power_off(struct phy *phy)
 			return 0;
 		} else if (rptr->submode == PHY_MODE_SUSPEND_NO_DEV) {
 			dev_info(rptr->dev, "OTG gender LP mode\n");
+			rptr->otg_gender = true;
 			/* OTG gender LP mode */
 			/* RG_EUSB_LOGRST	1'b1 */
 			regmap_update_bits(rptr->regmap, rptr->base + PHYD_DBG_CR0_1, RG_EUSB_LOGRST, RG_EUSB_LOGRST);
@@ -1143,6 +2036,9 @@ static int eusb2_repeater_set_mode(struct phy *phy,
 {
 	struct eusb2_repeater *rptr = phy_get_drvdata(phy);
 	int index;
+
+	rptr->submode = submode;
+	phy_check_role_event(mode,rptr);
 
 	dev_info(rptr->dev, "rptr set mode:%d submode:%d\n", mode, submode);
 
@@ -1949,8 +2845,53 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 
 	rptr->base = res;
 
+	/*Enable these five flag bits during initialization
+	based on the country code, region code, and project requirements
+	*/
+	rptr->repeater_carwith_enable = 0;
+	rptr->repeater_global_enable = 0;
+	rptr->repeater_product_enable = 0;
+	rptr->repeater_storage_enable = 0;
+	rptr->repeater_not_single_port = 0;
+
+	rptr->repeater_which_port = 0;
+	rptr->repeater_enhance_support_mode = 0;
+	rptr->repeater_enhance_state = 0;
+	rptr->repeater_current_eye_tune = 0;
+	rptr->repeater_dynamic_adjustment = 0;
+
+	rptr->discth = -EINVAL;
+	rptr->equalization = -EINVAL;
+	rptr->vrt_sel = -EINVAL;
+	rptr->pre_emphasis = -EINVAL;
+	rptr->rx_sqth = -EINVAL;
+	rptr->term_ofs = -EINVAL;
+	rptr->intr_ofs = -EINVAL;
+
+	rptr->host_discth = -EINVAL;
+	rptr->host_equalization = -EINVAL;
+	rptr->host_vrt_sel = -EINVAL;
+	rptr->host_pre_emphasis = -EINVAL;
+	rptr->host_rx_sqth = -EINVAL;
+	rptr->host_term_ofs = -EINVAL;
+	rptr->host_intr_ofs = -EINVAL;
+
+	pr_err("HI MI probe enable: "
+		"repeater_carwith_enable:%d, "
+		"repeater_global_enable:%d, "
+		"repeater_product_enable:%d, "
+		"repeater_storage_enable:%d, "
+		"repeater_not_single_port:%d\n",
+		rptr->repeater_carwith_enable,
+		rptr->repeater_global_enable,
+		rptr->repeater_product_enable,
+		rptr->repeater_storage_enable,
+		rptr->repeater_not_single_port);
+
 	eusb2_rptr_prop_parse(rptr);
 	eusb2_rptr_prop_table_parse(rptr);
+	repeater_sysfs_init(rptr,dev);
+	INIT_DELAYED_WORK(&rptr->dwork, eusb2_repeater_send_uevent);
 
 	rptr->phy = devm_phy_create(dev, np, &eusb2_repeater_ops);
 	if (IS_ERR(rptr->phy)) {
@@ -1992,6 +2933,8 @@ static int eusb2_repeater_probe(struct platform_device *pdev)
 	if (IS_ERR(phy_provider))
 		return PTR_ERR(phy_provider);
 
+	rptr->otg_gender = false;
+
 	dev_info(dev, "MTK MT6379 eusb2 repeater probe done\n");
 
 	return 0;
@@ -2014,6 +2957,7 @@ static void eusb2_repeater_remove(struct platform_device *pdev)
 	rptr->device_prop_table = NULL;
 
 	eusb2_rptr_procfs_exit(rptr);
+	repeater_sysfs_cleanup(rptr,&pdev->dev);
 }
 
 static const struct of_device_id eusb2_repeater_of_match_table[] = {

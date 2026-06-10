@@ -487,7 +487,7 @@ static void calc_binning_rot(struct mml_frame_config *cfg, struct rrot_frame_dat
 			calc_binning_crop(&crop->r.left, &crop->x_sub_px);
 		}
 	}
-	if (binning && (h >> 1) >= outh && !(src->height & 0x3)) {
+	if (binning && (h >> 1) >= outh && !(h & 0x3) && !(src->height & 0x3)) {
 		cfg->frame_in.height = (src->height + 1) >> 1;
 		cfg->bin_y = 1;
 		for (i = 0; i < cfg->info.dest_cnt; i++) {

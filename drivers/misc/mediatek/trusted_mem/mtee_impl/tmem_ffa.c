@@ -27,7 +27,9 @@
 #include "private/tmem_utils.h"
 #include "ssmr/memory_ssmr.h"
 
+#if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
 extern struct ffa_device *get_tee_ffa_dev(void);
+#endif
 
 typedef u16 ffa_partition_id_t;
 
@@ -572,10 +574,13 @@ int tmem_register_ffa_module(void)
 					(const void *)&ffa_legacy_dev_uuid,
 					ffa_legacy_dev_match)) :
 				tmem_ffa_dev;
+
+#if IS_ENABLED(CONFIG_TRUSTONIC_TEE_SUPPORT)
 		tmem_ffa_dev = IS_ERR_OR_NULL((const void *)tmem_ffa_dev) ?
 				get_tee_ffa_dev() : tmem_ffa_dev;
 		tmem_ffa_ops = IS_ERR_OR_NULL((const void *)tmem_ffa_dev) ?
 				NULL : tmem_ffa_dev->ops;
+#endif
 	}
 
 	pr_info("%s:%d (end)\n", __func__, __LINE__);

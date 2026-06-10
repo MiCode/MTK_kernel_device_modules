@@ -402,6 +402,14 @@ uint8_t tcpm_inquire_pd_power_role(struct tcpc_device *tcpc)
 }
 EXPORT_SYMBOL(tcpm_inquire_pd_power_role);
 
+uint8_t tcpm_inquire_pd_state_curr(
+	struct tcpc_device *tcpc_dev)
+{
+	struct pd_port *pd_port = &tcpc_dev->pd_port;
+	return pd_port->pe_state_curr;
+}
+EXPORT_SYMBOL(tcpm_inquire_pd_state_curr);
+
 uint8_t tcpm_inquire_pd_vconn_role(struct tcpc_device *tcpc)
 {
 	struct pd_port *pd_port = &tcpc->pd_port;
@@ -709,6 +717,51 @@ int tcpm_get_remote_power_cap(struct tcpc_device *tcpc,
 }
 EXPORT_SYMBOL(tcpm_get_remote_power_cap);
 
+void tcpm_set_adapter_dcc_support(struct tcpc_device *tcpc, bool support)
+{
+	struct pd_port *pd_port;
+
+	if (!tcpc) {
+		pr_err("%s: tcpc is null\n", __func__);
+		return;
+	}
+	pd_port = &tcpc->pd_port;
+	pd_port->adapter_support_dcc = support;
+	if (!support)
+		pd_port->last_changed_cap.nr = 0;
+	pr_err("%s: val = %d\n", __func__, support);
+}
+EXPORT_SYMBOL(tcpm_set_adapter_dcc_support);
+
+void tcpm_set_direct_cap_change_over(struct tcpc_device *tcpc)
+{
+	struct pd_port *pd_port;
+
+	if (!tcpc) {
+		pr_err("%s: tcpc is null\n", __func__);
+		return;
+	}
+	pd_port = &tcpc->pd_port;
+	pd_port->direct_cap_change_active = false;
+	pd_port->dcc_skip_request_cnt = 0;
+	pr_err("%s\n", __func__);
+}
+EXPORT_SYMBOL(tcpm_set_direct_cap_change_over);
+
+bool tcpm_get_direct_cap_change_status(struct tcpc_device *tcpc)
+{
+	struct pd_port *pd_port;
+
+	if (!tcpc) {
+		pr_err("%s: tcpc is null\n", __func__);
+		return false;
+	}
+	pd_port = &tcpc->pd_port;
+	pr_err("%s\n", __func__);
+	return pd_port->direct_cap_change_active;
+}
+EXPORT_SYMBOL(tcpm_get_direct_cap_change_status);
+
 static inline int __tcpm_inquire_select_source_cap(
 	struct pd_port *pd_port, struct tcpm_power_cap_val *cap_val)
 {
@@ -950,6 +1003,17 @@ int tcpm_dpm_pd_request(struct tcpc_device *tcpc,
 		.tcp_dpm_data.pd_req.mv = mv,
 		.tcp_dpm_data.pd_req.ma = ma,
 	};
+	struct pd_port *pd_port;
+
+	if (tcpc) {
+		pd_port = &tcpc->pd_port;
+		if (pd_port->direct_cap_change_support && pd_port->adapter_support_dcc
+			&& pd_port->direct_cap_change_active && pd_port->dcc_skip_request_cnt < 10) {
+			pr_err("direct cap change active, skip this request, count = %d\n", pd_port->dcc_skip_request_cnt);
+			pd_port->dcc_skip_request_cnt++;
+			return TCPM_SUCCESS;
+		}
+	}
 
 	return tcpm_put_tcp_dpm_event_cbk1(
 		tcpc, &tcp_event, cb_data, TCPM_BK_REQUEST_TOUT);

@@ -131,6 +131,7 @@ static int fpsgo_enable;
 static int fpsgo_force_onoff;
 
 int powerhal_tid;
+int sf_pid;
 
 #if !IS_ENABLED(CONFIG_ARM64)
 int cap_ready;
@@ -639,6 +640,9 @@ void fpsgo_notify_vsync(void)
 		fpsgo_free(vpPush, sizeof(struct FPSGO_NOTIFIER_PUSH_TAG));
 		return;
 	}
+
+	if (unlikely(!sf_pid))
+		sf_pid = current->tgid;
 
 	vpPush->ePushType = FPSGO_NOTIFIER_VSYNC;
 	vpPush->cur_ts = fpsgo_get_time();
@@ -1155,8 +1159,10 @@ static int __init fpsgo_init(void)
 	fpsgo_sysfs_init();
 
 	kfpsgo_tsk = kthread_create(kfpsgo, NULL, "kfps");
-	if (kfpsgo_tsk == NULL)
+	if (IS_ERR(kfpsgo_tsk)) {
+		kfpsgo_tsk = NULL;
 		return -EFAULT;
+	}
 	wake_up_process(kfpsgo_tsk);
 
 #if FPSGO_DYNAMIC_WL

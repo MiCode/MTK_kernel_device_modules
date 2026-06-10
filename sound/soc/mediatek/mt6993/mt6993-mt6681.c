@@ -21,6 +21,13 @@
 #include "../../codecs/mt6681-accdet.h"
 #endif
 
+#if IS_ENABLED(CONFIG_MIEV)
+#include <miev/mievent.h>
+#include <linux/timer.h>
+#include <linux/timex.h>
+#include <linux/rtc.h>
+#endif
+
 /*
  * if need additional control for the ext spk amp that is connected
  * after Lineout Buffer / HP Buffer on the codec, put the control in
@@ -37,8 +44,8 @@ struct mt6993_compress_info compr_info;
 static const char *const mt6993_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
 						  MTK_SPK_MEDIATEK_MT6660_STR,
-						  MTK_SPK_RICHTEK_RT5512_STR,
 						  MTK_SPK_GOODIX_TFA98XX_STR,
+						  MTK_SPK_RICHTEK_RT5512_STR,
 						  MTK_SPK_AKM_AK7709_STR};
 static const char *const
 	mt6993_spk_i2s_type_str[] = {MTK_SPK_I2S_0_STR,
@@ -2524,6 +2531,10 @@ static int mt6993_mt6681_dev_probe(struct platform_device *pdev)
 	int ret, i;
 	struct snd_soc_dai_link *dai_link;
 
+#if IS_ENABLED(CONFIG_MIEV)
+	struct misight_mievent *mievent;
+	struct timespec64 curTime;
+#endif
 	dev_info(&pdev->dev, "%s() successfully start\n", __func__);
 
 	/* update speaker type */
@@ -2587,10 +2598,19 @@ static int mt6993_mt6681_dev_probe(struct platform_device *pdev)
 	card->dev = &pdev->dev;
 
 	ret = devm_snd_soc_register_card(&pdev->dev, card);
-	if (ret)
+	if (ret){
+
 		dev_info(&pdev->dev, "%s snd_soc_register_card fail %d\n",
 			__func__, ret);
-	else
+#if IS_ENABLED(CONFIG_MIEV)
+		ktime_get_real_ts64(&curTime);
+		mievent  = cdev_tevent_alloc(906001001);
+		cdev_tevent_add_int(mievent, "CurrentTime", curTime.tv_sec);
+		cdev_tevent_add_str(mievent, "Keyword", "sound_card_not_registered");
+		cdev_tevent_write(mievent);
+		cdev_tevent_destroy(mievent);
+#endif
+	} else
 		dev_info(&pdev->dev, "%s snd_soc_register_card pss %d\n",
 				__func__, ret);
 	return ret;

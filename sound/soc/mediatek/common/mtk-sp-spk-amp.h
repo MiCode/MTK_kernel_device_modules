@@ -26,6 +26,10 @@ struct mtk_spk_i2c_ctrl {
 #define MTK_SPK_AKM_AK7709_STR "MTK_SPK_AKM_AK7709"
 #define MTK_SPK_FOURSEMI_FS16XX_STR "MTK_SPK_FOURSEMI_FS16XX"
 
+//#if IS_ENABLED(CONFIG_SND_SMARTPA_AW882XX)
+#define MTK_SPK_AW_AW882XX_STR "MTK_SPK_AW_AW882XX"
+//#endif
+
 #define MTK_SPK_I2S_0_STR "MTK_SPK_I2S_0"
 #define MTK_SPK_I2S_1_STR "MTK_SPK_I2S_1"
 #define MTK_SPK_I2S_2_STR "MTK_SPK_I2S_2"
@@ -55,6 +59,7 @@ struct mtk_spk_i2c_ctrl {
 #define MTK_SPK_I2S_OUT4_STR "MTK_SPK_I2S_OUT4"
 #define MTK_SPK_I2S_IN5_STR "MTK_SPK_I2S_IN5"
 #define MTK_SPK_I2S_OUT5_STR "MTK_SPK_I2S_OUT5"
+#define MTK_SPK_SIA_SIA9306_STR "MTK_SPK_SIA_SIA9306"
 
 
 enum mtk_spk_type {
@@ -66,7 +71,18 @@ enum mtk_spk_type {
 	MTK_SPK_AWINIC_AW883XX,
 	MTK_SPK_AKM_AK7709,
 	MTK_SPK_FOURSEMI_FS16XX,
+//#if IS_ENABLED(CONFIG_SND_SMARTPA_AW882XX)
+	MTK_SPK_AW_AW882XX,
+	MTK_SPK_SIA_SIA9306,
+//#endif
 	MTK_SPK_TYPE_NUM
+};
+
+enum {
+	SMARTPA_NONE = 0,
+	SMARTPA_AW882XX,
+	SMARTPA_SIA93XX,
+	SMARTPA_MAX,
 };
 
 enum mtk_spk_i2s_type {
@@ -120,6 +136,13 @@ int mtk_spk_vol_thl_get(void);
 void mtk_spk_vol_thl_register(struct device *dev, void (*cb)(void));
 void mtk_spk_vol_update(struct snd_soc_card *card, const char *name);
 #endif
+
+//add for combine spk start
+extern bool check_smartpa_type(const char *name);
+extern int set_smartpa_type(const char *name, unsigned int size);
+extern int smartpa_sysfs_init(void);
+extern int get_smartpa_type(void);
+//add for combine spk end
 
 #endif
 

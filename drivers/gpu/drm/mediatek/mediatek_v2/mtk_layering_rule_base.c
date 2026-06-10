@@ -46,6 +46,9 @@
 #include "../mml/mtk-mml-drm-adaptor.h"
 #include "mtk_disp_oddmr/mtk_disp_oddmr.h"
 #include "mtk_disp_dbi_count.h"
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+#include "mtk_drm_lowpower.h"
+#endif
 
 #include <linux/module.h>
 
@@ -4375,6 +4378,14 @@ static int RPO_rule(struct drm_crtc *crtc,
 		c->layer_caps |= MTK_DISP_RSZ_LAYER;
 		++scale_cnt;
 	}
+
+#if IS_ENABLED(CONFIG_MTK_DISPLAY_DUAL_PIPE_DUAL_PORT_SUPPORT)
+	if(scale_cnt)
+		mtk_drm_set_idlemgr(crtc, 0, 1);
+	else
+		mtk_drm_set_idlemgr(crtc, 1, 1);
+#endif
+
 	return scale_cnt;
 }
 
@@ -4691,6 +4702,12 @@ static void check_is_mml_layer(const int disp_idx,
 			vfree(multi_mml_info);
 			return;
 		}
+
+		if (MML_FMT_10BIT(multi_mml_info->src.format) && fps == 120 && mml_duration != 0) {
+			mml_duration += 350;
+			DDPINFO("mml_duration adjust\n");
+		}
+
 		mml_drm_query_multi_layer(mml_ctx, multi_mml_info, mml_cnt, mml_duration);
 		mml_drm_put_context(mml_ctx);	/* ref cnt dec */
 	}

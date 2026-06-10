@@ -388,6 +388,12 @@ struct mtk_dp {
 
 	struct FORCE_TIMING force_timing;
 	struct drm_property *hdcp_ver_property;
+
+#if defined(CONFIG_MI_DP_AUX_PN_SWAP)
+	int genpd_dp_sel;
+	int genpd_dp_noe;
+	struct regulator *genpd_dp_auxn;
+#endif
 };
 
 #endif /*__DRTX_TYPE_H__*/

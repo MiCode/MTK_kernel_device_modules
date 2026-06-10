@@ -14,6 +14,7 @@ ddk_headers(
     includes = ["."],
     hdrs = glob(["**/*.h"]), # export all headers for other modules to use
 )
+
 filegroup(
     name = "ddk_kconfigs",
     srcs = glob([
@@ -39,11 +40,17 @@ define_mgk_ddk_ko(
         "src/tfa_dsp.c",
         "src/tfa_init.c",
     ],
-	conditional_srcs = {
-        "TFA_DEBUG": {
-            True: ["src/tfa_debug.c"],
-        },
-    },
+    local_defines = [
+        "TFA_NON_DSP_SOLUTION",
+    ],
+#    kconfig_deps = [
+#        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_kconfigs".format(kernel_version),
+#    ],
+#	conditional_srcs = {
+#        "TFA_DEBUG": {
+#            False: ["src/tfa_debug.c"],
+#        },
+#    },
     ko_deps = [
         "//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:snd-soc-audiodsp-common".format(kernel_version),
         "//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version),

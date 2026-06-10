@@ -43,6 +43,8 @@ struct sbe_info {
 	int pid;
 	int ux_crtl_type;
 	int ux_scrolling;
+	int filter_dep_task_enable_saved;
+	int xgf_force_update_started;
 	struct rb_node entry;
 };
 
@@ -87,6 +89,8 @@ struct sbe_render_info {
 	int core_ctl_ignore_vip_task;
 	int fpsgo_critical_flag;
 	int dptv2_bypass_task_flag;
+	int calculate_dep_enable_saved;
+	int xgf_extra_sub_saved;
 	unsigned long long frame_ctime_count;
 	unsigned int sbe_rescue;
 	unsigned long long buffer_id;

@@ -34,6 +34,9 @@ static const struct mfd_cell mt6687_devs[] = {
 	}, {
 		.name = "mt6687-gps",
 		.of_compatible = "mediatek,mt6687-gps",
+	}, {
+		.name = "mt6687-nvtclk",
+		.of_compatible = "mediatek,mt6687-nvtclk",
 	},
 };
 

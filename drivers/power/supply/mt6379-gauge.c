@@ -2946,21 +2946,8 @@ static int zcv_intr_en_set(struct mtk_gauge *gauge, struct mtk_gauge_sysfs_field
 			dev_info(priv->dev, "%s, Failed to enable zcv_det\n", __func__);
 			return ret;
 		}
-
-		ret = regmap_update_bits(gauge->regmap, rg[bat_idx][MT6379_REG_BM_TOP_INT_CON0],
-					 RG_INT_EN_FG_ZCV_MASK, RG_INT_EN_FG_ZCV_MASK);
-		if (ret) {
-			dev_info(priv->dev, "%s, Failed to enable fg_zcv irq\n", __func__);
-			return ret;
-		}
 	} else {
 		disable_gauge_irq(gauge, ZCV_IRQ);
-		ret = regmap_update_bits(gauge->regmap, rg[bat_idx][MT6379_REG_BM_TOP_INT_CON0],
-					 RG_INT_EN_FG_ZCV_MASK, 0);
-		if (ret) {
-			dev_info(priv->dev, "%s, Failed to disable fg_zcv irq\n", __func__);
-			return ret;
-		}
 	}
 
 	bm_debug(gauge->gm, "%s, [FG_ZCV_INT][fg_set_zcv_intr_en] %s en:%d\n",

@@ -121,6 +121,20 @@ mgk_64_kleaf_modules = [
     "//vendor/mediatek/kernel_modules/perf_common_int:perf_common_int",
     "//vendor/mediatek/kernel_modules/game_cus:game_cus",
     "//vendor/mediatek/kernel_modules/game_int:game_int",
+    "//vendor/xiaomi/proprietary/touch/touchfeature_v2/touch_driver:xiaomi_touch_prague",
+    "//vendor/xiaomi/proprietary/touch/touchfeature_v2/touch_driver:goodix_core_prague",
+    "//vendor/xiaomi/proprietary/touch/touchfeature_v2/touch_driver:focaltech_touch_prague",
+    "//vendor/xiaomi/proprietary/mitee_drv:mitee",
+    "//vendor/xiaomi/proprietary/mitee_drv:mitee_ffa",
+    "//vendor/xiaomi/proprietary/fingerprint:fingerprint_driver",
+    "//vendor/xiaomi/proprietary/slm/kmod_mtk:kmod",
+    "//vendor/xiaomi/proprietary/matt/core_mtk:matt",
+    "//vendor/xiaomi/proprietary/minet/driver_mtk:minet",
+    "//vendor/xiaomi/proprietary/minet/mibbr/mibbr_mtk_k612:mibbr",
+    "//vendor/xiaomi/proprietary/miwillp/engine_mtk:miwill",
+    "//vendor/xiaomi/proprietary/minet/miicmpfilter/driver_mtk:miicmpfilter",
+    "//vendor/xiaomi/proprietary/minet/miscore/miscore_mtk:miscore",
+    "//vendor/xiaomi/proprietary/kernelmodules/hardwareinfo/kernel_module:hardwareinfo",
 ]
 
 mgk_64_kleaf_eng_modules = [
@@ -538,6 +552,10 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/bridge:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:ddk_src".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9895:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/aw8693x_haptic:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/aw_haptic:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/aw8693x_haptic_yili:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/fs3002_haptic:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor/src:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:srcs".format(kernel_version),
@@ -555,6 +573,11 @@ mgk_64_kleaf_device_modules_srcs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/game:srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:ddk_srcs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v3:ddk_srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/xiaomi/mi_t1_chip:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/nfc/p73-spi:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/nfc/nxp-i2c:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/nfc/tmsdrv:srcs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_log:srcs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules_kconfigs = [
@@ -714,6 +737,10 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/sound/soc/codecs/richtek:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/tfa98xx:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/aw883xx:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/aw8693x_haptic:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/aw_haptic:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/aw8693x_haptic_yili:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/fs3002_haptic:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/es8311:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/aw836xx:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/sound/soc/codecs/ak7709:ddk_kconfigs".format(kernel_version),
@@ -782,6 +809,13 @@ mgk_64_kleaf_device_modules_kconfigs = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_cmdq:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/src/isp_6s/pkvm:ddk_kconfigs".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/ssc:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/mca:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply/wireless_chg:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/nfc/p73-spi:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/nfc/nxp-i2c:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/nfc/tmsdrv:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/xiaomi/mi_t1_chip:ddk_kconfigs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_log:ddk_kconfigs".format(kernel_version),
 ]
 
 mgk_64_kleaf_device_modules = [
@@ -869,6 +903,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-samsung-s68fc01-vdo-aod".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-hx-nt37701-dphy-cmd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-hx-nt37701-dphy-cmd-120hz".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-m12a-36-02-0a-dsc-cmd".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-m12a-42-02-0b-dsc-cmd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37701a-cmd".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-nt37701a-cmd-mipichg".format(kernel_version),
     "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
@@ -904,6 +940,10 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT1151:gt1151".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9886:gt9886".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9895:gt9895".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/aw8693x_haptic:aw8693x_vibrator".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/aw_haptic:haptic".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/aw8693x_haptic_yili:aw8693x_vibrator_yili".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/input/misc/fs3002_haptic:fs3002_vibrator".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9896S:gt9896s".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/GT9966:gt9966".format(kernel_version),
     "//kernel_device_modules-{}/drivers/input/touchscreen/gt9xx:gt9xx_touch".format(kernel_version),
@@ -949,8 +989,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/mfd:rt9490".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/aee/hangdet:aee_hangdet".format(kernel_version),
-	"//kernel_device_modules-{}/drivers/misc/mediatek/apusys/power:apu_top".format(kernel_version),
-	"//kernel_device_modules-{}/drivers/misc/mediatek/apusys:apusys".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/apusys/power:apu_top".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/apusys:apusys".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/audio_ipi:audio_ipi".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/atf:atf_logger".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
@@ -1059,6 +1099,8 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/lens/ois/bu63169:bu63169".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lens/ois/dw9781c:dw9781c".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/lens/ois/dw9781d:dw9781d".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lens/vcm/v4l2/ois_wide_power:ois_wide_power".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/lens/vcm/v4l2/ois_tele_power:ois_tele_power".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/cameraisp/pda:camera_pda".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmdebug:mtk-mmdebug-vcp-stub".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/mmdebug:mtk-mmdebug-vcp".format(kernel_version),
@@ -1199,6 +1241,7 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_trace".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:vtskin_temp".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:wifi_cooling".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/thermal/mediatek:cpu_isolate_cooling".format(kernel_version),
     "//kernel_device_modules-{}/drivers/thermal/mediatek:power_limiter".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-core".format(kernel_version),
     "//kernel_device_modules-{}/drivers/trusty:trusty-ffa".format(kernel_version),
@@ -1324,6 +1367,18 @@ mgk_64_kleaf_device_modules = [
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance/game:mtk_game".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/task_turbo:vip_engine".format(kernel_version),
     "//kernel_device_modules-{}/drivers/misc/mediatek/performance:frs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/mca:mca_event".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/mca:mca_sysfs".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/mca:mca_log".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/mca:mca_charge_mievent".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:bq28z610".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:sc8585_charger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:ln8000_charger".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:pd_single_cp_manager".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/power/supply:pd_cp_manager".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/nfc/p73-spi:p73".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/nfc/nxp-i2c:nxp_i2c".format(kernel_version),
+    "//kernel_device_modules-{}/drivers/misc/mediatek/cam_log:cam_log".format(kernel_version),
 ]
 
 mgk_64_kleaf_platform_modules = {
@@ -1391,6 +1446,8 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/iio/adc:mt6379-adc".format(kernel_version): "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/iio/adc:mt6720-adc".format(kernel_version): "mt6858 mt6881",
     "//kernel_device_modules-{}/drivers/leds/flash:leds-mt6379".format(kernel_version): "mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/leds/flash:dual-leds-mt6379pmic".format(kernel_version): "mt6991 mt6993",
+    "//kernel_device_modules-{}/drivers/leds/flash:leds-mt6379pmic".format(kernel_version): "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/mfd:mt6375".format(kernel_version): "mt6789 mt6855 mt6878 mt6895",
     "//kernel_device_modules-{}/drivers/mfd:mt6379i".format(kernel_version): "mt6991 mt6993",
     "//kernel_device_modules-{}/drivers/mfd:mt6379s".format(kernel_version): "mt6991 mt6993",
@@ -1799,7 +1856,17 @@ mgk_64_kleaf_platform_modules = {
     "//kernel_device_modules-{}/drivers/input/touchscreen/hxchipset:hxchipset".format(kernel_version): "mt6789",
 
     "//kernel_device_modules-{}/drivers/regulator:fan53870-ldo".format(kernel_version): "mt6789",
+    "//kernel_device_modules-{}/drivers/regulator:fan53870".format(kernel_version): "mt6895",
+    "//kernel_device_modules-{}/drivers/regulator:wl2868c".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/regulator:wl2868c-regulator".format(kernel_version): "mt6789",
+    "//kernel_device_modules-{}/drivers/regulator:wl28681c".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/regulator:wl28681c2".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/regulator:warhol_wl2868c".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/regulator:warhol_wl2868c2".format(kernel_version): "mt6993",
+    "//kernel_device_modules-{}/drivers/regulator:sgm38121".format(kernel_version): "mt6993 mt6881",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight/v4l2:ocp81377".format(kernel_version): "mt6881",
+    "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight/v4l2:sgm37864".format(kernel_version): "mt6881",
+    "//kernel_device_modules-{}/drivers/i2c/busses:mi_i2c-dev".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/modules/v6991:mtk_mbraink_v6991".format(kernel_version): "mt6991",
     "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/modules/v6993:mtk_mbraink_v6993".format(kernel_version): "mt6993",
     "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler_dummy".format(kernel_version): "mt6881",
@@ -2229,6 +2296,25 @@ mgk_64_platform_device_user_modules = {
 
 
 def get_overlay_modules_list():
+    if "auto.config" in DEFCONFIG_OVERLAYS:
+        mgk_64_platform_device_modules.update({"drivers/clk/mediatek/clk-mt6991-ivi.ko":"mt6991"})
+        mgk_64_platform_device_modules.update({"drivers/soc/mediatek/mtk-scpsys-mt6991-ivi.ko":"mt6991"})
+        mgk_64_device_modules.append("drivers/gpu/drm/bridge/maxiam-max96851.ko")
+        mgk_64_device_modules.append("drivers/gpu/drm/mediatek/mediatek_v2/mtk_drm_edp/mtk_drm_edp.ko")
+        mgk_64_device_modules.append("drivers/gpu/drm/panel/panel-maxiam-max96851.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/carevent/carevent.ko")
+        mgk_64_device_modules.append("drivers/thermal/mediatek/fan_cooling.ko")
+        mgk_64_device_modules.append("sound/soc/codecs/ak7709/snd-soc-ak7709.ko")
+        mgk_64_device_modules.append("sound/soc/codecs/hfda80x/snd-soc-hfda80x.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/gpu/drm/mediatek/disp_sync:mtk_disp_sync".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/gpu/drm/mediatek/virtio_disp:mtk_drm_virtio_disp".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/vow/ver02:mtk-vow".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/audio_dsp:mtk-soc-offload-common".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/audio_scp:mtk-scp-audiocommon".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_scp:snd-soc-mtk-scp-ultra".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/sound/soc/mediatek/vow:mtk-scp-vow".format(kernel_version))
+
     if "fpga.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_cus:fpsgo_cus")
         mgk_64_kleaf_modules.remove("//vendor/mediatek/kernel_modules/fpsgo_int:fpsgo_int")
@@ -2710,6 +2796,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ffa.ko")
@@ -3131,6 +3218,7 @@ def get_overlay_modules_list():
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:board_temp".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:charger_cooling".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:wifi_cooling".format(kernel_version))
+        mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:cpu_isolate_cooling".format(kernel_version))
         if "drivers/thermal/mediatek/md_cooling_all.ko" in mgk_64_device_modules:
             mgk_64_device_modules.remove("drivers/thermal/mediatek/md_cooling_all.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/thermal/mediatek:pmic_temp".format(kernel_version))
@@ -3708,6 +3796,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ffa.ko")
@@ -4033,6 +4122,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-core.ko")
         mgk_64_device_modules.remove("drivers/trusty/trusty-ffa.ko")
@@ -4404,6 +4494,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-debug".format(kernel_version))
         mgk_64_kleaf_device_modules.remove("//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-imax".format(kernel_version))
@@ -4651,6 +4742,7 @@ def get_overlay_modules_list():
         mgk_64_device_modules.remove("drivers/thermal/mediatek/thermal_trace.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/vtskin_temp.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/wifi_cooling.ko")
+        mgk_64_device_modules.remove("drivers/thermal/mediatek/cpu_isolate_cooling.ko")
         mgk_64_device_modules.remove("drivers/thermal/mediatek/power_limiter.ko")
 
         mgk_64_kleaf_userdebug_modules.remove("//vendor/mediatek/tests/kernel/ktf_testcase/mml:ktf_mml_ait")
@@ -5083,6 +5175,19 @@ def get_overlay_modules_list():
     if "7xxx.config" in DEFCONFIG_OVERLAYS:
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/bt/linux_v2_ce:btmtk_unify")
         mgk_64_kleaf_modules.append("//vendor/mediatek/kernel_modules/connectivity/wlan/core/gen4-mt79xx:wlan_mt7902")
+
+    if "prague" in DEFCONFIG_OVERLAYS:
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-p12-42-02-0a-dsc-cmd".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/gpu/drm/panel:panel-p12-36-0d-0b-dsc-cmd".format(kernel_version))
+        mgk_64_device_modules.append("drivers/input/misc/aw8693x_haptic/aw8693x_vibrator.ko")
+        mgk_64_device_modules.append("drivers/misc/perf_helper/perf_helper.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/xiaomi/cam_intentaware_fsys:cam_fsys".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/xiaomi/dio_dma_mapper:dio_dma_mapper".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/misc/xiaomi/mi_t1_chip:mi_t1_gpio".format(kernel_version))
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/power/supply:xm_pwm_fan".format(kernel_version))
+        mgk_64_device_modules.append("drivers/misc/mediatek/nfc/p73-spi/p73.ko")
+        mgk_64_device_modules.append("drivers/misc/mediatek/nfc/nxp-i2c/nxp_i2c.ko")
+        mgk_64_kleaf_device_modules.append("//kernel_device_modules-{}/drivers/power/supply:hl7603".format(kernel_version))
 
     if "vm_uos.config" in DEFCONFIG_OVERLAYS:
         mgk_64_common_eng_modules.append("drivers/net/net_failover.ko")

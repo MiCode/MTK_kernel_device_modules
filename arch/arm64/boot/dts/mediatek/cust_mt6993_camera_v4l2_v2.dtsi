@@ -383,22 +383,22 @@
 	};
 	camera_pins_cam2_scl_ap: cam2@2 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO200__FUNC_SCL9>;
+			//pinmux = <PINMUX_GPIO200__FUNC_SCL9>;
 		};
 	};
 	camera_pins_cam2_scl_scp: cam2@3 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO200__FUNC_SCP_SCL7>;
+			//pinmux = <PINMUX_GPIO200__FUNC_SCP_SCL7>;
 		};
 	};
 	camera_pins_cam2_sda_ap: cam2@4 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO201__FUNC_SDA9>;
+			//pinmux = <PINMUX_GPIO201__FUNC_SDA9>;
 		};
 	};
 	camera_pins_cam2_sda_scp: cam2@5 {
 		pins-cmd-dat {
-			pinmux = <PINMUX_GPIO201__FUNC_SCP_SDA7>;
+			//pinmux = <PINMUX_GPIO201__FUNC_SCP_SDA7>;
 		};
 	};
 	camera_pins_cam4_mclk_off: camera-pins-cam4-mclk-off {
@@ -729,7 +729,7 @@
 	};
 };
 
-&i2c9 {
+&i2c10 {
 	status = "okay";
 	clock-frequency = <1000000>;
 

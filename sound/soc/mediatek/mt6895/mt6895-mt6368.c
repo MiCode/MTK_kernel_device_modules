@@ -35,7 +35,8 @@ static const char *const mt6895_spk_type_str[] = {MTK_SPK_NOT_SMARTPA_STR,
 						  MTK_SPK_RICHTEK_RT5509_STR,
 						  MTK_SPK_MEDIATEK_MT6660_STR,
 						  MTK_SPK_RICHTEK_RT5512_STR,
-						  MTK_SPK_GOODIX_TFA98XX_STR};
+						  MTK_SPK_GOODIX_TFA98XX_STR,
+						  MTK_SPK_AW_AW882XX_STR};
 static const char *const
 	mt6895_spk_i2s_type_str[] = {MTK_SPK_I2S_0_STR,
 				     MTK_SPK_I2S_1_STR,
@@ -629,7 +630,8 @@ SND_SOC_DAILINK_DEFS(ap_dmic_ch34,
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2s0,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2S0")),
-	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_CODEC("aw882xx_smartpa.6-0034", "aw882xx-aif-6-34"),
+					   COMP_CODEC("aw882xx_smartpa.6-0035", "aw882xx-aif-6-35")),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2s1,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2S1")),
@@ -641,7 +643,8 @@ SND_SOC_DAILINK_DEFS(i2s2,
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2s3,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2S3")),
-	DAILINK_COMP_ARRAY(COMP_DUMMY()),
+	DAILINK_COMP_ARRAY(COMP_CODEC("aw882xx_smartpa.6-0034", "aw882xx-aif-6-34"),
+					   COMP_CODEC("aw882xx_smartpa.6-0035", "aw882xx-aif-6-35")),
 	DAILINK_COMP_ARRAY(COMP_EMPTY()));
 SND_SOC_DAILINK_DEFS(i2s5,
 	DAILINK_COMP_ARRAY(COMP_CPU("I2S5")),
@@ -1459,7 +1462,10 @@ static int mt6895_mt6368_dev_probe(struct platform_device *pdev)
 		dev_info(&pdev->dev,
 			"spk_node of_get_child_by_name fail\n");
 		//return -EINVAL;
-	}
+	} else {
+            dev_err(&pdev->dev,
+                "FEYNMAN spk_node of_get_child_by_name OK\n");
+    }
 
 	for_each_card_prelinks(card, i, dai_link) {
 		if (!dai_link->platforms->name)

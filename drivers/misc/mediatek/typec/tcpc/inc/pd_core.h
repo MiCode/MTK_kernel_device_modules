@@ -776,6 +776,11 @@ struct dpm_pdo_info_t {
 	int ma;
 };
 
+struct extract_cap_info {
+	uint8_t nr;
+	struct dpm_pdo_info_t pdo_info[PDO_MAX_NR];
+};
+
 struct pd_port {
 	struct tcpc_device *tcpc;
 	struct mutex pd_lock;
@@ -903,6 +908,8 @@ struct pd_port {
 	uint8_t	curr_sreset_state;
 
 	bool curr_unsupported_msg;
+	bool support_quick_revchg;
+	bool rev_quick_chg;
 
 #if CONFIG_USB_PD_REV30_SRC_CAP_EXT_LOCAL
 	struct pd_source_cap_ext src_cap_ext;
@@ -943,6 +950,11 @@ struct pd_port {
 	struct work_struct fg_bat_work;
 	struct notifier_block fg_bat_nb;
 #endif /* CONFIG_RECV_BAT_ABSENT_NOTIFY */
+	struct extract_cap_info last_changed_cap;
+	bool direct_cap_change_support;
+	bool adapter_support_dcc;
+	bool direct_cap_change_active;
+	int dcc_skip_request_cnt;
 };
 
 static inline struct dp_data *pd_get_dp_data(struct pd_port *pd_port)
@@ -1508,5 +1520,10 @@ static inline uint8_t pd_get_swap_battery_nr(struct pd_port *pd_port)
 struct pd_battery_info *pd_get_battery_info(
 	struct pd_port *pd_port, enum pd_battery_reference ref);
 #endif	/* CONFIG_USB_PD_REV30 */
+
+#ifdef CONFIG_SUPPORT_SOUTHCHIP_PDPHY
+void pd_add_miss_msg(struct pd_port *pd_port,struct pd_event *pd_event,
+				uint8_t msg);
+#endif /* CONFIG_SUPPORT_SOUTHCHIP_PDPHY */
 
 #endif /* PD_CORE_H_ */

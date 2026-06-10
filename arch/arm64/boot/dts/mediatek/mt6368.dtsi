@@ -191,6 +191,7 @@
 				regulator-max-microvolt = <2100000>;
 				regulator-enable-ramp-delay = <680>;
 				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
 			};
 			mt6368_vibr: vibr {
 				regulator-compatible = "VIBR";
