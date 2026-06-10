@@ -1,0 +1,315 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2016 MediaTek Inc.
+ * Author: Daniel Hsiao <daniel.hsiao@mediatek.com>
+ *      Jungchang Tsao <jungchang.tsao@mediatek.com>
+ *      Tiffany Lin <tiffany.lin@mediatek.com>
+ */
+
+#include <linux/interrupt.h>
+#include <linux/kernel.h>
+#include <linux/slab.h>
+
+#include "venc_drv_base.h"
+#include "venc_drv_if.h"
+
+#include "mtk_vcodec_enc.h"
+#include "mtk_vcodec_enc_pm.h"
+#include "mtk_vcodec_enc_pm_plat.h"
+
+#if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
+#include "mtk_vcu.h"
+const struct venc_common_if *get_enc_vcu_if(void);
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+const struct venc_common_if *get_enc_vcp_if(void);
+#endif
+
+static const struct venc_common_if *get_data_path_ptr(void)
+{
+#if IS_ENABLED(CONFIG_VIDEO_MEDIATEK_VCU)
+	if (VCU_FPTR(vcu_get_plat_device)) {
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+		if (mtk_vcodec_is_vcp(MTK_INST_ENCODER))
+			return get_enc_vcp_if();
+#endif
+		return get_enc_vcu_if();
+	}
+#endif
+#if IS_ENABLED(CONFIG_MTK_TINYSYS_VCP_SUPPORT)
+	return get_enc_vcp_if();
+#else
+	return NULL;
+#endif
+}
+
+int venc_if_dev_ctx_init(struct mtk_vcodec_dev *dev)
+{
+	struct mtk_vcodec_ctx *ctx = &dev->dev_ctx;
+	struct venc_inst *inst = NULL;
+
+	vcodec_trace_begin_func();
+
+	inst = kzalloc(sizeof(struct venc_inst), GFP_KERNEL);
+	if (inst == NULL) {
+		vcodec_trace_end();
+		return -ENOMEM;
+	}
+	dev->id_counter++;
+	if (dev->id_counter <= 0)
+		dev->id_counter = 1;
+	ctx->id = dev->id_counter;
+	inst->ctx = ctx;
+	inst->vcu_inst.ctx = ctx;
+	inst->vcu_inst.id = IPI_VENC_COMMON;
+	init_waitqueue_head(&inst->vcu_inst.wq_hd);
+
+	ctx->drv_handle = (unsigned long)(inst);
+	ctx->enc_if = get_data_path_ptr();
+
+	ctx->dev = dev;
+	ctx->dev_ctx = ctx;
+	ctx->type = MTK_INST_ENCODER;
+	mutex_init(&ctx->ipi_use_lock);
+	spin_lock_init(&ctx->state_lock);
+	mtk_vcodec_set_state(ctx, MTK_STATE_FREE);
+
+	mtk_vcodec_add_ctx_list(ctx);
+	mtk_v4l2_debug(0, "[%d] init drv_handle = 0x%lx", ctx->id, ctx->drv_handle);
+
+	vcodec_trace_end();
+	return 0;
+}
+
+void venc_if_dev_ctx_deinit(struct mtk_vcodec_dev *dev)
+{
+	struct mtk_vcodec_ctx *ctx = &dev->dev_ctx;
+	struct venc_inst *inst = (struct venc_inst *)ctx->drv_handle;
+
+	ctx->drv_handle = 0;
+	mtk_vcodec_del_ctx_list(ctx);
+	kfree(inst);
+}
+
+int venc_if_init(struct mtk_vcodec_ctx *ctx, unsigned int fourcc)
+{
+	int ret = 0;
+
+	ctx->oal_vcodec = 0;
+	mtk_venc_init_ctx_pm(ctx);
+
+	switch (fourcc) {
+	case V4L2_PIX_FMT_H264:
+	case V4L2_PIX_FMT_HEVC:
+	case V4L2_PIX_FMT_HEIF:
+	case V4L2_PIX_FMT_MPEG4:
+	case V4L2_PIX_FMT_H263:
+		ctx->enc_if = get_data_path_ptr();
+		ctx->oal_vcodec = 0;
+		break;
+	default:
+		return -EINVAL;
+	}
+	if (ctx->enc_if == NULL)
+		return -EINVAL;
+
+	ret = ctx->enc_if->init(ctx, (unsigned long *)&ctx->drv_handle);
+
+	return ret;
+}
+
+int venc_if_get_param(struct mtk_vcodec_ctx *ctx, enum venc_get_param_type type,
+					  void *out)
+{
+	int ret = 0;
+	bool is_query_cap = (type == GET_PARAM_VENC_CAP_SUPPORTED_FORMATS ||
+			     type == GET_PARAM_VENC_CAP_FRAME_SIZES ||
+			     type == GET_PARAM_VENC_CAP_COMMON);
+
+	vcodec_trace_begin_func();
+
+	if (is_query_cap && ctx->dev_ctx != NULL) {
+		ctx = ctx->dev_ctx;
+		mtk_v4l2_debug(0, "type %d drv_handle = 0x%lx", type, ctx->drv_handle);
+	}
+	if (ctx == ctx->dev_ctx)
+		ctx->enc_if = get_data_path_ptr();
+
+	if (ctx->enc_if && ctx->drv_handle)
+		ret = ctx->enc_if->get_param(ctx->drv_handle, type, out);
+	else
+		ret = -EINVAL;
+
+	vcodec_trace_end();
+	return ret;
+}
+
+int venc_if_set_param(struct mtk_vcodec_ctx *ctx,
+	enum venc_set_param_type type, struct venc_enc_param *enc_prm)
+{
+	int ret = 0;
+	bool is_set_prop = (type == VENC_SET_PARAM_PROPERTY ||
+			    type == VENC_SET_PARAM_VCP_LOG_INFO ||
+			    type == VENC_SET_PARAM_VCU_VPUD_LOG ||
+			    type == VENC_SET_PARAM_CONFIG);
+
+	vcodec_trace_begin_func();
+
+	if (is_set_prop && ctx->dev_ctx != NULL) {
+		ctx = ctx->dev_ctx;
+		mtk_v4l2_debug(0, "type %d drv_handle = 0x%lx", type, ctx->drv_handle);
+	}
+	if (ctx == ctx->dev_ctx)
+		ctx->enc_if = get_data_path_ptr();
+
+	if (ctx->enc_if && ctx->drv_handle)
+		ret = ctx->enc_if->set_param(ctx->drv_handle, type, enc_prm);
+	else
+		ret = -EINVAL;
+
+	vcodec_trace_end();
+	return ret;
+}
+
+void venc_encode_prepare(void *ctx_prepare,
+	unsigned int core_id, unsigned long *flags)
+{
+	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_prepare;
+	struct mtk_vcodec_dev *dev;
+
+	if (ctx == NULL || core_id >= MTK_VENC_HW_NUM || ctx->dev->power_in_vcp)
+		return;
+	dev = ctx->dev;
+
+	mutex_lock(&dev->pw_mutex);
+	spin_lock_irqsave(&dev->irqlock, *flags);
+	dev->curr_enc_ctx[core_id] = ctx;
+	spin_unlock_irqrestore(&dev->irqlock, *flags);
+	mtk_vcodec_enc_clock_on(ctx, core_id, false);
+	if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER) && ctx->dev->enc_irq[core_id] > 0 && dev->pw_cnt[core_id] == 0)
+		enable_irq(ctx->dev->enc_irq[core_id]);
+	if (core_id == MTK_VENC_CORE_0) {
+		mtk_venc_dvfs_check_boost(ctx); // enable only when mmdvfs_in_adaptive == 1
+		/*
+		 *	In SWRGO, BW needs to request in both VCP and kernel
+		 *	In mp, BW only request in vcp, modify the following pmqos code segment
+		 *	by using if (!qos->need_smi_monitor) in mp branch
+		 */
+		mtk_venc_pmqos_lock_unlock(dev, true);
+		mtk_venc_pmqos_monitor(dev, VCODEC_SMI_MONITOR_START);
+		mtk_venc_pmqos_frame_req(ctx, true);
+		mtk_venc_pmqos_lock_unlock(dev, false);
+	}
+	dev->pw_cnt[core_id]++;
+	vcodec_trace_count_fmt(dev->pw_cnt[core_id], "VENC_HW_CORE_%d", core_id);
+	mutex_unlock(&dev->pw_mutex);
+}
+
+static void venc_encode_unprepare_no_lock(void *ctx_unprepare,
+	unsigned int core_id, unsigned long *flags)
+{
+	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_unprepare;
+	struct mtk_vcodec_dev *dev;
+
+	if (ctx == NULL || core_id >= MTK_VENC_HW_NUM || ctx->dev->power_in_vcp)
+		return;
+	dev = ctx->dev;
+
+	if (dev->pw_cnt[core_id] == 0) {
+		mtk_v4l2_err("HW not prepared, pw_cnt[%d] = %d",
+			core_id, dev->pw_cnt[core_id]);
+		return;
+	}
+	dev->pw_cnt[core_id]--;
+	vcodec_trace_count_fmt(dev->pw_cnt[core_id], "VENC_HW_CORE_%d", core_id);
+	if (core_id == MTK_VENC_CORE_0) {
+		mtk_venc_pmqos_lock_unlock(dev, true);
+		mtk_venc_pmqos_monitor(ctx->dev, VCODEC_SMI_MONITOR_STOP);
+		mtk_venc_pmqos_frame_req(ctx, false);
+		mtk_venc_pmqos_lock_unlock(dev, false);
+	}
+	if (!mtk_vcodec_is_vcp(MTK_INST_ENCODER) && dev->enc_irq[core_id] > 0 && dev->pw_cnt[core_id] == 0)
+		disable_irq(dev->enc_irq[core_id]);
+	mtk_vcodec_enc_clock_off(ctx, core_id, false);
+	spin_lock_irqsave(&dev->irqlock, *flags);
+	dev->curr_enc_ctx[core_id] = NULL;
+	spin_unlock_irqrestore(&dev->irqlock, *flags);
+}
+
+void venc_encode_unprepare(void *ctx_unprepare,
+	unsigned int core_id, unsigned long *flags)
+{
+	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_unprepare;
+	struct mtk_vcodec_dev *dev;
+
+	if (ctx == NULL)
+		return;
+	dev = ctx->dev;
+
+	mutex_lock(&dev->pw_mutex);
+	venc_encode_unprepare_no_lock(ctx_unprepare, core_id, flags);
+	mutex_unlock(&dev->pw_mutex);
+}
+
+int venc_if_encode(struct mtk_vcodec_ctx *ctx,
+	enum venc_start_opt opt, struct venc_frm_buf *frm_buf,
+	struct mtk_vcodec_mem *bs_buf,
+	struct venc_done_result *result)
+{
+	int ret = 0;
+
+	vcodec_trace_begin_func();
+
+	if (ctx->drv_handle == 0) {
+		vcodec_trace_end();
+		return 0;
+	}
+
+	//vcodec_trace_begin
+	ret = ctx->enc_if->encode(ctx->drv_handle, opt, frm_buf, bs_buf, result);
+	//vcodec_trace_end();
+
+	vcodec_trace_end();
+	return ret;
+}
+
+int venc_if_deinit(struct mtk_vcodec_ctx *ctx)
+{
+	int ret = 0;
+
+	vcodec_trace_begin_func();
+	if (ctx->drv_handle == 0) {
+		mtk_venc_deinit_ctx_pm(ctx);
+		vcodec_trace_end();
+		return 0;
+	}
+
+	ret = ctx->enc_if->deinit(ctx->drv_handle);
+
+	ctx->drv_handle = 0;
+
+	mtk_venc_deinit_ctx_pm(ctx);
+
+	vcodec_trace_end();
+	return ret;
+}
+
+void venc_check_release_lock(void *ctx_check)
+{
+	struct mtk_vcodec_ctx *ctx = (struct mtk_vcodec_ctx *)ctx_check;
+	struct mtk_vcodec_dev *dev = ctx->dev;
+	unsigned long flags;
+	int i;
+
+	mutex_lock(&dev->pw_mutex);
+	for (i = 0; i < MTK_VENC_HW_NUM; i++) {
+		while (dev->pw_cnt[i] > 0) {
+			mtk_v4l2_err("[%d] daemon killed when holding lock %d (pw_cnt %d)",
+				ctx->id, i, dev->pw_cnt[i]);
+			venc_encode_unprepare_no_lock(ctx, i, &flags);
+		}
+	}
+	mutex_unlock(&dev->pw_mutex);
+}
+

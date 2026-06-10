@@ -1,0 +1,19 @@
+config MTK_TASK_TURBO
+	tristate "MTK task turbo feature"
+	help
+	  A new option CONFIG_MTK_TASK_TURBO for the feature.
+	  Task turbo provide enhancement of APP launch and lock
+	  latency via Preempting lock waiting queue and more
+	  oppotunity to occupy CPU resource.
+	  If you are not sure about whether to enable it or not,
+	  please set n.
+
+config MTK_VIP_ENGINE
+	tristate "MTK vip engine feature"
+	help
+	  A new option CONFIG_MTK_VIP_ENGINE for the feature.
+	  VIP engine provide enhancement to ensure that TOP-APP
+	  have sufficient CPU resources under high-loading
+	  situations.
+	  If you are not sure about whether to enable it or not,
+	  please set n.

@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig"
+    ])
+)
+
+ddk_headers(
+    name = "export_hdrs",
+    hdrs = glob(
+        ["include/*.h"]
+    ),
+)
+
+define_mgk_ddk_ko(
+    name = "pkvm_hypmmu",
+    srcs = [
+        "pkvm_hypmmu_host.c",
+        "pkvm_hypmmu_host.h",
+        "mtk_iommu-cmapool.c",
+        "mtk_iommu-cmapool.h",
+        "mtk_iommu-pagepool.c",
+        "mtk_iommu-pagepool.h",
+        "hal-mtk-iommu.c",
+        "hal-gpu-mpu.c",
+        "hal-infra-mpu.c",
+        "include/mtk-iommu-defines.h",
+        "debug_pgtbl.c",
+        "debug_pgtbl.h",
+    ],
+    includes = [".", "include"],
+    out = "pkvm_hypmmu.ko",
+    local_defines = [
+        "MTK_IOMMU_CMAPOOL=1",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    ko_deps = [
+        # Depends on the exported hyp_pmm APIs
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
+        # Depends on the ddk_library that builds the hypervisor code.
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_hypmmu/hyp:hyp".format(kernel_version),
+    ],
+)

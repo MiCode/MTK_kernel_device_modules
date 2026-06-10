@@ -1,0 +1,5 @@
+config INPUT_FS3002_HAPTIC
+    tristate "Foursemi FS3002 HAPTIC"
+    default y
+    help 
+    Foursemi Vibrator driver

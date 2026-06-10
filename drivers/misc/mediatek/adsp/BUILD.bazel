@@ -1,0 +1,73 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "adsp",
+    srcs = [
+        "adsp_core.c",
+        "adsp_fs.c",
+        "adsp_semaphore.c",
+        "adsp_logger.c",
+        "adsp_feature_table.c",
+        "adsp_timesync.c",
+        "adsp_awake.c",
+        "adsp_reserved_mem.c",
+        "adsp_platform_wrap.c",
+        "adsp_mbox.c",
+        "adsp_platform_driver.c",
+        "adsp_excep.c",
+        "adsp_qos.c",
+        "adsp_bus_monitor.c",
+        "adsp_ipic.c",
+        "adsp_dbg_dump.c",
+        "adsp_dbg.c",
+    ],
+    includes = [
+        "include",
+        ".",
+    ],
+    hdrs = glob([
+        "include/*.h",
+        "*.h",
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
+    ],
+)

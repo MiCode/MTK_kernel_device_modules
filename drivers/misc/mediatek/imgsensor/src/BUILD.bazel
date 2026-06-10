@@ -1,0 +1,184 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+## ddk ko
+
+# driver list to included
+config_cust_kernel_imgsensor = "s5khp3_mipi_raw s5kjn1sq03_mipi_raw s5khp9sp_mipi_raw s5k4h7sub_mipi_raw s5k4h7_mipi_raw imx06a_mipi_raw imx06c_mipi_raw imx858_mipi_raw imx858dual_mipi_raw imx989_mipi_raw imx989lite_mipi_raw imx758_mipi_raw imx758lite_mipi_raw imx598_mipi_raw imx598lite_mipi_raw imx866rgb_mipi_raw s5kjd1_mipi_raw imx686_mipi_raw imx519_mipi_raw s5k2t7sp_mipi_raw s5k2p7_mipi_raw ov8856_mipi_raw imx386_mipi_raw imx398_mipi_raw s5k2l7_mipi_raw imx586_mipi_raw imx576_mipi_raw imx481_mipi_raw s5khp3sp_mipi_raw s5k3m5sx_mipi_raw ov48b_mipi_raw ov50d_mipi_raw ov50ddual_mipi_raw ov64b_mipi_raw imx766_mipi_raw s5k3p9sp_mipi_raw imx766dual_mipi_raw imx766o_mipi_raw imx709o_mipi_raw imx766dualo_mipi_raw s5k3m5sxo_mipi_raw imx499_mipi_raw imx709_mipi_raw imx866_mipi_raw imx800_mipi_raw s5kgd2_mipi_raw imx6632x_mipi_raw hi847_mipi_raw imx966_mipiw_raw fake_mipi_raw ov13b10main_mipi_raw sc800cs_mipi_raw"
+
+# common v1_1 code version
+
+config_subdrvs = config_cust_kernel_imgsensor.split(" ")
+
+common_v1_1_subdrvs = glob([
+    "common/v1_1/**/Makefile",
+])
+common_v1_1_subdrvs_split = [
+    subdrv.split("/")[-2] for subdrv in common_v1_1_subdrvs
+]
+intersect_comm_v1_1_drvs = [item for item in common_v1_1_subdrvs_split if item in config_subdrvs]  # get intersection
+
+v1_1_subdrvs_c = [
+    "common/v1_1/{}/*.c".format(p) if glob(["common/v1_1/{}/**".format(p)]) else "" for p in intersect_comm_v1_1_drvs
+]
+v1_1_subdrvs_def_split = [
+    subdrv.upper() for subdrv in intersect_comm_v1_1_drvs
+]
+
+# common v1 code version
+
+common_v1_subdrvs = glob([
+    "common/v1/**/Makefile",
+])
+common_v1_subdrvs_split = [
+    subdrv.split("/")[-2] for subdrv in common_v1_subdrvs
+]
+intersect_comm_v1_drvs = [item for item in common_v1_subdrvs_split if item in config_subdrvs]  # get intersection
+
+v1_subdrvs_c = [
+    "common/v1/{}/*.c".format(p) if glob(["common/v1/{}/**".format(p)]) else "" for p in intersect_comm_v1_drvs
+]
+v1_subdrvs_def_split = [
+    subdrv.upper() for subdrv in intersect_comm_v1_drvs
+]
+
+print("imgsensor non-v4l2 v1 drvs c = {}".format(v1_subdrvs_c))
+print("imgsensor non-v4l2 v1 drvs def = {}".format(v1_subdrvs_def_split))
+
+print("imgsensor non-v4l2 v1_1 drvs c = {}".format(v1_1_subdrvs_c))
+print("imgsensor non-v4l2 v1_1 drvs def = {}".format(v1_1_subdrvs_def_split))
+
+# isp6s
+define_mgk_ddk_ko(
+    name = "imgsensor_isp6s",
+    srcs = [
+        "common/v1_1/imgsensor.c",
+        "common/v1_1/imgsensor_hw.c",
+        "common/v1_1/imgsensor_i2c.c",
+        "common/v1_1/imgsensor_legacy.c",
+        "common/v1_1/imgsensor_proc.c",
+        "common/v1_1/imgsensor_pwr_seq.c",
+        "common/v1_1/imgsensor_sensor_list.c",
+        # "common/v1_1/imgsensor_ca.c",
+        "common/v1_1/seninf_clk.c",
+        "common/v1_1/seninf.c",
+    ] + [
+        "common/v1_1/n3d_fsync/n3d.c",
+        "common/v1_1/n3d_fsync/n3d_clk.c",
+        "common/v1_1/n3d_fsync/n3d_hw.c",
+        "common/v1_1/n3d_fsync/vsync_recorder.c",
+        "common/v1_1/n3d_fsync/frame-sync/frame_sync.c",
+        "common/v1_1/n3d_fsync/frame-sync/frame_sync_algo.c",
+        "common/v1_1/n3d_fsync/frame-sync/frame_monitor.c",
+    ] + glob([
+        "common/v1_1/camera_hw/*.c",
+        "common/v1_1/camera_hw/**/*.c",
+    ]) + [
+        "isp6s/seninf/seninf_impl.c",
+        # "isp6s/camera_hw/imgsensor_oc.c",
+    ] + glob(v1_1_subdrvs_c),  # Build subdrivers
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+        "-I$(srctree)/drivers/thermal",
+    ],
+    includes = [
+        ".",
+        "common/v1_1",
+        "common/v1_1/camera_hw",
+        "common/v1_1/n3d_fsync",
+        "isp6s/camera_hw",
+        "isp6s/seninf",
+    ],
+    local_defines = [
+        # "SENSOR_PARALLEISM",
+        "NO_I2C_MTK",
+        "NO_CLK_METER",
+        "SENINF_USE_RPM",
+        "DFS_CTRL_BY_OPP",
+        "SENINF_N3D_SUPPORT",
+    ] + v1_1_subdrvs_def_split,
+)
+
+# isp4_t
+
+define_mgk_ddk_ko(
+    name = "imgsensor_isp4_t",
+    srcs = [
+        "common/v1/imgsensor.c",
+        "common/v1/imgsensor_hw.c",
+        "common/v1/imgsensor_i2c.c",
+        "common/v1/imgsensor_legacy.c",
+        "common/v1/imgsensor_proc.c",
+        "common/v1/imgsensor_sensor_list.c",
+    ] + glob([
+        "isp4_t/camera_hw/*.c",
+        "isp4_t/camera_hw/**/*.c",
+    ]) + [
+        "isp4_t/imgsensor_clk.c",
+    ] + glob(v1_subdrvs_c),  # Build subdrivers
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+    #    "-I$(srctree)/drivers/thermal",
+    ],
+    includes = [
+        ".",
+        "common/v1",
+        "isp4_t",
+        "isp4_t/camera_hw",
+    ],
+    local_defines = [
+        "NO_I2C_MTK",
+        "NO_CLK_METER",
+        "IMGSENSOR_USE_RPM",
+        "IMGSENSOR_DFS_CTRL_ENABLE",
+        "SENINF_USE_WAKE_LOCK",
+        "IMGSENSOR_ISP4_T_REF",
+    ] + v1_subdrvs_def_split,
+)
+

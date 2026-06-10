@@ -1,0 +1,99 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = [
+        "inc/lpm.h",
+        "modules/include/lpm_dbg_common_v2.h",
+    ],
+)
+
+ddk_headers(
+    name = "ddk_public_headers",
+    hdrs = [
+        "inc/lpm.h",
+        "inc/lpm_module.h",
+        "inc/lpm_type.h",
+        "inc/lpm_plat_common.h",
+        "inc/lpm_call.h",
+        "inc/lpm_call_type.h",
+        "inc/lpm_trace_event/lpm_trace_event.h",
+        "inc/lpm_trace_event/lpm_trace_def.h",
+        "mtk_lpm_fs/mtk_cpuidle_sysfs.h",
+        "mtk_lpm_fs/mtk_lp_sysfs.h",
+        "mtk_lpm_fs/mtk_lpm_sysfs.h",
+        "mtk_lpm_fs/mtk_spm_sysfs.h",
+        "mtk_lpm_fs/mtk_lp_kernfs.h",
+        "mtk_lpm_fs/mtk_suspend_sysfs.h",
+        "mtk_lpm_fs/mtk_idle_sysfs.h",
+        "mtk_lpm_fs/mtk_ocla_sysfs.h",
+        "mtk_lpm_fs/mtk_gov_sysfs.h",
+        "modules/include/lpm_dbg_common_v2.h",
+        "modules/include/lpm_dbg_syssram_v1.h",
+        "modules/include/lpm_plat_apmcu.h",
+        "modules/include/lpm_plat_apmcu_mbox.h",
+        "modules/include/lpm_resource_constraint_v1.h",
+        "modules/include/lpm_timer.h",
+        "modules/include/mtk_cpuidle_status.h",
+        "modules/include/mtk_cpupm_dbg.h",
+    ],
+
+    includes = [
+        "inc",
+        "inc/lpm_trace_event",
+        "mtk_lpm_fs",
+        "modules/include",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-lpm",
+
+    srcs = [
+        "lpm_call.c",
+        "lpm_module.c",
+        "lpm_registry.c",
+    ]+
+    glob([
+        "*.h",
+        "platform/*.h",
+        "inc/*.h",
+        "lpm_trace_event/*.c",
+        "inc/lpm_trace_event/*.h",
+        "platform/*.c",
+        "mtk_lpm_fs/*.h",
+        "mtk_lpm_fs/*.c",
+    ]),
+
+    hdrs = [
+        "inc/lpm.h",
+        "inc/lpm_module.h",
+        "inc/lpm_type.h",
+        "mtk_lpm_fs/mtk_cpuidle_sysfs.h",
+        "mtk_lpm_fs/mtk_lp_sysfs.h",
+    ],
+
+    includes = [
+        ".",
+        "inc",
+        "platform",
+        "inc/lpm_trace_event",
+        "lpm_trace_event",
+        "mtk_lpm_fs",
+        "modules",
+    ],
+)

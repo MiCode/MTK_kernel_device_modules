@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# SPI driver configuration
+#
+
+if SPI
+
+config DEVICE_MODULES_SPI_MT65XX
+	tristate "MediaTek SPI controller"
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	help
+	  This selects the MediaTek(R) SPI bus driver.
+	  If you want to use MediaTek(R) SPI interface,
+	  say Y or M here.If you are not sure, say N.
+	  SPI drivers for Mediatek MT65XX and MT81XX series ARM SoCs.
+
+config XIAOMI_FINGERPRINT_SPI_NUM
+	int "xiaomi fingerprint spi num"
+	default 1
+	help
+	  xiaomi fingerprint and mitee
+
+config INTR2_PIN_ENABLE
+	int "xiaomi ULTRA fingerprint controller "
+	default 0
+	help
+	  add xiaomi ULTRA fingerprint
+
+config DX5_SPI_PULL_RESUORCES
+	bool "Enable P12U SPI Power Control"
+	default n
+	help
+	This option enables project-specific SPI resources control code for DX5.
+	Say Y here if you want to use this feature in your project.
+
+config XIAOMI_SIDE_FINGERPRINT
+	int "side_fingerprint"
+	default 0
+	help
+	  add xiaomi side_fingerprint
+
+config XIAOMI_FINGERPRINT_POWEAR_OFF_SEQ
+	int "fingerprint_power_off_seq"
+	default 0
+	help
+	  add xiaomi fingerprint_power_off_seq
+
+endif # SPI

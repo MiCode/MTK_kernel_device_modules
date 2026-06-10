@@ -1,0 +1,92 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "leds-mtk",
+    srcs = [
+        "leds-mtk.c",
+    ],
+    hdrs = [
+        "leds-mtk.h",
+    ],
+    includes = ["."],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version)
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "leds-mtk-pwm",
+    srcs = [
+        "leds-mtk-pwm.c",
+    ],
+    includes = ["."],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+        ":leds-mtk".format(kernel_version)
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "leds-mtk-disp",
+    srcs = [
+        "leds-mtk-disp.c",
+    ],
+
+    includes = ["."],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_panel_ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+        ":leds-mtk".format(kernel_version)
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "regulator-vibrator",
+    srcs = [
+        "regulator-vibrator.c",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "leds-mt6360",
+    srcs = [
+        "leds-mt6360.c",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/flashlight:flashlight".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/flashlight",
+        "-I$(DEVICE_MODULES_PATH)/drivers/leds",
+        "-I$(DEVICE_MODULES_PATH)/drivers/video/backlight",
+        "-I$(srctree)/drivers/power/supply",
+    ],
+)

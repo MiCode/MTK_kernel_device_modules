@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2020 MediaTek Inc.
+ */
+&connfem {
+	epa-elna-mtk {
+		parts = <&nofem &nofem>,	/* [0] iPA/iLNA */
+			<&sky85320 &sky85720>,	/* [1] MT6631, SKY85320 + SKY85720 */
+			<&mxd7751s &mxd7751s>;	/* [2] MT6631, MXD7751S */
+
+		wifi {
+			flags-1 {
+				/* open-loop; */
+			};
+			flags-2 {
+				/* open-loop; */
+			};
+		};
+
+		bt {
+			flags-1 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				bypass;
+			};
+			flags-2 {
+				/* choose one of: epa-elna / epa / elna / bypass */
+				bypass;
+			};
+		};
+	};
+};

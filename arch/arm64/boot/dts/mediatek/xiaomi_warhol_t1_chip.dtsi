@@ -1,0 +1,39 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2023 MediaTek Inc.
+ */
+
+&pio {
+	t1_gpio_vc_all: t1_gpio_vc_all {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO141__FUNC_GPIO141>,
+					 <PINMUX_GPIO140__FUNC_GPIO140>,
+					 <PINMUX_GPIO139__FUNC_GPIO139>,
+					 <PINMUX_GPIO136__FUNC_GPIO136>,
+					 <PINMUX_GPIO133__FUNC_GPIO133>,
+					 <PINMUX_GPIO132__FUNC_GPIO132>,
+					 <PINMUX_GPIO135__FUNC_GPIO135>;
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+};
+
+&odm {
+	mi_t1_chip {
+		compatible = "mdm,mi_t1_chip";
+		gpio-count = <7>;
+		first-gpio = <141>;
+		mi-t1-gpio-1 = <&pio 141 0x0>;
+		mi-t1-gpio-2 = <&pio 140 0x0>;
+		mi-t1-gpio-3 = <&pio 139 0x0>;
+		mi-t1-gpio-4 = <&pio 136 0x0>;
+		mi-t1-gpio-5 = <&pio 133 0x0>;
+		mi-t1-gpio-6 = <&pio 132 0x0>;
+		mi-t1-gpio-7 = <&pio 135 0x0>;
+		pinctrl-names = "t1_gpio_vc_all";
+		pinctrl-0 = <&t1_gpio_vc_all>;
+	};
+};

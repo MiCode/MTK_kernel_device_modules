@@ -1,0 +1,177 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mt6360-core",
+    srcs = [
+        "mt6360-core.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6370",
+    srcs = [
+        "mt6370.h",
+        "mt6370.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6375",
+    srcs = [
+        "mt6375.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6379i",
+    srcs = [
+        "mt6379.h",
+        "mt6379-i2c.c",
+        "mt6379-core.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6379s",
+    srcs = [
+        "mt6379.h",
+        "mt6379-spmi.c",
+        "mt6379-core.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6720",
+    srcs = [
+	"mt6720.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6720s",
+    srcs = [
+	"mt6720s.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6685-core",
+    srcs = [
+        "mt6685-core.c",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6687-core",
+    srcs = [
+        "mt6687-core.c",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "rt9490",
+    srcs = [
+        "rt9490.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6397",
+    srcs = [
+        "mt6397-core.c",
+        "mt6397-irq.c",
+        "mt6358-irq.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mt63xx-debug",
+    srcs = [
+        "mt63xx-debug.c",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-spmi-pmic",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_GRT_HYPERVISOR": {
+            False: ["mtk-spmi-pmic.c"],
+        },
+    },
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-spmi-pmic-debug",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_DEBUG_FS": {
+            True: ["mtk-spmi-pmic-debug.c"],
+        },
+    },
+    hdrs = ["mtk-spmi-pmic-debug.h"],
+    includes = ["include"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/mfd",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6681-core",
+    srcs = [
+        "mt6681-core.c",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6338-core",
+    srcs = [
+        "mt6338-core.c",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mt6685-audclk",
+    srcs = [
+        "mt6685-audclk.c",
+    ],
+    includes = ["."],
+)

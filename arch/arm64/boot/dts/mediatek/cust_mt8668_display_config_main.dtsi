@@ -1,0 +1,24 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2022 MediaTek Inc.
+ */
+
+&disp_pwm {
+	status = "okay";
+};
+
+&pwmleds {
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+};
+
+&max96789 {
+	status = "okay";
+};
+
+&mipi_tx_config0 {
+	status = "okay";
+};

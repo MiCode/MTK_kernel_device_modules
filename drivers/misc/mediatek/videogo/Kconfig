@@ -1,0 +1,21 @@
+config MTK_VIDEOGO
+	tristate "mtk video performance controller"
+	help
+		This option enables the MediaTek (MTK) video performance controller driver.
+
+		The MTK video performance controller is responsible for managing and optimizing
+		the performance of video processing tasks on MediaTek platforms. It provides
+		various controls and optimizations to ensure smooth video playback and efficient
+		resource utilization.
+
+		If you enable this option, the driver will be compiled and included in the kernel.
+		To compile this driver as a module, choose 'M' here. The module will be called
+		'videogo'.
+
+		This driver is essential for applications that require high-performance video
+		processing on MediaTek hardware. It is recommended to enable this option if you
+		are using MediaTek platforms and need to optimize video performance.
+
+		If you are unsure, it is safe to say N.
+
+

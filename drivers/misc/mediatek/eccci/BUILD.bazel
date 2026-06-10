@@ -1,0 +1,107 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/*.h",
+		"**/*.c",
+		"**/Makefile",
+	]),
+)
+
+ddk_headers(
+	name = "ccci_header",
+	hdrs = glob([
+		"**/*.h",
+	]),
+	includes = [".", "inc"],
+)
+
+define_mgk_ddk_ko(
+	name = "ccci_auxadc",
+	hdrs = glob([
+		"**/*.h",
+	]),
+	local_defines = ["CCCI_KMODULE_ENABLE"],
+	includes = [".", "inc"],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	srcs = ["ccci_auxadc.c"],
+)
+
+define_mgk_ddk_ko(
+	name = "ccci_md_all",
+	hdrs = glob([ "**/*.h"]),
+	local_defines = ["CCCI_KMODULE_ENABLE"],
+	includes = [".", "inc", "hif", "port", "fsm", "udc", "udc/udc_lib_inc"],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/memory/mediatek:emi-mpu".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/memory/mediatek:smpu".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/conn_md:conn_md_drv".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_auxadc".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/mdpm:mtk_mdpm".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_pbm".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common-legacy".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/spmi:spmi-mtk-pmif".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-dbg".format(kernel_version),
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/fsm:ccci_fsm_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_hif_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:pbm_headers".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/conn_md/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	srcs = [
+		"ccci_bm.c",
+		"ccci_core.c",
+		"ccci_modem.c",
+		"port/ccci_mbrain.c",
+		"port/ccci_swtp.c",
+		"port/port_cfg.c",
+		"port/port_char.c",
+		"port/port_ctlmsg.c",
+		"port/port_ipc.c",
+		"port/port_kernel_interface.c",
+		"port/port_poller.c",
+		"port/port_proxy.c",
+		"port/port_rpc.c",
+		"port/port_smem.c",
+		"port/port_sysmsg.c",
+		"port/port_udc.c",
+		"udc/udc.c",
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/fsm:md_all_need_srcs".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:md_all_need_srcs".format(kernel_version),
+	],
+)

@@ -1,0 +1,117 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+         "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_srcs",
+    srcs = glob([
+	"**/Makefile",
+	"**/*.c",
+	"**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "ise-trusty",
+    srcs = [
+	"ise-trusty-core.c",
+	"ise-trusty-mem.c",
+	"ise-trusty-shm.c",
+	"ise-trusty-dci.c",
+    ],
+    includes = [
+	".",
+        "include",
+    ],
+    hdrs = [
+	"include/linux/trusty/ise_sm_err.h",
+	"include/linux/trusty/ise_smcall.h",
+	"include/linux/trusty/ise_trusty.h",
+	"include/linux/trusty/ise_trusty_ipc.h",
+	"include/linux/trusty/ise_trusty_shm.h",
+	"ise-trusty-dci.h",
+    ],
+    header_deps = [
+	"//kernel_device_modules-{}/drivers/tee/gud:mobicore_public_hdrs".format(kernel_version),
+    ],
+    ko_deps = [
+	"//kernel_device_modules-{}/drivers/mailbox:mtk-ise-mailbox".format(kernel_version),
+	"//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version),
+	"//kernel_device_modules-{}/drivers/tee/gud:mcDrvModule".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "ise-trusty-log",
+    srcs = [
+	"ise-trusty-log.c",
+    ],
+    includes = [
+	".",
+	"include",
+    ],
+    hdrs = [
+	"ise-trusty-log.h",
+	"include/linux/trusty/ise_sm_err.h",
+	"include/linux/trusty/ise_smcall.h",
+	"include/linux/trusty/ise_trusty.h",
+	"include/linux/trusty/ise_trusty_shm.h",
+    ],
+    ko_deps = [
+	"//kernel_device_modules-{}/drivers/misc/mediatek/ise_trusty:ise-trusty".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "ise-trusty-ipc",
+    srcs = [
+	"ise-trusty-ipc.c",
+    ],
+    includes = [
+	".",
+	"include",
+    ],
+    hdrs = [
+	"include/uapi/linux/trusty/ise_ipc.h",
+	"include/linux/trusty/ise_sm_err.h",
+	"include/linux/trusty/ise_smcall.h",
+	"include/linux/trusty/ise_trusty.h",
+	"include/linux/trusty/ise_trusty_shm.h",
+    ],
+    ko_deps = [
+	"//kernel_device_modules-{}/drivers/misc/mediatek/ise_trusty:ise-trusty".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "ise-trusty-virtio",
+    srcs = [
+	"ise-trusty-virtio.c",
+    ],
+    includes = [
+	".",
+	"include",
+    ],
+    hdrs = [
+	"include/linux/trusty/ise_sm_err.h",
+	"include/linux/trusty/ise_smcall.h",
+	"include/linux/trusty/ise_trusty.h",
+	"include/linux/trusty/ise_trusty_shm.h",
+    ],
+    ko_deps = [
+	"//kernel_device_modules-{}/drivers/misc/mediatek/ise_trusty:ise-trusty".format(kernel_version),
+    ],
+)
+

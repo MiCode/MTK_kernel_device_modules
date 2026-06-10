@@ -1,0 +1,48 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load(":dummy.bzl", "dummy")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+            "**/Kconfig",
+    ]),
+)
+
+dummy(
+    name = "dummy.c"
+)
+
+define_mgk_ddk_ko(
+    name = "irq_monitor",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_IRQ_MONITOR": {
+            True: [
+                "irq_monitor_main.c",
+                "irq_monitor_test.c",
+                "irq_monitor_log.c",
+                "irq_count_tracer.c",
+                "common.c",
+                "irq_monitor_trace.h",
+                "internal.h",
+            ],
+            False: [":dummy.c"],
+        }
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+    includes = ["."],
+    out = "irq_monitor.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+)

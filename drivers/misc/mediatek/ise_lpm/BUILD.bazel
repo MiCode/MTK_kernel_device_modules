@@ -1,0 +1,73 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "ise_lpm",
+    srcs = [
+        "ise_lpm.c",
+    ],
+    ko_deps = [
+          "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+          "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+    ],
+    header_deps = [
+          "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
+	"-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "ise_lpm_v2",
+    srcs = [
+        "ise_lpm_v2.c",
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+	"-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/",
+    ],
+)
+
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = [
+        ".",
+    ],
+    hdrs = [
+	"$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/mtk_ise_lpm.h",
+    ],
+    linux_includes = [
+        "include",
+    ],
+)

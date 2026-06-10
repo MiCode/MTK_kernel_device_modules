@@ -1,0 +1,103 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+        name = "srcs",
+        srcs = glob([
+                "**/Makefile",
+                "**/Kbuild",
+                "**/*.c",
+                "**/*.h",
+        ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_mbraink_v6991",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_MBRAINK": {
+            True:["mbraink_v6991.c",
+                  "mbraink_v6991_memory.c",
+                  "mbraink_v6991_audio.c",
+                  "mbraink_v6991_battery.c",
+                  "mbraink_v6991_power.c",
+                  "mbraink_v6991_gpu.c",
+                  "mbraink_v6991_gps.c",
+                  "mbraink_v6991_wifi.c",
+                  "mbraink_v6991_camera.c",
+                  "mbraink_v6991_pmu.c",
+                  "mbraink_v6991_touch.c",
+                  "mbraink_sys_res_plat.c",
+                  "mbraink_sys_res_mbrain_plat.c",
+                  "mbraink_sys_res.c",
+                  "mbraink_sys_res_mbrain_dbg.c",
+            ],
+        },
+    },
+    includes = [
+        ".",
+    ],
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-Wno-frame-address",
+        "-I$(srctree)",
+        "-I$(srctree)/drivers/android",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dvfsrc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/spmi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/mfd",
+        "-I$(DEVICE_MODULES_PATH)/drivers/input/touchscreen/GT9895",
+        "-I$(DEVICE_MODULES_PATH)/drivers/regulator",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink:mtk_mbraink".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/bridge:mtk_mbraink_bridge".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink/perf:mtk_mbraink_perf".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm-perf-arm-pmu".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/spmi:spmi-mtk-pmif".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/mfd:mtk-spmi-pmic-debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:ged".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug:mtk-lpm-dbg-common-v2".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:scp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/dvfsrc:mtk-dvfsrc-helper".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_bp_thl".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_peak_power_budget".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod-ise".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/input/touchscreen/GT9895:gt9895".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:mtk_fpsgo_v8".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mbraink:mtk_mbraink_h".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:gpufreq_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/lpm/modules/debug:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/lpm:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:power_throttling_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pbm:pbm_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:fpsgo_v8_public_headers".format(kernel_version),
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)

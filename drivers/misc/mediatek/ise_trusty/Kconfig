@@ -1,0 +1,75 @@
+#
+# ISE Trusty
+#
+
+menu "ISE Trusty"
+
+config ISE_TRUSTY
+	tristate "ISE Trusty"
+	default n
+
+config ISE_TRUSTY_FIQ
+	tristate
+	depends on ISE_TRUSTY
+
+config ISE_TRUSTY_FIQ_ARM
+	tristate
+	depends on ISE_TRUSTY
+	depends on ARM
+	select FIQ_GLUE
+	select ISE_TRUSTY_FIQ
+	default y
+
+config ISE_TRUSTY_FIQ_ARM64
+	tristate
+	depends on ISE_TRUSTY
+	depends on ARM64
+	select FIQ_GLUE
+	select ISE_TRUSTY_FIQ
+	default y
+
+config ISE_TRUSTY_LOG
+	tristate
+	depends on ISE_TRUSTY
+	default y
+
+config ISE_TRUSTY_VIRTIO
+	tristate "ISE Trusty virtio support"
+	depends on ISE_TRUSTY
+	select VIRTIO
+	default y
+
+config ISE_TRUSTY_VIRTIO_IPC
+	tristate "ISE Trusty Virtio IPC driver"
+	depends on ISE_TRUSTY_VIRTIO
+	default y
+	help
+	  This module adds support for communications with ISE Trusty Services
+
+	  If you choose to build a module, it'll be called trusty-ipc.
+	  Say N if unsure.
+
+config ISE_TRUSTY_BUG_ON_WARN
+	tristate "ISE Trusty enable warning as BUG_ON"
+	depends on ISE_TRUSTY_VIRTIO_IPC
+	depends on MTK_AEE_FEATURE
+	default n
+	help
+	  Enable BUG_ON when trusty met the trouble to confirm issue by
+	  AEE. Such as time-out of IPC etc.
+
+	  Select this if you want to enable above facilities.
+	  If unsure, say N.
+
+config ISE_TRUSTY_TIPC_FOOTPRINT
+	tristate "ISE Trusty TIPC footprint"
+	depends on ISE_TRUSTY_VIRTIO_IPC
+	default n
+	help
+	  The debug feature which enables tipc footprint to trace tipc
+	  flow between REE/iSE.
+
+	  Select this if you want to enable above facilities.
+	  If unsure, say N.
+
+endmenu

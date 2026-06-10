@@ -1,0 +1,140 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/*.h",
+		"**/*.c",
+		"**/Makefile",
+	]),
+)
+filegroup(
+	name = "md_all_need_srcs",
+	srcs = [
+		"ccci_hif.c",
+	]
+)
+
+ddk_headers(
+	name = "ccci_hif_header",
+	hdrs = glob([
+		"**/*.h",
+	]),
+	includes = ["."],
+)
+
+define_mgk_ddk_ko(
+	name = "ccci_ccif",
+	hdrs = glob([
+		"**/*.h",
+	]),
+	local_defines = ["CCCI_KMODULE_ENABLE"],
+	includes = [".", "inc"],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/fsm:ccci_fsm_header".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	srcs = [
+		"ccci_hif_ccif.c",
+		"ccci_ringbuf.c",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "ccci_cldma",
+	hdrs = glob([
+		"**/*.h",
+	]),
+	local_defines = ["CCCI_KMODULE_ENABLE"],
+	includes = [".", "inc"],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_ccif".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/fsm:ccci_fsm_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_hif_header".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	srcs = [
+		"ccci_cldma_plat.c",
+		"ccci_hif_cldma.c",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "ccci_dpmaif",
+	hdrs = glob([
+		"**/*.h",
+	]),
+	local_defines = ["CCCI_KMODULE_ENABLE", "RX_PAGE_POOL"],
+	includes = [".", "inc"],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_ccif".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccmni:ccmni_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/fsm:ccci_fsm_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_hif_header".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	srcs = [
+		"ccci_dpmaif_bat.c",
+		"ccci_dpmaif_com.c",
+		"ccci_dpmaif_debug.c",
+		"ccci_dpmaif_drv_com.c",
+		"ccci_dpmaif_drv_v1.c",
+		"ccci_dpmaif_drv_v2.c",
+		"ccci_dpmaif_drv_v3.c",
+		"ccci_dpmaif_page_pool.c",
+		"ccci_dpmaif_resv_mem.c",
+		"ccci_dpmaif_v1_6789.c",
+		"md_spd_dvfs_fn.c",
+		"md_spd_dvfs_method.c",
+		"net_pool.c",
+		"net_speed.c",
+	],
+)

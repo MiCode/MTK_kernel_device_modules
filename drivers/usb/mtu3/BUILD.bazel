@@ -1,0 +1,66 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_srcs",
+    srcs = glob([
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtu3",
+    srcs = [
+        "mtu3_core.c",
+        "mtu3_dr.c",
+        "mtu3_gadget_ep0.c",
+        "mtu3_gadget.c",
+        "mtu3_plat.c",
+        "mtu3_host.c",
+        "mtu3_qmu.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/power/supply:adapter_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply:mtk_charger_framework".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    conditional_srcs = {
+        "CONFIG_TRACING": {
+            True: [
+                "mtu3_trace.c",
+            ],
+        },
+        "CONFIG_DEBUG_FS": {
+            True: [
+                "mtu3_debugfs.c",
+            ],
+        },
+    },
+    out = "mtu3.ko",
+    copts = [
+        "-I$(srctree)/$(src)",
+        "-I$(srctree)/drivers/usb/gadget/function",
+        "-I$(srctree)/drivers/usb/typec",
+        "-I$(DEVICE_MODULES_PATH)/drivers/usb/mtu3",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+)

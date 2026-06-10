@@ -1,0 +1,61 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+
+filegroup(
+	name = "ddk_makefile",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "mtk-ssc-dbg-v1",
+	srcs = [
+		"ssc_dbg_v1.c",
+	],
+	includes = [
+		".",
+	],
+	hdrs = [
+		"ssc_sysfs.h",
+	],
+	copts = [
+		"-Wall",
+		"-Werror",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ssc/inc/",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ssc:mtk-ssc".format(kernel_version),
+	],
+)
+
+
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+	name = "ddk_public_headers",
+	includes = ["."],
+	hdrs = glob(["**/*.h"]), # export all headers for other modules to use
+)

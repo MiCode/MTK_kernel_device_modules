@@ -1,0 +1,1680 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ */
+#include <dt-bindings/iio/mt635x-auxadc.h>
+#include <dt-bindings/spmi/spmi.h>
+#include <linux/mfd/mt6661/registers.h>
+
+&spmi {
+	#address-cells = <2>;
+	#size-cells = <0>;
+	mt6661_4: mt6661-4@4 {
+		compatible = "mediatek,mt6661";
+		reg = <0x4 SPMI_USID>;
+		interrupts = <4>;
+		#address-cells = <0>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		mtk-spmi-pmic-debug {
+			compatible = "mediatek,spmi-pmic-4-debug";
+			cid-addr = <0x61 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
+			spmi-crc-err-sts = <MT6661_RGS_CRC_ERR_ADDR>;
+			spmi-crc-err-cnt = <MT6661_RGS_CRC_ERR_CNT_ADDR>;
+			pmic-pre-ot-cnt-enable = <1>;
+			pmic-pre-ot-cnt = <MT6661_RG_PRE_OT_COUNT_ADDR>;
+			pmic-pre-ot-cnt-clr = <MT6661_RG_PRE_OT_COUNT_CLR_ADDR
+					       MT6661_RG_PRE_OT_COUNT_CLR_MASK
+					       MT6661_RG_PRE_OT_COUNT_CLR_SHIFT>;
+			pmic-pre-lvsys-cnt-enable = <1>;
+			pmic-pre-lvsys-cnt = <MT6661_RG_PRE_LVSYS_COUNT_ADDR>;
+			pmic-pre-lvsys-cnt-clr = <MT6661_RG_PRE_LVSYS_COUNT_CLR_ADDR
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_MASK
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_SHIFT>;
+			pmic-curr-clamping-cnt-enable = <1>;
+			pmic-curr-clamping-cnt = <MT6661_RG_BUCK1_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK2_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK3_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK4_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK5_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK6_OC_STS_CNT_ADDR>;
+			pmic-curr-clamping-cnt-clr = <MT6661_RG_BUCK_OC_STS_CNT_CLR_ADDR
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_MASK
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_SHIFT>;
+			spmi-pmic-debug-rg-enable = <1>;
+			spmi-pmic-debug-rg-addr = <MT6661_RG_SMT_SPMI_M_SCL_ADDR
+						   MT6661_RG_SMT_SPMI_M_SDA_ADDR
+						   MT6661_RG_OCTL_SPMI_M_SDA_ADDR
+						   MT6661_GPIO_PULLEN0_1_ADDR
+						   MT6661_GPIO_PULLEN0_2_ADDR
+						   MT6661_RG_TOP_CFG_RSV1_0_ADDR
+						   MT6661_RG_TOP_CFG_RSV1_1_ADDR
+						   MT6661_GPIO_PULLSEL0_1_ADDR
+						   MT6661_GPIO_PULLSEL0_2_ADDR>;
+			spmi-pmic-debug-rg-mask = <MT6661_RG_SMT_SPMI_M_SCL_MASK
+						   MT6661_RG_SMT_SPMI_M_SDA_MASK
+						   MT6661_RG_OCTL_SPMI_M_SDA_MASK
+						   MT6661_GPIO_PULLEN0_1_MASK
+						   MT6661_GPIO_PULLEN0_2_MASK
+						   MT6661_RG_TOP_CFG_RSV1_0_MASK
+						   MT6661_RG_TOP_CFG_RSV1_1_MASK
+						   MT6661_GPIO_PULLSEL0_1_MASK
+						   MT6661_GPIO_PULLSEL0_2_MASK>;
+			spmi-pmic-debug-rg-shift = <MT6661_RG_SMT_SPMI_M_SCL_SHIFT
+						    MT6661_RG_SMT_SPMI_M_SDA_SHIFT
+						    MT6661_RG_OCTL_SPMI_M_SDA_SHIFT
+						    MT6661_GPIO_PULLEN0_1_SHIFT
+						    MT6661_GPIO_PULLEN0_2_SHIFT
+						    MT6661_RG_TOP_CFG_RSV1_0_SHIFT
+						    MT6661_RG_TOP_CFG_RSV1_1_SHIFT
+						    MT6661_GPIO_PULLSEL0_1_SHIFT
+						    MT6661_GPIO_PULLSEL0_2_SHIFT>;
+			rgs-npkt-cclp-err = <MT6661_RGS_NPKT_CCLP_ERR>;
+			rgs-npkt-cclp-clr = <MT6661_RGS_NPKT_CCLP_CLR>;
+			rgs-npkt-cclp-clr-enable = <1>;
+		};
+
+		mt6661_4_efuse: mt6661-4-efuse {
+			compatible = "mediatek,mt6661-4-efuse";
+			// #address-cells = <1>;
+			// #size-cells = <1>;
+			// mt6363_thermal_efuse: mt6363_e_data {
+				// reg = <0x5e 8>;
+			// };
+		};
+
+                mt6661-4-connv3 {
+			compatible = "mediatek,mt6661-4-connv3";
+		};
+
+		mt6661keys: mt6661keys {
+			compatible = "mediatek,mt6661-keys";
+			mediatek,long-press-mode = <1>;
+			power-off-time-sec = <0>;
+
+			power {
+				linux,keycodes = <116>;
+				wakeup-source;
+			};
+
+			home {
+				linux,keycodes = <114>;
+			};
+		};
+
+		mt6661_4_pio: mt6661-4-pinctrl {
+			compatible = "mediatek,mt6661-4-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6661_4_pio 0 0 12>;
+		};
+
+		regulators {
+			compatible = "mediatek,mt6661-4-regulator";
+			mt6661_4_buck1: mt6661-4-buck1 {
+				regulator-compatible = "BUCK1";
+				regulator-name = "mt6661_4_buck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_4_buck2: mt6661-4-buck2 {
+				regulator-compatible = "BUCK2";
+				regulator-name = "mt6661_4_buck2";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_4_buck3: mt6661-4-buck3 {
+				regulator-compatible = "BUCK3";
+				regulator-name = "mt6661_4_buck3";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_4_buck4: mt6661-4-buck4 {
+				regulator-compatible = "BUCK4";
+				regulator-name = "mt6661_4_buck4";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_4_buck5: mt6661-4-buck5 {
+				regulator-compatible = "BUCK5";
+				regulator-name = "mt6661_4_buck5";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+				regulator-allow-set-load;
+			};
+			mt6661_4_buck6: mt6661-4-buck6 {
+				regulator-compatible = "BUCK6";
+				regulator-name = "mt6661_4_buck6";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_4_ld20_1: mt6661-4-ld20-1 {
+				regulator-compatible = "LD20_1";
+				regulator-name = "mt6661_4_ld20_1";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+				regulator-allow-set-load;
+			};
+			mt6661_4_ld20_2: mt6661-4-ld20-2 {
+				regulator-compatible = "LD20_2";
+				regulator-name = "mt6661_4_ld20_2";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_4_ldc0_3: mt6661-4-ldc0-3 {
+				regulator-compatible = "LDC0_3";
+				regulator-name = "mt6661_4_ldc0_3";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_4_ldc0_4: mt6661-4-ldc0-4 {
+				regulator-compatible = "LDC0_4";
+				regulator-name = "mt6661_4_ldc0_4";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+				regulator-always-on;
+			};
+			mt6661_4_ln60_5: mt6661-4-ln60-5 {
+				regulator-compatible = "LN60_5";
+				regulator-name = "mt6661_4_ln60_5";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_ln60_6: mt6661-4-ln60-6 {
+				regulator-compatible = "LN60_6";
+				regulator-name = "mt6661_4_ln60_6";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_lnc0_10: mt6661-4-lnc0-10 {
+				regulator-compatible = "LNC0_10";
+				regulator-name = "mt6661_4_lnc0_10";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_4_ln60_7: mt6661-4-ln60-7 {
+				regulator-compatible = "LN60_7";
+				regulator-name = "mt6661_4_ln60_7";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_4_lnc0_8: mt6661-4-lnc0-8 {
+				regulator-compatible = "LNC0_8";
+				regulator-name = "mt6661_4_lnc0_8";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_4_lnc0_9: mt6661-4-lnc0-9 {
+				regulator-compatible = "LNC0_9";
+				regulator-name = "mt6661_4_lnc0_9";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_4_lnc0_s_11: mt6661-4-lnc0-s-11 {
+				regulator-compatible = "LNC0_S_11";
+				regulator-name = "mt6661_4_lnc0_s_11";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_lnc0_s_12: mt6661-4-lnc0-s-12 {
+				regulator-compatible = "LNC0_S_12";
+				regulator-name = "mt6661_4_lnc0_s_12";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_4_ld20_1_eint_high: mt6661-4-ld20-1-eint-high {
+				regulator-compatible = "LD20_1_EINT_HIGH";
+				regulator-name = "mt6661_4_ld20_1_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_ld20_1_eint_low: mt6661-4-ld20-1-eint-low {
+				regulator-compatible = "LD20_1_EINT_LOW";
+				regulator-name = "mt6661_4_ld20_1_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_ld20_2_eint_high: mt6661-4-ld20-2-eint-high {
+				regulator-compatible = "LD20_2_EINT_HIGH";
+				regulator-name = "mt6661_4_ld20_2_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_ld20_2_eint_low: mt6661-4-ld20-2-eint-low {
+				regulator-compatible = "LD20_2_EINT_LOW";
+				regulator-name = "mt6661_4_ld20_2_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_ldc0_3_eint_high: mt6661-4-ldc0-3-eint-high {
+				regulator-compatible = "LDC0_3_EINT_HIGH";
+				regulator-name = "mt6661_4_ldc0_3_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_ldc0_3_eint_low: mt6661-4-ldc0-3-eint-low {
+				regulator-compatible = "LDC0_3_EINT_LOW";
+				regulator-name = "mt6661_4_ldc0_3_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_ldc0_4_eint_high: mt6661-4-ldc0-4-eint-high {
+				regulator-compatible = "LDC0_4_EINT_HIGH";
+				regulator-name = "mt6661_4_ldc0_4_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_4_ldc0_4_eint_low: mt6661-4-ldc0-4-eint-low {
+				regulator-compatible = "LDC0_4_EINT_LOW";
+				regulator-name = "mt6661_4_ldc0_4_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+		};
+	};
+
+        mt6661_3: mt6661-3@3 {
+		compatible = "mediatek,mt6661";
+		reg = <0x3 SPMI_USID>;
+		interrupts = <3>;
+		#address-cells = <0>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		mtk-spmi-pmic-debug {
+			compatible = "mediatek,spmi-pmic-3-debug";
+			cid-addr = <0x61 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
+			spmi-crc-err-sts = <MT6661_RGS_CRC_ERR_ADDR>;
+			spmi-crc-err-cnt = <MT6661_RGS_CRC_ERR_CNT_ADDR>;
+			pmic-pre-ot-cnt-enable = <1>;
+			pmic-pre-ot-cnt = <MT6661_RG_PRE_OT_COUNT_ADDR>;
+			pmic-pre-ot-cnt-clr = <MT6661_RG_PRE_OT_COUNT_CLR_ADDR
+					       MT6661_RG_PRE_OT_COUNT_CLR_MASK
+					       MT6661_RG_PRE_OT_COUNT_CLR_SHIFT>;
+			pmic-pre-lvsys-cnt-enable = <1>;
+			pmic-pre-lvsys-cnt = <MT6661_RG_PRE_LVSYS_COUNT_ADDR>;
+			pmic-pre-lvsys-cnt-clr = <MT6661_RG_PRE_LVSYS_COUNT_CLR_ADDR
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_MASK
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_SHIFT>;
+			pmic-curr-clamping-cnt-enable = <1>;
+			pmic-curr-clamping-cnt = <MT6661_RG_BUCK1_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK2_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK3_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK4_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK5_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK6_OC_STS_CNT_ADDR>;
+			pmic-curr-clamping-cnt-clr = <MT6661_RG_BUCK_OC_STS_CNT_CLR_ADDR
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_MASK
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_SHIFT>;
+			spmi-pmic-debug-rg-enable = <1>;
+			spmi-pmic-debug-rg-addr = <MT6661_RG_SMT_SPMI_M_SCL_ADDR
+						   MT6661_RG_SMT_SPMI_M_SDA_ADDR
+						   MT6661_RG_OCTL_SPMI_M_SDA_ADDR
+						   MT6661_GPIO_PULLEN0_1_ADDR
+						   MT6661_GPIO_PULLEN0_2_ADDR
+						   MT6661_RG_TOP_CFG_RSV1_0_ADDR
+						   MT6661_RG_TOP_CFG_RSV1_1_ADDR
+						   MT6661_GPIO_PULLSEL0_1_ADDR
+						   MT6661_GPIO_PULLSEL0_2_ADDR>;
+			spmi-pmic-debug-rg-mask = <MT6661_RG_SMT_SPMI_M_SCL_MASK
+						   MT6661_RG_SMT_SPMI_M_SDA_MASK
+						   MT6661_RG_OCTL_SPMI_M_SDA_MASK
+						   MT6661_GPIO_PULLEN0_1_MASK
+						   MT6661_GPIO_PULLEN0_2_MASK
+						   MT6661_RG_TOP_CFG_RSV1_0_MASK
+						   MT6661_RG_TOP_CFG_RSV1_1_MASK
+						   MT6661_GPIO_PULLSEL0_1_MASK
+						   MT6661_GPIO_PULLSEL0_2_MASK>;
+			spmi-pmic-debug-rg-shift = <MT6661_RG_SMT_SPMI_M_SCL_SHIFT
+						    MT6661_RG_SMT_SPMI_M_SDA_SHIFT
+						    MT6661_RG_OCTL_SPMI_M_SDA_SHIFT
+						    MT6661_GPIO_PULLEN0_1_SHIFT
+						    MT6661_GPIO_PULLEN0_2_SHIFT
+						    MT6661_RG_TOP_CFG_RSV1_0_SHIFT
+						    MT6661_RG_TOP_CFG_RSV1_1_SHIFT
+						    MT6661_GPIO_PULLSEL0_1_SHIFT
+						    MT6661_GPIO_PULLSEL0_2_SHIFT>;
+			rgs-npkt-cclp-err = <MT6661_RGS_NPKT_CCLP_ERR>;
+			rgs-npkt-cclp-clr = <MT6661_RGS_NPKT_CCLP_CLR>;
+			rgs-npkt-cclp-clr-enable = <1>;
+		};
+
+		mt6661_3_efuse: mt6661-3-efuse {
+			compatible = "mediatek,mt6661-3-efuse";
+			// #address-cells = <1>;
+			// #size-cells = <1>;
+		};
+
+		mt6661_3_consys: mt6661-3-consys {
+			compatible = "mediatek,mt6661-3-consys";
+		};
+
+		mt6661-3-connv3 {
+			compatible = "mediatek,mt6661-3-connv3";
+		};
+
+		mt6661_3_pio: mt6661-3-pinctrl {
+			compatible = "mediatek,mt6661-3-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6661_3_pio 0 0 12>;
+		};
+
+		regulators {
+			compatible = "mediatek,mt6661-3-regulator";
+			mt6661_3_buck1: mt6661-3-buck1 {
+				regulator-compatible = "BUCK1";
+				regulator-name = "mt6661_3_buck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_3_buck2: mt6661-3-buck2 {
+				regulator-compatible = "BUCK2";
+				regulator-name = "mt6661_3_buck2";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_3_buck3: mt6661-3-buck3 {
+				regulator-compatible = "BUCK3";
+				regulator-name = "mt6661_3_buck3";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_3_buck4: mt6661-3-buck4 {
+				regulator-compatible = "BUCK4";
+				regulator-name = "mt6661_3_buck4";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_3_buck5: mt6661-3-buck5 {
+				regulator-compatible = "BUCK5";
+				regulator-name = "mt6661_3_buck5";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+				regulator-allow-set-load;
+			};
+			mt6661_3_buck6: mt6661-3-buck6 {
+				regulator-compatible = "BUCK6";
+				regulator-name = "mt6661_3_buck6";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_3_ld20_1: mt6661-3-ld20-1 {
+				regulator-compatible = "LD20_1";
+				regulator-name = "mt6661_3_ld20_1";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_3_ld20_2: mt6661-3-ld20-2 {
+				regulator-compatible = "LD20_2";
+				regulator-name = "mt6661_3_ld20_2";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_3_ldc0_3: mt6661-3-ldc0-3 {
+				regulator-compatible = "LDC0_3";
+				regulator-name = "mt6661_3_ldc0_3";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_3_ldc0_4: mt6661-3-ldc0-4 {
+				regulator-compatible = "LDC0_4";
+				regulator-name = "mt6661_3_ldc0_4";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_3_ln60_5: mt6661-3-ln60-5 {
+				regulator-compatible = "LN60_5";
+				regulator-name = "mt6661_3_ln60_5";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_3_ln60_6: mt6661-3-ln60-6 {
+				regulator-compatible = "LN60_6";
+				regulator-name = "mt6661_3_ln60_6";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_lnc0_10: mt6661-3-lnc0-10 {
+				regulator-compatible = "LNC0_10";
+				regulator-name = "mt6661_3_lnc0_10";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_3_ln60_7: mt6661-3-ln60-7 {
+				regulator-compatible = "LN60_7";
+				regulator-name = "mt6661_3_ln60_7";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_lnc0_8: mt6661-3-lnc0-8 {
+				regulator-compatible = "LNC0_8";
+				regulator-name = "mt6661_3_lnc0_8";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_lnc0_9: mt6661-3-lnc0-9 {
+				regulator-compatible = "LNC0_9";
+				regulator-name = "mt6661_3_lnc0_9";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_lnc0_s_11: mt6661-3-lnc0-s-11 {
+				regulator-compatible = "LNC0_S_11";
+				regulator-name = "mt6661_3_lnc0_s_11";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_lnc0_s_12: mt6661-3-lnc0-s-12 {
+				regulator-compatible = "LNC0_S_12";
+				regulator-name = "mt6661_3_lnc0_s_12";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_3_ld20_1_eint_high: mt6661-3-ld20-1-eint-high {
+				regulator-compatible = "LD20_1_EINT_HIGH";
+				regulator-name = "mt6661_3_ld20_1_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_ld20_1_eint_low: mt6661-3-ld20-1-eint-low {
+				regulator-compatible = "LD20_1_EINT_LOW";
+				regulator-name = "mt6661_3_ld20_1_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_ld20_2_eint_high: mt6661-3-ld20-2-eint-high {
+				regulator-compatible = "LD20_2_EINT_HIGH";
+				regulator-name = "mt6661_3_ld20_2_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_ld20_2_eint_low: mt6661-3-ld20-2-eint-low {
+				regulator-compatible = "LD20_2_EINT_LOW";
+				regulator-name = "mt6661_3_ld20_2_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_ldc0_3_eint_high: mt6661-3-ldc0-3-eint-high {
+				regulator-compatible = "LDC0_3_EINT_HIGH";
+				regulator-name = "mt6661_3_ldc0_3_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_ldc0_3_eint_low: mt6661-3-ldc0-3-eint-low {
+				regulator-compatible = "LDC0_3_EINT_LOW";
+				regulator-name = "mt6661_3_ldc0_3_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_ldc0_4_eint_high: mt6661-3-ldc0-4-eint-high {
+				regulator-compatible = "LDC0_4_EINT_HIGH";
+				regulator-name = "mt6661_3_ldc0_4_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_3_ldc0_4_eint_low: mt6661-3-ldc0-4-eint-low {
+				regulator-compatible = "LDC0_4_EINT_LOW";
+				regulator-name = "mt6661_3_ldc0_4_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+		};
+        };
+
+        mt6661_5: mt6661-5@5 {
+		compatible = "mediatek,mt6661";
+		reg = <0x5 SPMI_USID>;
+		interrupts = <5>;
+		#address-cells = <0>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		mtk-spmi-pmic-debug {
+			compatible = "mediatek,spmi-pmic-5-debug";
+			cid-addr = <0x61 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
+			spmi-crc-err-sts = <MT6661_RGS_CRC_ERR_ADDR>;
+			spmi-crc-err-cnt = <MT6661_RGS_CRC_ERR_CNT_ADDR>;
+			pmic-pre-ot-cnt-enable = <1>;
+			pmic-pre-ot-cnt = <MT6661_RG_PRE_OT_COUNT_ADDR>;
+			pmic-pre-ot-cnt-clr = <MT6661_RG_PRE_OT_COUNT_CLR_ADDR
+					       MT6661_RG_PRE_OT_COUNT_CLR_MASK
+					       MT6661_RG_PRE_OT_COUNT_CLR_SHIFT>;
+			pmic-pre-lvsys-cnt-enable = <1>;
+			pmic-pre-lvsys-cnt = <MT6661_RG_PRE_LVSYS_COUNT_ADDR>;
+			pmic-pre-lvsys-cnt-clr = <MT6661_RG_PRE_LVSYS_COUNT_CLR_ADDR
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_MASK
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_SHIFT>;
+			pmic-curr-clamping-cnt-enable = <1>;
+			pmic-curr-clamping-cnt = <MT6661_RG_BUCK1_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK2_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK3_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK4_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK5_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK6_OC_STS_CNT_ADDR>;
+			pmic-curr-clamping-cnt-clr = <MT6661_RG_BUCK_OC_STS_CNT_CLR_ADDR
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_MASK
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_SHIFT>;
+			spmi-pmic-debug-rg-enable = <1>;
+			spmi-pmic-debug-rg-addr = <MT6661_RG_SMT_SPMI_M_SCL_ADDR
+						   MT6661_RG_SMT_SPMI_M_SDA_ADDR
+						   MT6661_RG_OCTL_SPMI_M_SDA_ADDR
+						   MT6661_GPIO_PULLEN0_1_ADDR
+						   MT6661_GPIO_PULLEN0_2_ADDR
+						   MT6661_RG_TOP_CFG_RSV1_0_ADDR
+						   MT6661_RG_TOP_CFG_RSV1_1_ADDR
+						   MT6661_GPIO_PULLSEL0_1_ADDR
+						   MT6661_GPIO_PULLSEL0_2_ADDR>;
+			spmi-pmic-debug-rg-mask = <MT6661_RG_SMT_SPMI_M_SCL_MASK
+						   MT6661_RG_SMT_SPMI_M_SDA_MASK
+						   MT6661_RG_OCTL_SPMI_M_SDA_MASK
+						   MT6661_GPIO_PULLEN0_1_MASK
+						   MT6661_GPIO_PULLEN0_2_MASK
+						   MT6661_RG_TOP_CFG_RSV1_0_MASK
+						   MT6661_RG_TOP_CFG_RSV1_1_MASK
+						   MT6661_GPIO_PULLSEL0_1_MASK
+						   MT6661_GPIO_PULLSEL0_2_MASK>;
+			spmi-pmic-debug-rg-shift = <MT6661_RG_SMT_SPMI_M_SCL_SHIFT
+						    MT6661_RG_SMT_SPMI_M_SDA_SHIFT
+						    MT6661_RG_OCTL_SPMI_M_SDA_SHIFT
+						    MT6661_GPIO_PULLEN0_1_SHIFT
+						    MT6661_GPIO_PULLEN0_2_SHIFT
+						    MT6661_RG_TOP_CFG_RSV1_0_SHIFT
+						    MT6661_RG_TOP_CFG_RSV1_1_SHIFT
+						    MT6661_GPIO_PULLSEL0_1_SHIFT
+						    MT6661_GPIO_PULLSEL0_2_SHIFT>;
+			rgs-npkt-cclp-err = <MT6661_RGS_NPKT_CCLP_ERR>;
+			rgs-npkt-cclp-clr = <MT6661_RGS_NPKT_CCLP_CLR>;
+			rgs-npkt-cclp-clr-enable = <1>;
+		};
+
+                mt6661_5_auxadc: mt6661-5-auxadc {
+			compatible = "mediatek,mt6661-5-auxadc";
+			#io-channel-cells = <1>;
+
+			mt6661-5-vsyssns {
+				channel = <AUXADC_VSYSSNS>;
+				resistance-ratio = <3 1>;
+			};
+			mt6661-5-thr1 {
+				channel = <AUXADC_THR1>;
+			};
+			mt6661-5-thr2 {
+				channel = <AUXADC_THR2>;
+			};
+			mt6661-5-thr3 {
+				channel = <AUXADC_THR3>;
+			};
+			mt6661-5-thr4 {
+				channel = <AUXADC_THR4>;
+			};
+			mt6661-5-vin1-100k {
+				channel = <AUXADC_VIN1>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin1-open {
+				channel = <AUXADC_VIN1>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin1-100k-poll {
+				channel = <AUXADC_VIN1_POLL>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin1-open-poll {
+				channel = <AUXADC_VIN1_POLL>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin2-100k {
+				channel = <AUXADC_VIN2>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin2-open {
+				channel = <AUXADC_VIN2>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin2-100k-poll {
+				channel = <AUXADC_VIN2_POLL>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin2-open-poll {
+				channel = <AUXADC_VIN2_POLL>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin3-100k {
+				channel = <AUXADC_VIN3>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin3-open {
+				channel = <AUXADC_VIN3>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin3-100k-poll {
+				channel = <AUXADC_VIN3_POLL>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin3-open-poll {
+				channel = <AUXADC_VIN3_POLL>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin4-100k {
+				channel = <AUXADC_VIN4>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin4-open {
+				channel = <AUXADC_VIN4>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin4-100k-poll {
+				channel = <AUXADC_VIN4_POLL>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin4-open-poll {
+				channel = <AUXADC_VIN4_POLL>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin5-100k {
+				channel = <AUXADC_VIN5>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin5-open {
+				channel = <AUXADC_VIN5>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin5-100k-poll {
+				channel = <AUXADC_VIN5_POLL>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-vin5-open-poll {
+				channel = <AUXADC_VIN5_POLL>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio1-100k {
+				channel = <AUXADC_AGPIO1>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio1-open {
+				channel = <AUXADC_AGPIO1>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio1-100k-poll {
+				channel = <AUXADC_AGPIO1_POLL>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio1-open-poll {
+				channel = <AUXADC_AGPIO1_POLL>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio2-100k {
+				channel = <AUXADC_AGPIO2>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio2-open {
+				channel = <AUXADC_AGPIO2>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio2-100k-poll {
+				channel = <AUXADC_AGPIO2_POLL>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio2-open-poll {
+				channel = <AUXADC_AGPIO2_POLL>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+                        mt6661-5-agpio3-100k {
+				channel = <AUXADC_AGPIO3>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio3-open {
+				channel = <AUXADC_AGPIO3>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+                        mt6661-5-agpio3-100k-poll {
+				channel = <AUXADC_AGPIO3_POLL>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio3-open-poll {
+				channel = <AUXADC_AGPIO3_POLL>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+                        mt6661-5-agpio4-100k {
+				channel = <AUXADC_AGPIO4>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio4-open {
+				channel = <AUXADC_AGPIO4>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+                        mt6661-5-agpio4-100k-poll {
+				channel = <AUXADC_AGPIO4_POLL>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-5-agpio4-open-poll {
+				channel = <AUXADC_AGPIO4_POLL>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+		};
+
+		mt6661_5_efuse: mt6661-5-efuse {
+			compatible = "mediatek,mt6661-5-efuse";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			mt6661_5_thermal_efuse: mt6661-5-e-data {
+				reg = <0x43 14>;
+			};
+		};
+
+		mt6661_5_pio: mt6661-5-pinctrl {
+			compatible = "mediatek,mt6661-5-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6661_5_pio 0 0 12>;
+		};
+
+		regulators {
+			compatible = "mediatek,mt6661-5-regulator";
+			mt6661_5_buck1: mt6661-5-buck1 {
+				regulator-compatible = "BUCK1";
+				regulator-name = "mt6661_5_buck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_5_buck2: mt6661-5-buck2 {
+				regulator-compatible = "BUCK2";
+				regulator-name = "mt6661_5_buck2";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_5_buck3: mt6661-5-buck3 {
+				regulator-compatible = "BUCK3";
+				regulator-name = "mt6661_5_buck3";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_5_buck4: mt6661-5-buck4 {
+				regulator-compatible = "BUCK4";
+				regulator-name = "mt6661_5_buck4";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_5_buck5: mt6661-5-buck5 {
+				regulator-compatible = "BUCK5";
+				regulator-name = "mt6661_5_buck5";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+				regulator-allow-set-load;
+			};
+			mt6661_5_buck6: mt6661-5-buck6 {
+				regulator-compatible = "BUCK6";
+				regulator-name = "mt6661_5_buck6";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-always-on;
+			};
+			mt6661_5_ld20_1: mt6661-5-ld20-1 {
+				regulator-compatible = "LD20_1";
+				regulator-name = "mt6661_5_ld20_1";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_5_ld20_2: mt6661-5-ld20-2 {
+				regulator-compatible = "LD20_2";
+				regulator-name = "mt6661_5_ld20_2";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_5_ldc0_3: mt6661-5-ldc0-3 {
+				regulator-compatible = "LDC0_3";
+				regulator-name = "mt6661_5_ldc0_3";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_5_ldc0_4: mt6661-5-ldc0-4 {
+				regulator-compatible = "LDC0_4";
+				regulator-name = "mt6661_5_ldc0_4";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_5_ln60_5: mt6661-5-ln60-5 {
+				regulator-compatible = "LN60_5";
+				regulator-name = "mt6661_5_ln60_5";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_5_ln60_6: mt6661-5-ln60-6 {
+				regulator-compatible = "LN60_6";
+				regulator-name = "mt6661_5_ln60_6";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-always-on;
+			};
+			mt6661_5_lnc0_10: mt6661-5-lnc0-10 {
+				regulator-compatible = "LNC0_10";
+				regulator-name = "mt6661_5_lnc0_10";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_ln60_7: mt6661-5-ln60-7 {
+				regulator-compatible = "LN60_7";
+				regulator-name = "mt6661_5_ln60_7";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_lnc0_8: mt6661-5-lnc0-8 {
+				regulator-compatible = "LNC0_8";
+				regulator-name = "mt6661_5_lnc0_8";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_lnc0_9: mt6661-5-lnc0-9 {
+				regulator-compatible = "LNC0_9";
+				regulator-name = "mt6661_5_lnc0_9";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_lnc0_s_11: mt6661-5-lnc0-s-11 {
+				regulator-compatible = "LNC0_S_11";
+				regulator-name = "mt6661_5_lnc0_s_11";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_lnc0_s_12: mt6661-5-lnc0-s-12 {
+				regulator-compatible = "LNC0_S_12";
+				regulator-name = "mt6661_5_lnc0_s_12";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_ld20_1_eint_high: mt6661-5-ld20-1-eint-high {
+				regulator-compatible = "LD20_1_EINT_HIGH";
+				regulator-name = "mt6661_5_ld20_1_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_ld20_1_eint_low: mt6661-5-ld20-1-eint-low {
+				regulator-compatible = "LD20_1_EINT_LOW";
+				regulator-name = "mt6661_5_ld20_1_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_ld20_2_eint_high: mt6661-5-ld20-2-eint-high {
+				regulator-compatible = "LD20_2_EINT_HIGH";
+				regulator-name = "mt6661_5_ld20_2_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_ld20_2_eint_low: mt6661-5-ld20-2-eint-low {
+				regulator-compatible = "LD20_2_EINT_LOW";
+				regulator-name = "mt6661_5_ld20_2_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_ldc0_3_eint_high: mt6661-5-ldc0-3-eint-high {
+				regulator-compatible = "LDC0_3_EINT_HIGH";
+				regulator-name = "mt6661_5_ldc0_3_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_ldc0_3_eint_low: mt6661-5-ldc0-3-eint-low {
+				regulator-compatible = "LDC0_3_EINT_LOW";
+				regulator-name = "mt6661_5_ldc0_3_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_ldc0_4_eint_high: mt6661-5-ldc0-4-eint-high {
+				regulator-compatible = "LDC0_4_EINT_HIGH";
+				regulator-name = "mt6661_5_ldc0_4_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_5_ldc0_4_eint_low: mt6661-5-ldc0-4-eint-low {
+				regulator-compatible = "LDC0_4_EINT_LOW";
+				regulator-name = "mt6661_5_ldc0_4_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+		};
+        };
+
+        mt6661_6: mt6661-6@6 {
+		compatible = "mediatek,mt6661";
+		reg = <0x6 SPMI_USID>;
+		interrupts = <6>;
+		#address-cells = <0>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		mtk-spmi-pmic-debug {
+			compatible = "mediatek,spmi-pmic-6-debug";
+			cid-addr = <0x61 0x9 0x8>;
+			spmi-glitch-sta-sel = <0x474>;
+			spmi-glitch-sts = <0x476>;
+			spmi-debug-out-l = <0x444 0xf 0x0>;
+			spmi-parity-err-clr = <0x4d0>;
+			spmi-parity-err-sts = <0x4d1>;
+			spmi-parity-err-cnt = <0x4d2>;
+			spmi-crc-err-sts = <MT6661_RGS_CRC_ERR_ADDR>;
+			spmi-crc-err-cnt = <MT6661_RGS_CRC_ERR_CNT_ADDR>;
+			pmic-pre-ot-cnt-enable = <1>;
+			pmic-pre-ot-cnt = <MT6661_RG_PRE_OT_COUNT_ADDR>;
+			pmic-pre-ot-cnt-clr = <MT6661_RG_PRE_OT_COUNT_CLR_ADDR
+					       MT6661_RG_PRE_OT_COUNT_CLR_MASK
+					       MT6661_RG_PRE_OT_COUNT_CLR_SHIFT>;
+			pmic-pre-lvsys-cnt-enable = <1>;
+			pmic-pre-lvsys-cnt = <MT6661_RG_PRE_LVSYS_COUNT_ADDR>;
+			pmic-pre-lvsys-cnt-clr = <MT6661_RG_PRE_LVSYS_COUNT_CLR_ADDR
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_MASK
+						  MT6661_RG_PRE_LVSYS_COUNT_CLR_SHIFT>;
+			pmic-curr-clamping-cnt-enable = <1>;
+			pmic-curr-clamping-cnt = <MT6661_RG_BUCK1_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK2_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK3_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK4_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK5_OC_STS_CNT_ADDR
+						  MT6661_RG_BUCK6_OC_STS_CNT_ADDR>;
+			pmic-curr-clamping-cnt-clr = <MT6661_RG_BUCK_OC_STS_CNT_CLR_ADDR
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_MASK
+						      MT6661_RG_BUCK_OC_STS_CNT_CLR_SHIFT>;
+			spmi-pmic-debug-rg-enable = <1>;
+			spmi-pmic-debug-rg-addr = <MT6661_RG_SMT_SPMI_M_SCL_ADDR
+						   MT6661_RG_SMT_SPMI_M_SDA_ADDR
+						   MT6661_RG_OCTL_SPMI_M_SDA_ADDR
+						   MT6661_GPIO_PULLEN0_1_ADDR
+						   MT6661_GPIO_PULLEN0_2_ADDR
+						   MT6661_RG_TOP_CFG_RSV1_0_ADDR
+						   MT6661_RG_TOP_CFG_RSV1_1_ADDR
+						   MT6661_GPIO_PULLSEL0_1_ADDR
+						   MT6661_GPIO_PULLSEL0_2_ADDR>;
+			spmi-pmic-debug-rg-mask = <MT6661_RG_SMT_SPMI_M_SCL_MASK
+						   MT6661_RG_SMT_SPMI_M_SDA_MASK
+						   MT6661_RG_OCTL_SPMI_M_SDA_MASK
+						   MT6661_GPIO_PULLEN0_1_MASK
+						   MT6661_GPIO_PULLEN0_2_MASK
+						   MT6661_RG_TOP_CFG_RSV1_0_MASK
+						   MT6661_RG_TOP_CFG_RSV1_1_MASK
+						   MT6661_GPIO_PULLSEL0_1_MASK
+						   MT6661_GPIO_PULLSEL0_2_MASK>;
+			spmi-pmic-debug-rg-shift = <MT6661_RG_SMT_SPMI_M_SCL_SHIFT
+						    MT6661_RG_SMT_SPMI_M_SDA_SHIFT
+						    MT6661_RG_OCTL_SPMI_M_SDA_SHIFT
+						    MT6661_GPIO_PULLEN0_1_SHIFT
+						    MT6661_GPIO_PULLEN0_2_SHIFT
+						    MT6661_RG_TOP_CFG_RSV1_0_SHIFT
+						    MT6661_RG_TOP_CFG_RSV1_1_SHIFT
+						    MT6661_GPIO_PULLSEL0_1_SHIFT
+						    MT6661_GPIO_PULLSEL0_2_SHIFT>;
+			rgs-npkt-cclp-err = <MT6661_RGS_NPKT_CCLP_ERR>;
+			rgs-npkt-cclp-clr = <MT6661_RGS_NPKT_CCLP_CLR>;
+			rgs-npkt-cclp-clr-enable = <1>;
+		};
+
+                mt6661_6_auxadc: mt6661-6-auxadc {
+			compatible = "mediatek,mt6661-6-auxadc";
+			#io-channel-cells = <1>;
+
+			mt6661-6-vsyssns {
+				channel = <AUXADC_VSYSSNS>;
+				resistance-ratio = <3 1>;
+			};
+			mt6661-6-thr1 {
+				channel = <AUXADC_THR1>;
+			};
+			mt6661-6-thr2 {
+				channel = <AUXADC_THR2>;
+			};
+			mt6661-6-thr3 {
+				channel = <AUXADC_THR3>;
+			};
+			mt6661-6-thr4 {
+				channel = <AUXADC_THR4>;
+			};
+			mt6661-6-vin1-100k {
+				channel = <AUXADC_VIN1>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-6-vin1-open {
+				channel = <AUXADC_VIN1>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			//mt6661-6-vin1-100k-poll {
+			//	channel = <AUXADC_VIN1_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin1-open-poll {
+			//	channel = <AUXADC_VIN1_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-vin2-100k {
+				channel = <AUXADC_VIN2>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-6-vin2-open {
+				channel = <AUXADC_VIN2>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			//mt6661-6-vin2-100k-poll {
+			//	channel = <AUXADC_VIN2_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin2-open-poll {
+			//	channel = <AUXADC_VIN2_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-vin3-100k {
+				channel = <AUXADC_VIN3>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-6-vin3-open {
+				channel = <AUXADC_VIN3>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			//mt6661-6-vin3-100k-poll {
+			//	channel = <AUXADC_VIN3_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin3-open-poll {
+			//	channel = <AUXADC_VIN3_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-vin4-100k {
+				channel = <AUXADC_VIN4>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-6-vin4-open {
+				channel = <AUXADC_VIN4>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			//mt6661-6-vin4-100k-poll {
+			//	channel = <AUXADC_VIN4_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin4-open-poll {
+			//	channel = <AUXADC_VIN4_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-vin5-100k {
+				channel = <AUXADC_VIN5>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-6-vin5-open {
+				channel = <AUXADC_VIN5>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			//mt6661-6-vin5-100k-poll {
+			//	channel = <AUXADC_VIN5_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-vin5-open-poll {
+			//	channel = <AUXADC_VIN5_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-agpio1-100k {
+				channel = <AUXADC_AGPIO1>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-6-agpio1-open {
+				channel = <AUXADC_AGPIO1>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			//mt6661-6-agpio1-100k-poll {
+			//	channel = <AUXADC_AGPIO1_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-agpio1-open-poll {
+			//	channel = <AUXADC_AGPIO1_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-agpio2-100k {
+				channel = <AUXADC_AGPIO2>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-6-agpio2-open {
+				channel = <AUXADC_AGPIO2>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			//mt6661-6-agpio2-100k-poll {
+			//	channel = <AUXADC_AGPIO2_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-agpio2-open-poll {
+			//	channel = <AUXADC_AGPIO2_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-agpio3-100k {
+				channel = <AUXADC_AGPIO3>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-6-agpio3-open {
+				channel = <AUXADC_AGPIO3>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			//mt6661-6-agpio3-100k-poll {
+			//	channel = <AUXADC_AGPIO3_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-agpio3-open-poll {
+			//	channel = <AUXADC_AGPIO3_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+			mt6661-6-agpio4-100k {
+				channel = <AUXADC_AGPIO4>;
+				pures = <ADC_PURES_100K>;
+				rc-set-time = <1400>;
+			};
+			mt6661-6-agpio4-open {
+				channel = <AUXADC_AGPIO4>;
+				pures = <ADC_PURES_OPEN>;
+				rc-set-time = <1400>;
+			};
+			//mt6661-6-agpio4-100k-poll {
+			//	channel = <AUXADC_AGPIO4_POLL>;
+			//	pures = <ADC_PURES_100K>;
+			//	rc-set-time = <1400>;
+			//};
+			//mt6661-6-agpio4-open-poll {
+			//	channel = <AUXADC_AGPIO4_POLL>;
+			//	pures = <ADC_PURES_OPEN>;
+			//	rc-set-time = <1400>;
+			//};
+		};
+
+		mt6661_6_efuse: mt6661-6-efuse {
+			compatible = "mediatek,mt6661-6-efuse";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			mt6661_6_thermal_efuse: mt6661-6-e-data {
+				reg = <0x43 14>;
+			};
+		};
+
+		mt6661_6_pio: mt6661-6-pinctrl {
+			compatible = "mediatek,mt6661-6-pinctrl";
+			gpio-controller;
+			#gpio-cells = <2>;
+			gpio-ranges = <&mt6661_6_pio 0 0 12>;
+		};
+
+		regulators {
+			compatible = "mediatek,mt6661-6-regulator";
+			mt6661_6_buck1: mt6661-6-buck1 {
+				regulator-compatible = "BUCK1";
+				regulator-name = "mt6661_6_buck1";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_6_buck2: mt6661-6-buck2 {
+				regulator-compatible = "BUCK2";
+				regulator-name = "mt6661_6_buck2";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_6_buck3: mt6661-6-buck3 {
+				regulator-compatible = "BUCK3";
+				regulator-name = "mt6661_6_buck3";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_6_buck4: mt6661-6-buck4 {
+				regulator-compatible = "BUCK4";
+				regulator-name = "mt6661_6_buck4";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+			};
+			mt6661_6_buck5: mt6661-6-buck5 {
+				regulator-compatible = "BUCK5";
+				regulator-name = "mt6661_6_buck5";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_6_buck6: mt6661-6-buck6 {
+				regulator-compatible = "BUCK6";
+				regulator-name = "mt6661_6_buck6";
+				regulator-min-microvolt = <400000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-enable-ramp-delay = <180>;
+				regulator-allowed-modes = <0 1 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_6_ld20_1: mt6661-6-ld20-1 {
+				regulator-compatible = "LD20_1";
+				regulator-name = "mt6661_6_ld20_1";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_6_ld20_2: mt6661-6-ld20-2 {
+				regulator-compatible = "LD20_2";
+				regulator-name = "mt6661_6_ld20_2";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_6_ldc0_3: mt6661-6-ldc0-3 {
+				regulator-compatible = "LDC0_3";
+				regulator-name = "mt6661_6_ldc0_3";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_6_ldc0_4: mt6661-6-ldc0-4 {
+				regulator-compatible = "LDC0_4";
+				regulator-name = "mt6661_6_ldc0_4";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+				regulator-allow-set-load;
+			};
+			mt6661_6_ln60_5: mt6661-6-ln60-5 {
+				regulator-compatible = "LN60_5";
+				regulator-name = "mt6661_6_ln60_5";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ln60_6: mt6661-6-ln60-6 {
+				regulator-compatible = "LN60_6";
+				regulator-name = "mt6661_6_ln60_6";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_lnc0_10: mt6661-6-lnc0-10 {
+				regulator-compatible = "LNC0_10";
+				regulator-name = "mt6661_6_lnc0_10";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ln60_7: mt6661-6-ln60-7 {
+				regulator-compatible = "LN60_7";
+				regulator-name = "mt6661_6_ln60_7";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_lnc0_8: mt6661-6-lnc0-8 {
+				regulator-compatible = "LNC0_8";
+				regulator-name = "mt6661_6_lnc0_8";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_lnc0_9: mt6661-6-lnc0-9 {
+				regulator-compatible = "LNC0_9";
+				regulator-name = "mt6661_6_lnc0_9";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_lnc0_s_11: mt6661-6-lnc0-s-11 {
+				regulator-compatible = "LNC0_S_11";
+				regulator-name = "mt6661_6_lnc0_s_11";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_lnc0_s_12: mt6661-6-lnc0-s-12 {
+				regulator-compatible = "LNC0_S_12";
+				regulator-name = "mt6661_6_lnc0_s_12";
+				regulator-min-microvolt = <500000>;
+				regulator-max-microvolt = <2090000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ld20_1_eint_high: mt6661-6-ld20-1-eint-high {
+				regulator-compatible = "LD20_1_EINT_HIGH";
+				regulator-name = "mt6661_6_ld20_1_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ld20_1_eint_low: mt6661-6-ld20-1-eint-low {
+				regulator-compatible = "LD20_1_EINT_LOW";
+				regulator-name = "mt6661_6_ld20_1_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ld20_2_eint_high: mt6661-6-ld20-2-eint-high {
+				regulator-compatible = "LD20_2_EINT_HIGH";
+				regulator-name = "mt6661_6_ld20_2_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ld20_2_eint_low: mt6661-6-ld20-2-eint-low {
+				regulator-compatible = "LD20_2_EINT_LOW";
+				regulator-name = "mt6661_6_ld20_2_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ldc0_3_eint_high: mt6661-6-ldc0-3-eint-high {
+				regulator-compatible = "LDC0_3_EINT_HIGH";
+				regulator-name = "mt6661_6_ldc0_3_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ldc0_3_eint_low: mt6661-6-ldc0-3-eint-low {
+				regulator-compatible = "LDC0_3_EINT_LOW";
+				regulator-name = "mt6661_6_ldc0_3_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ldc0_4_eint_high: mt6661-6-ldc0-4-eint-high {
+				regulator-compatible = "LDC0_4_EINT_HIGH";
+				regulator-name = "mt6661_6_ldc0_4_eint_high";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+			mt6661_6_ldc0_4_eint_low: mt6661-6-ldc0-4-eint-low {
+				regulator-compatible = "LDC0_4_EINT_LOW";
+				regulator-name = "mt6661_6_ldc0_4_eint_low";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+				regulator-enable-ramp-delay = <200>;
+				regulator-allowed-modes = <0 2>;
+			};
+		};
+        };
+};

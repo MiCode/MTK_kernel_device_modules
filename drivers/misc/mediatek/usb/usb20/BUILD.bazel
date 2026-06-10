@@ -1,0 +1,60 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "musb_hdrc",
+    srcs = [
+        "musb_core.c",
+        "musb_virthub.c",
+        "musb_host.c",
+        "musb_gadget_ep0.c",
+        "musb_gadget.c",
+        "musb_trace.c",
+        "musbhsdma.c",
+        "usb20_host.c",
+    ],
+    conditional_srcs = {
+      "CONFIG_MTK_MUSB_DUAL_ROLE": {
+        True: ["musb_dr.c"],
+      },
+      "CONFIG_PROC_FS": {
+        True: ["musb_debugfs.c"]
+      },
+      "CONFIG_MTK_MUSB_QMU_SUPPORT": {
+        True: ["mtk_qmu.c", "musb_qmu.c"]
+      },
+    },
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/drivers/usb/gadget",
+        "-I$(srctree)/drivers/usb/gadget/function",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/spm",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/musb_main",
+    ],
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),],
+)

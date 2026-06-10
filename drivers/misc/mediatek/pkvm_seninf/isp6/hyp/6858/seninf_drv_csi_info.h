@@ -1,0 +1,73 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2025 MediaTek Inc.
+ */
+
+#ifndef __SENINF_DRV_CSI_INFO_H__
+#define __SENINF_DRV_CSI_INFO_H__
+
+#include "camera_custom_imgsensor_cfg.h"
+
+typedef enum {
+	SENINF_MUX1		= 0x0,
+	SENINF_MUX2		= 0x1,
+	SENINF_MUX3		= 0x2,
+	SENINF_MUX4		= 0x3,
+	SENINF_MUX5		= 0x4,
+	SENINF_MUX6		= 0x5,
+	SENINF_MUX7		= 0x6,
+	SENINF_MUX8		= 0x7,
+	SENINF_MUX_NUM,
+	SENINF_MUX_ERROR	= 0xF,
+} SENINF_MUX_ENUM;
+
+typedef enum {
+	SENINF_1		= 0x0,
+	SENINF_2		= 0x1,
+	SENINF_3		= 0x2,
+	SENINF_4		= 0x3,
+	SENINF_5		= 0x4,
+	SENINF_6		= 0x5,
+	SENINF_NUM,
+	SENINF_ENUM_ERROR	= 0xF,
+} SENINF_ENUM;
+
+typedef enum{
+	SENINF_CAM_MUX0		= 0x0,
+	SENINF_CAM_MUX1		= 0x1,
+	SENINF_CAM_MUX2		= 0x2,
+	SENINF_CAM_MUX3		= 0x3,
+	SENINF_CAM_MUX4		= 0x4,
+	SENINF_CAM_MUX5		= 0x5,
+	SENINF_CAM_MUX6		= 0x6,
+	SENINF_CAM_MUX7		= 0x7,
+	SENINF_CAM_MUX_NUM,
+	SENINF_CAM_MUX_ERR	= 0xff
+}SENINF_CAM_MUX_ENUM;
+
+typedef enum { //0:CSI2(2.5G), 3: parallel, 8:NCSI2(1.5G)
+	CSI2			= 0x0, /* 2.5G support */
+	TEST_MODEL		= 0x1,
+	CCIR656			= 0x2,
+	PARALLEL_SENSOR		= 0x3,
+	SERIAL_SENSOR		= 0x4,
+	HD_TV			= 0x5,
+	EXT_CSI2_OUT1		= 0x6,
+	EXT_CSI2_OUT2		= 0x7,
+	MIPI_SENSOR		= 0x8,/* 1.5G support */
+	VIRTUAL_CHANNEL_1	= 0x9,
+	VIRTUAL_CHANNEL_2	= 0xA,
+	VIRTUAL_CHANNEL_3	= 0xB,
+	VIRTUAL_CHANNEL_4	= 0xC,
+	VIRTUAL_CHANNEL_5	= 0xD,
+	VIRTUAL_CHANNEL_6	= 0xE,
+} SENINF_SOURCE_ENUM;
+
+typedef struct {
+	CUSTOM_CFG_CSI_PORT	port;
+	SENINF_ENUM		seninf;
+	SENINF_SOURCE_ENUM	srcType;
+} SENINF_CSI_INFO;
+
+#endif
+

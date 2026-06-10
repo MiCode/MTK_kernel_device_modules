@@ -1,0 +1,8 @@
+config TEST_MTK_AUTO_MBRAINK_MT8668
+	tristate "Specify Mediatek MBRAINK Platform is MT8668"
+	depends on TEST_MTK_MBRAINK
+	help
+	  Select MediaTek MBraink Module Platform is MT8668
+	  for android MBrain feature.
+	  Set Y to select this feature for specific platform-mt8668.
+	  If unsure, set N to disable.

@@ -1,0 +1,53 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "xhci-mtk-hcd-v2",
+    srcs = [
+        "xhci.c",
+        "xhci-mem.c",
+        "xhci-ext-caps.c",
+        "xhci-ring.c",
+        "xhci-hub.c",
+        "xhci-dbg.c",
+        "xhci-trace.c",
+        "xhci-mtk.c",
+        "xhci-mtk-sch.c",
+        "quirks.c",
+        "xhci-sideband.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    conditional_srcs = {
+      "CONFIG_DEBUG_FS": {
+        True: ["xhci-debugfs.c"],
+      },
+    },
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_offload",
+        "-I$(srctree)/sound/usb",
+    ],
+)
+

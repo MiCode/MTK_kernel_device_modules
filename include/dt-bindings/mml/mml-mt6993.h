@@ -1,0 +1,281 @@
+/* SPDX-License-Identifier: GPL-2.0-only OR BSD-2-Clause */
+/*
+ * Copyright (c) 2023 MediaTek Inc.
+ * Author: Dennis-YC Hsieh <dennis-yc.hsieh@mediatek.com>
+ */
+
+#ifndef _DT_BINDINGS_MML_MT6993_H
+#define _DT_BINDINGS_MML_MT6993_H
+
+/* MML engines in mt6993 */
+/* The id 0 leaves empty, do not use. */
+#define MML2_MMLSYS		1
+#define MML2_MUTEX		2
+#define MML2_RDMA1		3
+#define MML2_RROT0		4
+#define MML2_RROT1		5
+#define MML2_DLI0		6
+#define MML2_DLI1		7
+#define MML2_DLI2		8
+#define MML2_DLI3		9
+#define MML2_DLI4		10
+#define MML2_CB_PATH0		11
+#define MML2_CB_PATH1		12
+#define MML2_CB_PATH2		13
+#define MML2_CB_PATH3		14
+#define MML2_MERGE0		15
+#define MML2_WROT0		16
+#define MML2_WROT1		17
+#define MML2_DLO0		18
+#define MML2_DLO1		19
+#define MML2_DLO2		20
+#define MML2_DLO3		21
+#define MML2_DLO4		22
+#define MML2_DLO5		23
+#define MML2_ENGINE_TOTAL		24
+#define MML0_MMLSYS		24
+#define MML0_MUTEX		25
+#define MML0_RDMA0_SEL		26
+#define MML0_DLI0		27
+#define MML0_FG0		28
+#define MML0_HDR0		29
+#define MML0_RSZ2		30
+#define MML0_WROT0_SEL		31
+#define MML0_DLO0		32
+#define MML0_ENGINE_TOTAL		33
+#define MML1_MMLSYS		33
+#define MML1_MUTEX		34
+#define MML1_RDMA0_SEL		35
+#define MML1_RDMA2		36
+#define MML1_DLI0		37
+#define MML1_MTNR0_SEL		38
+#define MML1_HDR0		39
+#define MML1_AAL0		40
+#define MML1_PQ_AAL0_SEL		41
+#define MML1_C3D0		42
+#define MML1_C3D0_SEL		43
+#define MML1_RSZ2		44
+#define MML1_BIRSZ0		45
+#define MML1_TDSHP0		46
+#define MML1_COLOR0		47
+#define MML1_WROT0_SEL		48
+#define MML1_RSZ3		49
+#define MML1_WROT2		50
+#define MML1_GCH0_SEL		51
+#define MML1_CHIST0		52
+#define MML1_DLO0		53
+#define MML1_ENGINE_TOTAL		54
+#define MML_ENGINE_TOTAL		54
+
+/* MML larb index */
+#define MML_LARB2_IDX  0
+#define MML_LARB3_IDX  1
+#define MML_LARB56_IDX 2
+#define MML_LARB57_IDX 3
+#define MML_LARB58_IDX 4
+
+/* MML component types. See mtk-mml-sys.c */
+#define MML_CT_SYS		1
+#define MML_CT_PATH		2
+#define MML_CT_DL_IN		3
+#define MML_CT_DL_OUT		4
+#define MML_CT_SYS_IN		5
+#define MML_CT_SYS_OUT		6
+
+/* MML SYS registers */
+#define MMLSYS_MISC		0x0f0
+#define MML_CG_CON0		0xa78
+#define MML_CG_SET0		0xa7c
+#define MML_CG_CLR0		0xa80
+#define MML_CG_CON1		0xa84
+#define MML_CG_SET1		0xa88
+#define MML_CG_CLR1		0xa8c
+#define MML_SW0_RST_B		0xac0
+#define MML_SW1_RST_B		0xac4
+#define MML_IN_LINE_READY_SEL	0x7fc
+#define MML_SMI_LARB0_GREQ	0x8d0
+#define MML_SMI_LARB1_GREQ	0x8d4
+#define GCE_FRAME_DONE_SEL0	0x908
+#define GCE_FRAME_DONE_SEL1	0x90c
+#define GCE_FRAME_DONE_SEL2	0x910
+#define GCE_FRAME_DONE_SEL3	0x914
+#define GCE_FRAME_DONE_SEL4	0x918
+#define GCE_FRAME_DONE_SEL5	0x91c
+#define GCE_FRAME_DONE_SEL6	0x920
+#define GCE_FRAME_DONE_SEL7	0x924
+#define GCE_FRAME_DONE_SEL8	0x928
+#define GCE_FRAME_DONE_SEL9	0x92c
+#define GCE_FRAME_DONE_SEL10	0x930
+#define GCE_FRAME_DONE_SEL11	0x934
+#define GCE_FRAME_DONE_SEL12	0x938
+#define GCE_FRAME_DONE_SEL13	0x93c
+#define GCE_FRAME_DONE_SEL14	0x940
+#define GCE_FRAME_DONE_SEL15	0x944
+#define MML_DDREN_DEBUG		0x954
+#define REG_UPDATE_DONE_SEL0	0x978
+#define REG_UPDATE_DONE_SEL1	0x97c
+#define REG_UPDATE_DONE_SEL2	0x980
+#define REG_UPDATE_DONE_SEL3	0x984
+#define REG_UPDATE_DONE_SEL4	0x988
+#define REG_UPDATE_DONE_SEL5	0x98c
+#define REG_UPDATE_DONE_SEL6	0x990
+#define REG_UPDATE_DONE_SEL7	0x994
+#define MML_BYPASS_MUX_SHADOW	0x998
+#define MML_MOUT_RST		0x958
+#define MML_APU_DP_SEL		0x95c
+#define MML_GALS_DBG_0		0x9e4
+#define MML_GALS_DBG_1		0x9e8
+#define MML_GALS_DBG_2		0x9ec
+#define MML_GALS_DBG_3		0x9f0
+
+/* MML DL IN/OUT registers in mt6991 */
+#define MML_DLI_ASYNC0_SIZE	0xb0c	/* MMLSYS2_DLO3 MMLSYS2_DLO2 MMLSYS1_DLO0 */
+#define MML_DLI_ASYNC1_SIZE	0xb10	/* MMLSYS0_DLO0 */
+#define MML_DLI_ASYNC2_SIZE	0xb14	/* OVLA_DLO */
+#define MML_DLI_ASYNC3_SIZE	0xb18	/* OVLB_DLO */
+#define MML_DLI_ASYNC4_SIZE	0xb1c	/* OVLC_DLO */
+#define MML_DLO_ASYNC0_SIZE	0xb20	/* MMLSYS2_DLI1 MMLSYS2_DLI0 OVLA_DLI */
+#define MML_DLO_ASYNC1_SIZE	0xb24	/* OVLA_DLI */
+#define MML_DLO_ASYNC2_SIZE	0xb28	/* MMLSYS1_DLI0 */
+#define MML_DLO_ASYNC3_SIZE	0xb2c	/* MMLSYS0_DLI0 */
+#define MML_DLO_ASYNC4_SIZE	0xb30	/* OVLB_DLI */
+#define MML_DLO_ASYNC5_SIZE	0xb34	/* OVLB_DLI */
+#define MML_DLO_ASYNC0_STATUS0	0xaf4
+#define MML_DLO_ASYNC1_STATUS0	0xaf8
+#define MML_DLO_ASYNC2_STATUS0	0xafc
+#define MML_DLO_ASYNC3_STATUS0	0xb00
+#define MML_DLO_ASYNC4_STATUS0	0xb04
+#define MML_DLO_ASYNC5_STATUS0	0xb08
+#define MML_DLI_ASYNC0_STATUS0	0xacc
+#define MML_DLI_ASYNC0_STATUS1	0xad0
+#define MML_DLI_ASYNC1_STATUS0	0xad4
+#define MML_DLI_ASYNC1_STATUS1	0xad8
+#define MML_DLI_ASYNC2_STATUS0	0xadc
+#define MML_DLI_ASYNC2_STATUS1	0xae0
+#define MML_DLI_ASYNC3_STATUS0	0xae4
+#define MML_DLI_ASYNC3_STATUS1	0xae8
+#define MML_DLI_ASYNC4_STATUS0	0xaec
+#define MML_DLI_ASYNC4_STATUS1	0xaf0
+
+/* MML MUX registers in mt6993 */
+#define MML_TDSHP0_SOUT_SEL		0xf04
+#define MML_RSZ2_MOUT_EN		0xf08
+#define MML_RDMA0_MOUT_EN		0xf0c
+#define MML_PQ_AAL0_MOUT_EN		0xf10
+#define MML_MTNR0_MOUT_EN		0xf14
+#define MML_HDR0_MOUT_EN		0xf18
+#define MML_FG0_MOUT_EN			0xf1c
+#define MML_COLOR0_MOUT_EN		0xf20
+#define MML_C3D0_SOUT_SEL		0xf24
+#define MML_AAL0_MOUT_EN		0xf28
+#define MML_WROT0_SEL_IN		0xf2c
+#define MML_TDSHP0_SEL_IN		0xf30
+#define MML_RSZ2_SEL_IN			0xf34
+#define MML_RSZ3_SEL_IN			0xf38
+#define MML_PQ_AAL0_SEL_IN		0xf3c
+#define MML_MTNR0_SEL_IN		0xf40
+#define MML_HDR0_SEL_IN			0xf44
+#define MML_GCH0_SEL_IN			0xf48
+#define MML_FG0_SEL_IN			0xf4c
+#define MML_COLOR0_SEL_IN		0xf50
+#define MML_C3D0_SEL_IN			0xf54
+#define MML_AAL0_SEL_IN			0xf58
+#define MML_PQ_OUT_CROSSBAR0_MOUT_EN	0xf64
+#define MML_PQ_OUT_CROSSBAR1_MOUT_EN	0xf68
+#define MML_PQ_OUT_CROSSBAR2_MOUT_EN	0xf6c
+#define MML_PQ_OUT_CROSSBAR3_MOUT_EN	0xf70
+#define MML_PQ_OUT_CROSSBAR4_MOUT_EN	0xf74
+#define MML_PQ_OUT_CROSSBAR5_MOUT_EN	0xf78
+#define MML_PQ_OUT_CROSSBAR6_MOUT_EN	0xf7c
+#define MML_PQ_OUT_CROSSBAR7_MOUT_EN	0xf80
+#define MML_PQ_OUT_CROSSBAR8_MOUT_EN	0xf84
+#define MML_PQ_IN_CROSSBAR0_MOUT_EN	0xf88
+#define MML_PQ_IN_CROSSBAR1_MOUT_EN	0xf8c
+#define MML_PQ_IN_CROSSBAR2_MOUT_EN	0xf90
+#define MML_PQ_IN_CROSSBAR3_MOUT_EN	0xf94
+#define MML_PQ_IN_CROSSBAR4_MOUT_EN	0xf98
+#define MML_PQ_IN_CROSSBAR5_MOUT_EN	0xf9c
+#define MML_PQ_IN_CROSSBAR6_MOUT_EN	0xfa0
+#define MML_PQ_IN_CROSSBAR7_MOUT_EN	0xfa4
+#define MML_PQ_IN_CROSSBAR8_MOUT_EN	0xfa8
+#define MML_PQ_OUT_CROSSBAR0_SEL_IN	0xfac
+#define MML_PQ_OUT_CROSSBAR1_SEL_IN	0xfb0
+#define MML_PQ_OUT_CROSSBAR2_SEL_IN	0xfb4
+#define MML_PQ_OUT_CROSSBAR3_SEL_IN	0xfb8
+#define MML_PQ_OUT_CROSSBAR4_SEL_IN	0xfbc
+#define MML_PQ_OUT_CROSSBAR5_SEL_IN	0xfc0
+#define MML_PQ_OUT_CROSSBAR6_SEL_IN	0xfc4
+#define MML_PQ_OUT_CROSSBAR7_SEL_IN	0xfc8
+#define MML_PQ_OUT_CROSSBAR8_SEL_IN	0xfcc
+#define MML_PQ_OUT_CROSSBAR9_SEL_IN	0xfd0
+#define MML_PQ_OUT_CROSSBAR10_SEL_IN	0xfd4
+#define MML_PQ_IN_CROSSBAR0_SEL_IN	0xfd8
+#define MML_PQ_IN_CROSSBAR1_SEL_IN	0xfdc
+#define MML_PQ_IN_CROSSBAR2_SEL_IN	0xfe0
+#define MML_PQ_IN_CROSSBAR3_SEL_IN	0xfe4
+#define MML_PQ_IN_CROSSBAR4_SEL_IN	0xfe8
+#define MML_PQ_IN_CROSSBAR5_SEL_IN	0xfec
+#define MML_PQ_IN_CROSSBAR6_SEL_IN	0xff0
+#define MML_PQ_IN_CROSSBAR7_SEL_IN	0xff4
+#define MML_PQ_IN_CROSSBAR8_SEL_IN	0xff8
+
+#define MML_MOUT_MASK0		0x96c
+#define MML_MOUT_MASK1		0x970
+#define MML_MOUT_MASK2		0x974
+
+/* MML AID for secure */
+#define MML_RDMA0_AIDSEL	0x500
+#define MML_WROT0_AIDSEL	0x50c
+#define MML_WROT1_AIDSEL	0x510
+#define MML_WROT2_AIDSEL	0x518
+#define MML_FAKE0_AIDSEL	0x51c
+#define MML_WDMA0_AIDSEL	0x524
+#define MML_WDMA1_AIDSEL	0x528
+
+/* MMLSys debug valid/ready */
+#define MML_DL_VALID0		0xa58
+#define MML_DL_VALID1		0xa5c
+#define MML_DL_VALID2		0xa60
+#define MML_DL_READY0		0xa64
+#define MML_DL_READY1		0xa68
+#define MML_DL_READY2		0xa6c
+
+/* MML SYS mux types. See mtk-mml-sys.c */
+#define MML_MUX_MOUT		1
+#define MML_MUX_SOUT		2
+#define MML_MUX_SLIN		3
+#define MML_MUX_CB_MOUT		4
+#define MML_MUX_CB_SLIN		5
+
+/* GCE frame done event sel for event merge */
+#define MML_EVENT_SEL_WROT2	0
+#define MML_EVENT_SEL_WROT1	1
+#define MML_EVENT_SEL_WROT0	2
+#define MML_EVENT_SEL_TDSHP0	3
+#define MML_EVENT_SEL_RSZ3	4
+#define MML_EVENT_SEL_RSZ2	5
+#define MML_EVENT_SEL_RROT1	8
+#define MML_EVENT_SEL_RROT0	9
+#define MML_EVENT_SEL_RDMA2	10
+#define MML_EVENT_SEL_RDMA1	11
+#define MML_EVENT_SEL_MERGE0	14
+#define MML_EVENT_SEL_HDR0	15
+#define MML_EVENT_SEL_FG0	16
+#define MML_EVENT_SEL_DLO5	17
+#define MML_EVENT_SEL_DLO4	18
+#define MML_EVENT_SEL_DLO3	19
+#define MML_EVENT_SEL_DLO2	20
+#define MML_EVENT_SEL_DLO1	21
+#define MML_EVENT_SEL_DLO0	22
+#define MML_EVENT_SEL_DLI4	23
+#define MML_EVENT_SEL_DLI3	24
+#define MML_EVENT_SEL_DLI2	25
+#define MML_EVENT_SEL_DLI1	26
+#define MML_EVENT_SEL_DLI0	27
+#define MML_EVENT_SEL_CHIST0	30
+#define MML_EVENT_SEL_COLOR0	31
+#define MML_EVENT_SEL_C3D0	32
+#define MML_EVENT_SEL_BIRSZ0	33
+#define MML_EVENT_SEL_AAL0	34
+
+#endif	/* _DT_BINDINGS_MML_MT6993_H */

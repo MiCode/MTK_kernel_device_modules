@@ -1,0 +1,65 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "audio_ipi",
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+    ],
+    srcs = [
+        "common/audio_ipi.c",
+        "common/audio_task_manager.c",
+        "common/audio_messenger_ipi.c",
+        "common/audio_ipi_queue.c",
+        "common/adsp_ipi_queue.c",
+        "common/audio_ipi_dma.c",
+        "common/audio_ringbuf.c",
+        "common/audio_ipi_platform_common.c",
+        "v4/audio_ipi_platform.c",
+    ],
+    conditional_srcs = {
+        "CONFIG_DEVICE_MODULES_VHOST_ADSP": {
+            True: ["common/audio_ipi_auto.c"],
+        },
+    },
+    includes = [
+        "include",
+    ],
+    hdrs = glob([
+        "include/*.h",
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/audio_scp",
+    ],
+    ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version),
+		"//kernel_device_modules-{}/sound/soc/mediatek/audio_scp:mtk-scp-audiocommon".format(kernel_version),
+		"//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
+	],
+)

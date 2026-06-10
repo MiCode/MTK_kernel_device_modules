@@ -1,0 +1,108 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+         "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "inc/*.h",
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+        "mtk_swpm_fs/*.h",
+        "mtk_swpm_fs/*.c",
+        "modules/include/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-swpm-perf-arm-pmu",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_SWPM_PERF_ARMV8_PMU": {
+            True:["swpm_perf_arm_pmu.c"],
+        },
+    },
+    includes = [
+        "inc",
+    ],
+    hdrs = glob([
+        "*.h",
+        "inc/*.h",
+    ]),
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-swpm",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_SWPM_MODULE": {
+            True:[
+                  "mtk_swpm_fs/mtk_swpm_common_sysfs.c",
+                  "mtk_swpm_fs/mtk_swpm_sysfs_procfs.c",
+                  "swpm_module.c",
+                  "swpm_module_psp.c",],
+        },
+    },
+
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pmsr/v3:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:ddk_public_headers".format(kernel_version),
+    ],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pmsr/v3:pmsr_v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/qos:mtk_qos".format(kernel_version),
+    ],
+    includes = [
+        "inc",
+        "mtk_swpm_fs",
+    ],
+    hdrs = glob([
+        "mtk_swpm_fs/*.h",
+        "inc/*.h",
+    ]),
+    copts = [
+        "-Wall",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/qos",
+    ],
+)
+
+
+
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = [
+        "inc",
+        "mtk_swpm_fs",
+    ],
+    hdrs = glob([
+        "inc/*.h",
+        "mtk_swpm_fs/*.h",
+        "modules/include/*.h",
+        "modules/debug/v1/*.h",
+    ]),
+)

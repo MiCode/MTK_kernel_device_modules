@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Virtualization yocto guest uos support drivers
+#
+
+config HYPER_YOCTO_UOS
+	tristate "hypervisor guest yocto os"
+	help
+	  The hypervisor project is "m".
+	  Used for hypervisor guest yocto os.
+	  If your code is for hypervisor yocto uos os,
+	  you can use it to wrap your code.
+
+config VIRTIO_CONNINFRA_TBOX
+	tristate "Hypervisor for virtio conninfra tbox"
+	help
+	  This extension enable virtio conninfra tbox driver, virtio conninfra tbox driver enable
+	  for hypervisor project. The virtio driver is located at virt/spm_v1,
+	  Also used to isolate the conflicting part of the conninfra driver
+	  on main project, default is n.

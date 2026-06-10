@@ -1,0 +1,73 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "makefiles",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+		"**/*.c",
+		"**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mmdvfs-v5",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_TINYSYS_VCP_SUPPORT": {
+            True: ["mtk-mmdvfs-v5.c"],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdebug:mtk-mmdebug-vcp-stub".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier-mt6993".format(kernel_version)] if glob(["mmdvfs-mt6993.c"]) else ([
+      "//kernel_device_modules-{}/drivers/misc/mediatek/vmm:mtk-vmm-notifier".format(kernel_version)])),
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:v5_public_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+)
+
+PLATFORMS = [
+    "mt6993",
+]
+
+[define_mgk_ddk_ko(
+    name = "mmdvfs-{}".format(p),
+    srcs = [
+        "mmdvfs-{}.c".format(p),
+        "mmdvfs-{}.h".format(p),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+) for p in PLATFORMS]

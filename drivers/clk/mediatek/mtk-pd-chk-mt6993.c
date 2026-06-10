@@ -1,0 +1,494 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ * Author: Kuan-hsin.Lee <kuan-hsin.lee@mediatek.com>
+ */
+
+#include <linux/io.h>
+#include <linux/module.h>
+#include <linux/platform_device.h>
+#include <linux/spinlock.h>
+
+#include "mtk-pd-chk.h"
+#include "clkchk-mt6993.h"
+#include "clk-gate.h"
+
+#define TAG				"[pdchk] "
+#define BUG_ON_CHK_ENABLE		0
+#define EVT_LEN				40
+#define PWR_ID_SHIFT			0
+#define PWR_STA_SHIFT			8
+#define HWV_INT_TMOUT_TRIGGER		0x0
+#define HWV_IRQ_STATUS			0x0
+
+static struct pd_sta pd_pwr_sta[] = {
+	{MT6993_CHK_PD_CONN, spm_pbus, 0x0000, 0x80000000},
+	{MT6993_CHK_PD_APIFR_IO, spm_pbus, 0x0004, 0x80000000},
+	{MT6993_CHK_PD_APIFR_IO_EST, spm_pbus, 0x009C, 0x80000000},
+	{MT6993_CHK_PD_APIFR_MEM, spm_pbus, 0x0008, 0x80000000},
+	{MT6993_CHK_PD_APIFR_HASH, spm_pbus, 0x000C, 0x80000000},
+	{MT6993_CHK_PD_PERI, spm_pbus, 0x0010, 0x80000000},
+	{MT6993_CHK_PD_SSUSB_DP_PHY_P0, spm_pbus, 0x0014, 0x80000000},
+	{MT6993_CHK_PD_SSUSB_P0, spm_pbus, 0x0018, 0x80000000},
+	{MT6993_CHK_PD_UFS0, spm_pbus, 0x001C, 0x80000000},
+	{MT6993_CHK_PD_UFS1, spm_pbus, 0x0020, 0x80000000},
+	{MT6993_CHK_PD_UFS0_PHY, spm_pbus, 0x0024, 0x80000000},
+	{MT6993_CHK_PD_UFS1_PHY, spm_pbus, 0x0028, 0x80000000},
+	{MT6993_CHK_PD_PEXTP_MAC0, spm_pbus, 0x002C, 0x80000000},
+	{MT6993_CHK_PD_PEXTP_MAC1, spm_pbus, 0x0030, 0x80000000},
+	{MT6993_CHK_PD_PEXTP_PHY0, spm_pbus, 0x0034, 0x80000000},
+	{MT6993_CHK_PD_PEXTP_PHY1, spm_pbus, 0x0038, 0x80000000},
+	{MT6993_CHK_PD_AUDIO, spm_pbus, 0x003C, 0x80000000},
+	{MT6993_CHK_PD_ADSP_TOP, spm_pbus, 0x0040, 0x80000000},
+	{MT6993_CHK_PD_ADSP_INFRA, spm_pbus, 0x0044, 0x80000000},
+	{MT6993_CHK_PD_ADSP_AO, spm_pbus, 0x0048, 0x80000000},
+	{MT6993_CHK_PD_MM_PROC, spm_pbus, 0x004C, 0x80000000},
+	{MT6993_CHK_PD_DPM0, spm_pbus, 0x0050, 0x80000000},
+	{MT6993_CHK_PD_DPM1, spm_pbus, 0x0054, 0x80000000},
+	{MT6993_CHK_PD_DPM2, spm_pbus, 0x0058, 0x80000000},
+	{MT6993_CHK_PD_DPM3, spm_pbus, 0x005C, 0x80000000},
+	{MT6993_CHK_PD_EMI0, spm_pbus, 0x0060, 0x80000000},
+	{MT6993_CHK_PD_EMI1, spm_pbus, 0x0064, 0x80000000},
+	{MT6993_CHK_PD_EMI_INFRA, spm_pbus, 0x0068, 0x80000000},
+	{MT6993_CHK_PD_EMI_INFRA_RV33, spm_pbus, 0x006C, 0x80000000},
+	{MT6993_CHK_PD_SSRSYS, spm_pbus, 0x0070, 0x80000000},
+	{MT6993_CHK_PD_SPU_ISE, spm_pbus, 0x0074, 0x80000000},
+	{MT6993_CHK_PD_SPU_HWROT, spm_pbus, 0x0078, 0x80000000},
+	{MT6993_CHK_PD_ZRAM, spm_pbus, 0x00A0, 0x80000000},
+	{MT6993_CHK_PD_CH_INFRA_BUS_A, spm_pbus, 0x007C, 0x80000000},
+	{MT6993_CHK_PD_CH_INFRA_OFF_A, spm_pbus, 0x0080, 0x80000000},
+	{MT6993_CHK_PD_IMG_DIP, mmpc, 0x0004, 0xC0000000},
+	{MT6993_CHK_PD_IMG_DIP_CINE, mmpc, 0x0008, 0xC0000000},
+	{MT6993_CHK_PD_IMG_TRAW, mmpc, 0x0000, 0xC0000000},
+	{MT6993_CHK_PD_IMG_MAIN, mmpc, 0x000C, 0xC0000000},
+	{MT6993_CHK_PD_IMG_VCORE, mmpc, 0x0010, 0xC0000000},
+	{MT6993_CHK_PD_IMG_WPE_EIS, mmpc, 0x0014, 0xC0000000},
+	{MT6993_CHK_PD_IMG_WPE_TNR, mmpc, 0x0018, 0xC0000000},
+	{MT6993_CHK_PD_IMG_WPE_LITE, mmpc, 0x001C, 0xC0000000},
+	{MT6993_CHK_PD_VDE0, mmpc, 0x0020, 0xC0000000},
+	{MT6993_CHK_PD_VDE1, mmpc, 0x0024, 0xC0000000},
+	{MT6993_CHK_PD_VDE_VCORE0, mmpc, 0x0028, 0xC0000000},
+	{MT6993_CHK_PD_VEN0, mmpc, 0x002C, 0xC0000000},
+	{MT6993_CHK_PD_VEN1, mmpc, 0x0030, 0xC0000000},
+	{MT6993_CHK_PD_VEN2, mmpc, 0x0034, 0xC0000000},
+	{MT6993_CHK_PD_VEN3, mmpc, 0x0038, 0xC0000000},
+	{MT6993_CHK_PD_VEN_MDP, mmpc, 0x003C, 0xC0000000},
+	{MT6993_CHK_PD_CAM_MRAW, mmpc, 0x0040, 0xC0000000},
+	{MT6993_CHK_PD_CAM_RAWA, mmpc, 0x0044, 0xC0000000},
+	{MT6993_CHK_PD_CAM_RAWB, mmpc, 0x0048, 0xC0000000},
+	{MT6993_CHK_PD_CAM_RAWC, mmpc, 0x004C, 0xC0000000},
+	{MT6993_CHK_PD_CAM_RMSA, mmpc, 0x0050, 0xC0000000},
+	{MT6993_CHK_PD_CAM_RMSB, mmpc, 0x0054, 0xC0000000},
+	{MT6993_CHK_PD_CAM_RMSC, mmpc, 0x0058, 0xC0000000},
+	{MT6993_CHK_PD_CAM_MAIN, mmpc, 0x005C, 0xC0000000},
+	{MT6993_CHK_PD_CAM_VCORE, mmpc, 0x0060, 0xC0000000},
+	{MT6993_CHK_PD_CAM_CCU, mmpc, 0x0064, 0xC0000000},
+	{MT6993_CHK_PD_DISP_VCORE, mmpc, 0x0068, 0xC0000000},
+	{MT6993_CHK_PD_DIS0_A, mmpc, 0x006C, 0xC0000000},
+	{MT6993_CHK_PD_DIS0_B, mmpc, 0x0070, 0xC0000000},
+	{MT6993_CHK_PD_DIS1_A, mmpc, 0x0074, 0xC0000000},
+	{MT6993_CHK_PD_DIS1_B, mmpc, 0x0078, 0xC0000000},
+	{MT6993_CHK_PD_OVL0, mmpc, 0x007C, 0xC0000000},
+	{MT6993_CHK_PD_OVL1, mmpc, 0x0080, 0xC0000000},
+	{MT6993_CHK_PD_OVL2, mmpc, 0x0084, 0xC0000000},
+	{MT6993_CHK_PD_DISP_DPTX, mmpc, 0x008C, 0xC0000000},
+	{MT6993_CHK_PD_VDISP_PERI, mmpc, 0x0088, 0xC0000000},
+	{MT6993_CHK_PD_MML0, mmpc, 0x0090, 0xC0000000},
+	{MT6993_CHK_PD_MML1, mmpc, 0x0094, 0xC0000000},
+	{MT6993_CHK_PD_MML2, mmpc, 0x0098, 0xC0000000},
+	{MT6993_CHK_PD_MM_INFRA0, mmpc, 0x009C, 0xC0000000},
+	{MT6993_CHK_PD_MM_INFRA1, mmpc, 0x00A0, 0xC0000000},
+	{MT6993_CHK_PD_MM_INFRA2, mmpc, 0x00A8, 0xC0000000},
+	{MT6993_CHK_PD_MM_INFRA_AO, mmpc, 0x00A4, 0xC0000000},
+	{MT6993_CHK_PD_CSI_BS_RX, mmpc, 0x00AC, 0xC0000000},
+	{MT6993_CHK_PD_DSI_PHY0, mmpc, 0x00F4, 0xC0000000},
+	{MT6993_CHK_PD_DSI_PHY1, mmpc, 0x00F8, 0xC0000000},
+	{MT6993_CHK_PD_DSI_PHY2, mmpc, 0x00FC, 0xC0000000},
+};
+
+static u32 get_pd_pwr_status(int pd_id)
+{
+	u32 val;
+	int i;
+
+    if (pd_id == PD_NULL || pd_id > MT6993_CHK_PD_NUM)
+		return 0;
+
+	for (i = 0; i < ARRAY_SIZE(pd_pwr_sta); i++) {
+		if (pd_id == pd_pwr_sta[i].pd_id) {
+			val = get_mt6993_reg_value(pd_pwr_sta[i].base, pd_pwr_sta[i].ofs);
+			if ((val & pd_pwr_sta[i].msk) == pd_pwr_sta[i].msk)
+				return 1;
+			else
+				return 0;
+		}
+	}
+
+	return 0;
+}
+
+static int off_mtcmos_id[] = {
+	/*
+	MT6993_CHK_PD_CONN,
+	MT6993_CHK_PD_CONN,
+	MT6993_CHK_PD_CONN,
+	MT6993_CHK_PD_APIFR_IO,
+	MT6993_CHK_PD_APIFR_IO,
+	MT6993_CHK_PD_APIFR_IO_EST,
+	MT6993_CHK_PD_APIFR_IO_EST,
+	MT6993_CHK_PD_APIFR_MEM,
+	MT6993_CHK_PD_APIFR_MEM,
+	MT6993_CHK_PD_APIFR_HASH,
+	MT6993_CHK_PD_APIFR_HASH,
+	MT6993_CHK_PD_PERI,
+	MT6993_CHK_PD_PERI,
+	MT6993_CHK_PD_SSUSB_DP_PHY_P0,
+	MT6993_CHK_PD_SSUSB_DP_PHY_P0,
+	MT6993_CHK_PD_SSUSB_DP_PHY_P0,
+	MT6993_CHK_PD_SSUSB_P0,
+	MT6993_CHK_PD_SSUSB_P0,
+	MT6993_CHK_PD_SSUSB_P0,
+	MT6993_CHK_PD_UFS0,
+	MT6993_CHK_PD_UFS0,
+	MT6993_CHK_PD_UFS1,
+	MT6993_CHK_PD_UFS1,
+	MT6993_CHK_PD_UFS0_PHY,
+	MT6993_CHK_PD_UFS0_PHY,
+	MT6993_CHK_PD_UFS1_PHY,
+	MT6993_CHK_PD_UFS1_PHY,
+	MT6993_CHK_PD_PEXTP_MAC0,
+	MT6993_CHK_PD_PEXTP_MAC0,
+	MT6993_CHK_PD_PEXTP_MAC0,
+	MT6993_CHK_PD_PEXTP_MAC1,
+	MT6993_CHK_PD_PEXTP_MAC1,
+	MT6993_CHK_PD_PEXTP_MAC1,
+	MT6993_CHK_PD_PEXTP_PHY0,
+	MT6993_CHK_PD_PEXTP_PHY0,
+	MT6993_CHK_PD_PEXTP_PHY0,
+	MT6993_CHK_PD_PEXTP_PHY1,
+	MT6993_CHK_PD_PEXTP_PHY1,
+	MT6993_CHK_PD_PEXTP_PHY1,
+	MT6993_CHK_PD_AUDIO,
+	MT6993_CHK_PD_AUDIO,
+	MT6993_CHK_PD_AUDIO,
+	MT6993_CHK_PD_ADSP_TOP,
+	MT6993_CHK_PD_ADSP_TOP,
+	MT6993_CHK_PD_ADSP_TOP,
+	MT6993_CHK_PD_ADSP_INFRA,
+	MT6993_CHK_PD_ADSP_INFRA,
+	MT6993_CHK_PD_ADSP_INFRA,
+	MT6993_CHK_PD_ADSP_AO,
+	MT6993_CHK_PD_ADSP_AO,
+	MT6993_CHK_PD_ADSP_AO,
+	MT6993_CHK_PD_MM_PROC,
+	MT6993_CHK_PD_MM_PROC,
+	MT6993_CHK_PD_DPM0,
+	MT6993_CHK_PD_DPM0,
+	MT6993_CHK_PD_DPM1,
+	MT6993_CHK_PD_DPM1,
+	MT6993_CHK_PD_DPM2,
+	MT6993_CHK_PD_DPM2,
+	MT6993_CHK_PD_DPM3,
+	MT6993_CHK_PD_DPM3,
+	MT6993_CHK_PD_EMI0,
+	MT6993_CHK_PD_EMI0,
+	MT6993_CHK_PD_EMI1,
+	MT6993_CHK_PD_EMI1,
+	MT6993_CHK_PD_EMI_INFRA,
+	MT6993_CHK_PD_EMI_INFRA,
+	MT6993_CHK_PD_EMI_INFRA_RV33,
+	MT6993_CHK_PD_EMI_INFRA_RV33,
+	MT6993_CHK_PD_SSRSYS,
+	MT6993_CHK_PD_SSRSYS,
+	MT6993_CHK_PD_SSRSYS,
+	MT6993_CHK_PD_SPU_ISE,
+	MT6993_CHK_PD_SPU_ISE,
+	MT6993_CHK_PD_SPU_HWROT,
+	MT6993_CHK_PD_SPU_HWROT,
+	MT6993_CHK_PD_ZRAM,
+	MT6993_CHK_PD_ZRAM,
+	MT6993_CHK_PD_CH_INFRA_BUS_A,
+	MT6993_CHK_PD_CH_INFRA_OFF_A,
+	MT6993_CHK_PD_IMG_DIP,
+	MT6993_CHK_PD_IMG_DIP,
+	MT6993_CHK_PD_IMG_DIP_CINE,
+	MT6993_CHK_PD_IMG_DIP_CINE,
+	MT6993_CHK_PD_IMG_TRAW,
+	MT6993_CHK_PD_IMG_TRAW,
+	MT6993_CHK_PD_IMG_MAIN,
+	MT6993_CHK_PD_IMG_MAIN,
+	MT6993_CHK_PD_IMG_VCORE,
+	MT6993_CHK_PD_IMG_VCORE,
+	MT6993_CHK_PD_IMG_WPE_EIS,
+	MT6993_CHK_PD_IMG_WPE_EIS,
+	MT6993_CHK_PD_IMG_WPE_TNR,
+	MT6993_CHK_PD_IMG_WPE_TNR,
+	MT6993_CHK_PD_IMG_WPE_LITE,
+	MT6993_CHK_PD_IMG_WPE_LITE,
+	MT6993_CHK_PD_VDE0,
+	MT6993_CHK_PD_VDE1,
+	MT6993_CHK_PD_VDE_VCORE0,
+	MT6993_CHK_PD_VEN0,
+	MT6993_CHK_PD_VEN1,
+	MT6993_CHK_PD_VEN2,
+	MT6993_CHK_PD_VEN3,
+	MT6993_CHK_PD_VEN_MDP,
+	MT6993_CHK_PD_VEN_MDP,
+	MT6993_CHK_PD_CAM_MRAW,
+	MT6993_CHK_PD_CAM_MRAW,
+	MT6993_CHK_PD_CAM_RAWA,
+	MT6993_CHK_PD_CAM_RAWA,
+	MT6993_CHK_PD_CAM_RAWB,
+	MT6993_CHK_PD_CAM_RAWB,
+	MT6993_CHK_PD_CAM_RAWC,
+	MT6993_CHK_PD_CAM_RAWC,
+	MT6993_CHK_PD_CAM_RMSA,
+	MT6993_CHK_PD_CAM_RMSA,
+	MT6993_CHK_PD_CAM_RMSB,
+	MT6993_CHK_PD_CAM_RMSB,
+	MT6993_CHK_PD_CAM_RMSC,
+	MT6993_CHK_PD_CAM_RMSC,
+	MT6993_CHK_PD_CAM_MAIN,
+	MT6993_CHK_PD_CAM_MAIN,
+	MT6993_CHK_PD_CAM_VCORE,
+	MT6993_CHK_PD_CAM_VCORE,
+	MT6993_CHK_PD_CAM_CCU,
+	MT6993_CHK_PD_CAM_CCU,
+	MT6993_CHK_PD_DISP_VCORE,
+	MT6993_CHK_PD_DISP_VCORE,
+	MT6993_CHK_PD_DIS0_A,
+	MT6993_CHK_PD_DIS0_A,
+	MT6993_CHK_PD_DIS0_A,
+	MT6993_CHK_PD_DIS0_B,
+	MT6993_CHK_PD_DIS0_B,
+	MT6993_CHK_PD_DIS0_B,
+	MT6993_CHK_PD_DIS1_A,
+	MT6993_CHK_PD_DIS1_A,
+	MT6993_CHK_PD_DIS1_A,
+	MT6993_CHK_PD_DIS1_B,
+	MT6993_CHK_PD_DIS1_B,
+	MT6993_CHK_PD_DIS1_B,
+	MT6993_CHK_PD_OVL0,
+	MT6993_CHK_PD_OVL0,
+	MT6993_CHK_PD_OVL0,
+	MT6993_CHK_PD_OVL1,
+	MT6993_CHK_PD_OVL1,
+	MT6993_CHK_PD_OVL1,
+	MT6993_CHK_PD_OVL2,
+	MT6993_CHK_PD_OVL2,
+	MT6993_CHK_PD_OVL2,
+	MT6993_CHK_PD_DISP_DPTX,
+	MT6993_CHK_PD_DISP_DPTX,
+	MT6993_CHK_PD_VDISP_PERI,
+	MT6993_CHK_PD_VDISP_PERI,
+	MT6993_CHK_PD_MML0,
+	MT6993_CHK_PD_MML0,
+	MT6993_CHK_PD_MML0,
+	MT6993_CHK_PD_MML1,
+	MT6993_CHK_PD_MML1,
+	MT6993_CHK_PD_MML1,
+	MT6993_CHK_PD_MML2,
+	MT6993_CHK_PD_MML2,
+	MT6993_CHK_PD_MML2,
+	MT6993_CHK_PD_MM_INFRA0,
+	MT6993_CHK_PD_MM_INFRA0,
+	MT6993_CHK_PD_MM_INFRA1,
+	MT6993_CHK_PD_MM_INFRA1,
+	MT6993_CHK_PD_MM_INFRA2,
+	MT6993_CHK_PD_MM_INFRA2,
+	MT6993_CHK_PD_MM_INFRA_AO,
+	MT6993_CHK_PD_MM_INFRA_AO,
+	MT6993_CHK_PD_CSI_BS_RX,
+	MT6993_CHK_PD_CSI_BS_RX,
+	MT6993_CHK_PD_DSI_PHY0,
+	MT6993_CHK_PD_DSI_PHY0,
+	MT6993_CHK_PD_DSI_PHY1,
+	MT6993_CHK_PD_DSI_PHY1,
+	MT6993_CHK_PD_DSI_PHY2,
+	PD_NULL,
+	*/
+};
+
+static int notice_mtcmos_id[] = {
+
+	PD_NULL,
+};
+
+int *get_off_mtcmos_id(void)
+{
+	return off_mtcmos_id;
+}
+
+int *get_notice_mtcmos_id(void)
+{
+	return notice_mtcmos_id;
+}
+
+static bool is_mtcmos_chk_bug_on(void)
+{
+#if (BUG_ON_CHK_ENABLE) && (IS_ENABLED(CONFIG_MTK_CLKMGR_DEBUG))
+	return true;
+#endif
+	return false;
+}
+
+/*
+ * init functions
+ */
+
+static bool pdchk_is_suspend_retry_stop(bool reset_cnt)
+{
+	static unsigned int suspend_cnt;
+
+	if (reset_cnt == true) {
+		suspend_cnt = 0;
+		return true;
+	}
+
+	suspend_cnt++;
+	pr_notice("%s: suspend cnt: %d\n", __func__, suspend_cnt);
+
+	if (suspend_cnt < 2)
+		return false;
+
+	return true;
+}
+
+static const char * const off_mtcmos_names[] = {
+	NULL
+};
+
+static const char * const notice_mtcmos_names[] = {
+	"conn",
+	"ssusb_dp_phy_p0",
+	"ssusb_p0",
+	"pextp_mac0",
+	"pextp_mac1",
+	"pextp_phy0",
+	"pextp_phy1",
+	"audio",
+	"adsp_top",
+	"adsp_infra",
+	"adsp_ao",
+	"ssrsys",
+	NULL
+};
+
+static const char * const mm_mtcmos_names[] = {
+	"img_dip",
+	"img_dip_cine",
+	"img_traw",
+	"img_main",
+	"img_vcore",
+	"img_wpe_eis",
+	"img_wpe_tnr",
+	"img_wpe_lite",
+	"vde0",
+	"vde1",
+	"vde_vcore0",
+	"ven0",
+	"ven1",
+	"ven2",
+	"ven3",
+	"ven_mdp",
+	"cam_mraw",
+	"cam_rawa",
+	"cam_rawb",
+	"cam_rawc",
+	"cam_rmsa",
+	"cam_rmsb",
+	"cam_rmsc",
+	"cam_main",
+	"cam_vcore",
+	"cam_ccu",
+	"disp_vcore",
+	"dis0_a",
+	"dis0_b",
+	"dis1_a",
+	"dis1_b",
+	"ovl0",
+	"ovl1",
+	"ovl2",
+	"disp_dptx",
+	"vdisp_peri",
+	"mml0",
+	"mml1",
+	"mml2",
+	"mm_infra0",
+	"mm_infra1",
+	"mm_infra2",
+	"mm_infra_ao",
+	"csi_bs_rx",
+	"dsi_phy0",
+	"dsi_phy1",
+	"dsi_phy2",
+	NULL
+};
+
+static const char * const *get_off_mtcmos_names(void)
+{
+	return off_mtcmos_names;
+}
+
+static const char * const *get_notice_mtcmos_names(void)
+{
+	return notice_mtcmos_names;
+}
+
+static const char * const *get_mm_mtcmos_names(void)
+{
+	return mm_mtcmos_names;
+}
+
+static struct pdchk_ops pdchk_mt6993_ops = {
+	.get_pd_pwr_status = get_pd_pwr_status,
+	.get_off_mtcmos_names = get_off_mtcmos_names,
+	.get_notice_mtcmos_names = get_notice_mtcmos_names,
+	.get_mm_mtcmos_names = get_mm_mtcmos_names,
+	.is_mtcmos_chk_bug_on = is_mtcmos_chk_bug_on,
+	.is_suspend_retry_stop = pdchk_is_suspend_retry_stop,
+};
+
+static int pd_chk_mt6993_probe(struct platform_device *pdev)
+{
+	pdchk_common_init(&pdchk_mt6993_ops);
+	set_pdchk_notify();
+
+	return 0;
+}
+
+static const struct of_device_id of_match_pdchk_mt6993[] = {
+	{
+		.compatible = "mediatek,mt6993-pdchk",
+	}, {
+		/* sentinel */
+	}
+};
+
+static struct platform_driver pd_chk_mt6993_drv = {
+	.probe = pd_chk_mt6993_probe,
+	.driver = {
+		.name = "pd-chk-mt6993",
+		.owner = THIS_MODULE,
+		.pm = &pdchk_dev_pm_ops_no_irq,
+		.of_match_table = of_match_pdchk_mt6993,
+	},
+};
+
+/*
+ * init functions
+ */
+
+static int __init pd_chk_init(void)
+{
+	return platform_driver_register(&pd_chk_mt6993_drv);
+}
+
+static void __exit pd_chk_exit(void)
+{
+	platform_driver_unregister(&pd_chk_mt6993_drv);
+}
+
+subsys_initcall(pd_chk_init);
+module_exit(pd_chk_exit);
+MODULE_LICENSE("GPL");

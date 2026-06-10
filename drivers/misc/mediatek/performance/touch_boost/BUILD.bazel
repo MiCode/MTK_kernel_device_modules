@@ -1,0 +1,23 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "touch_boost",
+    srcs = [
+        "touch_boost.c",
+        "touch_boost.h",
+        "touch_boost_trace_event.h",
+    ],
+    includes = [
+       ".",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_touch_boost".format(kernel_version),
+    ],
+)

@@ -1,0 +1,175 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Mediatek MT6881 audio driver interconnection definition
+ *
+ *  Copyright (c) 2025 MediaTek Inc.
+ *  Author: Shawn Sung <shawn.sung@mediatek.com>
+ */
+
+#ifndef _MT6881_INTERCONNECTION_H_
+#define _MT6881_INTERCONNECTION_H_
+
+/* in port define */
+#define I_CONNSYS_I2S_CH1 0
+#define I_CONNSYS_I2S_CH2 1
+#define I_GAIN0_OUT_CH1 6
+#define I_GAIN0_OUT_CH2 7
+#define I_GAIN1_OUT_CH1 8
+#define I_GAIN1_OUT_CH2 9
+#define I_GAIN2_OUT_CH1 10
+#define I_GAIN2_OUT_CH2 11
+#define I_GAIN3_OUT_CH1 12
+#define I_GAIN3_OUT_CH2 13
+#define I_STF_CH1 14
+#define I_ADDA_UL_CH1 16
+#define I_ADDA_UL_CH2 17
+#define I_ADDA_UL_CH3 18
+#define I_ADDA_UL_CH4 19
+#define I_UL_PROX_CH1 20
+#define I_UL_PROX_CH2 21
+#define I_ADDA_UL_CH5 24
+#define I_ADDA_UL_CH6 25
+#define I_DMIC0_CH1 28
+#define I_DMIC0_CH2 29
+#define I_DMIC1_CH1 30
+#define I_DMIC1_CH2 31
+
+/* in port define >= 32 */
+#define I_32_OFFSET 32
+#define I_DL0_CH1 (32 - I_32_OFFSET)
+#define I_DL0_CH2 (33 - I_32_OFFSET)
+#define I_DL1_CH1 (34 - I_32_OFFSET)
+#define I_DL1_CH2 (35 - I_32_OFFSET)
+#define I_DL2_CH1 (36 - I_32_OFFSET)
+#define I_DL2_CH2 (37 - I_32_OFFSET)
+#define I_DL3_CH1 (38 - I_32_OFFSET)
+#define I_DL3_CH2 (39 - I_32_OFFSET)
+#define I_DL4_CH1 (40 - I_32_OFFSET)
+#define I_DL4_CH2 (41 - I_32_OFFSET)
+#define I_DL5_CH1 (42 - I_32_OFFSET)
+#define I_DL5_CH2 (43 - I_32_OFFSET)
+#define I_DL6_CH1 (44 - I_32_OFFSET)
+#define I_DL6_CH2 (45 - I_32_OFFSET)
+#define I_DL7_CH1 (46 - I_32_OFFSET)
+#define I_DL7_CH2 (47 - I_32_OFFSET)
+#define I_DL8_CH1 (48 - I_32_OFFSET)
+#define I_DL8_CH2 (49 - I_32_OFFSET)
+#define I_DL_4CH_CH1 (50 - I_32_OFFSET)
+#define I_DL_4CH_CH2 (51 - I_32_OFFSET)
+#define I_DL_4CH_CH3 (52 - I_32_OFFSET)
+#define I_DL_4CH_CH4 (53 - I_32_OFFSET)
+#define I_DL_24CH_CH1 (54 - I_32_OFFSET)
+#define I_DL_24CH_CH2 (55 - I_32_OFFSET)
+#define I_DL_24CH_CH3 (56 - I_32_OFFSET)
+#define I_DL_24CH_CH4 (57 - I_32_OFFSET)
+#define I_DL_24CH_CH5 (58 - I_32_OFFSET)
+#define I_DL_24CH_CH6 (59 - I_32_OFFSET)
+#define I_DL_24CH_CH7 (60 - I_32_OFFSET)
+#define I_DL_24CH_CH8 (61 - I_32_OFFSET)
+
+/* in port define >= 64 */
+#define I_64_OFFSET 64
+#define I_DL_48CH_CH1 (78 - I_64_OFFSET)
+#define I_DL_48CH_CH2 (79 - I_64_OFFSET)
+#define I_DL_48CH_CH3 (80 - I_64_OFFSET)
+#define I_DL_48CH_CH4 (81 - I_64_OFFSET)
+#define I_DL_48CH_CH5 (82 - I_64_OFFSET)
+#define I_DL_48CH_CH6 (83 - I_64_OFFSET)
+#define I_DL_48CH_CH7 (84 - I_64_OFFSET)
+#define I_DL_48CH_CH8 (85 - I_64_OFFSET)
+#define I_DL_48CH_CH9 (86 - I_64_OFFSET)
+#define I_DL_48CH_CH10 (87 - I_64_OFFSET)
+#define I_DL_48CH_CH11 (88 - I_64_OFFSET)
+#define I_DL_48CH_CH12 (89 - I_64_OFFSET)
+#define I_DL_48CH_CH13 (90 - I_64_OFFSET)
+#define I_DL_48CH_CH14 (91 - I_64_OFFSET)
+#define I_DL_48CH_CH15 (92 - I_64_OFFSET)
+#define I_DL_48CH_CH16 (93 - I_64_OFFSET)
+#define I_DL_48CH_CH17 (94 - I_64_OFFSET)
+#define I_DL_48CH_CH18 (95 - I_64_OFFSET)
+
+/* in port define >= 96 */
+#define I_96_OFFSET 96
+#define I_DL_48CH_CH19 (96 - I_96_OFFSET)
+#define I_DL_48CH_CH20 (97 - I_96_OFFSET)
+#define I_DL_48CH_CH21 (98 - I_96_OFFSET)
+#define I_DL_48CH_CH22 (99 - I_96_OFFSET)
+#define I_DL_48CH_CH23 (100 - I_96_OFFSET)
+#define I_DL_48CH_CH24 (101 - I_96_OFFSET)
+#define I_DL_48CH_CH25 (102 - I_96_OFFSET)
+#define I_DL_48CH_CH26 (103 - I_96_OFFSET)
+#define I_DL_48CH_CH27 (104 - I_96_OFFSET)
+#define I_DL_48CH_CH28 (105 - I_96_OFFSET)
+#define I_DL_48CH_CH29 (106 - I_96_OFFSET)
+#define I_DL_48CH_CH30 (107 - I_96_OFFSET)
+#define I_DL_48CH_CH31 (108 - I_96_OFFSET)
+#define I_DL_48CH_CH32 (109 - I_96_OFFSET)
+#define I_DL44_CH1 (120 - I_96_OFFSET)
+#define I_DL44_CH2 (121 - I_96_OFFSET)
+#define I_DL45_CH1 (122 - I_96_OFFSET)
+#define I_DL45_CH2 (123 - I_96_OFFSET)
+#define I_DL46_CH1 (124 - I_96_OFFSET)
+#define I_DL46_CH2 (125 - I_96_OFFSET)
+
+
+
+/* in port define >= 128 */
+#define I_128_OFFSET 128
+#define I_PCM_0_CAP_CH1 (130 - I_128_OFFSET)
+#define I_PCM_0_CAP_CH2 (131 - I_128_OFFSET)
+#define I_PCM_1_CAP_CH1 (132 - I_128_OFFSET)
+#define I_PCM_1_CAP_CH2 (133 - I_128_OFFSET)
+#define I_I2SIN0_CH1 (134 - I_128_OFFSET)
+#define I_I2SIN0_CH2 (135 - I_128_OFFSET)
+#define I_I2SIN1_CH1 (136 - I_128_OFFSET)
+#define I_I2SIN1_CH2 (137 - I_128_OFFSET)
+#define I_I2SIN2_CH1 (138 - I_128_OFFSET)
+#define I_I2SIN2_CH2 (139 - I_128_OFFSET)
+
+/* in port define >= 160 */
+#define I_160_OFFSET 160
+#define I_I2SIN6_CH1 (166 - I_160_OFFSET)
+#define I_I2SIN6_CH2 (167 - I_160_OFFSET)
+#define I_I2SIN6_CH3 (168 - I_160_OFFSET)
+#define I_I2SIN6_CH4 (169 - I_160_OFFSET)
+#define I_I2SIN6_CH5 (170 - I_160_OFFSET)
+#define I_I2SIN6_CH6 (171 - I_160_OFFSET)
+#define I_I2SIN6_CH7 (172 - I_160_OFFSET)
+#define I_I2SIN6_CH8 (173 - I_160_OFFSET)
+#define I_I2SIN6_CH9 (174 - I_160_OFFSET)
+#define I_I2SIN6_CH10 (175 - I_160_OFFSET)
+#define I_I2SIN6_CH11 (176 - I_160_OFFSET)
+#define I_I2SIN6_CH12 (177 - I_160_OFFSET)
+#define I_I2SIN6_CH13 (178 - I_160_OFFSET)
+#define I_I2SIN6_CH14 (179 - I_160_OFFSET)
+#define I_I2SIN6_CH15 (180 - I_160_OFFSET)
+#define I_I2SIN6_CH16 (181 - I_160_OFFSET)
+#define I_I2SIN6_CH17 (182 - I_160_OFFSET)
+#define I_I2SIN6_CH18 (183 - I_160_OFFSET)
+#define I_I2SIN6_CH19 (184 - I_160_OFFSET)
+#define I_I2SIN6_CH20 (185 - I_160_OFFSET)
+#define I_I2SIN6_CH21 (186 - I_160_OFFSET)
+#define I_I2SIN6_CH22 (187 - I_160_OFFSET)
+#define I_I2SIN6_CH23 (188 - I_160_OFFSET)
+#define I_I2SIN6_CH24 (189 - I_160_OFFSET)
+#define I_I2SIN6_CH25 (190 - I_160_OFFSET)
+#define I_I2SIN6_CH26 (191 - I_160_OFFSET)
+
+/* in port define >= 192 */
+#define I_192_OFFSET 192
+#define I_I2SIN6_CH27 (192 - I_192_OFFSET)
+#define I_I2SIN6_CH28 (193 - I_192_OFFSET)
+#define I_I2SIN6_CH29 (194 - I_192_OFFSET)
+#define I_I2SIN6_CH30 (195 - I_192_OFFSET)
+#define I_I2SIN6_CH31 (196 - I_192_OFFSET)
+#define I_I2SIN6_CH32 (197 - I_192_OFFSET)
+#define I_SRC_0_OUT_CH1 (198 - I_192_OFFSET)
+#define I_SRC_0_OUT_CH2 (199 - I_192_OFFSET)
+#define I_SRC_1_OUT_CH1 (200 - I_192_OFFSET)
+#define I_SRC_1_OUT_CH2 (201 - I_192_OFFSET)
+#define I_SRC_2_OUT_CH1 (202 - I_192_OFFSET)
+#define I_SRC_2_OUT_CH2 (203 - I_192_OFFSET)
+#define I_SRC_3_OUT_CH1 (204 - I_192_OFFSET)
+#define I_SRC_3_OUT_CH2 (205 - I_192_OFFSET)
+
+#endif

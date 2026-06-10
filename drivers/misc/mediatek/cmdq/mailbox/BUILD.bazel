@@ -1,0 +1,187 @@
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+PLATFORMS_SMMU = [
+    "mt6991",
+    "mt6993",
+]
+
+PLATFORMS = [
+    "mt6858",
+    "mt6855",
+    "mt6789",
+    "mt6878",
+    "mt6895",
+    "mt6881",
+]
+
+define_mgk_ddk_ko(
+    name = "cmdq-sec-drv",
+    srcs = [
+        "cmdq_sec_mtee.c",
+        "cmdq_sec_pkvm.c",
+        "cmdq-sec-mailbox.c",
+        "cmdq-sec-helper.c",
+    ],
+    hdrs = glob([
+        "**/*.h",
+    ]),
+
+    includes = [".", "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/aee.h"],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone/gz-trusty:gz-trusty".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz_tz_system".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz-public_hdrs".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk_mminfra_util_headers".format(kernel_version),
+    ],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+             "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+             "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp",
+    ],
+    local_defines = ["CMDQ_SECURE_MTEE_SUPPORT", "CMDQ_SECURE_SUPPORT", "CMDQ_SECURE_CPR_SUPPORT", "CMDQ_DCACHE_INVAL"],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-cmdq-drv-ext",
+    srcs = [
+        "mtk-cmdq-mailbox-ext.c",
+        "mtk-cmdq-helper-ext.c",
+        "cmdq-util.c",
+    ] + ["//kernel_device_modules-{}/drivers/misc/mediatek/iommu:ddk_src".format(kernel_version)],
+    hdrs = glob([
+        "**/*.h",
+        "mt-plat/aee.h",
+    ]),
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common-legacy".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
+    ],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+            "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/include/",
+            "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/vcp/rv_v2",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz-public_hdrs".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk_mminfra_util_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_feature_headers".format(kernel_version),]
+     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+    local_defines = ["CMDQ_SECURE_MTEE_SUPPORT", "CMDQ_SECURE_SUPPORT", "CMDQ_SECURE_CPR_SUPPORT", "CMDQ_DCACHE_INVAL", "CONFIG_CMDQ_MMPROFILE_SUPPORT"],
+)
+
+define_mgk_ddk_ko(
+    name = "cmdq-test",
+    srcs = [
+        "cmdq-test.c",
+    ],
+    hdrs = glob([
+        "**/*.h",
+        "mt-plat/aee.h",
+    ]),
+    includes = ["."],
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+            "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz-public_hdrs".format(kernel_version),
+    ],
+    local_defines = ["CMDQ_SECURE_MTEE_SUPPORT", "CMDQ_SECURE_SUPPORT"],
+)
+
+[define_mgk_ddk_ko(
+    name = "cmdq-platform-{}".format(p),
+    srcs = [
+        "cmdq-platform-{}.c".format(p),
+    ],
+    hdrs = glob([
+        "**/*.h",
+        "mt-plat/aee.h",
+    ]),
+    includes = ["."],
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+              "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:arm_smmu_v3".format(kernel_version),
+              ],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),
+    ],
+    local_defines = [
+        "CMDQ_SKIP_BY_CMDQ_BUILT",
+    ],
+) for p in PLATFORMS_SMMU]
+
+[define_mgk_ddk_ko(
+    name = "cmdq-platform-{}".format(p),
+    srcs = [
+        "cmdq-platform-{}.c".format(p),
+    ],
+    hdrs = glob([
+        "**/*.h",
+        "mt-plat/aee.h",
+    ]),
+    includes = ["."],
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:headers".format(kernel_version),
+    ],
+    local_defines = [
+        "CMDQ_SKIP_BY_CMDQ_BUILT",
+    ],
+) for p in PLATFORMS]
+
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = ["."],
+    hdrs = glob(["**/*.h"]), # export all headers for other modules to use
+)

@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2024 MediaTek Inc.
+#
+
+config MTK_PKVM_CMDQ
+	tristate "MTK pKVM cmdq"
+	help
+	  A new option CONFIG_MTK_PKVM_CMDQ for the feature.
+	  This is used for handling el1 in pKVM(EL2). If you
+	  are not sure about whether to enable it or not,
+	  please set n.

@@ -1,0 +1,62 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl",
+     "kernel_version",
+     )
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_u_ether",
+    srcs = [
+        "u_ether.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/drivers/usb/gadget",
+        "-I$(srctree)/drivers/usb/gadget/udc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/rps",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/rps:rps_header".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/rps:rps_perf".format(kernel_version),
+    ],
+    out = "mtk_u_ether.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_usb_f_rndis",
+    srcs = [
+        "f_rndis.c",
+	"rndis.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/drivers/usb/gadget",
+        "-I$(srctree)/drivers/usb/gadget/udc",
+    ],
+    ko_deps = [":mtk_u_ether"],
+    out = "mtk_usb_f_rndis.ko",
+)

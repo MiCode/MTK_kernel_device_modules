@@ -1,0 +1,18 @@
+config TOUCHSCREEN_VHOST_TOUCH
+	tristate "vhost touchscreen"
+        depends on GRT_VM
+	help
+	  Say Y here if you have a vhost_touch
+	  to your system.
+	  If build module, say M.
+	  If unsure, say N.
+
+config TOUCHSCREEN_VHOST_TOUCH_ENABLE
+	bool "Enable vhost touch config"
+	help
+	  If you choose to enable this option, the kernel will include support for
+	  the virtual host touchscreen driver. This is useful for systems that
+	  require touch input to be managed by a guest operating system in a
+	  virtualized environment. Enabling this option will allow the guest OS to
+	  interact with the touchscreen as if it were directly connected to the
+	  hardware

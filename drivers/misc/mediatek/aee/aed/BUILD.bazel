@@ -1,0 +1,73 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "aee_aed",
+    srcs = [
+        "aed-main.c",
+        "aed-debug.c",
+        "aee-common.c",
+        "slog.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:headers".format(kernel_version),
+    ],
+    hdrs = glob([
+            "aed.h",
+            "slog.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump/",
+    ],
+    out = "aee_aed.ko",
+)
+
+ddk_headers(
+   name = "headers",
+   hdrs = [
+           "aed.h",
+   ],
+   includes = ["."],
+   linux_includes = [
+       "include",
+   ],
+)
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "aee_rs",
+    srcs = [
+        "aee_rs.c",
+    ],
+    hdrs = glob([
+            "aed.h",
+    ]),
+    ko_deps = [
+    "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump/",
+    ],
+    out = "aee_rs.ko",
+)
+

@@ -1,0 +1,64 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefiles",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "nvmem_mtk-devinfo",
+    srcs = [
+        "mtk-devinfo.c",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "nvmem-mt635x-efuse",
+    srcs = [
+        "mt635x-efuse.c",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "nvmem-mt6688-rtccon",
+    srcs = [
+        "mt6688-rtccon.c",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "nvmem-mt6338-efuse",
+    srcs = [
+        "mt6338-efuse.c",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "nvmem-mt6681-efuse",
+    srcs = [
+        "mt6681-efuse.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/mfd:mt6685-audclk".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/i2c/busses:i2c-mt65xx".format(kernel_version),
+    ],
+)
