@@ -1,0 +1,81 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2025  XiaoMi Co., Ltd.
+ */
+
+/* TOUCH start */
+&odm {
+	xiaomi_touch: xiaomi_touch {
+		compatible = "xiaomi-touch";
+		status = "ok";
+		touch,name = "xiaomi-touch";
+		panel = <&turner_42_02_0a_dsc_vdo>;
+	};
+};
+
+&pio {
+	mi_ts_spi_active: mi_ts_spi_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO81__FUNC_SPI6_B_CLK>,
+					<PINMUX_GPIO82__FUNC_SPI6_B_CSB>,
+					<PINMUX_GPIO83__FUNC_SPI6_B_MO>,
+					<PINMUX_GPIO84__FUNC_SPI6_B_MI>;
+					drive-strength = <4>; // 0/1/2/3/4/5/6/7 <->2ma/4ma/6ma/8ma/10ma/12ma/14ma/16ma
+		};
+	};
+	mi_ts_cs_suspend: mi_ts_cs_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO82__FUNC_GPIO82>;
+					output-low;
+					drive-strength = <1>;
+		};
+	};
+	ts_int_active: ts_int_active {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
+					input-enable;
+					bias-disable;
+		};
+	};
+	ts_int_suspend: ts_int_suspend {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO7__FUNC_GPIO7>;
+					bias-pull-down;
+		};
+	};
+};
+
+&spi6 {
+	status = "ok";
+
+	novatek@0 {
+		compatible = "novatek,NVT-ts-spi";
+		reg = <0>; //Same as CS ID
+		status = "ok";
+		interrupt-parent = <&pio>;
+		interrupts = <7 0x2008>;
+		spi-max-frequency = <19200000>;
+		novatek,reset-gpio = <&pio 90 0x00>;
+		novatek,irq-gpio = <&pio 7 0x2001>;
+		//novatek,lcd_id-gpio = <&pio 180 0x00>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&mi_ts_spi_active &ts_int_active>;
+		pinctrl-1 = <&mi_ts_cs_suspend &ts_int_suspend>;
+
+		novatek,pen-support;
+		novatek,stylus-resol-double;
+
+		//novatek,spi-rd-fast-addr = <0x03F310>;
+
+		mi_tp,game-mode-array = <1 0 0 0 0>;  /* MAX MIN DEF SET GET */
+		mi_tp,active-mode-array = <1 0 0 0 0>;  /* MAX MIN DEF SET GET */
+		mi_tp,up-threshold-array = <4 0 3 3 3>;  /* MAX MIN DEF SET GET */
+		mi_tp,tolerance-array = <4 0 2 2 2>;  /* MAX MIN DEF SET GET */
+		mi_tp,aim-sensitivity-array = <4 0 2 2 2>;  /* MAX MIN DEF SET GET */
+		mi_tp,tap-stability-array = <4 0 2 2 2>;  /* MAX MIN DEF SET GET */
+		mi_tp,expert-mode-array = <3 1 1 1 1>;  /* MAX MIN DEF SET GET */
+		mi_tp,edge-filter-array = <3 0 2 2 2>;  /* MAX MIN DEF SET GET */
+		mi_tp,panel-orien-array = <3 0 0 0 0>;  /* MAX MIN DEF SET GET */
+	};
+};
+/* TOUCH start */

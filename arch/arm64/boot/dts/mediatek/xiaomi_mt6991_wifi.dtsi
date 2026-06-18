@@ -1,0 +1,13 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2023 Xiaomi Inc.
+ */
+
+/* connv3 start */
+
+&connv3 {
+        /* pmic-uvlo-level: 0: skip, 1: 2.0V, 2: 2.1V, 3: 2.2V */
+        pmic-uvlo-level = <3>;
+};
+
+/* connv3 end */

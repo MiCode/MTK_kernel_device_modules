@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# MI_T1_CHIP info
+#
+config MI_T1_CHIP
+	tristate "MI T1 CHIP"
+	default n
+	help
+	 Driver for MI T1 CHIP
