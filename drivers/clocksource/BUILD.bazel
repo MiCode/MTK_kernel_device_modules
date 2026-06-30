@@ -1,0 +1,63 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+ddk_headers(
+	name = "headers",
+	hdrs = glob(["**/*.h"]),
+	includes = ["."],
+	linux_includes = [
+		"include",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "timer-mediatek",
+	srcs = [],
+
+	hdrs = glob(["*.h"]),
+
+	includes = [
+		"."
+	],
+
+	conditional_srcs = {
+		"CONFIG_DEVICE_MODULES_MTK_TIMER": {
+			True: ["timer-mediatek.c"],
+		},
+	},
+
+	copts = [
+		"-I$(srctree)/drivers/clocksource",
+		"-I$(DEVICE_MODULES_PATH)/drivers/clocksource",
+		"-Wall",
+		"-Werror",
+	],
+
+	local_defines = [
+		"TIMER_MEDIATEK_TEST_ENABLED=0"
+	],
+)

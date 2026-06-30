@@ -1,0 +1,172 @@
+# Copyright (c) 2025, MICROTRUST Incorporated
+# All Rights Reserved.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# version 2 as published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+# isee (teei) driver
+# isee_module = "isee-ffa"
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+    name = "ddk_teei_headers",
+    includes = ["."],
+    hdrs = glob(["common/include/teei_client_api.h",
+                "tz_driver/include/teei_client_main.h",]), # export all headers for other modules to use
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+# trusted_mem package with symbol and header files
+mgk_package = "//kernel_device_modules-{}".format(kernel_version)
+tmem_package = "{}/drivers/misc/mediatek/trusted_mem".format(mgk_package)
+
+ddk_headers(
+    name = "isee_local_hdrs",
+    # include header files
+    hdrs = glob([
+            "tz_driver/include/*.h",
+            "tz_driver/*.h",
+            "tz_dcih/*.h",
+            "public/*.h",
+            "teei_fp/*.h",
+            "ut_keymaster/*.h",
+            "tz_vfs/*.h",
+            "tee/**/*.h",
+    ]),
+    # include directory for relative path
+    includes = [
+        "common/include",
+        "tz_driver/include",
+        "tz_dcih",
+        "public",
+        "tz_vfs",
+        "ut_keymaster",
+        "teei_fp",
+        "tee",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+)
+
+filegroup(
+    name = "isee_source",
+    srcs =  glob ([
+        "tz_driver/*.c",
+    ])+[
+        "tee/tee_core.c",
+        "tee/capi_proxy.c",
+        "tee/tee_client_api.c",
+        "tee/tee_shm.c",
+        "tee/tee_shm_pool.c",
+        "tee/soter/call.c",
+        "ut_keymaster/ut_keymaster.c",
+        "tz_vfs/fp_vendor.c",
+        "tz_vfs/vfsFun.c",
+        "tz_dcih/tz_dcih_test.c",
+        "tz_dcih/tz_dcih.c",
+        "teei_fp/fp_func.c",
+        ],
+
+    visibility = [
+        "//visibility:private",
+        ],
+)
+
+define_mgk_ddk_ko(
+    name = "isee",
+    srcs = [
+        ":isee_source",
+        "tee/soter/core.c",
+    ],
+    conditional_srcs = {
+        "CONFIG_MICROTRUST_TEST_DRIVERS": {
+            True: [
+                    "tests/main.c",
+                    "tests/xtest_isee_1000.c",
+                    "tests/xtest_isee_3000.c",
+                    "tests/xtest_main.c",
+            ],
+        },
+        "CONFIG_MICROTRUST_UNITTEST_SUPPORT": {
+            True: ["ut_tester/ut_tester.c"],
+        },
+    },
+    hdrs = glob(["common/include/*.h"]),
+    header_deps = [
+        ":isee_local_hdrs",
+    ],
+    out = "isee.ko",
+    ko_deps = [
+                "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:bootprof".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "isee-ffa",
+    srcs = [
+            ":isee_source",
+            "tee/soter/ffa_core.c",
+            "tee/soter/soter_ffa_abi.c",
+    ],
+    conditional_srcs = {
+        "CONFIG_MICROTRUST_TEST_DRIVERS": {
+            True: ["tests/main.c",
+                    "tests/xtest_isee_1000.c",
+                    "tests/xtest_isee_3000.c",
+                    "tests/xtest_main.c",
+            ],
+        },
+        "CONFIG_MICROTRUST_UNITTEST_SUPPORT": {
+            True: ["ut_tester/ut_tester.c"],
+        },
+    },
+    hdrs = glob([
+           "common/include/*.h",   #export to other module
+    ]),
+    local_defines = [
+                "TEEI_FFA_SUPPORT",
+                "MTK_ADAPTED",
+    ],
+    out = "isee-ffa.ko",
+    header_deps = [
+        "{}:ffa_hdrs".format(tmem_package),
+        ":isee_local_hdrs",
+    ],
+    ko_deps = [
+                "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:bootprof".format(kernel_version),
+    ],
+)

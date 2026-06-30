@@ -1,0 +1,45 @@
+#
+# Copyright (C) 2024 MediaTek Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+name = "ddk_kconfigs",
+srcs = glob([
+"**/Kconfig",
+]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "bootprof",
+    srcs = [
+        "bootprof_main.c",
+    ],
+    out = "bootprof.ko"
+)

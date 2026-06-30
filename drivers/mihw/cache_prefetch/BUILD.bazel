@@ -1,0 +1,26 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "cache_prefetch",
+    srcs = glob(["*.c"]),
+    out = "cache_prefetch.ko",
+    ko_deps = [],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-Wno-array-bounds",
+        "-I$(srctree)/include",
+        "-I./",
+    ],
+)
+
+exports_files([
+    "cache_prefetch_main.c",
+])

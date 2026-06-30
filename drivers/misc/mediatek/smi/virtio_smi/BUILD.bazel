@@ -1,0 +1,38 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "virtio_smi_headers",
+    hdrs = glob([
+        "virtio_smi.h",
+    ]),
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "virtio_smi",
+    srcs = [
+        "virtio_smi.c",
+    ],
+    hdrs = glob([
+        "**/*.h",
+    ]),
+    includes = ["."],
+)

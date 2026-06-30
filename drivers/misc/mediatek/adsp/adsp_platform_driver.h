@@ -1,0 +1,160 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ */
+
+#ifndef __ADSP_PLATFORM_DRIVER_H__
+#define __ADSP_PLATFORM_DRIVER_H__
+
+#include <linux/miscdevice.h>   /* needed by miscdevice* */
+#include <linux/workqueue.h>
+#include <linux/interrupt.h>
+#include <linux/kfifo.h>
+#include "adsp_platform_interface.h"
+#include "adsp_clk.h"
+#include "adsp_helper.h"
+
+struct adsp_priv;
+struct log_ctrl_s;
+struct sharedmem_info {
+	unsigned int offset;
+	unsigned int size;
+};
+
+struct adsp_core_operations {
+	int (*initialize)(struct adsp_priv *pdata);
+	int (*after_bootup)(struct adsp_priv *pdata);
+};
+
+struct adsp_core_description {
+	u32 id;
+	const char *name;
+	const struct sharedmem_info sharedmems[ADSP_SHAREDMEM_NUM];
+	const struct adsp_core_operations ops;
+};
+
+struct adspsys_description {
+	const char *platform_name;
+	const u32 version;
+	const int semaphore_ways;
+	const int semaphore_ctrl;
+	const int semaphore_retry;
+	const u32 axibus_idle_val;
+	const u32 mtcmos_ao_ctrl;
+	const u32 slc_bw;
+	const u32 slc_dma_size;
+};
+
+struct irq_t {
+	u32 cid;
+	u32 seq;
+	void (*clear_irq)(u32 cid);
+	void (*irq_cb)(int irq, void *data, int cid);
+	void (*thread_fn)(int irq, void *data, int cid);
+	void *data;
+};
+
+struct adsp_priv {
+	u32 id;
+	const char *name;
+	int state;
+	u64 feature_set;
+	u32 mbrain_enable;
+
+	/* address & size */
+	void __iomem *itcm;
+	void __iomem *dtcm;
+	void __iomem *sysram;
+	void __iomem *l2sram;
+	size_t itcm_size;
+	size_t dtcm_size;
+	size_t sysram_size;
+	phys_addr_t sysram_phys;
+	size_t l2sram_size;
+
+	const struct sharedmem_info *mapping_table;
+
+	/* irq */
+	struct irq_t irq[ADSP_IRQ_NUM];
+	/* mailbox info */
+	struct mtk_mbox_pin_send *send_mbox;
+	struct mtk_mbox_pin_recv *recv_mbox;
+
+	/* logger control */
+	struct log_ctrl_s *log_ctrl;
+
+	struct device *dev;
+	struct kfifo tracefifo;
+	struct kfifo mbrainfifo;
+	struct miscdevice mdev;
+	struct workqueue_struct *wq;
+	struct completion done;
+
+	/* method */
+	const struct adsp_core_operations *ops;
+
+	spinlock_t wakelock;
+	u32 prelock_cnt;
+};
+
+struct adspsys_priv {
+	u32 num_cores;
+	u32 slp_prot_ctrl;
+	u32 sram_sleep_mode_ctrl;
+	u32 system_l2sram;
+	u32 slc_enable;
+
+	/* address & size */
+	void __iomem *cfg;
+	void __iomem *cfg_secure;
+	void __iomem *cfg2;
+	void __iomem *cfg3;
+	size_t cfg_size;
+	size_t cfg_secure_size;
+	size_t cfg2_size;
+	size_t cfg3_size;
+	void __iomem *infracfg_rsv;
+
+	struct device *dev;
+	struct miscdevice mdev;
+	struct wait_queue_head waitq;
+	struct workqueue_struct *workq;
+
+	struct adsp_clk_operations clk_ops;
+	struct adsp_hardware_operations hw_ops;
+
+	const struct adspsys_description *desc;
+};
+
+extern const struct file_operations adspsys_file_ops;
+extern struct attribute_group adsp_excep_attr_group;
+extern struct attribute_group adsp_sysinfo_attr_group;
+extern const struct file_operations adsp_debug_ops;
+extern const struct file_operations adsp_trace_ops;
+extern const struct file_operations adsp_mbrain_ops;
+extern const struct file_operations adsp_core_file_ops;
+extern struct attribute_group adsp_default_attr_group;
+
+extern struct adsp_priv *adsp_cores[ADSP_CORE_TOTAL];
+extern struct adspsys_priv *adspsys;
+
+/* MBrain */
+#define ADSP_MBRAIN_EVENT_DATA_SIZE 10
+struct adsp_mbrain_t {
+	uint64_t time_stamp;
+	uint32_t event_counter;
+	uint32_t event_type;
+	uint16_t magic_num;
+	uint16_t user_id;
+	uint16_t version;
+	uint16_t data_size;
+	uint32_t data[ADSP_MBRAIN_EVENT_DATA_SIZE];
+};
+
+typedef void (*audio_adsp_mbrain_notify_callback)(const void *info, const size_t count);
+int adsp_mbrain_register_callback(audio_adsp_mbrain_notify_callback mbrain_cbk);
+int adsp_mbrain_unregister_callback(void);
+void set_adsp_mbrain_cbk(audio_adsp_mbrain_notify_callback mbrain_cbk);
+int adsp_mbrain_enable(struct adsp_priv *pdata);
+
+#endif

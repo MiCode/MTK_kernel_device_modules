@@ -1,0 +1,181 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+filegroup(
+	name="ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "cache-parity",
+	srcs = [
+		"cache-parity.c",
+		"include/cputype.h"
+	],
+	includes = ["include"],
+	copts = [
+		"-I$(srctree)/kernel",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sda/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "dbg_error_flag",
+	srcs = [
+		"dbg_error_flag.c",
+	],
+	hdrs = [
+		"include/dbg_error_flag.h",
+	],
+	includes = ["include"],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+	],
+)
+
+define_mgk_ddk_ko(
+        name = "systracker",
+        srcs = [
+                "systracker.c",
+        ],
+        includes = ["include"],
+        ko_deps = [
+                "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        ],
+        header_deps = [
+                "//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
+        ],
+        copts = [
+                "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        ],
+)
+
+ddk_headers(
+	name = "headers",
+	hdrs = [
+		"sda.h",
+	],
+	includes = ["."],
+	linux_includes = [
+		"include",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "bus-parity",
+	srcs = [
+		"bus-parity.c",
+		"sda.h",
+		"include/dbg_error_flag.h"
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:dbg_error_flag".format(kernel_version),
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "dbgtop-drm",
+	srcs = [
+		"dbgtop-drm.c",
+	],
+	includes = ["include"],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "irq-dbg",
+	srcs = [
+		"irq-dbg.c",
+	],
+	includes = ["include"],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(srctree)/kernel",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "gic-ram-parity",
+	srcs = [
+		"gic-ram-parity.c",
+	],
+	includes = ["include"],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/aed",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+	],
+
+)
+
+define_mgk_ddk_ko(
+	name = "last_bus",
+	srcs = [
+		"last_bus.c",
+		"include/last_bus.h",
+		"include/dbg_error_flag.h"
+	],
+	includes = ["include"],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:headers".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:dbg_error_flag".format(kernel_version),
+	],
+
+)
+

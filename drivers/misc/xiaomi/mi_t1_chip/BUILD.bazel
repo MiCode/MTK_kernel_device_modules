@@ -1,0 +1,43 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+ddk_headers(
+	name = "headers",
+	hdrs = glob(["**/*.h",]),
+	includes = ["."],
+	linux_includes = [
+		"include",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "mi_t1_gpio",
+	hdrs = glob(["**/*.h"]),
+	includes = ["."],
+	srcs = [
+        "mi_t1_gpio.c",
+	],
+)

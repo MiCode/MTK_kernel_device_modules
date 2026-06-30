@@ -1,0 +1,71 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefiles",
+    srcs = glob([
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "connscp",
+    srcs = [
+        "conn_scp.c",
+        "aolserv/aol_buf_list.c",
+        "aolserv/aol_flp.c",
+        "aolserv/aol_geofence.c",
+        "conap_scp/conap_platform_data.c",
+        "conap_scp/conap_scp_core.c",
+        "conap_scp/conap_scp_ipi.c",
+        "conap_scp/msg_thread.c",
+    ],
+    conditional_srcs = {
+      "CONFIG_MTK_AOL_DEBUG": {
+        True: [
+        "conn_scp_dbg.c",
+        "aoltest/aoltest_core.c",
+        "aoltest/aoltest_netlink.c",
+        "aoltest/aoltest_ring_buffer.c",
+        "aoltest_v2/aoltestv2_core.c",
+        "aoltest_v2/aoltestv2_netlink.c",
+        ],
+      },
+    },
+    includes = [
+        ".",
+        "aolserv",
+        "aoltest",
+        "aoltest_v2",
+        "conap_scp",
+    ],
+    hdrs = glob(["**/*.h"]),
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+    ],
+    copts = [
+        "-Werror",
+        "-I$(srctree)/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/connectivity/common",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/connectivity:connadp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:scp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+    ],
+)

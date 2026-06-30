@@ -1,0 +1,19 @@
+/* psensor power start */
+&mt6661_5_ld20_2 {
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        regulator-always-on;
+};
+/* psensor power end */ 
+
+
+&odm {
+    xiaomi_hall: xiaomi_hall {
+        compatible = "xiaomi-hall";
+        linux,input-type = <5>;
+        linux,lid-code = <0>;
+        linux,table-code = <1>;
+        xiaomi,scp-event-mapping = <0 1>;
+        status = "okay";
+    };
+};

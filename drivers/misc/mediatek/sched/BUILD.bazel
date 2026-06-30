@@ -1,0 +1,190 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+filegroup(
+	name="ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+ddk_headers(
+	name = "cpufreq_sugov_ext_headers",
+	includes = ["."],
+	hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name = "cpufreq_sugov_ext",
+	conditional_srcs = {
+		"CONFIG_MTK_GEARLESS_SUPPORT":{
+			True:["mtk_energy_model/v3/static_power.c"],
+			False:["mtk_energy_model/v1/static_power.c"],
+		},
+	},
+    srcs = [
+		"sugov/cpufreq_sugov_main.c",
+		"sugov/nonlinear_opp_cap.c",
+		"sugov/dsu_interface.c",
+		"sugov/sched_version_ctrl.c",
+		"util/cpu_util.c",
+		"common.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/cpufreq:mediatek-cpufreq-hw".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(srctree)/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/sugov",
+		"-I$(srctree)/kernel/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/cpufreq/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/upower",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "scheduler_dummy",
+    srcs = [
+        "dummy.c",
+    ],
+    out = "scheduler_dummy.ko",
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(srctree)/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas",
+		"-I$(srctree)/kernel/",
+    ],
+)
+define_mgk_ddk_ko(
+    name = "scheduler",
+	conditional_srcs = {
+		"CONFIG_MTK_CORE_PAUSE":{
+			True:["eas/core_pause.c"],
+		},
+		"CONFIG_MTK_SCHED_BIG_TASK_ROTATE":{
+			True:["eas/rotate.c"],
+		},
+
+		"CONFIG_MTK_SCHED_VIP_TASK":{
+			True:["eas/vip.c"],
+		},
+
+		"CONFIG_MTK_SCHED_FAST_LOAD_TRACKING":{
+			True:[
+				"eas/flt_init.c",
+				"eas/flt_api.c",
+				"eas/flt_utility_v2.c",
+				"eas/flt_utility_v3.c",
+				"eas/flt_utility_v4.c",
+				"eas/flt_cal_build_utility.c",
+			],
+		},
+
+		"CONFIG_MTK_SCHED_GROUP_AWARE":{
+			True:["eas/group.c"],
+		},
+	},
+
+    srcs = [
+		"eas/sched_main.c",
+		"eas/sched_sys_common.c",
+		"eas/eas_plus.c",
+		"eas/rt.c",
+		"eas/shortcut/compress.c",
+		"eas/shortcut/gather.c",
+		"eas/balance.c",
+		"eas/topology.c",
+		"eas/eas_adpf.c",
+		"util/tsk_util.c",
+		"common.c",
+		"fair.c",
+    ],
+    includes = [
+		".",
+    ],
+    hdrs = glob(["**/*.h","eas/*.h","eas/vip.c","eas/flt_cal.c","eas/grp_awr.c"]),
+	ko_deps = [
+        "//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/cache-auditor:cpuqos_v3".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/performance/powerhal_cpu_ctrl:powerhal_cpu_ctrl".format(kernel_version),
+		":cpufreq_sugov_ext",
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(srctree)/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/eas",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/sugov",
+		"-I$(srctree)/kernel/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/cpufreq/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/upower",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_core_ctl",
+    srcs = [
+		"core_ctl/core_ctl.c",
+		"core_ctl/sched_avg.c",
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = glob(["core_ctl/*.h", "**/*.h"]),
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/thermal/mediatek:thermal_interface".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_cpu_power_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+	],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(srctree)/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/core_ctl/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/",
+		"-I$(srctree)/kernel/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/cpufreq/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/upower",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+)

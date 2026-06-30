@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_library.bzl", "define_mgk_ddk_library")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_library(
+    name = "hyp_6858",
+    srcs = [
+        "6858/camera_custom_imgsensor_cfg.h",
+        "6858/cfg_setting_imgsensor.c",
+        "6858/seninf_drv_csi_info.c",
+        "6858/seninf_drv_csi_info.h",
+        "6858/seninf_sec_drv.c",
+        "csi0_cphy_top.h",
+        "csi0_dphy_top.h",
+        "kd_camera_feature.h",
+        "MtkISPDrvTLApi.h",
+        "pkvm_seninf_hyp.c",
+        "pkvm_seninf_hyp.h",
+        "seninf1_csi2.h",
+        "seninf1.h",
+        "seninf1_mux.h",
+        "seninf_auth.c",
+        "seninf_auth.h",
+        "seninf_cam_mux.h",
+        "seninf_dapc.c",
+        "seninf_reg.h",
+        "seninf_sec_drv.h",
+        "seninf_tee_reg.h",
+        "seninf_tg1.h",
+        "seninf_top.h",
+        "sensor_cfg_sec.c",
+        "sensor_cfg_sec.h",
+    ],
+    pkvm_el2 = True,
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:export_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf:export_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/arch/arm64/kvm/hyp/include/nvhe",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_mgmt/hyp/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp6",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp6/hyp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/pkvm_seninf/isp6/hyp/6858",
+    ],
+    local_defines = [],
+)

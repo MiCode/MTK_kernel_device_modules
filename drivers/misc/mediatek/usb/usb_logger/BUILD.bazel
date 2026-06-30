@@ -1,0 +1,51 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "usb_logger",
+    srcs = [
+        "u_logger.c",
+        "u_logger_test_helper.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/usb/mtu3:mtu3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_xhci:xhci-mtk-hcd-v2".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb_offload:usb_offload".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    conditional_srcs = {
+        "CONFIG_TRACING": {
+            True: ["u_logger_trace.c"],
+        },
+    },
+    copts = [
+        "-I$(srctree)/$(src)",
+        "-I$(DEVICE_MODULES_PATH)/drivers/usb/mtu3/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_xhci/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb_offload/",
+    ],
+)

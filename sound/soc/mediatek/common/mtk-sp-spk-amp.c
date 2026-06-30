@@ -1,0 +1,701 @@
+// SPDX-License-Identifier: GPL-2.0
+//
+// Copyright (C) 2018 MediaTek Inc.
+
+#include <linux/module.h>
+#include <linux/kernel.h>
+#include <linux/init.h>
+#include <linux/err.h>
+#include <linux/i2c.h>
+/* alsa sound header */
+#include <sound/soc.h>
+#include <sound/pcm_params.h>
+
+#include "mtk-sp-spk-amp.h"
+#if IS_ENABLED(CONFIG_SND_SOC_RT5509)
+#include "../../codecs/rt5509.h"
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_RT5512)
+#include "../../codecs/richtek/rt5512.h"
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_TFA9874)
+#include "../../codecs/tfa98xx/inc/tfa98xx_ext.h"
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SMARTPA_AW882XX)
+#include "../../codecs/aw882xx/aw882xx.h"
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_AW87339)
+#include "aw87339.h"
+#endif
+
+/* adsp relate */
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+#include "../audio_dsp/mtk-dsp-common.h"
+#include "audio_messenger_ipi.h"
+#endif
+
+/* rv relate */
+#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
+#include "../audio_scp/mtk-scp-audio-pcm.h"
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING) && !defined(SKIP_SB)
+#include "mtk_bp_thl.h"
+#endif
+
+#define MTK_SPK_NAME "Speaker Codec"
+#define MTK_SPK_REF_NAME "Speaker Codec Ref"
+
+//add for combine spk start
+#define SMARTPA_COMPATIBEL
+#ifdef  SMARTPA_COMPATIBEL
+#define PA_NAME_MAX  24
+//static int probe_cout = 0;
+static char smartpa_num = 0;
+static char smartpa_type[PA_NAME_MAX] = "none";
+static const char *smartpa_cust_name[SMARTPA_MAX] = {
+	[SMARTPA_NONE] = "none",
+	[SMARTPA_AW882XX] = "aw882xx",
+	[SMARTPA_SIA93XX] = "sia93xx",
+};
+#define  SMARTPA_MAX_NUM  4
+//static int  smartpa_count = 0;
+//struct snd_soc_dai_link_component smartpa_dails[SMARTPA_MAX_NUM] = {0};
+#endif
+//add for combine spk end
+
+static unsigned int mtk_spk_type;
+static int mtk_spk_i2s_out = MTK_SPK_I2S_3, mtk_spk_i2s_in = MTK_SPK_I2S_0;
+static struct mtk_spk_i2c_ctrl mtk_spk_list[MTK_SPK_TYPE_NUM] = {
+	[MTK_SPK_NOT_SMARTPA] = {
+		.codec_dai_name = "snd-soc-dummy-dai",
+		.codec_name = "snd-soc-dummy",
+	},
+#if IS_ENABLED(CONFIG_SND_SOC_RT5509)
+	[MTK_SPK_RICHTEK_RT5509] = {
+		.i2c_probe = rt5509_i2c_probe,
+		.i2c_remove = rt5509_i2c_remove,
+		.i2c_shutdown = rt5509_i2c_shutdown,
+		.codec_dai_name = "rt5509-aif1",
+		.codec_name = "RT5509_MT_0",
+	},
+#endif
+
+#if IS_ENABLED(CONFIG_SND_SOC_RT5512)
+	[MTK_SPK_MEDIATEK_RT5512] = {
+		.codec_dai_name = "rt5512-aif",
+		.codec_name = "RT5512_MT_0",
+	},
+#endif /* CONFIG_SND_SOC_RT5512 */
+
+#if IS_ENABLED(CONFIG_SND_SOC_TFA9874)
+	[MTK_SPK_GOODIX_TFA98XX] = {
+		.codec_dai_name = "tfa98xx-aif",
+		.codec_name = "tfa98xx",
+	},
+#endif /* CONFIG_SND_SOC_TFA9874 */
+
+#if IS_ENABLED(CONFIG_SND_SMARTPA_AW882XX)
+	[MTK_SPK_AW_AW882XX] = {
+		.codec_dai_name = "aw882xx-aif",
+		.codec_name = "aw882xx",
+	},
+#endif /* CONFIG_SND_SMARTPA_AW882XX */
+
+#if IS_ENABLED(CONFIG_SND_SOC_SIA91XX)
+	[MTK_SPK_SIA_SIA9306] = {
+		.codec_dai_name = "sia91xx-aif",
+		.codec_name = "sia91xx",
+	},
+#endif /* CONFIG_SND_SOC_SIA91XX */
+};
+
+#if IS_ENABLED(CONFIG_MTK_BATTERY_PERCENT_THROTTLING) && !defined(SKIP_SB)
+/* Mapping of reduced volume corresponding to battery levels.
+ * Notice that these values have no unit, as the gain difference per dB may vary
+ * depending on the hardware design.
+ */
+static int vol_thl_map[BATTERY_PERCENT_LEVEL_NUM];
+
+static atomic_t vol_thl = ATOMIC_INIT(0);
+
+static void (*vol_thl_cb)(void);
+
+static void mtk_spk_vol_thl_set(int value)
+{
+	atomic_set(&vol_thl, value);
+}
+
+int mtk_spk_vol_thl_get(void)
+{
+	return (int)atomic_read(&vol_thl);
+}
+EXPORT_SYMBOL(mtk_spk_vol_thl_get);
+
+/**
+ * mtk_spk_vol_thl_cb - Adjust speaker volume based on battery level
+ * @level: Battery level
+ *
+ * This function is invoked when the battery level changes. It adjusts the
+ * speaker volume based on the battery level to avoid drawing a large current at
+ * low voltage, which may trigger a low voltage reboot.
+ */
+void mtk_spk_vol_thl_cb(BATTERY_PERCENT_LEVEL level)
+{
+	static BATTERY_PERCENT_LEVEL prev;
+	int diff;
+
+	if (level >= BATTERY_PERCENT_LEVEL_NUM)
+		return;
+
+	diff = vol_thl_map[level] - vol_thl_map[prev];
+	pr_debug("[LowV] %s(%u): curr=%d, prev=%d, diff=%d\n",
+		 __func__, level, vol_thl_map[level], vol_thl_map[prev], diff);
+
+	prev = level;
+
+	if (diff == 0)
+		return;
+
+	mtk_spk_vol_thl_set(diff);
+
+	/* Invoke the platform-specific callback */
+	if (vol_thl_cb)
+		vol_thl_cb();
+}
+
+/**
+ * mtk_spk_vol_thl_register - Register volume throttle callback if enabled
+ * @dev: The device node to be enabled
+ * @cb: Callback function when throttling is triggered
+ */
+void mtk_spk_vol_thl_register(struct device *dev, void (*cb)(void))
+{
+	int i, ret;
+
+	ret = of_property_read_u32(dev->of_node, "volume-throttle-enable", &i);
+	if (ret || i != 1) {
+		dev_info(dev, "[LowV] Volume throttle is disabled\n");
+		return;
+	}
+
+	/* Add "volume-throttle = <0 0 0 6 6 6>;" if there are 6 battery levels.
+	 * This config does not reduce the volume at level 0-2, and reduces 6
+	 * units at level 3-5. The unit typically represents gain value not dB.
+	 */
+	ret = of_property_count_elems_of_size(dev->of_node, "volume-throttle",
+					      sizeof(u32));
+	if (ret < 0) {
+		dev_info(dev, "[LowV] Volume map is not defined\n");
+		return;
+	}
+
+	if (ret != BATTERY_PERCENT_LEVEL_NUM) {
+		dev_info(dev, "[LowV] Size mismatch: %d (expected %u)\n",
+			 ret, BATTERY_PERCENT_LEVEL_NUM);
+		return;
+	}
+
+	ret = of_property_read_u32_array(dev->of_node, "volume-throttle",
+					 (u32 *)&vol_thl_map,
+					 BATTERY_PERCENT_LEVEL_NUM);
+	if (ret != 0) {
+		dev_info(dev, "[LowV] Failed to read array: %d\n", ret);
+		return;
+	}
+
+	for (i = 0; i < BATTERY_PERCENT_LEVEL_NUM; i++)
+		dev_info(dev, "[LowV] map[%d] = %d\n", i, vol_thl_map[i]);
+
+	vol_thl_cb = cb;
+	register_bp_thl_notify(&mtk_spk_vol_thl_cb, BATTERY_PERCENT_PRIO_AUDIO);
+}
+EXPORT_SYMBOL(mtk_spk_vol_thl_register);
+
+/**
+ * mtk_spk_vol_update - Update volume by triggering the kcontrol
+ * @card: Sound card pointer
+ * @name: Kcontrol name
+ */
+void mtk_spk_vol_update(struct snd_soc_card *card, const char *name)
+{
+	struct snd_soc_component *component;
+	struct snd_kcontrol *kcontrol;
+	struct snd_ctl_elem_value ucontrol = { 0 };
+	long temp, *value;
+	int ret;
+
+	/* This function is called from a callback controlled by battery module.
+	 * Therefore, we must check if the sound card has been initialized.
+	 */
+	if (!snd_soc_card_is_instantiated(card)) {
+		dev_info(card->dev, "Parent card not yet available\n");
+		return;
+	}
+
+	kcontrol = snd_soc_card_get_kcontrol(card, name);
+	if (!kcontrol) {
+		dev_info(card->dev, "Invalid kcontrol '%s'\n", name);
+		return;
+	}
+
+	component = snd_soc_kcontrol_component(kcontrol);
+	if (!component) {
+		dev_info(card->dev, "No component for '%s'\n", name);
+		return;
+	}
+
+	ret = kcontrol->get(kcontrol, &ucontrol);
+	if (ret) {
+		dev_info(card->dev, "Failed to read '%s': %d\n", name, ret);
+		return;
+	}
+
+	value = &ucontrol.value.integer.value[0];
+	temp = *value;
+
+	ret = kcontrol->put(kcontrol, &ucontrol);
+	if (ret < 0) {
+		dev_info(card->dev, "Failed to write '%s': %d\n", name, ret);
+		return;
+	}
+
+	ret = kcontrol->get(kcontrol, &ucontrol);
+	if (ret == 0)
+		pr_debug("[LowV] %s: %ld -> %ld\n", __func__, temp, *value);
+}
+EXPORT_SYMBOL(mtk_spk_vol_update);
+#endif
+
+static int mtk_spk_i2c_probe(struct i2c_client *client)
+{
+	int i, ret = 0;
+	const struct i2c_device_id *id = i2c_client_get_device_id(client);
+
+	dev_info(&client->dev, "%s()\n", __func__);
+
+	mtk_spk_type = MTK_SPK_NOT_SMARTPA;
+	for (i = 0; i < MTK_SPK_TYPE_NUM; i++) {
+		if (!mtk_spk_list[i].i2c_probe)
+			continue;
+
+		ret = mtk_spk_list[i].i2c_probe(client, id);
+		if (ret)
+			continue;
+
+		mtk_spk_type = i;
+		break;
+	}
+
+	return ret;
+}
+
+static void mtk_spk_i2c_remove(struct i2c_client *client)
+{
+	dev_info(&client->dev, "%s()\n", __func__);
+
+	if (mtk_spk_list[mtk_spk_type].i2c_remove)
+		mtk_spk_list[mtk_spk_type].i2c_remove(client);
+
+}
+
+static void mtk_spk_i2c_shutdown(struct i2c_client *client)
+{
+	dev_info(&client->dev, "%s()\n", __func__);
+
+	if (mtk_spk_list[mtk_spk_type].i2c_shutdown)
+		mtk_spk_list[mtk_spk_type].i2c_shutdown(client);
+}
+
+int mtk_spk_get_type(void)
+{
+	return mtk_spk_type;
+}
+EXPORT_SYMBOL(mtk_spk_get_type);
+
+void mtk_spk_set_type(int spk_type)
+{
+	mtk_spk_type = spk_type;
+}
+EXPORT_SYMBOL(mtk_spk_set_type);
+
+int mtk_spk_get_i2s_out_type(void)
+{
+	return mtk_spk_i2s_out;
+}
+EXPORT_SYMBOL(mtk_spk_get_i2s_out_type);
+
+int mtk_spk_get_i2s_in_type(void)
+{
+	return mtk_spk_i2s_in;
+}
+EXPORT_SYMBOL(mtk_spk_get_i2s_in_type);
+
+int mtk_ext_spk_get_status(void)
+{
+#ifdef CONFIG_SND_SOC_AW87339
+	return aw87339_spk_status_get();
+#else
+	return 0;
+#endif
+}
+EXPORT_SYMBOL(mtk_ext_spk_get_status);
+
+void mtk_ext_spk_enable(int enable)
+{
+#ifdef CONFIG_SND_SOC_AW87339
+	aw87339_spk_enable_set(enable);
+#endif
+}
+EXPORT_SYMBOL(mtk_ext_spk_enable);
+
+int mtk_spk_update_info(struct snd_soc_card *card,
+			struct platform_device *pdev)
+{
+	struct snd_soc_dai_link *dai_link;
+	int ret, i;
+	int i2s_out_dai_link_idx = -1;
+	int i2s_in_dai_link_idx = -1;
+	const int i2s_num = 2;
+	unsigned int i2s_set[2];
+	unsigned int is_ipm2p0;
+
+	/* get hw IPM version */
+	ret = of_property_read_u32(pdev->dev.of_node, "mediatek,ipm", &is_ipm2p0);
+	if (ret) {
+		dev_info(&pdev->dev,
+			 "%s(), get mediatek,ipm fail, use defalut 0\n", __func__);
+		is_ipm2p0 = 0;
+	}
+
+	/* get spk i2s set */
+	ret = of_property_read_u32_array(pdev->dev.of_node, "mediatek,spk-i2s",
+					 i2s_set, i2s_num);
+
+	if (ret) {
+		if (is_ipm2p0) {
+			dev_info(&pdev->dev,
+				 "%s(), fail read mediatek,spk-i2s, use defalut i2sout0/i2sin0\n",
+				 __func__);
+			mtk_spk_i2s_out = MTK_SPK_I2S_OUT0;
+			mtk_spk_i2s_in = MTK_SPK_I2S_IN0;
+		} else {
+			dev_info(&pdev->dev,
+				 "%s(), fail read mediatek,spk-i2s, use defalut i2s3/i2s0\n",
+				 __func__);
+			mtk_spk_i2s_out = MTK_SPK_I2S_3;
+			mtk_spk_i2s_in = MTK_SPK_I2S_0;
+		}
+	} else {
+		mtk_spk_i2s_out = i2s_set[0];
+		mtk_spk_i2s_in = i2s_set[1];
+		dev_err(&pdev->dev,
+			"%s(), FEYNMAN ok read mediatek,spk-i2s, mtk_spk_i2s_out is %d , mtk_spk_i2s_in is %d",
+			__func__, mtk_spk_i2s_out, mtk_spk_i2s_in);
+	}
+
+	if (mtk_spk_i2s_out > MTK_SPK_I2S_TYPE_NUM ||
+	    mtk_spk_i2s_in > MTK_SPK_I2S_TYPE_NUM) {
+		dev_err(&pdev->dev, "%s(), get mtk spk i2s fail\n",
+			__func__);
+		return -ENODEV;
+	}
+
+	if (mtk_spk_type == MTK_SPK_NOT_SMARTPA)
+		goto BYPASS_UPDATE;
+
+	/* find dai link of i2s in and i2s out */
+	for_each_card_prelinks(card, i, dai_link) {
+		if (i2s_out_dai_link_idx < 0 &&
+		    strcmp(dai_link->cpus->dai_name, "I2S1") == 0 &&
+		    mtk_spk_i2s_out == MTK_SPK_I2S_1) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+			dai_link->codecs->name = NULL;
+			dai_link->codecs->dai_name = NULL;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2S3") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_I2S_3) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2S5") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_I2S_5) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+			dai_link->codecs->name = NULL;
+			dai_link->codecs->dai_name = NULL;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "ETDMOUT") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_ETDM_OUT) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SOUT0") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_I2S_OUT0) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SOUT1") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_I2S_OUT1) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SOUT4") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_I2S_OUT4) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+		} else if (i2s_out_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SOUT5") == 0 &&
+			   mtk_spk_i2s_out == MTK_SPK_I2S_OUT5) {
+			i2s_out_dai_link_idx = i;
+			dai_link->name = MTK_SPK_NAME;
+		}
+
+		if (i2s_in_dai_link_idx < 0 &&
+		    strcmp(dai_link->cpus->dai_name, "I2S0") == 0 &&
+		    (mtk_spk_i2s_in == MTK_SPK_I2S_0 ||
+		     mtk_spk_i2s_in == MTK_SPK_TINYCONN_I2S_0)) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+		} else if (i2s_in_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2S2") == 0 &&
+			   (mtk_spk_i2s_in == MTK_SPK_I2S_2 ||
+			    mtk_spk_i2s_in == MTK_SPK_TINYCONN_I2S_2)) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+			dai_link->codecs->name = NULL;
+			dai_link->codecs->dai_name = NULL;
+		} else if (i2s_in_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "ETDMIN") == 0 &&
+			   mtk_spk_i2s_in == MTK_SPK_ETDM_IN) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+		} else if (i2s_in_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SIN0") == 0 &&
+			   mtk_spk_i2s_in == MTK_SPK_I2S_IN0) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+		} else if (i2s_in_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SIN1") == 0 &&
+			   mtk_spk_i2s_in == MTK_SPK_I2S_IN1) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+		} else if (i2s_in_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SIN4") == 0 &&
+			   mtk_spk_i2s_in == MTK_SPK_I2S_IN4) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+		} else if (i2s_in_dai_link_idx < 0 &&
+			   strcmp(dai_link->cpus->dai_name, "I2SIN5") == 0 &&
+			   mtk_spk_i2s_in == MTK_SPK_I2S_IN5) {
+			i2s_in_dai_link_idx = i;
+			dai_link->name = MTK_SPK_REF_NAME;
+		}
+
+		if (i2s_out_dai_link_idx >= 0 && i2s_in_dai_link_idx >= 0)
+			break;
+	}
+
+	if (i2s_out_dai_link_idx < 0 || i2s_in_dai_link_idx < 0) {
+		dev_err(&pdev->dev,
+			"%s(), i2s cpu dai name error, i2s_out_dai_link_idx = %d, i2s_in_dai_link_idx = %d",
+			__func__, i2s_out_dai_link_idx, i2s_in_dai_link_idx);
+		return -ENODEV;
+	}
+
+BYPASS_UPDATE:
+	dev_info(&pdev->dev,
+		 "%s(), mtk_spk_type %d, spk_in_dai_link_idx %d, spk_out_dai_link_idx %d\n",
+		 __func__,
+		 mtk_spk_type, i2s_in_dai_link_idx,
+		 i2s_out_dai_link_idx);
+
+	return 0;
+}
+EXPORT_SYMBOL(mtk_spk_update_info);
+
+int mtk_spk_send_ipi_buf_to_dsp(void *data_buffer, uint32_t data_size)
+{
+	int result = -1;
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP) || \
+IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
+	int task_scene = -1;
+	struct ipi_msg_t ipi_msg;
+
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+	task_scene = mtk_get_ipi_buf_scene_adsp();
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
+	if (task_scene == -1)
+		task_scene = mtk_get_ipi_buf_scene_rv();
+#endif
+
+	if (task_scene >= 0) {
+		memset((void *)&ipi_msg, 0, sizeof(struct ipi_msg_t));
+
+		result = audio_send_ipi_buf_to_dsp(&ipi_msg, task_scene,
+						   AUDIO_DSP_TASK_AURISYS_SET_BUF,
+						   mtk_spk_type,
+						   data_buffer, data_size);
+	}
+#endif /*CONFIG_SND_SOC_MTK_AUDIO_DSP || CONFIG_MTK_SCP_AUDIO*/
+	return result;
+}
+EXPORT_SYMBOL(mtk_spk_send_ipi_buf_to_dsp);
+
+int mtk_spk_recv_ipi_buf_from_dsp(int8_t *buffer,
+				  int16_t size,
+				  uint32_t *buf_len)
+{
+	int result = -1;
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP) || \
+IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
+	int task_scene = -1;
+	struct ipi_msg_t ipi_msg;
+
+
+#if IS_ENABLED(CONFIG_SND_SOC_MTK_AUDIO_DSP)
+	task_scene = mtk_get_ipi_buf_scene_adsp();
+#endif
+#if IS_ENABLED(CONFIG_MTK_SCP_AUDIO)
+	if (task_scene == -1)
+		task_scene = mtk_get_ipi_buf_scene_rv();
+#endif
+
+	if (task_scene >= 0) {
+		memset((void *)&ipi_msg, 0, sizeof(struct ipi_msg_t));
+
+		result = audio_recv_ipi_buf_from_dsp(&ipi_msg,
+						     task_scene,
+						     AUDIO_DSP_TASK_AURISYS_GET_BUF,
+						     mtk_spk_type,
+						     buffer, size, buf_len);
+	}
+#endif /*CONFIG_SND_SOC_MTK_AUDIO_DSP || CONFIG_MTK_SCP_AUDIO*/
+	return result;
+}
+EXPORT_SYMBOL(mtk_spk_recv_ipi_buf_from_dsp);
+
+static const struct i2c_device_id mtk_spk_i2c_id[] = {
+	{ "speaker_amp", 0},
+	{}
+};
+MODULE_DEVICE_TABLE(i2c, mtk_spk_i2c_id);
+
+#ifdef CONFIG_OF
+static const struct of_device_id mtk_spk_match_table[] = {
+	{.compatible = "mediatek,speaker_amp",},
+	{},
+};
+MODULE_DEVICE_TABLE(of, mtk_spk_match_table);
+#endif /* #ifdef CONFIG_OF */
+
+static struct i2c_driver mtk_spk_i2c_driver = {
+	.driver = {
+		.name = "speaker_amp",
+		.owner = THIS_MODULE,
+		.of_match_table = of_match_ptr(mtk_spk_match_table),
+	},
+	.probe = mtk_spk_i2c_probe,
+	.remove = mtk_spk_i2c_remove,
+	.shutdown = mtk_spk_i2c_shutdown,
+	.id_table = mtk_spk_i2c_id,
+};
+
+module_i2c_driver(mtk_spk_i2c_driver);
+
+//add for combine spk start
+#ifdef SMARTPA_COMPATIBEL
+bool check_smartpa_type(const char *name)
+{
+	pr_debug("%s smartpa_type: %s \n", __func__, smartpa_type);
+	if (!strcmp(smartpa_type, "none") || !strcmp(smartpa_type, name)) {
+		return true;
+	} else {
+		return false;
+	}
+}
+EXPORT_SYMBOL_GPL(check_smartpa_type);
+
+int get_smartpa_type(void)
+{
+	pr_debug("%s smartpa_num: %d \n", __func__, smartpa_num);
+	return smartpa_num;
+}
+EXPORT_SYMBOL_GPL(get_smartpa_type);
+
+int set_smartpa_type(const char *name, unsigned int size)
+{
+	int i;
+
+	if (!name) {
+        pr_err("%s: name is NULL\n", __func__);
+        return -EINVAL;
+    }
+
+	if (size == 0 || size > PA_NAME_MAX) {
+		pr_err("%s invalid size[%d] , max=%d\n", __func__, size, PA_NAME_MAX);
+		return -1;
+	}
+
+	for (i = 0; i < SMARTPA_MAX; i++) {
+		if(!strncmp(name, smartpa_cust_name[i], size)){
+			pr_debug("%s find: %s \n", __func__, smartpa_cust_name[i]);
+			smartpa_num = i;
+			break;
+		}
+	}
+	if (i == SMARTPA_MAX) {
+		pr_err("%s find: %s failed\n", __func__, name);
+		return -1;
+	}
+	memcpy(smartpa_type, name, size);
+	pr_info("%s smartpa_type: %s \n", __func__, smartpa_type);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(set_smartpa_type);
+
+static ssize_t smartpa_type_show(struct kobject *kobj,
+				struct kobj_attribute *attr, char *buff)
+{
+	return sprintf(buff, "%s\n", smartpa_type);
+}
+static struct kobj_attribute smartpa_type_attr =
+	__ATTR(smartpa_type, 0644,smartpa_type_show,NULL);
+
+int smartpa_sysfs_init(void)
+{
+	int ret = -1;
+	static struct kobject *ext_debug_kobj;
+	if (ext_debug_kobj)
+		return 0;
+	ext_debug_kobj = kobject_create_and_add("smartpa", kernel_kobj);
+	if (ext_debug_kobj == NULL) {
+		ret = -ENOMEM;
+		pr_err("%s register sysfs failed. ret = %d\n", __func__, ret);
+		return ret;
+	}
+	ret = sysfs_create_file(ext_debug_kobj, &smartpa_type_attr.attr);
+	if (ret) {
+		pr_err("%s create sysfs failed. ret = %d\n", __func__, ret);
+		//创建失败时释放kobject资源
+		kobject_put(ext_debug_kobj);
+		ext_debug_kobj = NULL;
+		return ret;
+	}
+	return ret;
+}
+EXPORT_SYMBOL_GPL(smartpa_sysfs_init);
+
+#endif
+//add for combine spk end
+
+MODULE_DESCRIPTION("Mediatek speaker amp register driver");
+MODULE_AUTHOR("Shane Chien <shane.chien@mediatek.com>");
+MODULE_LICENSE("GPL v2");

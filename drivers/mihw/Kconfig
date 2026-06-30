@@ -1,0 +1,5 @@
+config CACHE_PREFETCH
+	tristate "mi cache prefetch module"
+	default n
+	help
+	  cache prefetch module

@@ -1,0 +1,25 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2020 Google Inc.
+ */
+
+/* WiFi start */
+
+/* If vendor driver doesn't have a device can be used for wonder needs to create a new
+ * one, else vendor can choose to reuse the original device.
+ */
+
+/ {
+    wlan_node: wlan-device {
+        compatible = "android,vendor_wlan-wonder";
+        status = "okay";
+    };
+    wonder_node: wonder-device {
+        compatible = "google,wonder-drv-v1";
+        // This is important to link vendor lable to wondertap-provider.
+        wondertap-provider = <&wlan_node>;
+        status = "okay";
+    };
+};
+
+/* WiFi end */

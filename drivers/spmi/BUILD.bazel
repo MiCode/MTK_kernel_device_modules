@@ -1,0 +1,68 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "spmi-mtk-pmif",
+    srcs = [
+        "spmi-mtk-pmif-core.c",
+        "spmi-mtk-debug.c"
+    ],
+    hdrs = [
+        "spmi-mtk.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/mfd:mtk-spmi-pmic-debug".format(kernel_version),
+    ],
+    includes = ["include"],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/"],
+)
+
+define_mgk_ddk_ko(
+    name = "spmi-mtk-mpu",
+    srcs = [
+        "spmi-mtk-mpu.c",
+    ],
+    hdrs = [
+        "spmi-mtk.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/spmi:spmi-mtk-pmif".format(kernel_version),
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "spmi-mtk-gip",
+    srcs = [
+        "spmi-mtk-gip.c",
+    ],
+    hdrs = [
+        "spmi-mtk.h",
+    ],
+    includes = ["include"],
+)

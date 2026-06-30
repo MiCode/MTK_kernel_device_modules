@@ -1,0 +1,60 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mrdump",
+    srcs = [
+        "mboot_params.c",
+        "mrdump_control.c",
+        "mrdump_helper.c",
+        "mrdump_mini.c",
+        "mrdump_panic.c",
+    ],
+    conditional_srcs = {
+      "CONFIG_ARM": {
+        True: ["mrdump_arm.c"],
+      },
+      "CONFIG_ARM64": {
+        True: ["mrdump_arm64.c"],
+      },
+    },
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/log_store/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/",
+        "-I$(srctree)/kernel/",
+        "-I$(srctree)/drivers/android/",
+    ],
+    out = "mrdump.ko",
+)
+
+ddk_headers(
+   name = "headers",
+   hdrs = glob(["**/*.h"]),
+   includes = ["."],
+   linux_includes = [
+       "include",
+   ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/*.c",
+        "**/*.h",
+        ]),
+)

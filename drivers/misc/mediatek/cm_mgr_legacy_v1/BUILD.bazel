@@ -1,0 +1,194 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_src",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+filegroup(
+	name="ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "ddk_makefile",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "mtk_cm_ipi_legacy_v1",
+	srcs = [
+		"mtk_cm_ipi.c",
+	],
+	includes = [
+		".",
+	],
+	hdrs = [
+		"mtk_cm_ipi.h",
+	],
+	copts = [
+		"-Wall",
+		"-Werror",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr_legacy_v1",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "mtk_cm_mgr_legacy_v1",
+	srcs = [
+		"mtk_cm_mgr_common.c",
+	],
+	includes = [
+		".",
+	],
+	hdrs = [
+		"mtk_cm_mgr_common.h",
+	] + glob([
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/dvfsrc-exp.h",
+	]),
+	copts = [
+		"-Wall",
+		"-Werror",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr_legacy_v1",
+		"-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat"
+	],
+	ko_deps = [
+		":mtk_cm_ipi_legacy_v1",
+		"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "mtk_cm_mgr_mt6789",
+	srcs = [
+		"mtk_cm_mgr_mt6789.c",
+	],
+	includes = [
+		".",
+	],
+	hdrs = [
+		"mtk_cm_mgr_mt6789.h",
+		"mtk_cm_mgr_reg_mt6789.h",
+	] + glob([
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/dvfsrc-exp.h",
+	]),
+	copts = [
+		"-Wall",
+		"-Werror",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr_legacy_v1",
+		"-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat"
+	],
+	ko_deps = [
+		":mtk_cm_ipi_legacy_v1",
+        ":mtk_cm_mgr_legacy_v1",
+		"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "mtk_cm_mgr_mt6855",
+	srcs = [
+		"mtk_cm_mgr_mt6855.c",
+	],
+	includes = [
+		".",
+	],
+	hdrs = [
+		"mtk_cm_mgr_mt6855.h",
+		"mtk_cm_mgr_reg_mt6855.h",
+	] + glob([
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/dvfsrc-exp.h",
+	]),
+	copts = [
+		"-Wall",
+		"-Werror",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr_legacy_v1",
+		"-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat"
+	],
+	ko_deps = [
+		":mtk_cm_ipi_legacy_v1",
+        ":mtk_cm_mgr_legacy_v1",
+		"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "mtk_cm_mgr_mt6895",
+	srcs = [
+		"mtk_cm_mgr_mt6895.c",
+	],
+	includes = [
+		".",
+	],
+	hdrs = [
+		"mtk_cm_mgr_mt6895.h",
+		"mtk_cm_mgr_reg_mt6895.h",
+		"mtk_cm_mgr_events_mt6895.h"
+	] + glob([
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/dvfsrc-exp.h",
+	]),
+	copts = [
+		"-Wall",
+		"-Werror",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr_legacy_v1",
+		"-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat"
+	],
+	ko_deps = [
+		":mtk_cm_ipi_legacy_v1",
+		":mtk_cm_mgr_legacy_v1",
+		"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),
+	],
+)
+
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+	name = "ddk_public_headers",
+	includes = ["."],
+	hdrs = glob(["**/*.h"]), # export all headers for other modules to use
+)

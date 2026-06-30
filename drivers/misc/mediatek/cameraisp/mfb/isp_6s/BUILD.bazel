@@ -1,0 +1,56 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "camera_mfb_isp6s",
+    srcs = [
+        "camera_mfb.c",
+        "engine_request.c",
+    ] + glob(["**/*.h"]),
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+    ] +
+		(["//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+		if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp/$(MTK_PLATFORM)/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion",
+        "-I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion/mtk",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/",
+    ],
+
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/*.c",
+        "**/*.h",
+        ]),
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)

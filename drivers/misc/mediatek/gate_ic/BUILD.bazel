@@ -1,0 +1,50 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+          "**/Makefile",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "rt4831a_drv",
+    srcs = [
+        "rt4831a_drv.c",
+    ],
+    hdrs = glob([
+            "gate_i2c.h",
+    ]),
+
+    ko_deps = ["//kernel_device_modules-{}/drivers/leds:leds-mtk".format(kernel_version)],
+
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/leds",
+    ],
+    out = "rt4831a_drv.ko",
+)
+
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = ["."],
+    hdrs = glob(["**/*.h"]), # export all headers for other modules to use
+)

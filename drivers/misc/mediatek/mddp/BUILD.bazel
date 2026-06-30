@@ -1,0 +1,55 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/include/mddp_export.h",
+		"**/include/mddp_wifi_def.h",
+	]),
+)
+
+ddk_headers(
+	name = "mddp_headers",
+	hdrs = glob([
+		"**/include/mddp_export.h",
+		"**/include/mddp_wifi_def.h",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "mddp",
+	hdrs = glob([ "**/**/*.h", "**/filter/mddp_filter_v4.c","**/filter/mddp_filter_v6.c"]),
+	includes = [".", "ctrl", "filter", "include", "usage"],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+	],
+	srcs = ["ctrl/mddp_dev.c",
+		"ctrl/mddp_if.c",
+		"ctrl/mddp_ipc.c",
+		"ctrl/mddp_sm.c",
+		"ctrl/mddpwh_sm.c",
+		"filter/mddp_f_dev.c",
+		"filter/mddp_filter.c",
+#		"filter/mddp_filter_v4.c",
+#		"filter/mddp_filter_v6.c",
+		"usage/mddp_usage.c",
+	],
+)

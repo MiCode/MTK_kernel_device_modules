@@ -1,0 +1,46 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+         "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_srcs",
+    srcs = glob([
+	"**/Makefile",
+	"**/*.c",
+	"**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-ise-mailbox",
+    srcs = [
+        "mtk-ise-mailbox.c",
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "mtk-ise-mailbox.h",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mbox-mailbox",
+    srcs = [
+        "mtk-mbox-mailbox.c",
+    ],
+    includes = [
+        ".",
+    ],
+)

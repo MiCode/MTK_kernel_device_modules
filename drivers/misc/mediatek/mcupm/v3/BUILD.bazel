@@ -1,0 +1,43 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mcupm",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_TINYSYS_MCUPM_SUPPORT": {
+            True: [
+                    "common/mcupm_helper.c",
+                    "common/mcupm_timesync.c",
+                    "common/mcupm_sysfs.c",
+                    "mcupm_driver.c",
+                    "mcupm_plt.c",
+                    "mcupm_ipi.c",
+                    "include/mcupm_internal_driver.h",
+                    "include/mcupm_ipi.h",
+                    "include/mcupm_plt.h",
+                    "include/mcupm_timesync.h",
+                    "include/mcupm_sysfs.h",
+            ],
+            False: [":dummy.c"],
+        },
+    },
+
+    includes = ["include"],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm:mcupm_public_headers".format(kernel_version),
+    ],
+    out = "mcupm_v3.ko"
+)
+

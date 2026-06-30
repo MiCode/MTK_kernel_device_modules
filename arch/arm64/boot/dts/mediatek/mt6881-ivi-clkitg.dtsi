@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2025 MediaTek Inc.
+ * Author: Qiqi Wang <qiqi.wang@mediatek.com>
+ */
+
+&ivi_clkitg {
+	status = "okay";
+
+	bring-up-pd-pcie@30 {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0x30>;
+		power-domains = <&ivi_scpsys  MT6881_POWER_DOMAIN_PCIE>;
+	};
+
+	bring-up-pd-pcie-phy@31 {
+		compatible = "mediatek,scpsys-bring-up";
+		reg = <0x31>;
+		power-domains = <&ivi_scpsys  MT6881_POWER_DOMAIN_PCIE_PHY>;
+	};
+};

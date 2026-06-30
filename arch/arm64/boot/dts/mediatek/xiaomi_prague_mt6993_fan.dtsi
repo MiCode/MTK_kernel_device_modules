@@ -1,0 +1,41 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2024 MediaTek Inc.
+ */
+
+&odm {
+	xiaomi_fan {
+		status = "okay";
+		compatible = "xm,xm-pwm-fan";
+		pinctrl-names = "default";
+		pinctrl-0 = <&gpio_153_pwm_config>;
+		use_extern_ldo;
+		ldo-supply = <&wl2868c_l7>;
+		power_enable = <&pio 217 0>;
+		shifter_en = <&pio 24 0>;
+		pwm_ch = <1>; //PWM1
+		duty_speed_map = <
+			0	0
+			51	12000
+			65	14000
+			76	16000
+			98	19800>;
+		speed_adjust_cfg = < 0 40000 500 30>; // min max gap count
+		//unsupport_check;
+		//unsupport_id = <0x0000A 0x0000B>;
+	};
+};
+
+&pio {
+	gpio_153_pwm_config:gpio_153_pwm_config {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO153__FUNC_PWM_1>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+};
+
+&wl2868c_l7 {
+	wl2868c-irq-gpio = <&pio 217 IRQ_TYPE_LEVEL_HIGH>;
+};

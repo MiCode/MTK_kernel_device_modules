@@ -1,0 +1,180 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2025 MediaTek Inc.
+ */
+
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/slab.h>
+#include <linux/mutex.h>
+
+#include "aiste_debug.h"
+#include "aiste_thread.h"
+
+#define MAX_THREAD_NUM 32
+
+static int record_size = MAX_THREAD_NUM;
+static int record_count;
+struct RecordEntry *thread_record;
+struct mutex thread_record_lock;
+
+const struct CpuBoostConfig cpuBoostConfigs[] = {
+	{.threshold = 0,    .uclamp_min = 0,    .uclamp_max = 1024},
+	{.threshold = 1,    .uclamp_min = 64,   .uclamp_max = 64},
+	{.threshold = 10,   .uclamp_min = 64,   .uclamp_max = 128},
+	{.threshold = 20,   .uclamp_min = 128,  .uclamp_max = 192},
+	{.threshold = 30,   .uclamp_min = 192,  .uclamp_max = 256},
+	{.threshold = 40,   .uclamp_min = 256,  .uclamp_max = 384},
+	{.threshold = 50,   .uclamp_min = 384,  .uclamp_max = 512},
+	{.threshold = 60,   .uclamp_min = 512,  .uclamp_max = 640},
+	{.threshold = 70,   .uclamp_min = 640,  .uclamp_max = 768},
+	{.threshold = 80,   .uclamp_min = 768,  .uclamp_max = 896},
+	{.threshold = 90,   .uclamp_min = 896,  .uclamp_max = 1024},
+};
+
+void aiste_thread_init(void)
+{
+	thread_record = kmalloc_array(MAX_THREAD_NUM, sizeof(struct RecordEntry), GFP_KERNEL);
+	if (!thread_record)
+		return;
+	memset(thread_record, 0, record_size * sizeof(struct RecordEntry));
+	mutex_init(&thread_record_lock);
+}
+
+void aiste_thread_deinit(void)
+{
+	kfree(thread_record);
+	mutex_destroy(&thread_record_lock);
+}
+
+// Note that this function is not protected by a lock. Caller shall handle concurrency.
+static int aiste_thread_get_record(pid_t tid)
+{
+	int i = 0;
+
+	for (i=0; i < record_count; i++) {
+		if (thread_record[i].tid == tid)
+			return i;
+	}
+	return -1;
+}
+
+// Note that this function is not protected by a lock. Caller shall handle concurrency.
+static void aiste_thread_delete_reord(pid_t tid)
+{
+	int index_to_delete = aiste_thread_get_record(tid);
+	int i = 0;
+
+	if (index_to_delete < 0 || index_to_delete >= record_count) {
+		return;
+	}
+
+	for (i = index_to_delete; i < record_count-1 ; i++)
+		thread_record[i] = thread_record[i + 1];
+
+	record_count--;
+}
+
+uint16_t aiste_thread_get_cpu_boost(pid_t tid)
+{
+	int i = -1;
+	uint16_t cpu_boost = 0;
+
+	mutex_lock(&thread_record_lock);
+	i = aiste_thread_get_record(tid);
+	if (i >= 0 && i <= record_count)
+		cpu_boost = thread_record[i].cpu_boost;
+	mutex_unlock(&thread_record_lock);
+	return cpu_boost;
+}
+
+// Note that this function is not protected by a lock. Caller shall handle concurrency.
+static void aiste_thread_set_uclamp(pid_t tid, uint16_t cpu_boost)
+{
+	struct task_struct *p = find_task_by_vpid(tid);
+	struct sched_attr attr = {};
+
+	if (!p) {
+		aiste_err("%s: task of tid %d not found, delete record\n", __func__, tid);
+		aiste_thread_delete_reord(tid);
+		return;
+	}
+
+	attr.sched_policy = -1;
+	attr.sched_flags =
+		SCHED_FLAG_KEEP_ALL |
+		SCHED_FLAG_UTIL_CLAMP |
+		SCHED_FLAG_RESET_ON_FORK;
+
+	/* Set priority for real-time policies (SCHED_FIFO or SCHED_RR) */
+	if (p->policy == SCHED_FIFO || p->policy == SCHED_RR)
+		attr.sched_priority = p->rt_priority;
+
+	/* Find matching configuration based on cpu_boost level */
+	for (int i = ARRAY_SIZE(cpuBoostConfigs) - 1; i >= 0; --i) {
+		if (cpu_boost >= cpuBoostConfigs[i].threshold) {
+			attr.sched_util_min = cpuBoostConfigs[i].uclamp_min;
+			attr.sched_util_max = cpuBoostConfigs[i].uclamp_max;
+			break;
+		}
+	}
+
+	/* Apply the user configuration from debugfs */
+	if (g_uclamp_min != 0)
+		attr.sched_util_min = g_uclamp_min;
+	if (g_uclamp_max != 1024)
+		attr.sched_util_max = g_uclamp_max;
+
+	if (sched_setattr_nocheck(p, &attr) != 0)
+		aiste_err("%s: set %d uclamp fail\n", __func__, p->pid);
+	aiste_qos_debug("%s: tid=%d cur_min=%d cur_max=%d\n",
+		__func__, p->pid, attr.sched_util_min, attr.sched_util_max);
+}
+
+void aiste_thread_update_record(pid_t tid, uint16_t cpu_boost)
+{
+	int index_to_update = -1;
+	struct RecordEntry *temp = NULL;
+
+	mutex_lock(&thread_record_lock);
+
+	index_to_update = aiste_thread_get_record(tid);
+	if (index_to_update != -1 && index_to_update < record_count) {
+		/* Update the thread record if the thread is already in the record */
+		if (thread_record[index_to_update].cpu_boost == cpu_boost) {
+			aiste_thr_debug("%s: thread %d: old cpu_boost=new cpu_boost, skip.\n", __func__, tid);
+			goto UNLOCK;
+		} else {
+			thread_record[index_to_update].cpu_boost = cpu_boost;
+			aiste_thr_debug("%s: set thread_record[%d]=(%d, %d)\n",
+				__func__, index_to_update, tid, cpu_boost);
+		}
+	} else {
+		/* Add new record if thread is not found */
+		if (record_count == record_size) {
+			/* Double the record size if thread record is full */
+			record_size *= 2;
+			temp = kmalloc_array(record_size, sizeof(struct RecordEntry), GFP_KERNEL);
+			if (!temp)
+				goto UNLOCK;
+			memcpy(temp, thread_record, record_count * sizeof(struct RecordEntry));
+			kfree(thread_record);
+			thread_record = temp;
+			memset(&thread_record[record_count], 0 ,
+				(record_size - record_count) * sizeof(struct RecordEntry));
+			aiste_thr_debug("%s: expanded thread record size to %d entries\n", __func__, record_size);
+		}
+
+		thread_record[record_count].tid = tid;
+		thread_record[record_count].cpu_boost = cpu_boost;
+		aiste_thr_debug("%s: new record. set thread_record[%d]=(%d, %d)\n",
+			__func__, record_count, tid, cpu_boost);
+		record_count++;
+	}
+	aiste_thread_set_uclamp(tid, cpu_boost);
+
+	if (cpu_boost == 0)
+		aiste_thread_delete_reord(tid);
+UNLOCK:
+	mutex_unlock(&thread_record_lock);
+}

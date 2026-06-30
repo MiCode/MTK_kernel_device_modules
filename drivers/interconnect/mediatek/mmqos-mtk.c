@@ -1,0 +1,4268 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2019 MediaTek Inc.
+ * Author: Ming-Fan Chen <ming-fan.chen@mediatek.com>
+ */
+#ifndef MMQOS_MTK_C
+#define MMQOS_MTK_C
+
+#include <dt-bindings/interconnect/mtk,mmqos.h>
+#include <linux/clk.h>
+//#include <linux/interconnect-provider.h>
+#include <linux/interconnect.h>
+#include <linux/kthread.h>
+#include <linux/module.h>
+#include <linux/of_platform.h>
+#include <linux/platform_device.h>
+#include <linux/pm_opp.h>
+#include <linux/proc_fs.h>
+#include <linux/regulator/consumer.h>
+#include <linux/soc/mediatek/mtk_mmdvfs.h>
+#include <linux/sched/clock.h>
+#include <linux/workqueue.h>
+#include <linux/jiffies.h>
+#include <linux/rtmutex.h>
+#include <soc/mediatek/smi.h>
+#include <soc/mediatek/dramc.h>
+#include <soc/mediatek/mmdvfs_public.h>
+#include <soc/mediatek/mmdvfs_v3.h>
+#include "mtk_iommu.h"
+#include "mmqos-global.h"
+#include "mmqos-mtk.h"
+#include "mtk_qos_bound.h"
+#include "mmqos-vcp.h"
+#include "mmqos-vcp-memory.h"
+#include <linux/delay.h>
+#include "mtk-mm-monitor-controller.h"
+#include "mmqos-mmup.h"
+
+#if IS_ENABLED(CONFIG_MTK_DVFSRC)
+#include "dvfsrc-exp.h"
+#endif /* CONFIG_MTK_DVFSRC */
+#include <mtk-smi-dbg.h>
+
+#if IS_ENABLED(CONFIG_MTK_EMI)
+#include <soc/mediatek/emi.h>
+#endif /* CONFIG_MTK_EMI */
+
+#if IS_ENABLED(CONFIG_DEBUG_FS)
+#include <linux/debugfs.h>
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC)
+#include <mt-plat/mrdump.h>
+#endif
+#endif
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#include <mt-plat/aee.h>
+#endif
+
+#if IS_ENABLED(CONFIG_MTK_AEE_FEATURE)
+#define DB_OPT_MMQOS	(DB_OPT_DEFAULT | \
+	DB_OPT_FTRACE | DB_OPT_DUMP_DISPLAY)
+
+#define MMQOS_AEE(message) \
+	(aee_kernel_exception_api(__FILE__, \
+				  __LINE__, \
+				  DB_OPT_MMQOS, message, \
+				  "MMQoS assert"))
+#endif
+
+#define CREATE_TRACE_POINTS
+#include "mmqos_events.h"
+
+#if !defined(UINT64_MAX)
+#define UINT64_MAX ((uint64_t)0xFFFFFFFFFFFFFFFFULL)
+#endif
+
+#define SHIFT_ROUND(a, b)	((((a) - 1) >> (b)) + 1)
+#define icc_to_MBps(x)		div_u64((x), 1000)
+#define MASK_8(a)		((a) & 0xff)
+#define MASK_16(a)		((a) & 0xffff)
+#define COMM_PORT_COMM_ID(a)	((a >> 8) & 0xff)
+#define MULTIPLY_RATIO(value)	((value)*1000)
+
+#define RSH_7(a)		(a >> 7)
+#define RSH_8(a)		(a >> 8)
+#define RSH_16(a)		(a >> 16)
+#define NODE_TYPE(a)		RSH_16(a)
+#define LARB_ID(a)		(MASK_8(a))
+
+#define MAX_RECORD_COMM_NUM	(2)
+#define MAX_RECORD_PORT_NUM	(9)
+#define VIRT_COMM_PORT_ID	(8)
+#define MAX_RECORD_LARB_NUM	(64)
+
+#define MAX_BW_VALUE_NUM	(24)
+#define MAX_REG_VALUE_NUM	(8)
+#define MAX_BW_UNIT		(1023)
+#define CHNN_BW_UNIT_SHIFT	(4)	/* channel bw unit is 16MB/s */
+#define DRAM_BW_UNIT_SHIFT	(6)	/* dram bw unit is 64MB/s */
+#define BW_UNIT_TO_MBS(unit)	((unit) << CHNN_BW_UNIT_SHIFT)
+
+#define APMCU_MASK_OFFSET	(gmmqos->apmcu_mask_offset)
+#define APMCU_ON_BW_OFFSET(i)	(gmmqos->apmcu_on_bw_offset + 4 * i)
+#define APMCU_OFF_BW_OFFSET(i)	(gmmqos->apmcu_off_bw_offset + 4 * i)
+
+#define MMINFRA_DUMMY		(0x400)
+#define HFRP_DUMMY		(0x80)
+
+#define IS_ON_TABLE		(true)
+
+#define MAX_SUBSYS_NUM		(6)
+#define MAX_SLB_BW_NUM		(2)
+
+#define SUBSYS_HW_BW(sid)	(gmmqos->mmpc_cam_hw_bw + 0x20 * sid)
+#define SUBSYS_HW_BW_OFFSET(sid, i)	(SUBSYS_HW_BW(sid) + (i<<2))
+#define SUBSYS_HW_BW_HRT(sid)	(gmmqos->mmpc_cam_hw_bw_hrt + 0x8 * sid)
+#define SUBSYS_HW_BW_SRT(sid)	(SUBSYS_HW_BW_HRT(sid) + 0x4)
+
+#define SUBSYS_V2_HW_BW(sid)		(gmmqos->mmpc_cam_hw_bw + (sid << 2))
+#define SUBSYS_V2_HW_BW_OFFSET(sid, i)	(SUBSYS_V2_HW_BW(sid) + (24 * i))
+#define SUBSYS_V2_HW_BW_HRT(sid)		(gmmqos->mmpc_cam_hw_bw_hrt + (sid << 2))
+#define SUBSYS_V2_HW_BW_SRT(sid)		(gmmqos->mmpc_cam_hw_bw_hrt + 0x18 + (sid << 2))
+#define SUBSYS_V2_HW_EMI_BW_HRT(sid)	(gmmqos->mmpc_cam_hw_emi_bw_hrt + (sid << 2))
+#define SUBSYS_V2_HW_EMI_BW_SRT(sid)	(gmmqos->mmpc_cam_hw_emi_bw_hrt + 0x18 + (sid << 2))
+
+#define TOTAL_BW(i)		(gmmqos->mmpc_total_mmqos_bw + (i<<2))
+#define TOTAL_CUR_BW(i)		(gmmqos->mmpc_total_current_mmqos_bw + (i<<2))
+#define TOTAL_SLB_BW(i)		(gmmqos->mmpc_total_slb_bw + (i<<2))
+#define TOTAL_HRT_BW		(gmmqos->mmpc_total_pmqos_bw)
+#define TOTAL_SRT_BW		(gmmqos->mmpc_total_pmqos_bw + 4)
+#define TOTAL_CUR_HRT_BW	(gmmqos->mmpc_total_current_pmqos_bw)
+#define TOTAL_CUR_SRT_BW	(gmmqos->mmpc_total_current_pmqos_bw + 4)
+#define TOTAL_CUR_SLB_BW(i)	(gmmqos->mmpc_total_current_slb_bw + (i<<2))
+#define TOTAL_EMI_HRT_BW	(gmmqos->mmpc_total_emi_pmqos_bw)
+#define TOTAL_EMI_SRT_BW	(gmmqos->mmpc_total_emi_pmqos_bw + 4)
+
+#define MAX_BUF_LEN			1024
+
+#define mmqos_debug_dump_line(file, fmt, args...)	\
+({							\
+	if (file)					\
+		seq_printf(file, fmt, ##args);		\
+	else						\
+		pr_notice(fmt, ##args);		\
+})
+
+enum mmqos_rw_type {
+	path_no_type = 0,
+	path_write,		//1
+	path_read,		//2
+};
+
+static u32 ftrace_ena;
+
+struct last_record {
+	u64 larb_port_update_time;
+	u32 larb_port_node_id;
+	u32 larb_port_avg_bw;
+	u32 larb_port_peak_bw;
+	u64 larb_update_time;
+	u32 larb_node_id;
+	u32 larb_avg_bw;
+	u32 larb_peak_bw;
+};
+
+struct last_record *last_rec;
+
+struct comm_port_bw_record {
+	u8 idx[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM];
+	u64 time[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
+	u32 larb_id[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
+	u32 avg_bw[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
+	u32 peak_bw[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
+	u32 l_avg_bw[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
+	u32 l_peak_bw[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
+	u16 ostdl[MAX_RECORD_COMM_NUM][MAX_RECORD_PORT_NUM][RECORD_NUM];
+};
+
+struct chn_bw_record {
+	u8 idx[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM];
+	u64 time[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 srt_r_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 srt_w_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 hrt_r_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 hrt_w_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u64 urate_time[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 urate_srt_r_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 urate_srt_w_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 urate_hrt_r_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 urate_hrt_w_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+};
+
+struct emi_chn_bw_record {
+	u8 idx[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM];
+	u64 time[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 emi_srt_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 emi_hrt_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 urate_emi_srt_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+	u32 urate_emi_hrt_bw[MAX_RECORD_COMM_NUM][MMQOS_COMM_CHANNEL_NUM][RECORD_NUM];
+};
+
+struct emi_freq_record {
+	u8 idx[MAX_RECORD_COMM_NUM];
+	u64 time[MAX_RECORD_COMM_NUM][RECORD_NUM];
+	u32 peak_emi_freq[MAX_RECORD_COMM_NUM][RECORD_NUM];
+	u32 pmqos_bw6[MAX_RECORD_COMM_NUM][RECORD_NUM];
+	u32 dvfsrc_level[MAX_RECORD_COMM_NUM][RECORD_NUM];
+};
+
+struct larb_port_bw_record {
+	u8 idx[MAX_RECORD_LARB_NUM];
+	u64 time[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u32 port_id[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u32 avg_bw[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u32 peak_bw[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u32 mix_bw[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u8 ostdl[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+	u8 larb_port_cnt[MAX_RECORD_LARB_NUM][MMQOS_MAX_LARB_PORT_NUM];
+	u8 was_hrt[MAX_RECORD_LARB_NUM][RECORD_NUM_LARB_PORT];
+};
+
+struct comm_port_bw_record *comm_port_bw_rec;
+struct chn_bw_record *chn_bw_rec;
+struct emi_chn_bw_record *emi_chn_bw_rec;
+struct emi_freq_record *emi_freq_rec;
+struct larb_port_bw_record *larb_port_bw_rec;
+
+struct larb_port_node {
+	struct mmqos_base_node *base;
+	u32 old_avg_bw;
+	u32 old_peak_bw;
+	u16 bw_ratio;
+	u8 channel;
+	bool is_max_ostd;
+	bool is_write;
+	bool was_hrt;
+};
+
+struct mtk_mmqos {
+	struct device *dev;
+	struct icc_provider prov;
+	struct notifier_block nb;
+	struct notifier_block nb_smi;
+	struct list_head comm_list;
+	u32 max_ratio;
+	u32 max_disp_ostdl;
+	bool dual_pipe_enable;
+	bool qos_bound;
+	u32 disp_virt_larbs[MMQOS_MAX_DISP_VIRT_LARB_NUM];
+	struct proc_dir_entry *proc;
+	struct proc_dir_entry *last_proc;
+	void __iomem *vmmrc_base;
+	u32 apmcu_mask_offset;
+	u32 apmcu_mask_bit;
+	u32 apmcu_on_bw_offset;
+	u32 apmcu_off_bw_offset;
+	void __iomem *mminfra_base;
+	void __iomem *hfrp_base;
+	u32 mmpc_sw_en_all_on;
+	u32 mmpc_cam_hw_bw;
+	u32 mmpc_cam_hw_bw_hrt;
+	u32 mmpc_total_mmqos_bw;
+	u32 mmpc_total_pmqos_bw;
+	u32 mmpc_total_slb_bw;
+	u32 mmpc_cam_hw_emi_bw_hrt;
+	u32 mmpc_total_emi_pmqos_bw;
+	u32 mmpc_total_current_mmqos_bw;
+	u32 mmpc_total_current_pmqos_bw;
+	u32 mmpc_total_current_slb_bw;
+	u32 vmmrc_level_hex;
+	struct rt_mutex bw_lock;
+	struct rt_mutex vmmrc_hw_lock;
+	u32 bwl_hrt_r_margin;
+	u32 bwl_hrt_w_margin;
+	u32 bwl_srt_r_margin;
+	u32 bwl_srt_w_margin;
+	void __iomem *mmqos_sram_base;
+	void __iomem *dvfsrc_level_base;
+};
+
+u32 mmqos_state;
+u32 log_level;
+int opp_cnt;
+
+static struct mtk_mmqos *gmmqos;
+static struct mmqos_hrt *g_hrt;
+static struct workqueue_struct *mmqos_wq;
+static struct delayed_work mmqos_delayed_work;
+
+u32 stop_record;
+
+static u32 chn_hrt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 chn_srt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 chn_hrt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 chn_srt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+#ifdef ENABLE_INTERCONNECT_V2
+static u32 v2_chn_hrt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 v2_chn_srt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 v2_chn_hrt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 v2_chn_srt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+#endif
+
+static u32 disp_srt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 disp_srt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 disp_hrt_r_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 disp_hrt_w_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+
+static u32 emi_chn_hrt_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 emi_chn_srt_bw[MMQOS_MAX_COMM_NUM][MMQOS_COMM_CHANNEL_NUM] = {};
+static u32 dramc_freq_mapping_table[MMQOS_MAX_DVFS_STEP_NUM][MMQOS_DVFS_VALUE_NUM];
+
+u32 on_bw_value[MAX_BW_VALUE_NUM];
+u32 old_on_bw_value[MAX_BW_VALUE_NUM];
+u32 off_bw_value[MAX_BW_VALUE_NUM];
+u32 old_off_bw_value[MAX_BW_VALUE_NUM];
+u32 on_reg_value[MAX_BW_VALUE_NUM];
+u32 off_reg_value[MAX_BW_VALUE_NUM];
+
+u32 freq_mode = BY_REGULATOR;
+bool disp_freq_by_regulator;
+
+enum ostdl_latency {
+	OSTDL_1_5 = 0,
+	OSTDL_1,
+	OSTDL_2,
+	OSTDL_3,
+	OSTDL_0_75,
+};
+
+u32 r_hrt_ostdl = OSTDL_1_5;
+u32 w_hrt_ostdl = OSTDL_1_5;
+u32 r_srt_ostdl = OSTDL_1;
+u32 w_srt_ostdl = OSTDL_1;
+
+static void record_chn_bw_urate(u32 comm_id, u32 chnn_id, u32 srt_r, u32 srt_w,
+	u32 hrt_r, u32 hrt_w, u32 record_idx)
+{
+	if (record_idx == 0xFFFFFFFF)
+		return;
+
+	chn_bw_rec->urate_time[comm_id][chnn_id][record_idx] = sched_clock();
+	chn_bw_rec->urate_srt_r_bw[comm_id][chnn_id][record_idx] = srt_r;
+	chn_bw_rec->urate_srt_w_bw[comm_id][chnn_id][record_idx] = srt_w;
+	chn_bw_rec->urate_hrt_r_bw[comm_id][chnn_id][record_idx] = hrt_r;
+	chn_bw_rec->urate_hrt_w_bw[comm_id][chnn_id][record_idx] = hrt_w;
+}
+
+static void record_emi_bw(u32 comm_id, u32 chnn_id, u32 emi_srt_bw, u32 emi_hrt_bw,
+	u32 urate_emi_srt_bw, u32 urate_emi_hrt_bw)
+{
+	u32 idx;
+
+	idx = emi_chn_bw_rec->idx[comm_id][chnn_id];
+	emi_chn_bw_rec->time[comm_id][chnn_id][idx] = sched_clock();
+	emi_chn_bw_rec->emi_srt_bw[comm_id][chnn_id][idx] = emi_srt_bw;
+	emi_chn_bw_rec->emi_hrt_bw[comm_id][chnn_id][idx] = emi_hrt_bw;
+	emi_chn_bw_rec->urate_emi_srt_bw[comm_id][chnn_id][idx] = urate_emi_srt_bw;
+	emi_chn_bw_rec->urate_emi_hrt_bw[comm_id][chnn_id][idx] = urate_emi_hrt_bw;
+	emi_chn_bw_rec->idx[comm_id][chnn_id] = (idx + 1) % RECORD_NUM;
+}
+
+static void record_emi_freq(u32 comm_id, u32 peak_emi_freq)
+{
+	u32 idx, dvfsrc_level_val = 0, pmqos_bw6_val = 0;
+
+	if (gmmqos->dvfsrc_level_base) {
+		dvfsrc_level_val = readl(gmmqos->dvfsrc_level_base + 0x5f0);
+		pmqos_bw6_val = readl(gmmqos->dvfsrc_level_base + 0x1f4);
+	}
+
+	idx = emi_freq_rec->idx[comm_id];
+	emi_freq_rec->time[comm_id][idx] = sched_clock();
+	emi_freq_rec->peak_emi_freq[comm_id][idx] = peak_emi_freq;
+	emi_freq_rec->pmqos_bw6[comm_id][idx] = pmqos_bw6_val;
+	emi_freq_rec->dvfsrc_level[comm_id][idx] = dvfsrc_level_val;
+	emi_freq_rec->idx[comm_id] = (idx + 1) % RECORD_NUM;
+}
+
+static void mmqos_update_comm_bw(struct device *dev,
+	u32 comm_port, u32 freq, u64 mix_bw, u64 bw_peak, bool qos_bound, bool max_bwl)
+{
+	u32 comm_bw = 0;
+	u32 value;
+
+	if (!freq || !dev)
+		return;
+	if (mix_bw)
+		comm_bw = div_u64((mix_bw << 8), freq);
+	if (max_bwl)
+		comm_bw = 0xfff;
+	if (comm_bw)
+		value = ((comm_bw > 0xfff) ? 0xfff :
+			((comm_bw < 0x200) ? 0x200 : comm_bw)) |
+			((bw_peak > 0 || !qos_bound) ? 0x1000 : 0x3000);
+	else
+		value = 0x1200;
+	mtk_smi_common_bw_set(dev, comm_port, value);
+	if (log_level & 1 << log_bw)
+		dev_notice(dev, "comm port=%d bw=%d freq=%d qos_bound=%d value=%#x\n",
+			comm_port, comm_bw, freq, qos_bound, value);
+}
+
+static u16 mmqos_calc_comm_ostdl(u16 max_ratio, struct icc_node *larb)
+{
+	struct larb_node *larb_node = (struct larb_node *)larb->data;
+	u32 value;
+	u16 bw_ratio;
+
+	bw_ratio = larb_node->bw_ratio;
+	if (bw_ratio == 0) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("ignore calc comm ostdl for larb%d", LARB_ID(larb->id));
+		return 0;
+	}
+
+	if (larb->avg_bw) {
+		value = SHIFT_ROUND(icc_to_MBps(larb->avg_bw), bw_ratio);
+		if (value > max_ratio)
+			value = max_ratio;
+	} else
+		value = 0;
+
+	return (u16)value;
+}
+
+static void mmqos_update_comm_ostdl(struct device *dev, u32 comm_port,
+		u16 max_ratio, struct icc_node *larb)
+{
+	struct larb_node *larb_node = (struct larb_node *)larb->data;
+	u16 value;
+	u32 final_comm_port;
+
+	value = mmqos_calc_comm_ostdl(max_ratio, larb);
+	if (value == 0 && larb_node->bw_ratio == 0)
+		return;
+
+	final_comm_port = larb_node->sub_comm_port >= 0? larb_node->sub_comm_port : comm_port;
+	mtk_smi_common_ostdl_set(dev, final_comm_port,
+		larb_node->is_write, value);
+	if (log_level & 1 << log_bw)
+		MMQOS_DBG("%s larb_id=%d comm port=%d is_write=%d bw_ratio=%d avg_bw=%d ostdl=%d",
+			__func__, LARB_ID(larb->id), final_comm_port, larb_node->is_write,
+			larb_node->bw_ratio, larb->avg_bw, value);
+}
+
+static void mmqos_update_setting(struct mtk_mmqos *mmqos)
+{
+	struct common_node *comm_node;
+	struct common_port_node *comm_port;
+
+	list_for_each_entry(comm_node, &mmqos->comm_list, list) {
+		if (mmqos_state & BWL_ENABLE) {
+			comm_node->freq = clk_get_rate(comm_node->clk)/1000000;
+			list_for_each_entry(comm_port,
+						&comm_node->comm_port_list, list) {
+				rt_mutex_lock(&comm_port->bw_lock);
+				if (comm_port->latest_mix_bw
+					|| comm_port->latest_peak_bw) {
+					mmqos_update_comm_bw(comm_port->larb_dev,
+						MASK_8(comm_port->base->icc_node->id),
+						comm_port->common->freq,
+						icc_to_MBps(comm_port->latest_mix_bw),
+						icc_to_MBps(comm_port->latest_peak_bw),
+						mmqos->qos_bound,
+						comm_port->hrt_type == HRT_MAX_BWL);
+				}
+				rt_mutex_unlock(&comm_port->bw_lock);
+			}
+		}
+	}
+}
+
+
+static int update_mm_clk(struct notifier_block *nb,
+		unsigned long value, void *v)
+{
+	struct mtk_mmqos *mmqos =
+		container_of(nb, struct mtk_mmqos, nb);
+
+	mmqos_update_setting(mmqos);
+	return 0;
+}
+
+void mtk_mmqos_is_dualpipe_enable(bool is_enable)
+{
+	gmmqos->dual_pipe_enable = is_enable;
+	pr_notice("%s: %d\n", __func__, gmmqos->dual_pipe_enable);
+}
+EXPORT_SYMBOL_GPL(mtk_mmqos_is_dualpipe_enable);
+
+s32 mtk_mmqos_system_qos_update(unsigned short qos_status)
+{
+	struct mtk_mmqos *mmqos = gmmqos;
+
+	if (IS_ERR_OR_NULL(mmqos)) {
+		pr_notice("%s is not ready\n", __func__);
+		return 0;
+	}
+	mmqos->qos_bound = (qos_status > QOS_BOUND_BW_FREE);
+	mmqos_update_setting(mmqos);
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mtk_mmqos_system_qos_update);
+
+static unsigned long get_volt_by_freq(struct device *dev, unsigned long freq)
+{
+	struct dev_pm_opp *opp;
+	unsigned long ret;
+
+	opp = dev_pm_opp_find_freq_ceil(dev, &freq);
+
+	/* It means freq is over the highest available frequency */
+	if (opp == ERR_PTR(-ERANGE))
+		opp = dev_pm_opp_find_freq_floor(dev, &freq);
+
+	if (IS_ERR(opp)) {
+		dev_notice(dev, "%s failed(%ld) freq=%lu\n",
+			__func__, PTR_ERR(opp), freq);
+		return 0;
+	}
+
+	ret = dev_pm_opp_get_voltage(opp);
+	dev_pm_opp_put(opp);
+	return ret;
+}
+
+static bool is_disp_comm_port(u8 hrt_type)
+{
+	if (hrt_type == HRT_MAX_BWL)
+		return true;
+	if (hrt_type == HRT_DISP)
+		return true;
+	if (hrt_type == HRT_DISP_BY_LARB)
+		return true;
+
+	return false;
+}
+
+static bool is_srt_comm_port(u8 hrt_type)
+{
+	if (hrt_type == SRT_VENC)
+		return true;
+	if (hrt_type == SRT_MDP)
+		return true;
+	if (hrt_type == SRT_MML)
+		return true;
+	if (hrt_type == HRT_SRT_MIX)
+		return true;
+
+	return false;
+}
+
+static void set_total_bw_to_emi(struct common_node *comm_node, u32 peak_emi_bw,
+	bool emi_urate)
+{
+	u32 avg_bw = 0, peak_bw = 0;
+	u32 sum_up_avg_bw = 0, sum_up_peak_bw = 0;
+	u64 normalize_peak_bw;
+	struct common_port_node *comm_port_node;
+	u32 comm_id;
+	bool bw_change = false, emi_urate_change = false;
+
+	list_for_each_entry(comm_port_node, &comm_node->comm_port_list, list) {
+		rt_mutex_lock(&comm_port_node->bw_lock);
+		if (mmqos_state & DPC_ENABLE
+			&& is_disp_comm_port(comm_port_node->hrt_type)) {
+			if (log_level & 1 << log_debug)
+				MMQOS_DBG("ignore disp comm port bw");
+		} else if (mmqos_state & MMPC_ENABLE || mmqos_state & MMPC_V2_ENABLE) {
+			if (comm_port_node->hrt_type == HRT_SRT_MIX) {
+				normalize_peak_bw = MULTIPLY_RATIO(div_u64(comm_port_node->latest_peak_bw,
+							mtk_mmqos_get_hrt_ratio(HRT_MML)));
+				peak_bw += normalize_peak_bw;
+			}
+			if (is_srt_comm_port(comm_port_node->hrt_type))
+				avg_bw += comm_port_node->latest_avg_bw;
+		} else {
+			if (mmqos_state & VCODEC_BW_BYPASS
+				&& comm_port_node->hrt_type == SRT_VDEC) {
+				if (log_level & 1 << log_debug)
+					pr_notice("ignore SRT_VDEC comm port bw\n");
+			} else if (mmqos_state & VCODEC_BW_BYPASS
+				&& comm_port_node->hrt_type == SRT_VENC) {
+				if (log_level & 1 << log_debug)
+					pr_notice("ignore SRT_VENC comm port bw\n");
+			} else {
+				avg_bw += comm_port_node->latest_avg_bw;
+			}
+			if (comm_port_node->hrt_type < HRT_TYPE_NUM) {
+				normalize_peak_bw = MULTIPLY_RATIO(div_u64(comm_port_node->latest_peak_bw,
+							mtk_mmqos_get_hrt_ratio(
+							comm_port_node->hrt_type)));
+				peak_bw += normalize_peak_bw;
+			}
+		}
+		rt_mutex_unlock(&comm_port_node->bw_lock);
+	}
+
+	sum_up_avg_bw = avg_bw;
+	sum_up_peak_bw = peak_bw;
+	bw_change = (avg_bw != comm_node->sum_up_avg_bw) || (peak_bw != comm_node->sum_up_peak_bw);
+	emi_urate_change = (mmqos_state & DYNA_URATE_ENABLE) && emi_urate;
+	if (bw_change) {
+		if (mmqos_state & SRT_DATA_BW)
+			avg_bw = div_u64(avg_bw * 100, 75);
+		if (mmqos_state & SMMU_TCU_BW) {
+			avg_bw = div_u64(avg_bw * 103, 100);
+			peak_bw = div_u64(peak_bw * 103, 100);
+		}
+	}
+	if (bw_change || emi_urate_change) {
+		comm_id = MASK_8(comm_node->base->icc_node->id);
+		if (mmqos_met_enabled())
+			trace_mmqos__bw_to_emi(comm_id,
+				icc_to_MBps(avg_bw), icc_to_MBps(peak_bw));
+
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("comm%d avg %llu peak_emi_bw %u peak %llu",
+				comm_id, icc_to_MBps(avg_bw), peak_emi_bw, icc_to_MBps(peak_bw));
+
+		MMQOS_SYSTRACE_BEGIN("to EMI avg %llu peak_emi_bw %u peak %llu\n",
+			icc_to_MBps(avg_bw), peak_emi_bw, icc_to_MBps(peak_bw));
+		icc_set_bw(comm_node->icc_path, avg_bw, peak_emi_bw);
+		icc_set_bw(comm_node->icc_hrt_path, peak_bw, 0);
+
+		if (mmqos_state & DYNA_URATE_ENABLE)
+			record_emi_freq(comm_id, peak_emi_bw);
+		MMQOS_SYSTRACE_END("%s set emi bw done", __func__);
+	}
+
+	comm_node->sum_up_peak_bw = sum_up_peak_bw;
+	comm_node->sum_up_avg_bw = sum_up_avg_bw;
+}
+
+static u32 get_dyna_urate_from_chnn_diff(u32 chn0_bw, u32 chn1_bw)
+{
+	u32 urate = 70;
+
+	if (chn0_bw > chn1_bw * 2 || chn1_bw > chn0_bw * 2)
+		urate = 60;
+	else if (chn0_bw > chn1_bw * 15 / 10 || chn1_bw > chn0_bw * 15 / 10)
+		urate = 65;
+
+	return urate;
+}
+
+static u32 get_max_channel_bw_in_common(u32 comm_id, u32 chnn_id, u32 record_idx,
+	u32 final_h_r_bw[MMQOS_COMM_CHANNEL_NUM], u32 final_h_w_bw[MMQOS_COMM_CHANNEL_NUM],
+	u32 final_s_r_bw[MMQOS_COMM_CHANNEL_NUM], u32 final_s_w_bw[MMQOS_COMM_CHANNEL_NUM])
+{
+	u32 max_bw = 0, i;
+
+	if (mmqos_state & DYNA_URATE_ENABLE) {
+		u32 hrt_r_urate, hrt_w_urate, srt_r_urate, srt_w_urate;
+
+		max_bw = 0;
+
+		if (mmqos_met_enabled()) {
+			trace_mmqos__chn_bw(comm_id, chnn_id,
+				icc_to_MBps(div_u64(chn_srt_r_bw[comm_id][chnn_id] * 10, 7)),
+				icc_to_MBps(div_u64(chn_srt_w_bw[comm_id][chnn_id] * 10, 7)),
+				icc_to_MBps(div_u64(chn_hrt_r_bw[comm_id][chnn_id] * 10, 7)),
+				icc_to_MBps(div_u64(chn_hrt_w_bw[comm_id][chnn_id] * 10, 7)),
+				icc_to_MBps(max_bw),
+				TYPE_IS_ON,
+				TYPE_IS_MAX);
+		}
+
+		if (!(mmqos_state & SRT_DATA_BW)) {
+			// change srt from occupied bw to data bw (/1.33)
+			chn_srt_r_bw[comm_id][0] = chn_srt_r_bw[comm_id][0] * 75 / 100;
+			chn_srt_r_bw[comm_id][1] = chn_srt_r_bw[comm_id][1] * 75 / 100;
+			chn_srt_w_bw[comm_id][0] = chn_srt_w_bw[comm_id][0] * 75 / 100;
+			chn_srt_w_bw[comm_id][1] = chn_srt_w_bw[comm_id][1] * 75 / 100;
+		}
+		hrt_r_urate = get_dyna_urate_from_chnn_diff(
+			chn_hrt_r_bw[comm_id][0], chn_hrt_r_bw[comm_id][1]);
+		hrt_w_urate = get_dyna_urate_from_chnn_diff(
+			chn_hrt_w_bw[comm_id][0], chn_hrt_w_bw[comm_id][1]);
+		srt_r_urate = get_dyna_urate_from_chnn_diff(
+			chn_srt_r_bw[comm_id][0], chn_srt_r_bw[comm_id][1]);
+		srt_w_urate = get_dyna_urate_from_chnn_diff(
+			chn_srt_w_bw[comm_id][0], chn_srt_w_bw[comm_id][1]);
+
+		if (log_level & 1 << log_comm_freq) {
+			MMQOS_DBG("comm(%d) original data bw s_r[chn0]=%u s_r[chn1]=%u, s_w[chn0]=%u s_w[chn1]=%u",
+				comm_id, chn_srt_r_bw[comm_id][0], chn_srt_r_bw[comm_id][1],
+				chn_srt_w_bw[comm_id][0], chn_srt_w_bw[comm_id][1]);
+			MMQOS_DBG("comm(%d) h_r[chn0]=%u h_r[chn1]=%u, h_w[chn0]=%u h_w[chn1]=%u",
+				comm_id, chn_hrt_r_bw[comm_id][0], chn_hrt_r_bw[comm_id][1],
+				chn_hrt_w_bw[comm_id][0], chn_hrt_w_bw[comm_id][1]);
+			MMQOS_DBG("comm(%d) srt_r_urate=%d srt_w_urate=%d hrt_r_urate=%d hrt_w_urate=%d",
+				comm_id, srt_r_urate, srt_w_urate, hrt_r_urate, hrt_w_urate);
+		}
+		for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
+			final_h_r_bw[i] = chn_hrt_r_bw[comm_id][i] * 100 / hrt_r_urate;
+			final_h_w_bw[i] = chn_hrt_w_bw[comm_id][i] * 100 / hrt_w_urate;
+			final_s_r_bw[i] = chn_srt_r_bw[comm_id][i] * 100 / srt_r_urate;
+			final_s_w_bw[i] = chn_srt_w_bw[comm_id][i] * 100 / srt_w_urate;
+
+			emi_chn_hrt_bw[comm_id][i] = chn_hrt_r_bw[comm_id][i] + chn_hrt_w_bw[comm_id][i];
+			emi_chn_srt_bw[comm_id][i] = chn_srt_r_bw[comm_id][i] + chn_srt_w_bw[comm_id][i];
+
+			max_bw = max_t(u32, max_bw, final_h_r_bw[i]);
+			max_bw = max_t(u32, max_bw, final_s_r_bw[i]);
+			max_bw = max_t(u32, max_bw, final_h_w_bw[i]);
+			max_bw = max_t(u32, max_bw, final_s_w_bw[i]);
+			if (log_level & 1 << log_comm_freq)
+				MMQOS_DBG("comm(%d) chn=%d max_bw=%u apply urate s_r=%u h_r=%u, s_w=%u h_w=%u",
+					comm_id, i, max_bw, final_s_r_bw[i], final_h_r_bw[i],
+					final_s_w_bw[i], final_h_w_bw[i]);
+			record_chn_bw_urate(comm_id, i,
+				final_s_r_bw[i],
+				final_s_w_bw[i],
+				final_h_r_bw[i],
+				final_h_w_bw[i],
+				record_idx);
+			if (mmqos_met_enabled())
+				trace_mmqos__chn_bw(comm_id, i,
+					icc_to_MBps(final_s_r_bw[i]),
+					icc_to_MBps(final_s_w_bw[i]),
+					icc_to_MBps(final_h_r_bw[i]),
+					icc_to_MBps(final_h_w_bw[i]),
+					icc_to_MBps(max_bw),
+					TYPE_IS_URATE,
+					TYPE_IS_MAX_URATE);
+		}
+		if (!(mmqos_state & SRT_DATA_BW)) {
+			// change srt from data bw to occupied bw
+			chn_srt_r_bw[comm_id][0] = chn_srt_r_bw[comm_id][0] * 100 / 75;
+			chn_srt_r_bw[comm_id][1] = chn_srt_r_bw[comm_id][1] * 100 / 75;
+			chn_srt_w_bw[comm_id][0] = chn_srt_w_bw[comm_id][0] * 100 / 75;
+			chn_srt_w_bw[comm_id][1] = chn_srt_w_bw[comm_id][1] * 100 / 75;
+		}
+	} else {
+		for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
+			max_bw = max_t(u32, max_bw, chn_hrt_r_bw[comm_id][i] * 10 / 7);
+			max_bw = max_t(u32, max_bw, chn_srt_r_bw[comm_id][i] * 10 / 7);
+			max_bw = max_t(u32, max_bw, chn_hrt_w_bw[comm_id][i] * 10 / 7);
+			max_bw = max_t(u32, max_bw, chn_srt_w_bw[comm_id][i] * 10 / 7);
+			if (log_level & 1 << log_comm_freq) {
+				MMQOS_DBG("comm(%d) chn=%d without urate max_bw=%u s_r=%u h_r=%u, s_w=%u h_w=%u",
+					comm_id, i, max_bw, chn_srt_r_bw[comm_id][i] * 10 / 7,
+					chn_hrt_r_bw[comm_id][i] * 10 / 7,
+					chn_srt_w_bw[comm_id][i] * 10 / 7,
+					chn_hrt_w_bw[comm_id][i] * 10 / 7);
+			}
+		}
+
+		if (mmqos_met_enabled()) {
+			trace_mmqos__chn_bw(comm_id, chnn_id,
+				icc_to_MBps(chn_srt_r_bw[comm_id][chnn_id]),
+				icc_to_MBps(chn_srt_w_bw[comm_id][chnn_id]),
+				icc_to_MBps(chn_hrt_r_bw[comm_id][chnn_id]),
+				icc_to_MBps(chn_hrt_w_bw[comm_id][chnn_id]),
+				icc_to_MBps(max_bw),
+				TYPE_IS_ON,
+				TYPE_IS_MAX);
+		}
+		for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
+			final_h_r_bw[i] = chn_hrt_r_bw[comm_id][i];
+			final_h_w_bw[i] = chn_hrt_w_bw[comm_id][i];
+			final_s_r_bw[i] = chn_srt_r_bw[comm_id][i];
+			final_s_w_bw[i] = chn_srt_w_bw[comm_id][i];
+		}
+	}
+
+	return max_bw;
+}
+
+static u32 get_peak_emi_freq(u32 emi_bw)
+{
+	u32 step, emi_freq = 0;
+
+	if (emi_bw == 0 || opp_cnt < 0)
+		return 0;
+
+	emi_freq = emi_bw * 8 / 128 / 1000; //MHZ
+
+	for (step = 0; step < opp_cnt; step++) {
+		if (emi_freq > dramc_freq_mapping_table[step][1] || !dramc_freq_mapping_table[step][1])
+			break;
+	}
+
+	if (step > 0)
+		return dramc_freq_mapping_table[step - 1][2];
+	return dramc_freq_mapping_table[step][2];
+}
+
+static u32 get_max_channel_bw_in_emi(u32 comm_id, bool *emi_urate)
+{
+	u32 i, hrt_urate, srt_urate, final_h_bw, final_s_bw, max_bw = 0;
+
+	hrt_urate = get_dyna_urate_from_chnn_diff(
+		emi_chn_hrt_bw[comm_id][0], emi_chn_hrt_bw[comm_id][1]);
+	srt_urate = get_dyna_urate_from_chnn_diff(
+		emi_chn_srt_bw[comm_id][0], emi_chn_srt_bw[comm_id][1]);
+
+	if (hrt_urate == 70 && srt_urate == 70)
+		*emi_urate = false;
+
+	if (log_level & 1 << log_comm_freq) {
+		MMQOS_DBG("%s comm(%d) emi_h[chn0]=%u emi_h[chn1]=%u, emi_s[chn0]=%u emi_s[chn1]=%u",
+			__func__, comm_id, emi_chn_hrt_bw[comm_id][0], emi_chn_hrt_bw[comm_id][1],
+			emi_chn_srt_bw[comm_id][0], emi_chn_srt_bw[comm_id][1]);
+		MMQOS_DBG("%s comm(%d) hrt_urate=%d srt_urate=%d emi_urate:%d",
+			__func__, comm_id, hrt_urate, srt_urate, *emi_urate);
+	}
+	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
+		final_h_bw = emi_chn_hrt_bw[comm_id][i] * 100 / hrt_urate;
+		final_s_bw = emi_chn_srt_bw[comm_id][i] * 100 / srt_urate;
+
+		if (log_level & 1 << log_comm_freq)
+			MMQOS_DBG("%s comm(%d) chn=%d apply urate h_bw=%u s_bw=%u (KB/s)",
+				__func__, comm_id, i, final_h_bw, final_s_bw);
+
+		record_emi_bw(comm_id, i,
+			emi_chn_srt_bw[comm_id][i],
+			emi_chn_hrt_bw[comm_id][i],
+			final_s_bw,
+			final_h_bw);
+
+		max_bw = max_t(u32, max_bw, final_h_bw);
+		max_bw = max_t(u32, max_bw, final_s_bw);
+	}
+
+	return max_bw;
+}
+
+static u32 get_max_channel_bw(u32 comm_id, u32 chnn_id, u32 freq_mode, u32 record_idx)
+{
+	u32 max_bw = 0, comm_bw, i;
+	u32 final_h_r_bw[MMQOS_COMM_CHANNEL_NUM] = {0};
+	u32 final_h_w_bw[MMQOS_COMM_CHANNEL_NUM] = {0};
+	u32 final_s_r_bw[MMQOS_COMM_CHANNEL_NUM] = {0};
+	u32 final_s_w_bw[MMQOS_COMM_CHANNEL_NUM] = {0};
+
+	if (freq_mode == BY_REGULATOR)
+		return get_max_channel_bw_in_common(comm_id, chnn_id, record_idx,
+			final_h_r_bw, final_h_w_bw, final_s_r_bw, final_s_w_bw);
+
+	// BY_MMDVFS
+	for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
+		comm_bw = get_max_channel_bw_in_common(i, chnn_id, record_idx,
+			final_h_r_bw, final_h_w_bw, final_s_r_bw, final_s_w_bw);
+		max_bw = max_t(u32, max_bw, comm_bw);
+	}
+	return max_bw;
+}
+
+static void set_freq_by_regulator(struct common_node *comm_node, unsigned long smi_clk)
+{
+	u32 volt;
+
+	volt = get_volt_by_freq(comm_node->comm_dev, smi_clk);
+	if (volt > 0 && volt != comm_node->volt) {
+		if (IS_ERR_OR_NULL(comm_node->comm_reg)) {
+			dev_notice(comm_node->comm_dev, "comm_reg not existed\n");
+		} else if (regulator_set_voltage(comm_node->comm_reg,
+				volt, INT_MAX))
+			dev_notice(comm_node->comm_dev,
+				"regulator_set_voltage failed volt=%u\n", volt);
+		comm_node->volt = volt;
+	}
+}
+
+void set_disp_freq_by_regulator(bool regulator)
+{
+	disp_freq_by_regulator = regulator;
+}
+EXPORT_SYMBOL_GPL(set_disp_freq_by_regulator);
+
+/*
+static void set_freq_by_mmdvfs(struct common_node *comm_node, unsigned long smi_clk)
+{
+	if (log_level & 1 << log_comm_freq)
+		dev_notice(comm_node->comm_dev, "set freq_rate:%lu\n", smi_clk);
+
+	mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+	mmdvfs_mux_set_opp("user-smi", smi_clk);
+	mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+}
+*/
+
+static u32 change_to_unit(u32 bw)
+{
+	/* bw unit is 16MB/s */
+	u32 bw_unit;
+
+	bw_unit = (icc_to_MBps(bw)) >> CHNN_BW_UNIT_SHIFT;
+	if (bw_unit >= MAX_BW_UNIT) {
+		if (log_level & 1 << log_comm_freq)
+			MMQOS_DBG("bw is over %d*16MB/s", MAX_BW_UNIT);
+		bw_unit = MAX_BW_UNIT;
+	}
+	if (log_level & 1 << log_comm_freq && bw > 0)
+		MMQOS_DBG("bw:%u, bw_unit:%d", bw, bw_unit);
+
+	return bw_unit;
+}
+
+static void store_bw_value(const u32 comm_id, const u32 chnn_id,
+	bool is_srt, bool is_write, bool is_on, u32 bw)
+{
+	int bw_value_idx;
+
+	if (mmqos_state & VMMRC_ENABLE)
+		bw_value_idx = (comm_id << 2) + (chnn_id << 1) + (is_srt ? 0 : 12)
+			+ (is_write ? 1 : 0);
+	else if (mmqos_state & MMPC_ENABLE || mmqos_state & MMPC_V2_ENABLE)
+		bw_value_idx = (comm_id << 3) + (chnn_id << 2) + (is_srt ? 0 : 2)
+			+ (is_write ? 1 : 0);
+	else {
+		MMQOS_ERR("mmqos_state:%#x, ignore store bw", mmqos_state);
+		return;
+	}
+
+	bw = change_to_unit(bw);
+
+	if (is_on)
+		on_bw_value[bw_value_idx] = bw;
+	else
+		off_bw_value[bw_value_idx] = bw;
+
+	if (log_level & 1 << log_comm_freq)
+		if (bw != 0)
+			MMQOS_DBG("bw_value_idx:%d, bw:%d", bw_value_idx, bw);
+}
+
+bool is_bw_value_changed(bool is_on)
+{
+	u32 *old_bw;
+	u32 *bw_value;
+	int i = 0;
+
+	if (is_on) {
+		old_bw = old_on_bw_value;
+		bw_value = on_bw_value;
+	} else {
+		old_bw = old_off_bw_value;
+		bw_value = off_bw_value;
+	}
+
+	for (i = 0 ; i < MAX_BW_VALUE_NUM ; i++) {
+		if (bw_value[i] == old_bw[i])
+			continue;
+		else
+			return true;
+	}
+	return false;
+}
+
+void write_register(u32 offset, u32 value)
+{
+	if (log_level & (1U << log_bw))
+		if (value != 0)
+			MMQOS_DBG("offset:0x%x, value:0x%x", offset, value);
+
+	if (mmqos_state & VMMRC_ENABLE || mmqos_state & MMPC_ENABLE
+		|| mmqos_state & MMPC_V2_ENABLE) {
+		if (gmmqos->vmmrc_base == NULL)
+			MMQOS_ERR("write vmmrc fail, vmmrc_base is NULL");
+		else
+			writel_relaxed(value, gmmqos->vmmrc_base + offset);
+	}
+}
+
+u32 read_register(u32 offset)
+{
+	if (mmqos_state & VMMRC_ENABLE || mmqos_state & MMPC_ENABLE
+		|| mmqos_state & MMPC_V2_ENABLE) {
+		if (gmmqos->vmmrc_base == NULL)
+			MMQOS_ERR("read vmmrc fail, vmmrc_base is NULL");
+		else
+			return readl_relaxed(gmmqos->vmmrc_base + offset);
+	}
+	return 0;
+}
+
+static int start_write_bw(bool skip_vcp)
+{
+	if (!skip_vcp) {
+		if ((mmqos_state & VMMRC_VCP_ENABLE) &&
+			(mmqos_state & VMMRC_VCP_NO_WARM_BOOT)) {
+			if (!mmqos_vcp_ready_done()) {
+				MMQOS_ERR("vcp not ready yet");
+
+				return -EINVAL;
+			}
+		}
+		// for hfrp timeout debug
+		if (gmmqos->hfrp_base)
+			readl_relaxed(gmmqos->hfrp_base + HFRP_DUMMY);
+		readl_relaxed(gmmqos->mminfra_base + MMINFRA_DUMMY);
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+		//enable vcp
+		if (mmqos_state & VMMRC_VCP_ENABLE) {
+			int ret = 0;
+
+			ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+			if (ret <  0) {
+				MMQOS_ERR("vcp enable fail, ret:%d", ret);
+				if (mmqos_state & VMMRC_VCP_NO_WARM_BOOT) {
+					if (!disp_freq_by_regulator)
+						MMQOS_AEE("vcp enable fail");
+				}
+				return -EINVAL;
+			}
+		}
+#endif
+	}
+
+	return 0;
+}
+
+static void stop_write_bw(bool skip_vcp)
+{
+	if (!skip_vcp) {
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+		//disable vcp
+		if (mmqos_state & VMMRC_VCP_ENABLE) {
+			int ret;
+
+			ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+			if (ret < 0)
+				MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
+		}
+#endif
+	}
+}
+
+void clear_reg_value(bool is_on)
+{
+	int i;
+
+	for (i = 0; i < MAX_BW_VALUE_NUM; i++) {
+		if (is_on)
+			on_reg_value[i] = 0;
+		else
+			off_reg_value[i] = 0;
+	}
+}
+
+void set_channel_bw_reg_value(bool is_on)
+{
+	int i, reg_value_idx;
+	bool is_test = log_level & (1 << log_debug);
+	u32 *reg_value;
+	u32 *bw_value;
+	u32 *old_bw_value;
+
+	clear_reg_value(is_on);
+	if (is_on) {
+		reg_value = on_reg_value;
+		bw_value = on_bw_value;
+		old_bw_value = old_on_bw_value;
+	} else {
+		reg_value = off_reg_value;
+		bw_value = off_bw_value;
+		old_bw_value = old_off_bw_value;
+	}
+
+	for (i = 0 ; i < MAX_BW_VALUE_NUM ; i++) {
+		if (bw_value[i] != 0 && is_test)
+			MMQOS_DBG("is_on:%d, i:%d, bw_value:%d",
+				is_on, i, bw_value[i]);
+		if (mmqos_state & MMPC_V2_ENABLE) {
+			reg_value_idx = i;
+			reg_value[reg_value_idx] += bw_value[i];
+		} else {
+			reg_value_idx = i/3;
+			reg_value[reg_value_idx] += (bw_value[i] & 0x3FF) << ((i % 3) * 10);
+		}
+		if (reg_value[reg_value_idx] != 0 && is_test)
+			MMQOS_DBG("is_on:%d, idx:%d, reg_value:%#x",
+				is_on, reg_value_idx, reg_value[reg_value_idx]);
+		old_bw_value[i] = bw_value[i];
+	}
+}
+
+static void set_channel_bw_to_hw(bool skip_vcp)
+{
+	int i, result = 0;
+	u32 orig = 0;
+
+	result = start_write_bw(skip_vcp);
+	if (result < 0)
+		return;
+
+	rt_mutex_lock(&gmmqos->vmmrc_hw_lock);
+	/* start write bw */
+	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
+		write_register(APMCU_MASK_OFFSET, 0);
+	else {
+		orig = read_register(APMCU_MASK_OFFSET);
+		write_register(APMCU_MASK_OFFSET, orig | BIT(gmmqos->apmcu_mask_bit));
+	}
+
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		for (i = 0 ; i < MAX_BW_VALUE_NUM; i++)
+			write_register(APMCU_ON_BW_OFFSET(i), on_reg_value[i]);
+	} else {
+		for (i = 0 ; i < MAX_REG_VALUE_NUM; i++)
+			write_register(APMCU_ON_BW_OFFSET(i), on_reg_value[i]);
+	}
+
+	if (mmqos_state & VMMRC_ENABLE) {
+		for (i = 0 ; i < MAX_REG_VALUE_NUM; i++)
+			write_register(APMCU_OFF_BW_OFFSET(i), off_reg_value[i]);
+	}
+
+	/* stop write bw */
+	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
+		write_register(APMCU_MASK_OFFSET, gmmqos->mmpc_sw_en_all_on);
+	else {
+		orig = read_register(APMCU_MASK_OFFSET);
+		write_register(APMCU_MASK_OFFSET, orig & ~BIT(gmmqos->apmcu_mask_bit));
+	}
+	rt_mutex_unlock(&gmmqos->vmmrc_hw_lock);
+
+	stop_write_bw(skip_vcp);
+}
+
+void mmqos_write_last_bw_to_vmmrc(void)
+{
+	set_channel_bw_to_hw(true);
+}
+
+struct mmqos_bw_fp mtk_mmqos_bw_fp = {
+	.write_last_bw_to_vmmrc = mmqos_write_last_bw_to_vmmrc,
+};
+
+static u32 set_freq_by_vmmrc(const u32 comm_id, const u32 chnn_id, u32 record_idx)
+{
+	int i, j;
+	bool is_reg_value_changed = false;
+	u32 off_s_r_bw;
+	u32 off_s_w_bw;
+	u32 off_h_r_bw;
+	u32 off_h_w_bw;
+	u32 max_bw = 0;
+	u32 final_h_r_bw[MMQOS_COMM_CHANNEL_NUM] = {0};
+	u32 final_h_w_bw[MMQOS_COMM_CHANNEL_NUM] = {0};
+	u32 final_s_r_bw[MMQOS_COMM_CHANNEL_NUM] = {0};
+	u32 final_s_w_bw[MMQOS_COMM_CHANNEL_NUM] = {0};
+
+	MMQOS_SYSTRACE_BEGIN("%s %d", __func__, comm_id);
+
+	if (log_level & 1 << log_comm_freq) {
+		for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
+			for (j = 0; j < MMQOS_COMM_CHANNEL_NUM; j++) {
+				MMQOS_DBG("comm(%d) chn=%d disp s_r=%u h_r=%u s_w=%u h_w=%u",
+					i, j, disp_srt_r_bw[i][j], disp_hrt_r_bw[i][j],
+					disp_srt_w_bw[i][j], disp_hrt_w_bw[i][j]);
+			}
+		}
+	}
+
+	max_bw = get_max_channel_bw_in_common(comm_id, chnn_id, record_idx,
+		final_h_r_bw, final_h_w_bw, final_s_r_bw, final_s_w_bw);
+
+	for (i = 0; i < MMQOS_COMM_CHANNEL_NUM; i++) {
+		bool is_srt = true;
+		bool is_write = true;
+		u32 chn_srt_r_bw_temp, chn_srt_w_bw_temp, chn_hrt_r_bw_temp, chn_hrt_w_bw_temp;
+		u32 disp_srt_r_bw_temp, disp_srt_w_bw_temp, disp_hrt_r_bw_temp, disp_hrt_w_bw_temp;
+
+		store_bw_value(comm_id, i, is_srt, !is_write, IS_ON_TABLE,
+			final_s_r_bw[i]);
+		store_bw_value(comm_id, i, is_srt, is_write, IS_ON_TABLE,
+			final_s_w_bw[i]);
+		store_bw_value(comm_id, i, !is_srt, !is_write, IS_ON_TABLE,
+			final_h_r_bw[i]);
+		store_bw_value(comm_id, i, !is_srt, is_write, IS_ON_TABLE,
+			final_h_w_bw[i]);
+
+		chn_srt_r_bw_temp = chn_srt_r_bw[comm_id][i];
+		chn_srt_w_bw_temp = chn_srt_w_bw[comm_id][i];
+		chn_hrt_r_bw_temp = chn_hrt_r_bw[comm_id][i];
+		chn_hrt_w_bw_temp = chn_hrt_w_bw[comm_id][i];
+		disp_srt_r_bw_temp = disp_srt_r_bw[comm_id][i];
+		disp_srt_w_bw_temp = disp_srt_w_bw[comm_id][i];
+		disp_hrt_r_bw_temp = div_u64(disp_hrt_r_bw[comm_id][i] * 10, 7);
+		disp_hrt_w_bw_temp = div_u64(disp_hrt_w_bw[comm_id][i] * 10, 7);
+
+		if (mmqos_state & VMMRC_ENABLE) {
+			if (mmqos_state & SRT_DATA_BW) {
+				disp_srt_r_bw_temp = div_u64(disp_srt_r_bw_temp * 10, 7);
+				disp_srt_w_bw_temp = div_u64(disp_srt_w_bw_temp * 10, 7);
+
+				if (mmqos_state & DYNA_URATE_ENABLE) {
+					chn_srt_r_bw_temp = div_u64(chn_srt_r_bw_temp * 10, 7);
+					chn_srt_w_bw_temp = div_u64(chn_srt_w_bw_temp * 10, 7);
+					chn_hrt_r_bw_temp = div_u64(chn_hrt_r_bw_temp * 10, 7);
+					chn_hrt_w_bw_temp = div_u64(chn_hrt_w_bw_temp * 10, 7);
+				}
+			} else {
+				chn_hrt_r_bw_temp = div_u64(chn_hrt_r_bw_temp * 10, 7);
+				chn_hrt_w_bw_temp = div_u64(chn_hrt_w_bw_temp * 10, 7);
+			}
+			off_s_r_bw = chn_srt_r_bw_temp - disp_srt_r_bw_temp;
+			off_s_w_bw = chn_srt_w_bw_temp - disp_srt_w_bw_temp;
+			off_h_r_bw = chn_hrt_r_bw_temp - disp_hrt_r_bw_temp;
+			off_h_w_bw = chn_hrt_w_bw_temp - disp_hrt_w_bw_temp;
+
+			store_bw_value(comm_id, i, is_srt, !is_write, !IS_ON_TABLE, off_s_r_bw);
+			store_bw_value(comm_id, i, is_srt, is_write, !IS_ON_TABLE, off_s_w_bw);
+			store_bw_value(comm_id, i, !is_srt, !is_write, !IS_ON_TABLE, off_h_r_bw);
+			store_bw_value(comm_id, i, !is_srt, is_write, !IS_ON_TABLE, off_h_w_bw);
+
+			if (mmqos_met_enabled())
+				trace_mmqos__chn_bw(comm_id, i,
+					icc_to_MBps(off_s_r_bw),
+					icc_to_MBps(off_s_w_bw),
+					icc_to_MBps(off_h_r_bw),
+					icc_to_MBps(off_h_w_bw),
+					0,
+					TYPE_IS_OFF,
+					TYPE_IS_MAX);
+		}
+	}
+
+	if (is_bw_value_changed(IS_ON_TABLE)) {
+		set_channel_bw_reg_value(IS_ON_TABLE);
+		is_reg_value_changed = true;
+	}
+	if (mmqos_state & VMMRC_ENABLE) {
+		if (is_bw_value_changed(!IS_ON_TABLE)) {
+			set_channel_bw_reg_value(!IS_ON_TABLE);
+			is_reg_value_changed = true;
+		}
+	}
+	if (is_reg_value_changed)
+		set_channel_bw_to_hw(false);
+	MMQOS_SYSTRACE_END("%s %d", __func__, comm_id);
+
+	return max_bw;
+}
+
+static void set_comm_icc_bw(struct common_node *comm_node, const u32 chnn_id, u32 record_idx)
+{
+	u32 max_bw = 0, peak_emi_freq = 0, emi_bw = 0;
+	unsigned long smi_clk = 0;
+	u32 comm_id, i, j;
+	bool emi_urate = true;
+
+	MMQOS_SYSTRACE_BEGIN("%s %s", __func__, comm_node->base->icc_node->name);
+
+	comm_id = MASK_8(comm_node->base->icc_node->id);
+
+	if (log_level & 1 << log_comm_freq) {
+		for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
+			for (j = 0; j < MMQOS_COMM_CHANNEL_NUM; j++) {
+				MMQOS_DBG("comm(%d) chn=%d s_r=%u h_r=%u s_w=%u h_w=%u",
+				i, j, chn_srt_r_bw[i][j], chn_hrt_r_bw[i][j],
+				chn_srt_w_bw[i][j], chn_hrt_w_bw[i][j]);
+			}
+		}
+	}
+
+	if (freq_mode == BY_REGULATOR || freq_mode == BY_MMDVFS) {
+		max_bw = get_max_channel_bw(comm_id, chnn_id, freq_mode, record_idx);
+		if (mmqos_state & DYNA_URATE_ENABLE) {
+			emi_bw = get_max_channel_bw_in_emi(comm_id, &emi_urate);
+			peak_emi_freq = get_peak_emi_freq(emi_bw);
+		}
+
+		if (max_bw)
+			smi_clk = SHIFT_ROUND(max_bw, 4) * 1000;
+		else
+			smi_clk = 0;
+
+		if (comm_node->comm_dev && smi_clk != comm_node->smi_clk) {
+			if (freq_mode == BY_REGULATOR)
+				set_freq_by_regulator(comm_node, smi_clk);
+			else
+				MMQOS_ERR("freq_mode:%d is wrong", freq_mode);
+
+			comm_node->smi_clk = smi_clk;
+		}
+	} else if (freq_mode == BY_VMMRC) {
+		max_bw = set_freq_by_vmmrc(comm_id, chnn_id, record_idx);
+		if (mmqos_state & DYNA_URATE_ENABLE) {
+			emi_bw = get_max_channel_bw_in_emi(comm_id, &emi_urate);
+			peak_emi_freq = get_peak_emi_freq(emi_bw);
+		}
+	}
+
+	if (log_level & 1 << log_comm_freq) {
+		dev_notice(comm_node->comm_dev,
+			"comm(%d) max_bw=%u smi_clk=%lu freq_mode=%d emi_bw=%u peak_emi_bw=%u\n",
+			comm_id, max_bw, smi_clk, freq_mode, emi_bw, peak_emi_freq);
+	}
+	set_total_bw_to_emi(comm_node, peak_emi_freq, emi_urate);
+
+	MMQOS_SYSTRACE_END("%s %s", __func__, comm_node->base->icc_node->name);
+}
+
+static void update_hrt_bw(struct mtk_mmqos *mmqos)
+{
+	struct common_node *comm_node;
+	struct common_port_node *comm_port;
+	u32 hrt_bw[HRT_TYPE_NUM] = {0};
+	u32 i;
+
+	list_for_each_entry(comm_node, &mmqos->comm_list, list) {
+		list_for_each_entry(comm_port,
+				    &comm_node->comm_port_list, list) {
+			if (comm_port->hrt_type < HRT_TYPE_NUM) {
+				rt_mutex_lock(&comm_port->bw_lock);
+				hrt_bw[comm_port->hrt_type] +=
+					icc_to_MBps(comm_port->latest_peak_bw);
+				rt_mutex_unlock(&comm_port->bw_lock);
+			}
+		}
+	}
+
+	for (i = 0; i < HRT_TYPE_NUM; i++)
+		if (i != HRT_MD)
+			mtk_mmqos_set_hrt_bw(i, hrt_bw[i]);
+
+}
+
+void mmqos_stop_record(void)
+{
+	stop_record = true;
+	MMQOS_DBG("stop_record %d", stop_record);
+}
+EXPORT_SYMBOL_GPL(mmqos_stop_record);
+
+static void record_last_larb(u32 node_id, u32 avg_bw, u32 peak_bw)
+{
+	if (stop_record) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("node_id %d avg %d peak %d",
+				node_id, (int)icc_to_MBps(avg_bw), (int)icc_to_MBps(peak_bw));
+		return;
+	}
+
+	last_rec->larb_update_time = sched_clock();
+	last_rec->larb_node_id = node_id;
+	last_rec->larb_avg_bw = avg_bw;
+	last_rec->larb_peak_bw = peak_bw;
+}
+
+static void record_last_larb_port(u32 node_id, u32 avg_bw, u32 peak_bw)
+{
+	if (stop_record) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("node_id %d avg %d peak %d",
+				node_id, (int)icc_to_MBps(avg_bw), (int)icc_to_MBps(peak_bw));
+		return;
+	}
+
+	last_rec->larb_port_update_time = sched_clock();
+	last_rec->larb_port_node_id = node_id;
+	last_rec->larb_port_avg_bw = avg_bw;
+	last_rec->larb_port_peak_bw = peak_bw;
+}
+
+static void record_comm_port_bw(u32 comm_id, u32 port_id, u32 larb_id,
+	u32 avg_bw, u32 peak_bw, u32 l_avg, u32 l_peak, u16 ostdl)
+{
+	u32 idx;
+
+	if (log_level & 1 << log_bw)
+		pr_notice("%s comm%d port%d larb%d %d %d %d %d ostdl=%d\n", __func__,
+			comm_id, port_id, larb_id,
+			(int)(icc_to_MBps(avg_bw)), (int)(icc_to_MBps(peak_bw)),
+			(int)(icc_to_MBps(l_avg)), (int)(icc_to_MBps(l_peak)), ostdl);
+	if (stop_record)
+		return;
+
+	idx = comm_port_bw_rec->idx[comm_id][port_id];
+	comm_port_bw_rec->time[comm_id][port_id][idx] = sched_clock();
+	comm_port_bw_rec->larb_id[comm_id][port_id][idx] = larb_id;
+	comm_port_bw_rec->avg_bw[comm_id][port_id][idx] = avg_bw;
+	comm_port_bw_rec->peak_bw[comm_id][port_id][idx] = peak_bw;
+	comm_port_bw_rec->l_avg_bw[comm_id][port_id][idx] = l_avg;
+	comm_port_bw_rec->l_peak_bw[comm_id][port_id][idx] = l_peak;
+	comm_port_bw_rec->ostdl[comm_id][port_id][idx] = ostdl;
+	comm_port_bw_rec->idx[comm_id][port_id] = (idx + 1) % RECORD_NUM;
+}
+
+static u32 record_chn_bw(u32 comm_id, u32 chnn_id, u32 srt_r, u32 srt_w, u32 hrt_r, u32 hrt_w)
+{
+	u32 idx = 0xFFFFFFFF;
+
+	if (stop_record) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("comm%d chnn%d srt_r %d srt_w %d hrt_r %d hrt_w %d",
+				comm_id, chnn_id,
+				(int)(icc_to_MBps(srt_r)), (int)(icc_to_MBps(srt_w)),
+				(int)(icc_to_MBps(hrt_r)), (int)(icc_to_MBps(hrt_w)));
+		return idx;
+	}
+
+	idx = chn_bw_rec->idx[comm_id][chnn_id];
+	chn_bw_rec->time[comm_id][chnn_id][idx] = sched_clock();
+	chn_bw_rec->srt_r_bw[comm_id][chnn_id][idx] = srt_r;
+	chn_bw_rec->srt_w_bw[comm_id][chnn_id][idx] = srt_w;
+	chn_bw_rec->hrt_r_bw[comm_id][chnn_id][idx] = hrt_r;
+	chn_bw_rec->hrt_w_bw[comm_id][chnn_id][idx] = hrt_w;
+	chn_bw_rec->idx[comm_id][chnn_id] = (idx + 1) % RECORD_NUM;
+
+	return idx;
+}
+
+static void record_larb_port_bw_ostdl(u32 larb_id, u32 port_id, u32 avg_bw,
+	u32 peak_bw, u32 mix_bw, u8 ostdl, bool was_hrt)
+{
+	u32 idx, old_idx;
+
+	if (stop_record)
+		return;
+
+	idx = larb_port_bw_rec->idx[larb_id];
+	old_idx = idx;
+
+	if (was_hrt && larb_port_bw_rec->larb_port_cnt[larb_id][port_id] > 1) {
+		u64 min_time = UINT64_MAX;
+		u32 idx_list[RECORD_NUM_LARB_PORT], idx_cnt = 0;
+
+		for (int i = 0; i < RECORD_NUM_LARB_PORT; i++) {
+			if (larb_port_bw_rec->port_id[larb_id][i] == port_id
+				&& idx_cnt < RECORD_NUM_LARB_PORT)
+				idx_list[idx_cnt++] = i;
+		}
+		for (int i = 0; i < idx_cnt; i++) {
+			if (min_time > larb_port_bw_rec->time[larb_id][idx_list[i]]) {
+				min_time = larb_port_bw_rec->time[larb_id][idx_list[i]];
+				idx = idx_list[i];
+			}
+		}
+		larb_port_bw_rec->larb_port_cnt[larb_id][port_id]--;
+	} else if (larb_port_bw_rec->was_hrt[larb_id][idx]) {
+		while (larb_port_bw_rec->was_hrt[larb_id][idx] && idx < RECORD_NUM_LARB_PORT) {
+			idx = (idx + 1) % RECORD_NUM_LARB_PORT;
+			if (old_idx == idx)
+				break;
+		}
+	}
+
+	larb_port_bw_rec->time[larb_id][idx] = sched_clock();
+	larb_port_bw_rec->port_id[larb_id][idx] = port_id;
+	larb_port_bw_rec->avg_bw[larb_id][idx] = avg_bw;
+	larb_port_bw_rec->peak_bw[larb_id][idx] = peak_bw;
+	larb_port_bw_rec->mix_bw[larb_id][idx] = mix_bw;
+	larb_port_bw_rec->ostdl[larb_id][idx] = ostdl;
+	larb_port_bw_rec->was_hrt[larb_id][idx] = was_hrt;
+	if (was_hrt)
+		larb_port_bw_rec->larb_port_cnt[larb_id][port_id]++;
+	larb_port_bw_rec->idx[larb_id] = (idx + 1) % RECORD_NUM_LARB_PORT;
+}
+
+void update_channel_bw(const u32 comm_id, const u32 chnn_id,
+	struct icc_node *src)
+{
+	struct common_port_node *comm_port_node;
+	u32 half_hrt_r = 0;
+
+	comm_port_node = (struct common_port_node *)src->data;
+	if (comm_port_node == NULL) {
+		MMQOS_ERR("fail, comm_port_node is NULL");
+		return;
+	}
+	if (mmqos_state & DISP_BY_LARB_ENABLE
+		&& comm_port_node->hrt_type == HRT_DISP) {
+		if (log_level & 1 << log_bw)
+			pr_notice("ignore HRT_DISP comm port:%#x\n", src->id);
+		return;
+	} else if (!(mmqos_state & DISP_BY_LARB_ENABLE)
+		&& comm_port_node->hrt_type == HRT_DISP_BY_LARB) {
+		if (log_level & 1 << log_bw)
+			pr_notice("ignore HRT_DISP_BY_LARB comm port:%#x\n",
+					src->id);
+		return;
+	}
+	if (((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
+		&& !is_srt_comm_port(comm_port_node->hrt_type)) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("ignore not SW mode comm port:%#x", src->id);
+		return;
+	}
+
+	if ((mmqos_state & DPC_ENABLE)
+		&& is_disp_comm_port(comm_port_node->hrt_type)) {
+		// display bw should be only write on the on table
+		// other mm users need to write on & off table.
+		// so we need to record display chnn bw
+		disp_srt_r_bw[comm_id][chnn_id] -= comm_port_node->old_avg_r_bw;
+		disp_srt_w_bw[comm_id][chnn_id] -= comm_port_node->old_avg_w_bw;
+		disp_hrt_r_bw[comm_id][chnn_id] -= comm_port_node->old_peak_r_bw;
+		disp_hrt_w_bw[comm_id][chnn_id] -= comm_port_node->old_peak_w_bw;
+		disp_srt_r_bw[comm_id][chnn_id] += src->v2_avg_r_bw;
+		disp_srt_w_bw[comm_id][chnn_id] += src->v2_avg_w_bw;
+		disp_hrt_r_bw[comm_id][chnn_id] += src->v2_peak_r_bw;
+		disp_hrt_w_bw[comm_id][chnn_id] += src->v2_peak_w_bw;
+	}
+	v2_chn_hrt_w_bw[comm_id][chnn_id] -= comm_port_node->old_peak_w_bw;
+	v2_chn_hrt_r_bw[comm_id][chnn_id] -= comm_port_node->old_peak_r_bw;
+	v2_chn_srt_w_bw[comm_id][chnn_id] -= comm_port_node->old_avg_w_bw;
+	v2_chn_srt_r_bw[comm_id][chnn_id] -= comm_port_node->old_avg_r_bw;
+	v2_chn_hrt_w_bw[comm_id][chnn_id] += src->v2_peak_w_bw;
+	v2_chn_hrt_r_bw[comm_id][chnn_id] += src->v2_peak_r_bw;
+	v2_chn_srt_w_bw[comm_id][chnn_id] += src->v2_avg_w_bw;
+	v2_chn_srt_r_bw[comm_id][chnn_id] += src->v2_avg_r_bw;
+	if (comm_port_node->hrt_type == HRT_DISP
+		&& gmmqos->dual_pipe_enable) {
+		half_hrt_r = div_u64(src->v2_peak_r_bw, 2);
+		v2_chn_hrt_r_bw[comm_id][chnn_id] -= half_hrt_r;
+		if (mmqos_state & DPC_ENABLE)
+			disp_hrt_r_bw[comm_id][chnn_id] -= half_hrt_r;
+	} else {
+		half_hrt_r = (src->v2_peak_r_bw);
+	}
+	comm_port_node->old_peak_w_bw = src->v2_peak_w_bw;
+	comm_port_node->old_peak_r_bw = half_hrt_r;
+	comm_port_node->old_avg_w_bw = src->v2_avg_w_bw;
+	comm_port_node->old_avg_r_bw = src->v2_avg_r_bw;
+	chn_hrt_w_bw[comm_id][chnn_id] = v2_chn_hrt_w_bw[comm_id][chnn_id];
+	chn_srt_w_bw[comm_id][chnn_id] = v2_chn_srt_w_bw[comm_id][chnn_id];
+	chn_hrt_r_bw[comm_id][chnn_id] = v2_chn_hrt_r_bw[comm_id][chnn_id];
+	chn_srt_r_bw[comm_id][chnn_id] = v2_chn_srt_r_bw[comm_id][chnn_id];
+
+	if (mmqos_state & SRT_DATA_BW) {
+		if (!(mmqos_state & DYNA_URATE_ENABLE)) {
+			chn_hrt_w_bw[comm_id][chnn_id] = div_u64(chn_hrt_w_bw[comm_id][chnn_id] * 10, 7);
+			chn_srt_w_bw[comm_id][chnn_id] = div_u64(chn_srt_w_bw[comm_id][chnn_id] * 10, 7);
+			chn_hrt_r_bw[comm_id][chnn_id] = div_u64(chn_hrt_r_bw[comm_id][chnn_id] * 10, 7);
+			chn_srt_r_bw[comm_id][chnn_id] = div_u64(chn_srt_r_bw[comm_id][chnn_id] * 10, 7);
+		}
+	} else {
+		chn_hrt_w_bw[comm_id][chnn_id] = div_u64(chn_hrt_w_bw[comm_id][chnn_id] * 10, 7);
+		chn_hrt_r_bw[comm_id][chnn_id] = div_u64(chn_hrt_r_bw[comm_id][chnn_id] * 10, 7);
+	}
+
+	if (log_level & 1 << log_comm_freq)
+		pr_notice("[mmqos][dbg][new] chn:%d srt_data_bw:%d hrt_w_bw:%d hrt_r_bw:%d srt_w_bw:%d srt_r_bw:%d\n",
+			chnn_id,
+			mmqos_state & SRT_DATA_BW,
+			chn_hrt_w_bw[comm_id][chnn_id],
+			chn_hrt_r_bw[comm_id][chnn_id],
+			chn_srt_w_bw[comm_id][chnn_id],
+			chn_srt_r_bw[comm_id][chnn_id]);
+}
+EXPORT_SYMBOL_GPL(update_channel_bw);
+
+static u32 is_path_write = path_no_type;
+
+static inline bool is_max_bw_to_max_ostdl_policy(struct icc_node *src)
+{
+	if (mmqos_state & FORCE_BW_TO_OSTDL) {
+		MMQOS_ERR("larb=%d port=%d use MTK_MAX_MMQOS_BW",
+			MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id));
+		return false;
+	} else
+		return (!(mmqos_state & DPC_ENABLE) && !(mmqos_state & CAM_NO_MAX_OSTDL)) || (g_hrt->cam_occu_bw == 0);
+}
+
+typedef struct {
+	uint32_t r_bwl;
+	uint32_t w_bwl;
+} bwl_result;
+
+bwl_result calculate_bwl(u32 avg_r_bw, u32 avg_w_bw, u32 peak_r_bw, u32 peak_w_bw)
+{
+	bwl_result result;
+
+	if (peak_r_bw)
+		result.r_bwl = icc_to_MBps(peak_r_bw) * gmmqos->bwl_hrt_r_margin / 100;
+	else
+		result.r_bwl = icc_to_MBps(avg_r_bw) * gmmqos->bwl_srt_r_margin / 100;
+	if  (peak_w_bw)
+		result.w_bwl = icc_to_MBps(peak_w_bw) * gmmqos->bwl_hrt_w_margin / 100;
+	else
+		result.w_bwl = icc_to_MBps(avg_w_bw) * gmmqos->bwl_srt_w_margin / 100;
+
+	MMQOS_DBG("avg_r:%d, avg_w:%d, peak_r: %d, peak_w:%d",
+		avg_r_bw, avg_w_bw, peak_r_bw, peak_w_bw);
+
+	if (log_level & 1 << log_bw)
+		MMQOS_DBG("avg_r:%d, avg_w:%d, peak_r: %d, peak_w:%d",
+			avg_r_bw, avg_w_bw, peak_r_bw, peak_w_bw);
+
+	return result;
+}
+
+static void set_remap_pair_to_icc_node(mux_axi_mon_pair *pair, struct icc_node *icc_node)
+{
+	if (pair) {
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("mux:%d, axi:%d", pair->mux_id, pair->axi_mon_id);
+		icc_node->axi_mux_id = pair->mux_id;
+		icc_node->axi_mon_id = pair->axi_mon_id;
+		icc_node->is_mapping = AXI_REMAP_DONE;
+	} else
+		icc_node->is_mapping = AXI_REMAP_NO_FOUND;
+}
+
+#define IS_LARB			(true)
+#define IS_NOT_LARB		(false)
+static void mmqos_set_axi_limiter(struct icc_node *icc_node, bool is_larb)
+{
+	u32 axi_mon_id = 0, mux_id = 0;
+	u32 min_freq = 0, axi_mon_state = 0;
+
+	axi_mon_id = icc_node->axi_mon_id;
+	if (mmqos_state & AXI_MON_OSTDBL_ENABLE
+		|| mmqos_state & AXI_MON_BWL_ENABLE) {
+		mux_id = icc_node->axi_mux_id;
+		min_freq = get_min_freq_from_axi_mon(mux_id);
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("mux_id:%d, axi_mon_id:%d, min_freq:%d",
+				mux_id, axi_mon_id, min_freq);
+	}
+	if (mmqos_state & AXI_MON_OSTDBL_ENABLE) {
+		if (is_larb)
+			mtk_mmmc_set_ostdbl_by_larb(axi_mon_id,
+			icc_node->v2_avg_r_bw,
+			icc_node->v2_avg_w_bw,
+			icc_node->v2_peak_r_bw,
+			icc_node->v2_peak_w_bw,
+			min_freq);
+		else
+			mtk_mmmc_set_ostdbl(axi_mon_id, min_freq);
+		axi_mon_state |= 1 << AXI_MON_OSTDBL;
+	}
+	if (mmqos_state & AXI_MON_BWL_ENABLE) {
+		bwl_result result = calculate_bwl(icc_node->v2_avg_r_bw,
+			icc_node->v2_avg_w_bw,
+			icc_node->v2_peak_r_bw,
+			icc_node->v2_peak_w_bw);
+		if (log_level & 1 << log_bw)
+			MMQOS_DBG("result.r_bwl:%d, w_bwl:%d", result.r_bwl, result.w_bwl);
+		mtk_mmmc_set_bw_limiter(axi_mon_id, result.r_bwl, result.w_bwl, min_freq);
+		axi_mon_state |= 1 << AXI_MON_BWL;
+	}
+	mtk_mmmc_enable_axi_limiter(axi_mon_id, axi_mon_state);
+	if (log_level & 1 << log_bw)
+		MMQOS_DBG("axi_mon_id:%d, axi_mon_state:%d", axi_mon_id, axi_mon_state);
+}
+
+static int mtk_mmqos_set(struct icc_node *src, struct icc_node *dst)
+{
+	struct larb_node *larb_node;
+	struct larb_port_node *larb_port_node;
+	struct common_port_node *comm_port_node;
+	struct common_node *comm_node;
+	struct mtk_mmqos *mmqos = container_of(dst->provider,
+					struct mtk_mmqos, prov);
+	u32 value = 1, record_idx = 0xFFFFFFFF;
+	u32 comm_id, chnn_id, port_id, trace_comm_id, trace_chnn_id;
+	const char *r_w_type = "w";
+	mux_axi_mon_pair *pair;
+
+	MMQOS_SYSTRACE_BEGIN("%s %s->%s", __func__, src->name, dst->name);
+	switch (NODE_TYPE(dst->id)) {
+	case MTK_MMQOS_NODE_COMMON:
+		comm_node = (struct common_node *)dst->data;
+#ifdef ENABLE_INTERCONNECT_V2
+		comm_port_node = (struct common_port_node *)src->data;
+		comm_id = (comm_port_node->channel_v2 >> 4) & 0xf;
+		chnn_id = comm_port_node->channel_v2 & 0xf;
+		if (chnn_id) {
+			u32 chn_srt_r_bw_temp, chn_srt_w_bw_temp, chn_hrt_r_bw_temp, chn_hrt_w_bw_temp;
+
+			chnn_id -= 1;
+			update_channel_bw(comm_id, chnn_id, src);
+			chn_srt_r_bw_temp = chn_srt_r_bw[comm_id][chnn_id];
+			chn_srt_w_bw_temp = chn_srt_w_bw[comm_id][chnn_id];
+			chn_hrt_r_bw_temp = chn_hrt_r_bw[comm_id][chnn_id];
+			chn_hrt_w_bw_temp = chn_hrt_w_bw[comm_id][chnn_id];
+			if (mmqos_state & DYNA_URATE_ENABLE) {
+				chn_srt_r_bw_temp = div_u64(chn_srt_r_bw_temp * 10, 7);
+				chn_srt_w_bw_temp = div_u64(chn_srt_w_bw_temp * 10, 7);
+				chn_hrt_r_bw_temp = div_u64(chn_hrt_r_bw_temp * 10, 7);
+				chn_hrt_w_bw_temp = div_u64(chn_hrt_w_bw_temp * 10, 7);
+			}
+			record_idx = record_chn_bw(comm_id, chnn_id,
+					chn_srt_r_bw_temp,
+					chn_srt_w_bw_temp,
+					chn_hrt_r_bw_temp,
+					chn_hrt_w_bw_temp);
+			if (mmqos_met_enabled())
+				trace_mmqos__chn_bw(comm_id, chnn_id,
+					icc_to_MBps(chn_srt_r_bw_temp),
+					icc_to_MBps(chn_srt_w_bw_temp),
+					icc_to_MBps(chn_hrt_r_bw_temp),
+					icc_to_MBps(chn_hrt_w_bw_temp),
+					0,
+					TYPE_IS_ON,
+					TYPE_IS_MAX);
+		}
+#endif
+		if (!comm_node)
+			break;
+		if (mmqos_state & DVFSRC_ENABLE) {
+			set_comm_icc_bw(comm_node, chnn_id, record_idx);
+			update_hrt_bw(mmqos);
+		}
+		//queue_work(mmqos->wq, &comm_node->work);
+		break;
+	case MTK_MMQOS_NODE_COMMON_PORT:
+		comm_port_node = (struct common_port_node *)dst->data;
+		larb_node = (struct larb_node *)src->data;
+		if (!comm_port_node || !larb_node)
+			break;
+		comm_id = (larb_node->channel >> 4) & 0xf;
+		chnn_id = larb_node->channel_v2 & 0xf;
+		if ((mmqos_state & DISP_BY_LARB_ENABLE) == 0
+			&& (src->id == gmmqos->disp_virt_larbs[1] ||
+			src->id == gmmqos->disp_virt_larbs[2])) {
+			if (log_level & 1 << log_bw)
+				pr_notice("ignore larb%d\n", src->id);
+			break;
+		}
+
+		record_last_larb(src->id, src->avg_bw, src->peak_bw);
+
+		if (chnn_id) {
+			if (mmqos_met_enabled()) {
+				if (is_path_write == path_no_type) {
+					if (!larb_node->is_write)
+						r_w_type = "r";
+					else
+						r_w_type = "w";
+					trace_comm_id = (larb_node->channel_v2 >> 4) & 0xf;
+					trace_chnn_id = larb_node->channel_v2 & 0xf;
+					trace_chnn_id -= 1;
+					trace_mmqos__larb_avg_bw(
+						r_w_type,
+						src->name,
+						icc_to_MBps(src->avg_bw),
+						trace_comm_id,
+						trace_chnn_id);
+					trace_mmqos__larb_peak_bw(
+						r_w_type,
+						src->name,
+						icc_to_MBps(src->peak_bw),
+						trace_comm_id,
+						trace_chnn_id);
+				}
+				is_path_write = path_no_type;
+			}
+		}
+
+		rt_mutex_lock(&comm_port_node->bw_lock);
+#ifdef ENABLE_INTERCONNECT_V2
+		if (comm_port_node->latest_mix_bw == dst->v2_mix_bw
+			&& comm_port_node->latest_peak_bw == dst->peak_bw
+			&& comm_port_node->latest_avg_bw == dst->avg_bw) {
+			rt_mutex_unlock(&comm_port_node->bw_lock);
+			break;
+		}
+		comm_port_node->latest_mix_bw = dst->v2_mix_bw;
+#endif
+		comm_port_node->latest_peak_bw = dst->peak_bw;
+		comm_port_node->latest_avg_bw = dst->avg_bw;
+		port_id = MASK_8(dst->id);
+		if (mmqos_state & BWL_ENABLE)
+			mmqos_update_comm_bw(comm_port_node->larb_dev,
+				port_id, comm_port_node->common->freq,
+				icc_to_MBps(comm_port_node->latest_mix_bw),
+				icc_to_MBps(comm_port_node->latest_peak_bw),
+				mmqos->qos_bound, comm_port_node->hrt_type == HRT_MAX_BWL);
+
+		u16 comm_ostdl = 0;
+		if ((mmqos_state & COMM_OSTDL_ENABLE)
+			&& larb_node->is_report_bw_larbs) {
+			if (mmqos_state & VCODEC_BW_BYPASS
+				&& comm_port_node->hrt_type == SRT_VDEC) {
+				if (log_level & 1 << log_bw)
+					pr_notice("ignore SRT_VDEC comm port:%#x OSTDL\n", dst->id);
+			} else if (mmqos_state & VCODEC_BW_BYPASS
+				&& comm_port_node->hrt_type == SRT_VENC) {
+				if (log_level & 1 << log_bw)
+					pr_notice("ignore SRT_VENC comm port:%#x OSTDL\n", dst->id);
+			} else {
+				if (log_level & 1 << log_bw)
+					pr_notice("comm=%d port=%d larb=%d avg_bw:%d peak_bw:%d\n",
+						comm_id, MASK_8(dst->id), LARB_ID(src->id),
+						(int)icc_to_MBps(src->avg_bw),
+						(int)icc_to_MBps(src->peak_bw));
+				/* Calculate ostdl for recording */
+				comm_ostdl = mmqos_calc_comm_ostdl(mmqos->max_ratio, src);
+				/* Set ostdl to hardware */
+				mmqos_update_comm_ostdl(comm_port_node->larb_dev,
+					port_id, mmqos->max_ratio, src);
+			}
+		}
+
+		comm_id = COMM_PORT_COMM_ID(dst->id);
+		if (mmqos_state & AXI_MON_LIMITER_SUPPORT) {
+			if (comm_port_node->base->icc_node->is_mapping == AXI_NOT_REMAP) {
+				port_id = (comm_port_node->real_port_id >= 0) ? comm_port_node->real_port_id : port_id;
+				pair = get_mux_axi_pair_by_comm_port(comm_id, port_id);
+				set_remap_pair_to_icc_node(pair, comm_port_node->base->icc_node);
+			}
+			if (comm_port_node->base->icc_node->is_mapping == AXI_REMAP_DONE) {
+				mmqos_set_axi_limiter(comm_port_node->base->icc_node, IS_NOT_LARB);
+			}
+		}
+		if (port_id != VIRT_COMM_PORT_ID)
+			chnn_id = comm_port_node->channel - 1;
+		record_comm_port_bw(comm_id, port_id, LARB_ID(src->id),
+			src->avg_bw, src->peak_bw,
+			comm_port_node->latest_avg_bw,
+			comm_port_node->latest_peak_bw, comm_ostdl);
+		rt_mutex_unlock(&comm_port_node->bw_lock);
+		break;
+	case MTK_MMQOS_NODE_LARB:
+		larb_port_node = (struct larb_port_node *)src->data;
+		larb_node = (struct larb_node *)dst->data;
+		if (!larb_port_node || !larb_node || !larb_node->larb_dev)
+			break;
+		/* update channel BW */
+		comm_id = (larb_port_node->channel >> 4) & 0xf;
+		chnn_id = larb_port_node->channel & 0xf;
+#ifdef ENABLE_INTERCONNECT_V2
+		if (icc_to_MBps(src->v2_mix_bw)) {
+			value = SHIFT_ROUND(
+				icc_to_MBps(src->v2_mix_bw),
+				larb_port_node->bw_ratio);
+			if (src->peak_bw) {
+				if ((larb_port_node->is_write && w_hrt_ostdl == OSTDL_1_5) ||
+					(!larb_port_node->is_write && r_hrt_ostdl == OSTDL_1_5))
+					value = SHIFT_ROUND(value * 3, 1);
+				if ((larb_port_node->is_write && w_hrt_ostdl == OSTDL_2) ||
+					(larb_port_node->is_write && w_hrt_ostdl == OSTDL_1) ||
+					(!larb_port_node->is_write && r_hrt_ostdl == OSTDL_2))
+					value = SHIFT_ROUND(
+						icc_to_MBps(src->v2_mix_bw),
+						larb_port_node->bw_ratio - 1);
+				if (larb_port_node->is_write && w_hrt_ostdl == OSTDL_3)
+					value = value * 3;
+			} else {
+				if (larb_port_node->is_write && w_srt_ostdl == OSTDL_2)
+					value = SHIFT_ROUND(
+						icc_to_MBps(src->v2_mix_bw),
+						larb_port_node->bw_ratio - 1);
+				if (!larb_port_node->is_write && r_srt_ostdl == OSTDL_0_75)
+					value = SHIFT_ROUND(
+						icc_to_MBps(src->v2_mix_bw) * 3,
+						larb_port_node->bw_ratio + 2);
+			}
+		} else {
+			src->v2_max_ostd = false;
+		}
+		if (value > mmqos->max_ratio) {
+			dev_notice(larb_node->larb_dev,
+				"larb=%d port=%d avg_bw:%d peak_bw:%d mix_bw:%d ostd=%#x\n",
+				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				(int)icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
+				(int)icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+				(int)icc_to_MBps(src->v2_mix_bw),
+				value);
+			value = mmqos->max_ratio;
+		}
+		if (src->v2_max_ostd && is_max_bw_to_max_ostdl_policy(src)) {
+			if (log_level & 1 << log_bw)
+				MMQOS_DBG("larb=%d port=%d use max_disp_ostdl=%#x",
+					MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+					mmqos->max_disp_ostdl);
+			value = mmqos->max_disp_ostdl;
+		}
+#endif
+		if (mmqos_state & OSTD_ENABLE) {
+			if (src->peak_bw)
+				larb_port_node->was_hrt = true;
+			record_larb_port_bw_ostdl(MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
+				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+				icc_to_MBps(src->v2_mix_bw),
+				value,
+				larb_port_node->was_hrt);
+			if (mmqos_state & REAL_TIME_PERM_ENABLE) {
+				if (larb_port_node->base->icc_node->peak_bw)
+					mtk_smi_set_hrt_perm(larb_node->larb_dev,
+						MTK_M4U_TO_PORT(src->id), true);
+				else
+					mtk_smi_set_hrt_perm(larb_node->larb_dev,
+						MTK_M4U_TO_PORT(src->id), false);
+			}
+			mtk_smi_larb_bw_set(
+				larb_node->larb_dev,
+				MTK_M4U_TO_PORT(src->id), value);
+		}
+
+		if (mmqos_state & AXI_MON_LIMITER_SUPPORT) {
+			if (larb_node->base->icc_node->is_mapping == AXI_NOT_REMAP) {
+				pair = get_mux_axi_pair_by_larb(MTK_M4U_TO_LARB(src->id));
+				set_remap_pair_to_icc_node(pair, larb_node->base->icc_node);
+			}
+			if (larb_node->base->icc_node->is_mapping == AXI_REMAP_DONE) {
+				mmqos_set_axi_limiter(larb_node->base->icc_node, IS_LARB);
+			}
+		}
+
+		if (log_level & 1 << log_bw)
+			dev_notice(larb_node->larb_dev,
+				"larb=%d port=%d avg_bw:%d peak_bw:%d mix_bw:%d ostd=%#x\n",
+				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				(int)(icc_to_MBps(larb_port_node->base->icc_node->avg_bw)),
+				(int)(icc_to_MBps(larb_port_node->base->icc_node->peak_bw)),
+				(int)(icc_to_MBps(src->v2_mix_bw)),
+				value);
+
+		record_last_larb_port(src->id,
+			larb_port_node->base->icc_node->avg_bw,
+			larb_port_node->base->icc_node->peak_bw);
+
+		if (mmqos_met_enabled()) {
+			if (!larb_port_node->is_write) {
+				r_w_type = "r";
+				is_path_write = path_read;
+			} else {
+				r_w_type = "w";
+				is_path_write = path_write;
+			}
+			trace_comm_id = (larb_node->channel_v2 >> 4) & 0xf;
+			trace_chnn_id = larb_node->channel_v2 & 0xf;
+			trace_chnn_id -= 1;
+			trace_mmqos__larb_port_avg_bw(
+				r_w_type,
+				dst->name,
+				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				icc_to_MBps(larb_port_node->base->icc_node->avg_bw),
+				trace_comm_id,
+				trace_chnn_id);
+			trace_mmqos__larb_port_peak_bw(
+				r_w_type,
+				dst->name,
+				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				icc_to_MBps(larb_port_node->base->icc_node->peak_bw),
+				trace_comm_id,
+				trace_chnn_id);
+			trace_mmqos__larb_port_ostdl(
+				r_w_type,
+				dst->name,
+				MTK_M4U_TO_LARB(src->id), MTK_M4U_TO_PORT(src->id),
+				value);
+		}
+		//queue_work(mmqos->wq, &larb_node->work);
+		break;
+	default:
+		break;
+	}
+	MMQOS_SYSTRACE_END("%s %s->%s", __func__, src->name, dst->name);
+	return 0;
+}
+
+static int mtk_mmqos_aggregate(struct icc_node *node,
+	u32 tag, u32 avg_bw, u32 peak_bw, u32 *agg_avg,
+	u32 *agg_peak)
+{
+	struct mmqos_base_node *base_node = NULL;
+	struct larb_port_node *larb_port_node;
+	u32 mix_bw = peak_bw;
+
+	if (!node || !node->data)
+		return 0;
+
+	MMQOS_SYSTRACE_BEGIN("%s %s", __func__, node->name);
+	switch (NODE_TYPE(node->id)) {
+	case MTK_MMQOS_NODE_LARB_PORT:
+		larb_port_node = (struct larb_port_node *)node->data;
+		base_node = larb_port_node->base;
+		if (peak_bw) {
+			if (peak_bw == MTK_MMQOS_MAX_BW) {
+				larb_port_node->is_max_ostd = true;
+				mix_bw = max_t(u32, avg_bw, 1000);
+			} else {
+				mix_bw = peak_bw;
+			}
+		}
+		break;
+	case MTK_MMQOS_NODE_COMMON_PORT:
+		base_node = ((struct common_port_node *)node->data)->base;
+		break;
+	//default:
+	//	return 0;
+	}
+	if (base_node) {
+		if (*agg_avg == 0 && *agg_peak == 0)
+			base_node->mix_bw = 0;
+		base_node->mix_bw += peak_bw ? mix_bw : avg_bw;
+	}
+
+	*agg_avg += avg_bw;
+
+	if (peak_bw == MTK_MMQOS_MAX_BW)
+		*agg_peak += 1000; /* for BWL soft mode */
+	else
+		*agg_peak += peak_bw;
+
+	MMQOS_SYSTRACE_END("%s %s", __func__, node->name);
+	return 0;
+}
+
+static bool mtk_mmqos_path_is_write(struct icc_node *node)
+{
+	struct larb_port_node *larb_port_node = NULL;
+	struct larb_node *larb_node = NULL;
+
+	switch (NODE_TYPE(node->id)) {
+	case MTK_MMQOS_NODE_LARB_PORT:
+		larb_port_node = (struct larb_port_node *)node->data;
+		if (larb_port_node->is_write) {
+			if (log_level & 1 << log_v2_dbg)
+				pr_notice("[mmqos][port] node_id:0x%x is_write:%d\n",
+						 node->id, larb_port_node->is_write);
+			return true;
+		}
+		if (log_level & 1 << log_v2_dbg)
+			pr_notice("[mmqos][port] node_id:0x%x is_write:%d\n",
+						 node->id, larb_port_node->is_write);
+
+		break;
+	case MTK_MMQOS_NODE_LARB:
+		larb_node = (struct larb_node *)node->data;
+		if (larb_node->is_write) {
+			if (log_level & 1 << log_v2_dbg)
+				pr_notice("[mmqos][larb] node_id:0x%x is_write:%d\n",
+						 node->id, larb_node->is_write);
+			return true;
+		}
+		if (log_level & 1 << log_v2_dbg)
+			pr_notice("[mmqos][larb] node_id:0x%x is_write:%d\n",
+						node->id, larb_node->is_write);
+		break;
+	}
+	return false;
+}
+
+static int mtk_mmqos_update_comm_chn_info(struct icc_node *src, struct icc_node *dst)
+{
+	struct common_port_node *comm_port_node = NULL;
+	struct larb_node *larb_node = NULL;
+
+	larb_node = (struct larb_node *)src->data;
+	comm_port_node = (struct common_port_node *)dst->data;
+
+	if (NODE_TYPE(dst->id) == MTK_MMQOS_NODE_COMMON_PORT
+		&& NODE_TYPE(src->id) == MTK_MMQOS_NODE_LARB)
+		larb_node->channel_v2 = comm_port_node->channel_v2;
+	return 0;
+}
+
+
+static struct icc_node *mtk_mmqos_xlate(
+	struct of_phandle_args *spec, void *data)
+{
+	struct icc_onecell_data *icc_data;
+	s32 i;
+
+	if (!spec || !data)
+		return ERR_PTR(-EPROBE_DEFER);
+	icc_data = (struct icc_onecell_data *)data;
+	for (i = 0; i < icc_data->num_nodes; i++)
+		if (icc_data->nodes[i]->id == spec->args[0])
+			return icc_data->nodes[i];
+	pr_notice("%s: invalid index %u\n", __func__, spec->args[0]);
+	return ERR_PTR(-EINVAL);
+}
+
+static void larb_port_ostdl_dump(struct seq_file *file, u32 larb_id, u32 i)
+{
+	u64 ts;
+	u64 rem_nsec;
+
+	ts = larb_port_bw_rec->time[larb_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+	if (ts == 0 &&
+		larb_port_bw_rec->port_id[larb_id][i] == 0 &&
+		larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
+		larb_port_bw_rec->peak_bw[larb_id][i] == 0 &&
+		larb_port_bw_rec->ostdl[larb_id][i] == 0)
+		return;
+
+	mmqos_debug_dump_line(file, "[%5llu.%06llu] larb%2d port%2d %s %8d %8d %8d %8d\n",
+		(u64)ts, rem_nsec / 1000,
+		larb_id,
+		larb_port_bw_rec->port_id[larb_id][i],
+		larb_port_bw_rec->was_hrt[larb_id][i] ? "hrt" : "   ",
+		larb_port_bw_rec->avg_bw[larb_id][i],
+		larb_port_bw_rec->peak_bw[larb_id][i],
+		larb_port_bw_rec->mix_bw[larb_id][i],
+		larb_port_bw_rec->ostdl[larb_id][i]);
+}
+
+static void dump_record_entry_larb(char *buf, s32 *len, u32 larb_id, u32 i, bool *record)
+{
+	u64 ts, rem_nsec;
+	s32 ret;
+
+	ts = larb_port_bw_rec->time[larb_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+
+	if (ts == 0 &&
+		larb_port_bw_rec->port_id[larb_id][i] == 0 &&
+		larb_port_bw_rec->avg_bw[larb_id][i] == 0 &&
+		larb_port_bw_rec->peak_bw[larb_id][i] == 0)
+		return;
+
+	ret = snprintf(buf + *len, MAX_BUF_LEN - *len,
+		"[%5llu.%06llu] port%2d %s %8d %8d ",
+		(u64)ts, rem_nsec / 1000,
+		larb_port_bw_rec->port_id[larb_id][i],
+		larb_port_bw_rec->was_hrt[larb_id][i] ? "hrt" : "   ",
+		larb_port_bw_rec->avg_bw[larb_id][i],
+		larb_port_bw_rec->peak_bw[larb_id][i]);
+	if (ret < 0 || ret >= MAX_BUF_LEN - *len) {
+		pr_notice("%s\n", buf);
+		*len = 0;
+		memset(buf, '\0', sizeof(char) * MAX_BUF_LEN);
+	} else {
+		*len += ret;
+		*record = true;
+	}
+}
+
+static void larb_port_ostdl_dump_line(u32 larb_id)
+{
+	u32 i, start;
+	s32 len = 0, ret;
+	char buf[MAX_BUF_LEN] = {0};
+	bool record = false;
+
+	start = larb_port_bw_rec->idx[larb_id];
+
+	ret = snprintf(buf + len, MAX_BUF_LEN - len,
+		"[mmqos] larb%2d ", larb_id);
+	if (ret < 0)
+		pr_notice("Failed to print larb id");
+	else
+		len += ret;
+
+	for (i = start; i < RECORD_NUM_LARB_PORT; i++)
+		dump_record_entry_larb(buf, &len, larb_id, i, &record);
+
+	for (i = 0; i < start; i++)
+		dump_record_entry_larb(buf, &len, larb_id, i, &record);
+
+	if (record)
+		pr_notice("%s\n", buf);
+}
+
+static void dump_record_entry_comm(char *buf, s32 *len, u32 comm_id, u32 port_id, u32 i, bool *record)
+{
+	u64 ts, rem_nsec;
+	s32 ret;
+
+	ts = comm_port_bw_rec->time[comm_id][port_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+
+	if (ts == 0 &&
+		comm_port_bw_rec->avg_bw[comm_id][port_id][i] == 0 &&
+		comm_port_bw_rec->peak_bw[comm_id][port_id][i] == 0 &&
+		comm_port_bw_rec->ostdl[comm_id][port_id][i] == 0)
+		return;
+
+	ret = snprintf(buf + *len, MAX_BUF_LEN - *len,
+		"[%5llu.%06llu] larb%2d avg=%5d peak=%5d ostdl=%4d ",
+		(u64)ts, rem_nsec / 1000,
+		comm_port_bw_rec->larb_id[comm_id][port_id][i],
+		(int)(icc_to_MBps(comm_port_bw_rec->avg_bw[comm_id][port_id][i])),
+		(int)(icc_to_MBps(comm_port_bw_rec->peak_bw[comm_id][port_id][i])),
+		comm_port_bw_rec->ostdl[comm_id][port_id][i]);
+	if (ret < 0 || ret >= MAX_BUF_LEN - *len) {
+		pr_notice("%s\n", buf);
+		*len = 0;
+		memset(buf, '\0', sizeof(char) * MAX_BUF_LEN);
+	} else {
+		*len += ret;
+		*record = true;
+	}
+}
+
+static void comm_port_ostdl_dump_line(u32 comm_id, u32 port_id)
+{
+	u32 i, start;
+	s32 len = 0, ret;
+	char buf[MAX_BUF_LEN] = {0};
+	bool record = false;
+
+	start = comm_port_bw_rec->idx[comm_id][port_id];
+
+	ret = snprintf(buf + len, MAX_BUF_LEN - len,
+		"[mmqos] comm%d port%d ", comm_id, port_id);
+	if (ret < 0)
+		pr_notice("Failed to print comm port id");
+	else
+		len += ret;
+
+	for (i = start; i < RECORD_NUM; i++)
+		dump_record_entry_comm(buf, &len, comm_id, port_id, i, &record);
+
+	for (i = 0; i < start; i++)
+		dump_record_entry_comm(buf, &len, comm_id, port_id, i, &record);
+
+	if (record)
+		pr_notice("%s\n", buf);
+}
+
+static void comm_port_bw_dump(struct seq_file *file, u32 comm_id, u32 port_id, u32 i)
+{
+	u64 ts;
+	u64 rem_nsec;
+
+	ts = comm_port_bw_rec->time[comm_id][port_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+	if (ts == 0 &&
+		comm_port_bw_rec->avg_bw[comm_id][port_id][i] == 0 &&
+		comm_port_bw_rec->peak_bw[comm_id][port_id][i] == 0 &&
+		comm_port_bw_rec->l_avg_bw[comm_id][port_id][i] == 0 &&
+		comm_port_bw_rec->l_peak_bw[comm_id][port_id][i] == 0)
+		return;
+
+	seq_printf(file, "[%5llu.%06llu] comm%d port%d larb%2d %8d %8d %8d %8d %8d\n",
+		(u64)ts, rem_nsec / 1000,
+		comm_id, port_id,
+		comm_port_bw_rec->larb_id[comm_id][port_id][i],
+		(int)(icc_to_MBps(comm_port_bw_rec->avg_bw[comm_id][port_id][i])),
+		(int)(icc_to_MBps(comm_port_bw_rec->peak_bw[comm_id][port_id][i])),
+		(int)(icc_to_MBps(comm_port_bw_rec->l_avg_bw[comm_id][port_id][i])),
+		(int)(icc_to_MBps(comm_port_bw_rec->l_peak_bw[comm_id][port_id][i])),
+		comm_port_bw_rec->ostdl[comm_id][port_id][i]);
+}
+
+static void chn_bw_dump(struct seq_file *file, u32 comm_id, u32 chnn_id, u32 i)
+{
+	u64 ts;
+	u64 rem_nsec;
+
+	ts = chn_bw_rec->time[comm_id][chnn_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+	mmqos_debug_dump_line(file, "[%5llu.%06llu] comm%d_%d %8d %8d %8d %8d orig\n",
+		(u64)ts, rem_nsec / 1000,
+		comm_id, chnn_id,
+		(int)icc_to_MBps(chn_bw_rec->srt_r_bw[comm_id][chnn_id][i]),
+		(int)icc_to_MBps(chn_bw_rec->srt_w_bw[comm_id][chnn_id][i]),
+		(int)icc_to_MBps(chn_bw_rec->hrt_r_bw[comm_id][chnn_id][i]),
+		(int)icc_to_MBps(chn_bw_rec->hrt_w_bw[comm_id][chnn_id][i]));
+
+	if (mmqos_state & DYNA_URATE_ENABLE) {
+		ts = chn_bw_rec->urate_time[comm_id][chnn_id][i];
+		rem_nsec = do_div(ts, 1000000000);
+		mmqos_debug_dump_line(file, "[%5llu.%06llu] comm%d_%d %8d %8d %8d %8d urate\n",
+			(u64)ts, rem_nsec / 1000,
+			comm_id, chnn_id,
+			(int)icc_to_MBps(chn_bw_rec->urate_srt_r_bw[comm_id][chnn_id][i]),
+			(int)icc_to_MBps(chn_bw_rec->urate_srt_w_bw[comm_id][chnn_id][i]),
+			(int)icc_to_MBps(chn_bw_rec->urate_hrt_r_bw[comm_id][chnn_id][i]),
+			(int)icc_to_MBps(chn_bw_rec->urate_hrt_w_bw[comm_id][chnn_id][i]));
+	}
+}
+
+static void chn_emi_dump(struct seq_file *file, u32 comm_id, u32 chnn_id, u32 i)
+{
+	u64 ts;
+	u64 rem_nsec;
+
+	ts = emi_chn_bw_rec->time[comm_id][chnn_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+
+	mmqos_debug_dump_line(file, "[%5llu.%06llu] comm%d_%d %8d %8d %8d %8d emi bw\n",
+		(u64)ts, rem_nsec / 1000,
+		comm_id, chnn_id,
+		(int)icc_to_MBps(emi_chn_bw_rec->emi_srt_bw[comm_id][chnn_id][i]),
+		(int)icc_to_MBps(emi_chn_bw_rec->emi_hrt_bw[comm_id][chnn_id][i]),
+		(int)icc_to_MBps(emi_chn_bw_rec->urate_emi_srt_bw[comm_id][chnn_id][i]),
+		(int)icc_to_MBps(emi_chn_bw_rec->urate_emi_hrt_bw[comm_id][chnn_id][i]));
+}
+
+static void chn_emi_freq_dump(struct seq_file *file, u32 comm_id, u32 i)
+{
+	u64 ts;
+	u64 rem_nsec;
+
+	ts = emi_freq_rec->time[comm_id][i];
+	rem_nsec = do_div(ts, 1000000000);
+
+	mmqos_debug_dump_line(file, "[%5llu.%06llu] comm%d peak_emi_freq=%u pmqos_bw6=%#x dvfsrc_level=%#x\n",
+			(u64)ts, rem_nsec / 1000,
+			comm_id,
+			emi_freq_rec->peak_emi_freq[comm_id][i],
+			emi_freq_rec->pmqos_bw6[comm_id][i],
+			emi_freq_rec->dvfsrc_level[comm_id][i]);
+}
+
+static void hrt_bw_dump(struct seq_file *file, u32 i)
+{
+	u64 ts;
+	u64 rem_nsec;
+
+	ts = g_hrt->hrt_rec.time[i];
+	rem_nsec = do_div(ts, 1000000000);
+	seq_printf(file, "[%5llu.%06llu]     %8d %8d %8d\n",
+		(u64)ts, rem_nsec / 1000,
+		g_hrt->hrt_rec.avail_hrt[i],
+		g_hrt->hrt_rec.cam_max_hrt[i],
+		g_hrt->hrt_rec.cam_hrt[i]);
+}
+
+static void cam_hrt_bw_dump(struct seq_file *file, u32 i)
+{
+	u64 ts;
+	u64 rem_nsec;
+
+	ts = g_hrt->cam_hrt_rec.time[i];
+	rem_nsec = do_div(ts, 1000000000);
+	seq_printf(file, "[%5llu.%06llu]     %17d\n",
+		(u64)ts, rem_nsec / 1000,
+		g_hrt->cam_hrt_rec.cam_max_hrt[i]);
+}
+
+static void larb_port_ostdl_full_dump(struct seq_file *file, u32 larb_id)
+{
+	u32 i, start;
+
+	start = larb_port_bw_rec->idx[larb_id];
+	for (i = start; i < RECORD_NUM_LARB_PORT; i++)
+		larb_port_ostdl_dump(file, larb_id, i);
+
+	for (i = 0; i < start; i++)
+		larb_port_ostdl_dump(file, larb_id, i);
+}
+
+static void comm_port_bw_full_dump(struct seq_file *file, u32 comm_id, u32 port_id)
+{
+	u32 i, start;
+
+	start = comm_port_bw_rec->idx[comm_id][port_id];
+	for (i = start; i < RECORD_NUM; i++)
+		comm_port_bw_dump(file, comm_id, port_id, i);
+
+	for (i = 0; i < start; i++)
+		comm_port_bw_dump(file, comm_id, port_id, i);
+
+}
+
+static void chn_bw_full_dump(struct seq_file *file, u32 comm_id, u32 chnn_id)
+{
+	u32 i, start;
+
+	start = chn_bw_rec->idx[comm_id][chnn_id];
+	for (i = start; i < RECORD_NUM; i++)
+		chn_bw_dump(file, comm_id, chnn_id, i);
+
+	for (i = 0; i < start; i++)
+		chn_bw_dump(file, comm_id, chnn_id, i);
+
+}
+
+static void chn_bw_dump_by_comm(struct seq_file *file, u32 comm_id)
+{
+	u32 chnn_id = 0;
+
+	for (chnn_id = 0; chnn_id < MMQOS_COMM_CHANNEL_NUM; chnn_id++)
+		chn_bw_full_dump(file, comm_id, chnn_id);
+}
+
+static void chn_bw_all_dump(struct seq_file *file)
+{
+	u32 comm_id = 0;
+	struct common_node *comm_node;
+
+	mmqos_debug_dump_line(file, "MMQoS Channel BW Dump: %8s %8s %8s %8s\n",
+		"s_r", "s_w", "h_r", "h_w");
+	list_for_each_entry(comm_node, &gmmqos->comm_list, list) {
+		comm_id = MASK_8(comm_node->base->icc_node->id);
+		chn_bw_dump_by_comm(file, comm_id);
+	}
+}
+
+static void emi_chn_bw_dump(struct seq_file *file, u32 comm_id, u32 chnn_id)
+{
+	u32 i, start;
+
+	start = emi_chn_bw_rec->idx[comm_id][chnn_id];
+
+	for (i = start; i < RECORD_NUM; i++)
+		chn_emi_dump(file, comm_id, chnn_id, i);
+
+	for (i = 0; i < start; i++)
+		chn_emi_dump(file, comm_id, chnn_id, i);
+}
+
+static void emi_bw_freq_dump(struct seq_file *file)
+{
+	u32 i, start;
+	u32 chnn_id = 0;
+	u32 comm_id = 0;
+	struct common_node *comm_node;
+
+	if (mmqos_state & DYNA_URATE_ENABLE) {
+		list_for_each_entry(comm_node, &gmmqos->comm_list, list) {
+			comm_id = MASK_8(comm_node->base->icc_node->id);
+			for (chnn_id = 0; chnn_id < MMQOS_COMM_CHANNEL_NUM; chnn_id++)
+				emi_chn_bw_dump(file, comm_id, chnn_id);
+		}
+
+		list_for_each_entry(comm_node, &gmmqos->comm_list, list) {
+			comm_id = MASK_8(comm_node->base->icc_node->id);
+			start = emi_freq_rec->idx[comm_id];
+
+			for (i = start; i < RECORD_NUM; i++)
+				chn_emi_freq_dump(file, comm_id, i);
+
+			for (i = 0; i < start; i++)
+				chn_emi_freq_dump(file, comm_id, i);
+		}
+	}
+}
+
+#define UNDERRUN_CALLER		"dsi-underrun"
+#define SMI_UT_CALLER		"SMI UT"
+
+static int comm_full_dump(struct notifier_block *nb_smi,
+		unsigned long value, void *data)
+{
+	if (strncmp((char *) data, UNDERRUN_CALLER, strlen(UNDERRUN_CALLER)) == 0 ||
+		strncmp((char *) data, SMI_UT_CALLER, strlen(SMI_UT_CALLER)) == 0) {
+		chn_bw_all_dump(NULL);
+		emi_bw_freq_dump(NULL);
+	}
+
+	return 0;
+}
+
+static void hrt_bw_full_dump(struct seq_file *file)
+{
+	u32 i, start;
+	struct hrt_record *rec = &g_hrt->hrt_rec;
+
+	start = rec->idx;
+	for (i = start; i < RECORD_NUM; i++)
+		hrt_bw_dump(file, i);
+
+	for (i = 0; i < start; i++)
+		hrt_bw_dump(file, i);
+
+}
+
+static void cam_hrt_bw_full_dump(struct seq_file *file)
+{
+	u32 i, start;
+	struct cam_hrt_record *rec = &g_hrt->cam_hrt_rec;
+
+	start = rec->idx;
+	for (i = start; i < RECORD_NUM; i++)
+		cam_hrt_bw_dump(file, i);
+
+	for (i = 0; i < start; i++)
+		cam_hrt_bw_dump(file, i);
+
+}
+
+static int mmqos_last_dump(struct seq_file *file, void *data)
+{
+	u64 ts;
+	u64 ns;
+
+	seq_puts(file, "last larb port:\n");
+	ts = last_rec->larb_port_update_time;
+	ns = do_div(ts, 1000000000);
+	seq_printf(file, "[%5llu.%06llu] %#x %u %u\n",
+		(u64)ts, ns / 1000,
+		last_rec->larb_port_node_id,
+		last_rec->larb_port_avg_bw,
+		last_rec->larb_port_peak_bw);
+	seq_puts(file, "last larb:\n");
+	ts = last_rec->larb_update_time;
+	ns = do_div(ts, 1000000000);
+	seq_printf(file, "[%5llu.%06llu] %#x %u %u",
+		(u64)ts, ns / 1000,
+		last_rec->larb_node_id,
+		last_rec->larb_avg_bw,
+		last_rec->larb_peak_bw);
+	return 0;
+}
+
+static int mmqos_last_debug_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mmqos_last_dump, inode->i_private);
+}
+
+static const struct proc_ops mmqos_last_debug_fops = {
+	.proc_open = mmqos_last_debug_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+struct MM_bwData g_sidData[MAX_SUBSYS_NUM] = {0};
+
+struct MM_bwData *get_mm_bw_data_for_mbrain(void)
+{
+	if (!(mmqos_state & MMPC_V2_ENABLE)) {
+		MMQOS_ERR("Not support for MBrain.\n");
+		return NULL;
+	}
+
+	for (int i = 0; i < MAX_SUBSYS_NUM; i++) {
+		g_sidData[i].sid = i;
+		// total bw
+		g_sidData[i].totalHRT = read_register(SUBSYS_V2_HW_BW_HRT(i)) << DRAM_BW_UNIT_SHIFT;
+		g_sidData[i].totalSRT = read_register(SUBSYS_V2_HW_BW_SRT(i)) << DRAM_BW_UNIT_SHIFT;
+		g_sidData[i].totalEMIHRT = read_register(SUBSYS_V2_HW_EMI_BW_HRT(i)) << DRAM_BW_UNIT_SHIFT;
+		g_sidData[i].totalEMISRT = read_register(SUBSYS_V2_HW_EMI_BW_SRT(i)) << DRAM_BW_UNIT_SHIFT;
+		// channel bw
+		for (int j = 0; j < MAX_BW_VALUE_NUM; j++)
+			g_sidData[i].mmpc_chan_bw[j].bw = read_register(SUBSYS_V2_HW_BW_OFFSET(i, j))
+								<< CHNN_BW_UNIT_SHIFT;
+	}
+	return g_sidData;
+}
+EXPORT_SYMBOL(get_mm_bw_data_for_mbrain);
+
+struct MM_SWCount_Data g_SWCount_Data[MAX_SUBSYS_NUM] = {0};
+
+struct MM_SWCount_Data *get_mm_sw_cnt_for_mbrain(void)
+{
+	if (!(mmqos_state & MMPC_V2_ENABLE) || !(mmqos_state & MMQOS_SW_COUNT_SUPPORT)) {
+		MMQOS_ERR("Not support for qos sw count mbrain.\n");
+		return NULL;
+	}
+
+	if (!gmmqos->mmqos_sram_base) {
+		MMQOS_ERR("No MMQoS SRAM base\n");
+		return NULL;
+	}
+
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++) {
+		g_SWCount_Data[sid].sid = sid;
+		g_SWCount_Data[sid].data_length = 6;
+		// total bw
+		for (int lvl = 0; lvl < MAX_SW_CNT_LEVEL_NUM; lvl++)
+			g_SWCount_Data[sid].sw_cnt_level[lvl].count =
+				readq(gmmqos->mmqos_sram_base + ((sid * 6) + lvl) * 8);
+	}
+	return g_SWCount_Data;
+}
+EXPORT_SYMBOL(get_mm_sw_cnt_for_mbrain);
+
+static void mmpc_subsys_hw_mode_full_dump(struct seq_file *file, int sid)
+{
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		mmqos_debug_dump_line(file, "\nsid:%d, Total HRT: %u, SRT: %u\n",
+			sid, read_register(SUBSYS_V2_HW_BW_HRT(sid)),
+			read_register(SUBSYS_V2_HW_BW_SRT(sid)));
+		mmqos_debug_dump_line(file, "sid:%d, Total EMI HRT: %u, SRT: %u\n",
+			sid, read_register(SUBSYS_V2_HW_EMI_BW_HRT(sid)),
+			read_register(SUBSYS_V2_HW_EMI_BW_SRT(sid)));
+		for (int i = 0; i < MAX_BW_VALUE_NUM; i++)
+			mmqos_debug_dump_line(file, "i:%d, offset:%#x, value:%#x\n",
+				i, SUBSYS_V2_HW_BW_OFFSET(sid, i), read_register(SUBSYS_V2_HW_BW_OFFSET(sid, i)));
+	} else {
+		mmqos_debug_dump_line(file, "\nsid:%d, Total HRT: %u, SRT: %u\n",
+			sid, read_register(SUBSYS_HW_BW_HRT(sid)),
+			read_register(SUBSYS_HW_BW_SRT(sid)));
+		for (int i = 0; i < MAX_REG_VALUE_NUM; i++)
+			mmqos_debug_dump_line(file, "i:%d, offset:%#x, value:%#x\n",
+				i, SUBSYS_HW_BW_OFFSET(sid, i), read_register(SUBSYS_HW_BW_OFFSET(sid, i)));
+	}
+}
+static void mmpc_subsys_hw_mode_full_dump_line(int sid)
+{
+	s32 len = 0, ret = 0;
+	char buf[MAX_BUF_LEN] = {0};
+	u32 hw_bw = 0;
+
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		ret = snprintf(buf + len, MAX_BUF_LEN - len,
+			"[mmqos] sid:%d, Total HRT: %5u, SRT: %5u, Total EMI HRT: %5u, SRT: %5u, ",
+			sid, read_register(SUBSYS_V2_HW_BW_HRT(sid)),
+			read_register(SUBSYS_V2_HW_BW_SRT(sid)),
+			read_register(SUBSYS_V2_HW_EMI_BW_HRT(sid)),
+			read_register(SUBSYS_V2_HW_EMI_BW_SRT(sid)));
+	} else {
+		ret = snprintf(buf + len, MAX_BUF_LEN - len,
+			"[mmqos] sid:%d, Total HRT: %5u, SRT: %5u, ",
+			sid, read_register(SUBSYS_HW_BW_HRT(sid)),
+			read_register(SUBSYS_HW_BW_SRT(sid)));
+	}
+	if (ret < 0)
+		pr_notice("Failed to print subsys %d hw mode\n", sid);
+	len += ret;
+
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
+			hw_bw = read_register(SUBSYS_V2_HW_BW_OFFSET(sid, i));
+			if (i == 0) {
+				ret = snprintf(buf + len, MAX_BUF_LEN - len,
+					"i:%d, offset:%#x, value:%5u ",
+					i, SUBSYS_V2_HW_BW_OFFSET(sid, i), hw_bw);
+				if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+					pr_notice("err ret:%d\n", ret);
+					pr_notice("%s\n", buf);
+					len = 0;
+					memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+				}
+				len += ret;
+			} else {
+				ret = snprintf(buf + len, MAX_BUF_LEN - len,
+					"%5u ", hw_bw);
+				if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+					pr_notice("err ret:%d\n", ret);
+					pr_notice("%s\n", buf);
+					len = 0;
+					memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+				}
+				len += ret;
+			}
+		}
+	} else {
+		for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
+			hw_bw = read_register(SUBSYS_HW_BW_OFFSET(sid, i));
+			if (i == 0) {
+				ret = snprintf(buf + len, MAX_BUF_LEN - len,
+					"i:%d, offset:%#x, value:%5u %5u %5u ",
+					i, SUBSYS_HW_BW_OFFSET(sid, i),
+					hw_bw & 0x3FF, (hw_bw >> 10) & 0x3FF, (hw_bw >> 20) & 0x3FF);
+				if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+					pr_notice("err ret:%d\n", ret);
+					pr_notice("%s\n", buf);
+					len = 0;
+					memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+				}
+				len += ret;
+			} else {
+				ret = snprintf(buf + len, MAX_BUF_LEN - len,
+					"%5u %5u %5u ",
+					hw_bw & 0x3FF, (hw_bw >> 10) & 0x3FF, (hw_bw >> 20) & 0x3FF);
+				if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+					pr_notice("err ret:%d\n", ret);
+					pr_notice("%s\n", buf);
+					len = 0;
+					memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+				}
+				len += ret;
+			}
+		}
+	}
+	pr_notice("%s\n", buf);
+}
+
+static void mmpc_total_bw_full_dump(struct seq_file *file)
+{
+	mmqos_debug_dump_line(file, "\nTotal HRT: %u, SRT: %u\n",
+		read_register(TOTAL_HRT_BW), read_register(TOTAL_SRT_BW));
+	if (mmqos_state & MMPC_V2_ENABLE)
+		mmqos_debug_dump_line(file, "\nTotal EMI HRT: %u, SRT: %u\n",
+			read_register(TOTAL_EMI_HRT_BW), read_register(TOTAL_EMI_SRT_BW));
+	for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
+		mmqos_debug_dump_line(file, "i:%d, offset:%#x, value:%u\n",
+			i, TOTAL_BW(i), read_register(TOTAL_BW(i)));
+	}
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		for (int i = 0; i < MAX_SLB_BW_NUM; i++)
+			mmqos_debug_dump_line(file, "[VENC SLB]i:%d, offset:%#x, value:%u\n",
+				i, TOTAL_SLB_BW(i), read_register(TOTAL_SLB_BW(i)));
+		mmqos_debug_dump_line(file, "\nTotal Current HRT: %u, SRT: %u\n",
+			read_register(TOTAL_CUR_HRT_BW), read_register(TOTAL_CUR_SRT_BW));
+		for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
+			mmqos_debug_dump_line(file, "[Current]i:%d, offset:%#x, value:%u\n",
+				i, TOTAL_CUR_BW(i), read_register(TOTAL_CUR_BW(i)));
+		}
+		for (int i = 0; i < MAX_SLB_BW_NUM; i++)
+			mmqos_debug_dump_line(file, "[Current][VENC SLB]i:%d, offset:%#x, value:%u\n",
+				i, TOTAL_CUR_SLB_BW(i), read_register(TOTAL_CUR_SLB_BW(i)));
+	}
+}
+static void mmpc_total_bw_full_dump_line(void)
+{
+	s32 len = 0, ret = 0;
+	char buf[MAX_BUF_LEN] = {0};
+
+	ret = snprintf(buf + len, MAX_BUF_LEN - len,
+		"[mmqos]        Total HRT: %5u, SRT: %5u, ",
+		read_register(TOTAL_HRT_BW), read_register(TOTAL_SRT_BW));
+	if (ret < 0)
+		pr_notice("%s Failed to print subsys hw mode\n", __func__);
+	len += ret;
+
+	for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
+		if (!i) {
+			ret = snprintf(buf + len, MAX_BUF_LEN - len,
+				"i:%d, offset:%#x, value:%5u ",
+				i, TOTAL_BW(i), read_register(TOTAL_BW(i)));
+			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+				pr_notice("err ret:%d\n", ret);
+				pr_notice("%s\n", buf);
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+			}
+			len += ret;
+		} else {
+			ret = snprintf(buf + len, MAX_BUF_LEN - len,
+				"%5u ", read_register(TOTAL_BW(i)));
+			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+				pr_notice("err ret:%d\n", ret);
+				pr_notice("%s\n", buf);
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+			}
+			len += ret;
+		}
+	}
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		for (int i = 0; i < MAX_SLB_BW_NUM; i++) {
+			ret = snprintf(buf + len, MAX_BUF_LEN - len,
+				"[VENC SLB]i:%d, offset:%#x, value:%5u ",
+				i, TOTAL_SLB_BW(i), read_register(TOTAL_SLB_BW(i)));
+			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+				pr_notice("err ret:%d\n", ret);
+				pr_notice("%s\n", buf);
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+			}
+			len += ret;
+		}
+		ret = snprintf(buf + len, MAX_BUF_LEN - len,
+			"\n[mmqos]        Total EMI HRT: %5u, SRT: %5u, ",
+			read_register(TOTAL_EMI_HRT_BW), read_register(TOTAL_EMI_SRT_BW));
+		len += ret;
+		ret = snprintf(buf + len, MAX_BUF_LEN - len,
+			"\n[mmqos]        Total Current HRT: %5u, SRT: %5u, ",
+			read_register(TOTAL_CUR_HRT_BW), read_register(TOTAL_CUR_SRT_BW));
+		len += ret;
+		for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
+			if (!i) {
+				ret = snprintf(buf + len, MAX_BUF_LEN - len,
+					"[Current]i:%d, offset:%#x, value:%5u ",
+					i, TOTAL_CUR_BW(i), read_register(TOTAL_CUR_BW(i)));
+				if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+					pr_notice("err ret:%d\n", ret);
+					pr_notice("%s\n", buf);
+					len = 0;
+					memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+				}
+				len += ret;
+			} else {
+				ret = snprintf(buf + len, MAX_BUF_LEN - len,
+					"%5u ", read_register(TOTAL_CUR_BW(i)));
+				if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+					pr_notice("err ret:%d\n", ret);
+					pr_notice("%s\n", buf);
+					len = 0;
+					memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+				}
+				len += ret;
+			}
+		}
+		for (int i = 0; i < MAX_SLB_BW_NUM; i++) {
+			ret = snprintf(buf + len, MAX_BUF_LEN - len,
+				"[Current][VENC SLB]i:%d, offset:%#x, value:%5u ",
+				i, TOTAL_CUR_SLB_BW(i), read_register(TOTAL_CUR_SLB_BW(i)));
+			if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+				pr_notice("err ret:%d\n", ret);
+				pr_notice("%s\n", buf);
+				len = 0;
+				memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+			}
+			len += ret;
+		}
+	}
+	pr_notice("%s\n", buf);
+}
+
+static void vmmrc_full_dump_with_table(struct seq_file *file, const char *table_name, u32 table_offset)
+{
+	uint offset, value;
+
+	mmqos_debug_dump_line(file, "%s\n", table_name);
+	for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
+		offset = table_offset + i * 4;
+		value = read_register(offset);
+		mmqos_debug_dump_line(file, "i:%d, %#x: %#10x, %5u %5u %5u\n", i, offset, value,
+			BW_UNIT_TO_MBS(value & 0x3FF), BW_UNIT_TO_MBS((value >> 10) & 0x3FF),
+			BW_UNIT_TO_MBS((value >> 20) & 0x3FF));
+	}
+}
+
+static void vmmrc_full_dump(struct seq_file *file)
+{
+	mmqos_debug_dump_line(file, "\nVMMRC MMInfra Channel BW Dump:\n");
+
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+	//enable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret;
+
+		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+		if (ret < 0 || !mmqos_vcp_ready_done()) {
+			MMQOS_ERR("vcp not ready, ret:%d", ret);
+			mmqos_debug_dump_line(file, "vcp not ready, ret:%d\n", ret);
+
+			return;
+		}
+	}
+#endif
+	vmmrc_full_dump_with_table(file, "apmcu_on", APMCU_ON_BW_OFFSET(0));
+	vmmrc_full_dump_with_table(file, "apmcu_off", APMCU_OFF_BW_OFFSET(0));
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+	//disable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret;
+
+		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+		if (ret < 0)
+			MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
+	}
+#endif
+}
+
+static void vmmrc_full_dump_line_with_table(char *table_name, u32 table_offset)
+{
+	s32 len = 0, ret = 0;
+	char buf[MAX_BUF_LEN] = {0};
+	u32 value, offset;
+
+	ret = snprintf(buf + len, MAX_BUF_LEN - len, "[mmqos] %s: ", table_name);
+	if (ret < 0 || ret >= MAX_BUF_LEN -len)
+		MMQOS_ERR("Failed to print vmmrc dump");
+	len += ret;
+	for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
+		offset = table_offset + i * 4;
+		value = read_register(offset);
+		ret = snprintf(buf + len, MAX_BUF_LEN - len, "%5u %5u %5u ",
+			BW_UNIT_TO_MBS(value & 0x3FF), BW_UNIT_TO_MBS((value >> 10) & 0x3FF),
+			BW_UNIT_TO_MBS((value >> 20) & 0x3FF));
+		if (ret < 0 || ret >= MAX_BUF_LEN - len) {
+			MMQOS_ERR("err ret:%d, buf:%s\n", ret, buf);
+			len = 0;
+			memset(buf, '\0', sizeof(char) * ARRAY_SIZE(buf));
+		}
+		len += ret;
+	}
+	pr_notice("%s\n", buf);
+}
+
+static void vmmrc_full_dump_line(void)
+{
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+	//enable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret;
+
+		ret = mtk_mmdvfs_enable_vcp(true, VCP_PWR_USR_MMQOS);
+		if (ret < 0 || !mmqos_vcp_ready_done()) {
+			MMQOS_ERR("vcp not ready, ret:%d", ret);
+			return;
+		}
+	}
+#endif
+	vmmrc_full_dump_line_with_table("apmcu_on ", APMCU_ON_BW_OFFSET(0));
+	vmmrc_full_dump_line_with_table("apmcu_off", APMCU_OFF_BW_OFFSET(0));
+#if IS_ENABLED(CONFIG_MTK_MMQOS_VCP)
+	//disable vcp
+	if (mmqos_state & VMMRC_VCP_ENABLE) {
+		int ret;
+
+		ret = mtk_mmdvfs_enable_vcp(false, VCP_PWR_USR_MMQOS);
+		if (ret < 0)
+			MMQOS_ERR("mmdvfs disable vcp error, ret:%d", ret);
+	}
+#endif
+}
+
+static void mmpc_dvfsrc_full_dump(struct seq_file *file)
+{
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++)
+		mmpc_subsys_hw_mode_full_dump(file, sid);
+
+	mmpc_total_bw_full_dump(file);
+}
+static void mmpc_dvfsrc_full_dump_line(void)
+{
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++)
+		mmpc_subsys_hw_mode_full_dump_line(sid);
+
+	mmpc_total_bw_full_dump_line();
+}
+static int mmqos_bw_dump(struct seq_file *file, void *data)
+{
+	u32 comm_id = 0, port_id = 0, larb_id = 0;
+
+	seq_printf(file, "MMQoS HRT BW Dump: %8s %8s %8s\n",
+		"avail", "cam_max", "cam_hrt");
+	hrt_bw_full_dump(file);
+
+	seq_printf(file, "MMQoS CAM HRT BW Dump:      %8s\n", "cam_max");
+	cam_hrt_bw_full_dump(file);
+
+	chn_bw_all_dump(file);
+	emi_bw_freq_dump(file);
+
+	seq_printf(file, "MMQoS Common Port BW Dump:        %8s %8s %8s %8s %8s\n",
+		"avg", "peak", "l_avg", "l_peak", "ostdl");
+	for (comm_id = 0; comm_id < MAX_RECORD_COMM_NUM; comm_id++) {
+		for (port_id = 0; port_id < MAX_RECORD_PORT_NUM; port_id++)
+			comm_port_bw_full_dump(file, comm_id, port_id);
+	}
+
+	seq_printf(file, "OSTDL Policy rh:%2d wh:%2d rs:%2d ws:%2d\n",
+		r_hrt_ostdl, w_hrt_ostdl, r_srt_ostdl, w_srt_ostdl);
+	seq_printf(file, "MMQoS OSTDL Dump:                %8s %8s %8s %8s\n",
+		"avg_bw", "peak_bw", "mix_bw", "ostdl");
+	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
+		larb_port_ostdl_full_dump(file, larb_id);
+
+	if (mmqos_state & VMMRC_ENABLE)
+		vmmrc_full_dump(file);
+	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
+		mmpc_dvfsrc_full_dump(file);
+
+	return 0;
+}
+
+int calculate_hrt_total_bw(int max_freq, int chn_cnt, int io_width, int def_hrt_value)
+{
+	int cal_total_hrt_bw;
+
+	if (max_freq > 0 && chn_cnt > 0)
+		cal_total_hrt_bw = max_freq * chn_cnt * io_width;
+	else {
+		MMQOS_ERR("dramc or emi not ready,cannot get max frequency or channel count");
+		return def_hrt_value;
+	}
+	MMQOS_DBG("max_freq:%d, channel_count:%d, io_width:%d", max_freq, chn_cnt, io_width);
+	return cal_total_hrt_bw;
+}
+EXPORT_SYMBOL_GPL(calculate_hrt_total_bw);
+
+void mmqos_hrt_dump(void)
+{
+	u32 larb_id = 0;
+	u32 comm_id = 0, port_id = 0;
+
+	if (mmqos_state == MMQOS_DISABLE) {
+		MMQOS_DBG("mmqos not enable");
+		return;
+	}
+
+	if (mmqos_state & VMMRC_ENABLE)
+		vmmrc_full_dump_line();
+
+	//mmpc dvfsrc dump
+	if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE))
+		mmpc_dvfsrc_full_dump_line();
+
+	//common port ostdl dump
+	if (mmqos_state & COMM_OSTDL_ENABLE) {
+		for (comm_id = 0; comm_id < MAX_RECORD_COMM_NUM; comm_id++) {
+			for (port_id = 0; port_id < MAX_RECORD_PORT_NUM; port_id++)
+				comm_port_ostdl_dump_line(comm_id, port_id);
+		}
+	}
+
+	//larb port qos bw dump
+	for (larb_id = 0; larb_id < MAX_RECORD_LARB_NUM; larb_id++)
+		larb_port_ostdl_dump_line(larb_id);
+
+	stop_record = false;
+}
+EXPORT_SYMBOL_GPL(mmqos_hrt_dump);
+
+static int mmqos_debug_opp_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, mmqos_bw_dump, inode->i_private);
+}
+
+static const struct proc_ops mmqos_debug_fops = {
+	.proc_open = mmqos_debug_opp_open,
+	.proc_read = seq_read,
+	.proc_lseek = seq_lseek,
+	.proc_release = single_release,
+};
+
+static char *get_subsys_name(int sid)
+{
+	switch(sid) {
+	case 0: return "CAM";
+	case 1: return "IMG";
+	case 2:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "VDEC";
+		else
+			return "MDP";
+	case 3:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "VENC";
+		else
+			return "DISP";
+	case 4:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "DISP";
+		else
+			return "VENC";
+	case 5:
+		if (mmqos_state & MMPC_V2_ENABLE)
+			return "MDP";
+		else
+			return "VDEC";
+	default: return "???";
+	}
+}
+
+static char buf[PAGE_SIZE];
+static void mmpc_dvfsrc_dump_func(struct work_struct *work)
+{
+	char *p = buf;
+	ssize_t dump_size = PAGE_SIZE - 1;
+	char *buff_end = buf + dump_size;
+
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++) {
+		p += snprintf(p, buff_end - p, "%s ", get_subsys_name(sid));
+		p += snprintf(p, buff_end - p, "%5u,%5u ",
+			read_register(SUBSYS_V2_HW_BW_HRT(sid)),
+			read_register(SUBSYS_V2_HW_BW_SRT(sid)));
+	}
+	pr_info("[thermal][core]%s", buf);
+	queue_delayed_work(mmqos_wq, &mmqos_delayed_work, msecs_to_jiffies(10000));
+}
+
+typedef struct {
+	int larb_ids[MMQOS_MAX_LARB_SSC_OSTDL];
+	int sub_comm_port[MMQOS_MAX_LARB_SSC_OSTDL];
+	int size;
+} larb_sub_comm_ostdl;
+
+static int get_from_larb_ssc_map(larb_sub_comm_ostdl *larb_ssc_ostdl, int larb_id)
+{
+	int i;
+
+	for (i = 0; i < larb_ssc_ostdl->size; i++) {
+		if(larb_ssc_ostdl->larb_ids[i] == larb_id)
+			return larb_ssc_ostdl->sub_comm_port[i];
+	}
+	return -1;
+}
+
+static bool mmqos_met_not_freerun;
+int mtk_mmqos_probe(struct platform_device *pdev)
+{
+	struct mtk_mmqos *mmqos;
+	struct of_phandle_iterator it;
+	struct icc_onecell_data *data;
+	struct icc_node *node, *temp;
+	struct mmqos_base_node *base_node;
+	struct common_node *comm_node;
+	struct common_port_node *comm_port_node;
+	struct larb_node *larb_node;
+	struct larb_port_node *larb_port_node;
+	struct mtk_iommu_data *smi_imu;
+	int i, j, id, num_larbs = 0, ret, ddr_type, io_width;
+#if IS_ENABLED(CONFIG_MTK_DRAMC) && IS_ENABLED(CONFIG_MTK_EMI)
+	int max_freq, chn_cnt;
+	int step, dram_freq;
+	u32 dvfsrc_level_pa, dvfsrc_opp_thrs;
+#endif
+	const struct mtk_mmqos_desc *mmqos_desc;
+	const struct mtk_node_desc *node_desc;
+	struct device *larb_dev;
+	struct mmqos_hrt *hrt;
+	struct device_node *np;
+	struct platform_device *comm_pdev, *larb_pdev;
+	struct proc_dir_entry *dir, *proc, *last_proc;
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_ARM64)
+	phys_addr_t pa = 0ULL;
+	unsigned long va;
+#endif
+	larb_sub_comm_ostdl larb_ssc_ostdl;
+	struct of_phandle_args args;
+
+	mmqos = devm_kzalloc(&pdev->dev, sizeof(*mmqos), GFP_KERNEL);
+	if (!mmqos)
+		return -ENOMEM;
+
+	smi_imu = devm_kzalloc(&pdev->dev, sizeof(*smi_imu), GFP_KERNEL);
+	if (!smi_imu)
+		return -ENOMEM;
+
+	gmmqos = mmqos;
+	mmqos->dev = &pdev->dev;
+
+	last_rec = kzalloc(sizeof(*last_rec), GFP_KERNEL);
+	if (!last_rec)
+		return -ENOMEM;
+
+#if IS_ENABLED(CONFIG_MTK_AEE_IPANIC) && IS_ENABLED(CONFIG_ARM64)
+	va = (unsigned long) last_rec;
+	pa = __pa_nodebug(va);
+	if (va && pa) {
+		ret = mrdump_mini_add_extra_file(va, pa, PAGE_SIZE, "LAST_MMQOS");
+		if (ret)
+			MMQOS_DBG("failed:%d va:%#lx pa:%pa", ret, va, &pa);
+	}
+#endif
+
+	chn_bw_rec = devm_kzalloc(&pdev->dev,
+		sizeof(*chn_bw_rec), GFP_KERNEL);
+	if (!chn_bw_rec)
+		return -ENOMEM;
+
+	comm_port_bw_rec = devm_kzalloc(&pdev->dev,
+		sizeof(*comm_port_bw_rec), GFP_KERNEL);
+	if (!comm_port_bw_rec)
+		return -ENOMEM;
+
+	larb_port_bw_rec = devm_kzalloc(&pdev->dev,
+		sizeof(*larb_port_bw_rec), GFP_KERNEL);
+	if (!larb_port_bw_rec)
+		return -ENOMEM;
+
+	emi_chn_bw_rec = devm_kzalloc(&pdev->dev,
+		sizeof(*emi_chn_bw_rec), GFP_KERNEL);
+	if (!emi_chn_bw_rec)
+		return -ENOMEM;
+
+	emi_freq_rec = devm_kzalloc(&pdev->dev,
+		sizeof(*emi_freq_rec), GFP_KERNEL);
+	if (!emi_freq_rec)
+		return -ENOMEM;
+
+	larb_ssc_ostdl.size = 0;
+	of_for_each_phandle(
+		&it, ret, pdev->dev.of_node, "mediatek,larbs-supply", NULL, 0) {
+		np = of_node_get(it.node);
+		if (!of_device_is_available(np))
+			continue;
+		larb_pdev = of_find_device_by_node(np);
+		if (!larb_pdev) {
+			larb_pdev = of_platform_device_create(
+				np, NULL, &pdev->dev);
+			if (!larb_pdev || !larb_pdev->dev.driver) {
+				of_node_put(np);
+				return -EPROBE_DEFER;
+			}
+		}
+		if (of_property_read_u32(np, "mediatek,larb-id", &id))
+			id = num_larbs;
+		smi_imu->larb_imu[id].dev = &larb_pdev->dev;
+		if (!of_parse_phandle_with_fixed_args(np, "mediatek,smi-ssc-ostdl", 1, 0, &args)
+			&& larb_ssc_ostdl.size < MMQOS_MAX_LARB_SSC_OSTDL) {
+			larb_ssc_ostdl.larb_ids[larb_ssc_ostdl.size] = id;
+			larb_ssc_ostdl.sub_comm_port[larb_ssc_ostdl.size] = args.args[0];
+			MMQOS_DBG("larb id:%d sub comm:%d", id,
+				larb_ssc_ostdl.sub_comm_port[larb_ssc_ostdl.size]);
+			larb_ssc_ostdl.size++;
+		}
+		num_larbs += 1;
+	}
+	INIT_LIST_HEAD(&mmqos->comm_list);
+	INIT_LIST_HEAD(&mmqos->prov.nodes);
+	mmqos->prov.set = mtk_mmqos_set;
+	mmqos->prov.aggregate = mtk_mmqos_aggregate;
+	mmqos->prov.path_is_write = mtk_mmqos_path_is_write;
+	mmqos->prov.comm_chn_info = mtk_mmqos_update_comm_chn_info;
+	mmqos->prov.xlate = mtk_mmqos_xlate;
+	mmqos->prov.dev = &pdev->dev;
+	ret = mtk_icc_provider_add(&mmqos->prov);
+	if (ret) {
+		dev_notice(&pdev->dev, "mtk_icc_provider_add failed:%d\n", ret);
+		return ret;
+	}
+	mmqos_desc = (struct mtk_mmqos_desc *)
+		of_device_get_match_data(&pdev->dev);
+	if (!mmqos_desc) {
+		ret = -EINVAL;
+		goto err;
+	}
+
+	freq_mode = mmqos_desc->freq_mode ? mmqos_desc->freq_mode : freq_mode;
+	MMQOS_DBG("freq_mode:%d", freq_mode);
+
+	of_property_read_u32(pdev->dev.of_node, "mmqos-state", &mmqos_state);
+	pr_notice("[mmqos] mmqos probe state: %#x\n", mmqos_state);
+
+	data = devm_kzalloc(&pdev->dev,
+		sizeof(*data) + mmqos_desc->num_nodes * sizeof(node),
+		GFP_KERNEL);
+	if (!data) {
+		ret = -ENOMEM;
+		goto err;
+	}
+	for (i = 0; i < mmqos_desc->num_nodes; i++) {
+		node_desc = &mmqos_desc->nodes[i];
+		node = mtk_icc_node_create(node_desc->id);
+		if (IS_ERR(node)) {
+			ret = PTR_ERR(node);
+			goto err;
+		}
+		mtk_icc_node_add(node, &mmqos->prov);
+		if (node_desc->link != MMQOS_NO_LINK) {
+			ret = mtk_icc_link_create(node, node_desc->link);
+			if (ret)
+				goto err;
+		}
+		node->name = node_desc->name;
+		base_node = devm_kzalloc(
+			&pdev->dev, sizeof(*base_node), GFP_KERNEL);
+		if (!base_node) {
+			ret = -ENOMEM;
+			goto err;
+		}
+		base_node->icc_node = node;
+		switch (NODE_TYPE(node->id)) {
+		case MTK_MMQOS_NODE_COMMON:
+			comm_node = devm_kzalloc(
+				&pdev->dev, sizeof(*comm_node), GFP_KERNEL);
+			if (!comm_node) {
+				ret = -ENOMEM;
+				goto err;
+			}
+			//INIT_WORK(&comm_node->work, set_comm_icc_bw_handler);
+			if (mmqos_state & BWL_ENABLE) {
+				comm_node->clk = devm_clk_get(&pdev->dev,
+					mmqos_desc->comm_muxes[MASK_8(node->id)]);
+				if (IS_ERR(comm_node->clk)) {
+					dev_notice(&pdev->dev, "get clk fail:%s\n",
+						mmqos_desc->comm_muxes[
+							MASK_8(node->id)]);
+					ret = -EINVAL;
+					goto err;
+				}
+
+				comm_node->freq = clk_get_rate(comm_node->clk)/1000000;
+			}
+			INIT_LIST_HEAD(&comm_node->list);
+			list_add_tail(&comm_node->list, &mmqos->comm_list);
+			INIT_LIST_HEAD(&comm_node->comm_port_list);
+			comm_node->icc_path = of_icc_get(&pdev->dev,
+				mmqos_desc->comm_icc_path_names[
+						MASK_8(node->id)]);
+			if (IS_ERR_OR_NULL(comm_node->icc_path)) {
+				dev_notice(&pdev->dev,
+					"get icc_path fail:%s\n",
+					mmqos_desc->comm_icc_path_names[
+						MASK_8(node->id)]);
+				ret = -EINVAL;
+				goto err;
+			}
+			comm_node->icc_hrt_path = of_icc_get(&pdev->dev,
+				mmqos_desc->comm_icc_hrt_path_names[
+						MASK_8(node->id)]);
+			if (IS_ERR_OR_NULL(comm_node->icc_hrt_path)) {
+				dev_notice(&pdev->dev,
+					"get icc_hrt_path fail:%s\n",
+					mmqos_desc->comm_icc_hrt_path_names[
+						MASK_8(node->id)]);
+				ret = -EINVAL;
+				goto err;
+			}
+			np = of_parse_phandle(pdev->dev.of_node,
+					      "mediatek,commons-supply",
+					      MASK_8(node->id));
+			if (!of_device_is_available(np)) {
+				pr_notice("get common(%d) dev fail\n",
+					  MASK_8(node->id));
+				break;
+			}
+			comm_pdev = of_find_device_by_node(np);
+			if (comm_pdev)
+				comm_node->comm_dev = &comm_pdev->dev;
+			else
+				pr_notice("comm(%d) pdev is null\n",
+					  MASK_8(node->id));
+			comm_node->comm_reg =
+				devm_regulator_get_optional(comm_node->comm_dev,
+						   "mmdvfs-dvfsrc-vcore");
+			if (freq_mode == BY_REGULATOR)
+				if (IS_ERR_OR_NULL(comm_node->comm_reg))
+					pr_notice("get common(%d) reg fail\n",
+					  MASK_8(node->id));
+
+			dev_pm_opp_of_add_table(comm_node->comm_dev);
+			comm_node->base = base_node;
+			node->data = (void *)comm_node;
+			break;
+		case MTK_MMQOS_NODE_COMMON_PORT:
+			comm_port_node = devm_kzalloc(&pdev->dev,
+				sizeof(*comm_port_node), GFP_KERNEL);
+			if (!comm_port_node) {
+				ret = -ENOMEM;
+				goto err;
+			}
+			comm_port_node->channel =
+				mmqos_desc->comm_port_channels[
+				MASK_8((node->id >> 8))][MASK_8(node->id)];
+			comm_port_node->channel_v2 = node_desc->channel;
+			comm_port_node->hrt_type =
+				mmqos_desc->comm_port_hrt_types[
+				MASK_8((node->id >> 8))][MASK_8(node->id)];
+			rt_mutex_init(&comm_port_node->bw_lock);
+			comm_port_node->common = node->links[0]->data;
+			INIT_LIST_HEAD(&comm_port_node->list);
+			list_add_tail(&comm_port_node->list,
+				      &comm_port_node->common->comm_port_list);
+			comm_port_node->base = base_node;
+			comm_port_node->real_port_id = node_desc->bw_ratio - 1;
+			node->data = (void *)comm_port_node;
+			break;
+		case MTK_MMQOS_NODE_LARB:
+			larb_node = devm_kzalloc(
+				&pdev->dev, sizeof(*larb_node), GFP_KERNEL);
+			if (!larb_node) {
+				ret = -ENOMEM;
+				goto err;
+			}
+			comm_port_node = node->links[0]->data;
+			larb_dev = smi_imu->larb_imu[node->id &
+					(MTK_LARB_NR_MAX-1)].dev;
+			if (larb_dev) {
+				comm_port_node->larb_dev = larb_dev;
+				larb_node->larb_dev = larb_dev;
+			}
+			//INIT_WORK(&larb_node->work, set_larb_icc_bw_handler);
+
+			larb_node->channel = node_desc->channel;
+			larb_node->channel_v2 = comm_port_node->channel_v2;
+			larb_node->is_write = node_desc->is_write;
+			larb_node->bw_ratio = node_desc->bw_ratio;
+			/* init disable dualpipe */
+			gmmqos->dual_pipe_enable = false;
+
+			for (j = 0; j < MMQOS_MAX_REPORT_LARB_NUM; j++) {
+				if (node->id == mmqos_desc->report_bw_larbs[j]) {
+					larb_node->is_report_bw_larbs = true;
+					id = mmqos_desc->report_bw_real_larbs[j];
+					larb_dev = smi_imu->larb_imu[id & (MTK_LARB_NR_MAX-1)].dev;
+					larb_node->sub_comm_port =
+						get_from_larb_ssc_map(&larb_ssc_ostdl,
+						id & (MTK_LARB_NR_MAX-1));
+					larb_node->larb_dev = larb_dev;
+				}
+			}
+			larb_node->base = base_node;
+			node->data = (void *)larb_node;
+			break;
+		case MTK_MMQOS_NODE_LARB_PORT:
+			larb_port_node = devm_kzalloc(&pdev->dev,
+				sizeof(*larb_port_node), GFP_KERNEL);
+			if (!larb_port_node) {
+				ret = -ENOMEM;
+				goto err;
+			}
+			larb_port_node->channel = node_desc->channel;
+			larb_port_node->is_write = node_desc->is_write;
+			larb_port_node->bw_ratio = node_desc->bw_ratio;
+			larb_port_node->base = base_node;
+			node->data = (void *)larb_port_node;
+			break;
+		default:
+			dev_notice(&pdev->dev,
+				"invalid node id:%#x\n", node->id);
+			ret = -EINVAL;
+			goto err;
+		}
+		data->nodes[i] = node;
+	}
+	data->num_nodes = mmqos_desc->num_nodes;
+	mmqos->prov.data = data;
+
+
+	mmqos->max_ratio = mmqos_desc->max_ratio;
+	if (mmqos_desc->max_disp_ostdl == 0)
+		mmqos->max_disp_ostdl = mmqos_desc->max_ratio;
+	else
+		mmqos->max_disp_ostdl = mmqos_desc->max_disp_ostdl;
+
+	of_property_read_u32(pdev->dev.of_node, "mmqos-log-level", &log_level);
+	pr_notice("[mmqos] mmqos log level: %#x\n", log_level);
+
+	if (!of_property_read_u32(pdev->dev.of_node, "dvfsrc-level-base", &dvfsrc_level_pa)) {
+		pr_notice("dvfsrc level hex base:%#x", dvfsrc_level_pa);
+		mmqos->dvfsrc_level_base = ioremap(dvfsrc_level_pa, 0x1000);
+	}
+
+	of_property_read_u32(pdev->dev.of_node, "r-hrt-ostdl", &r_hrt_ostdl);
+	of_property_read_u32(pdev->dev.of_node, "w-hrt-ostdl", &w_hrt_ostdl);
+
+	of_property_read_u32(pdev->dev.of_node, "r-srt-ostdl", &r_srt_ostdl);
+	of_property_read_u32(pdev->dev.of_node, "w-srt-ostdl", &w_srt_ostdl);
+
+	mmqos_met_not_freerun = of_property_read_bool(pdev->dev.of_node, "mediatek,mmqos-met-not-freerun");
+	pr_notice("[mmqos] mediatek,mmqos-met-not-freerun: %d\n", mmqos_met_not_freerun);
+	MMQOS_DBG("ostdl policy, hrt read:%d, write:%d, srt read:%d, write:%d",
+		r_hrt_ostdl, w_hrt_ostdl, r_srt_ostdl, w_srt_ostdl);
+
+	for (i = 0 ; i < MMQOS_MAX_DISP_VIRT_LARB_NUM ; i++)
+		mmqos->disp_virt_larbs[i] = mmqos_desc->disp_virt_larbs[i];
+
+	/*
+	mmqos->wq = create_singlethread_workqueue("mmqos_work_queue");
+	if (!mmqos->wq) {
+		dev_notice(&pdev->dev, "work queue create fail\n");
+		ret = -ENOMEM;
+		goto err;
+	}
+	*/
+	hrt = devm_kzalloc(&pdev->dev, sizeof(*hrt), GFP_KERNEL);
+	if (!hrt) {
+		ret = -ENOMEM;
+		goto err;
+	}
+
+	ddr_type = mtk_dramc_get_ddr_type();
+	if (ddr_type == TYPE_LPDDR4 ||
+		ddr_type == TYPE_LPDDR4X || ddr_type == TYPE_LPDDR4P)
+		memcpy(hrt, &mmqos_desc->hrt_LPDDR4, sizeof(mmqos_desc->hrt_LPDDR4));
+	else
+		memcpy(hrt, &mmqos_desc->hrt, sizeof(mmqos_desc->hrt));
+	pr_notice("[mmqos] ddr type: %d\n", mtk_dramc_get_ddr_type());
+
+	if (ddr_type == TYPE_LPDDR3)
+		io_width = 4;
+	else
+		io_width = 2;
+
+#if IS_ENABLED(CONFIG_MTK_DRAMC) && IS_ENABLED(CONFIG_MTK_EMI)
+	max_freq = mtk_dramc_get_steps_freq(0);
+	chn_cnt = mtk_emicen_get_ch_cnt();
+	hrt->hrt_total_bw = calculate_hrt_total_bw(max_freq, chn_cnt, io_width,
+								hrt->hrt_total_bw);
+
+	if (mmqos_state & DYNA_URATE_ENABLE) {
+		opp_cnt = of_count_phandle_with_args(pdev->dev.of_node, "required-opps", NULL);
+		if (opp_cnt < 0)
+			MMQOS_ERR("fail to get required_opps count from dts.");
+		else {
+			for (step = 0; step < opp_cnt; step++) {
+				dram_freq = mtk_dramc_get_steps_freq(step);
+				dvfsrc_opp_thrs = dvfsrc_get_required_opp_peak_bw(pdev->dev.of_node, step);
+				dramc_freq_mapping_table[step][0] = dram_freq;
+				dramc_freq_mapping_table[step][2] = dvfsrc_opp_thrs;
+				if (dram_freq < 0) {
+					dramc_freq_mapping_table[step - 1][1] *= 2;
+					dramc_freq_mapping_table[step][1] = 0;
+				} else if (dram_freq > 6000)
+					dramc_freq_mapping_table[step][1] = 728;
+				else
+					dramc_freq_mapping_table[step][1] = dram_freq / 8;
+				MMQOS_DBG("dram_opp_table step %d: DRAM freq:%d emiclk:%d opp thrs:%d",
+					step, dramc_freq_mapping_table[step][0],
+					dramc_freq_mapping_table[step][1], dramc_freq_mapping_table[step][2]);
+			}
+		}
+	}
+#endif
+	MMQOS_DBG("hrt_total_bw: %d", hrt->hrt_total_bw);
+
+	hrt->md_scen = mmqos_desc->md_scen;
+	mtk_mmqos_init_hrt(hrt);
+	g_hrt = hrt;
+	mmqos->nb.notifier_call = update_mm_clk;
+	register_mmdvfs_notifier(&mmqos->nb);
+	mmqos->nb_smi.notifier_call = comm_full_dump;
+	mtk_smi_dbg_register_notifier(&mmqos->nb_smi);
+	ret = mtk_mmqos_register_hrt_sysfs(&pdev->dev);
+	if (ret)
+		dev_notice(&pdev->dev, "sysfs create fail\n");
+	platform_set_drvdata(pdev, mmqos);
+	devm_kfree(&pdev->dev, smi_imu);
+
+	rt_mutex_init(&gmmqos->bw_lock);
+	rt_mutex_init(&gmmqos->vmmrc_hw_lock);
+
+	/* create proc file */
+	dir = proc_mkdir("mmqos", NULL);
+	if (IS_ERR_OR_NULL(dir))
+		pr_notice("proc_mkdir failed:%ld\n", PTR_ERR(dir));
+
+	proc = proc_create("mmqos_bw", 0440, dir, &mmqos_debug_fops);
+	if (IS_ERR_OR_NULL(proc))
+		pr_notice("proc_create failed:%ld\n", PTR_ERR(proc));
+	else
+		mmqos->proc = proc;
+
+	last_proc = proc_create("last_mmqos", 0440, dir, &mmqos_last_debug_fops);
+	if (IS_ERR_OR_NULL(last_proc))
+		pr_notice("last proc_create failed:%ld\n", PTR_ERR(last_proc));
+	else
+		mmqos->last_proc = last_proc;
+
+	/* add delay worker for dump mmpc dvfsrc */
+	if (mmqos_desc->thermal_info_en) {
+		mmqos_wq = create_workqueue("mmqos_wq");
+		if (!mmqos_wq) {
+			MMQOS_ERR("Failed to create mmqos_wq");
+			return 0;
+		}
+		INIT_DELAYED_WORK(&mmqos_delayed_work, mmpc_dvfsrc_dump_func);
+		queue_delayed_work(mmqos_wq, &mmqos_delayed_work, msecs_to_jiffies(10000)); //10s
+		MMQOS_DBG("create mmqos_ws for dump mmpc dvfsrc");
+	}
+	return 0;
+err:
+	list_for_each_entry_safe(node, temp, &mmqos->prov.nodes, node_list) {
+		mtk_icc_node_del(node);
+		mtk_icc_node_destroy(node->id);
+	}
+	mtk_icc_provider_del(&mmqos->prov);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(mtk_mmqos_probe);
+
+int mtk_mmqos_v2_probe(struct platform_device *pdev)
+{
+	struct task_struct *kthr_vcp, *kthr_mmup;
+	u32 base_tmp, mminfra_base_tmp, range, hfrp_base_temp, sram_base;
+	int ret, probe_ret;
+
+	probe_ret = mtk_mmqos_probe(pdev);
+
+	ret = of_property_read_u32(pdev->dev.of_node, "vmmrc-base", &base_tmp);
+	if (ret >= 0) {
+		ret = of_property_read_u32(pdev->dev.of_node, "vmmrc-range", &range);
+		if (ret < 0)
+			range = 0x40000;
+		gmmqos->vmmrc_base = ioremap(base_tmp, range);
+		of_property_read_u32(pdev->dev.of_node, "vmmrc-mask", &gmmqos->apmcu_mask_offset);
+		of_property_read_u32(pdev->dev.of_node,
+			"vmmrc-on-table", &gmmqos->apmcu_on_bw_offset);
+
+		if (mmqos_state & VMMRC_ENABLE) {
+			of_property_read_u32(pdev->dev.of_node, "vmmrc-mask-bit", &gmmqos->apmcu_mask_bit);
+			of_property_read_u32(pdev->dev.of_node,
+				"vmmrc-off-table", &gmmqos->apmcu_off_bw_offset);
+			of_property_read_u32(pdev->dev.of_node, "mminfra-base", &mminfra_base_tmp);
+			gmmqos->mminfra_base = ioremap(mminfra_base_tmp, 0x1000);
+			MMQOS_DBG("vmmrc=%#x, range=%#x, mask=%#x, bit=%#x, on=%#x, off=%#x, mminfra=%#x",
+				base_tmp, range, gmmqos->apmcu_mask_offset, gmmqos->apmcu_mask_bit,
+				gmmqos->apmcu_on_bw_offset, gmmqos->apmcu_off_bw_offset,
+				mminfra_base_tmp);
+		} else if ((mmqos_state & MMPC_ENABLE) || (mmqos_state & MMPC_V2_ENABLE)) {
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-sw-en-all-on", &gmmqos->mmpc_sw_en_all_on);
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-cam-hw-bw", &gmmqos->mmpc_cam_hw_bw);
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-cam-hw-bw-hrt", &gmmqos->mmpc_cam_hw_bw_hrt);
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-total-mmqos-bw", &gmmqos->mmpc_total_mmqos_bw);
+			of_property_read_u32(pdev->dev.of_node,
+				"mmpc-total-pmqos-bw", &gmmqos->mmpc_total_pmqos_bw);
+			of_property_read_u32(pdev->dev.of_node, "mminfra-base", &mminfra_base_tmp);
+			if (!of_property_read_u32(pdev->dev.of_node, "hfrp-base", &hfrp_base_temp))
+				gmmqos->hfrp_base = ioremap(hfrp_base_temp, 0x1000);
+			gmmqos->mminfra_base = ioremap(mminfra_base_tmp, 0x1000);
+			MMQOS_DBG("vmmrc base=%#x, range=%#x, mask=%#x, sw_en=%#x, on table=%#x, mminfra_base=%#x",
+				base_tmp, range, gmmqos->apmcu_mask_offset, gmmqos->mmpc_sw_en_all_on,
+				gmmqos->apmcu_on_bw_offset, mminfra_base_tmp);
+			if (mmqos_state & MMPC_V2_ENABLE) {
+				of_property_read_u32(pdev->dev.of_node,
+					"mmpc-total-slb-bw", &gmmqos->mmpc_total_slb_bw);
+				of_property_read_u32(pdev->dev.of_node,
+					"mmpc-cam-hw-emi-bw-hrt", &gmmqos->mmpc_cam_hw_emi_bw_hrt);
+				of_property_read_u32(pdev->dev.of_node,
+					"mmpc-total-emi-pmqos-bw", &gmmqos->mmpc_total_emi_pmqos_bw);
+				of_property_read_u32(pdev->dev.of_node,
+					"mmpc-total-current-mmqos-bw", &gmmqos->mmpc_total_current_mmqos_bw);
+				of_property_read_u32(pdev->dev.of_node,
+					"mmpc-total-current-pmqos-bw", &gmmqos->mmpc_total_current_pmqos_bw);
+				of_property_read_u32(pdev->dev.of_node,
+					"mmpc-total-current-slb-bw", &gmmqos->mmpc_total_current_slb_bw);
+				MMQOS_DBG("mmpc cam_hw_bw:%#x, cam_hw_bw_hrt:%#x, mmqos_bw:%#x, pmqos_bw:%#x",
+					gmmqos->mmpc_cam_hw_bw, gmmqos->mmpc_cam_hw_bw_hrt,
+					gmmqos->mmpc_total_mmqos_bw, gmmqos->mmpc_total_pmqos_bw);
+				MMQOS_DBG("mmpc slb_bw:%#x, current slb:%#x",
+					gmmqos->mmpc_total_slb_bw, gmmqos->mmpc_total_current_slb_bw);
+				MMQOS_DBG("mmpc cam_emi_hrt:%#x, emi_pmqos:%#x, current_mmqos:%#x, current_pmqos:%#x",
+					gmmqos->mmpc_cam_hw_emi_bw_hrt, gmmqos->mmpc_total_emi_pmqos_bw,
+					gmmqos->mmpc_total_current_mmqos_bw, gmmqos->mmpc_total_current_pmqos_bw);
+			} else {
+				of_property_read_u32(pdev->dev.of_node,
+					"vmmrc-level-hex", &gmmqos->vmmrc_level_hex);
+				MMQOS_DBG("mmpc cam_hw_bw:%#x, cam_hw_bw_hrt:%#x, mmqos_bw:%#x, pmqos_bw:%#x, level_hex:%#x",
+					gmmqos->mmpc_cam_hw_bw, gmmqos->mmpc_cam_hw_bw_hrt,
+					gmmqos->mmpc_total_mmqos_bw, gmmqos->mmpc_total_pmqos_bw,
+					gmmqos->vmmrc_level_hex);
+			}
+			if (mmqos_state & MMQOS_SW_COUNT_SUPPORT) {
+				of_property_read_u32(pdev->dev.of_node, "mmqos-sram-base", &sram_base);
+				gmmqos->mmqos_sram_base = ioremap((phys_addr_t)sram_base, 0x1000);
+				MMQOS_DBG("mmqos sw count sram base: %#x", sram_base);
+			}
+		} else {
+			MMQOS_DBG("no VMMRC_ENABLE & MMPC_ENABLE & MMPC_V2_ENABLE");
+		}
+	} else {
+		MMQOS_DBG("no vmmrc related property");
+		gmmqos->vmmrc_base = NULL;
+	}
+
+	if (mmqos_state & MMUP_ENABLE) {
+		kthr_mmup = kthread_run(mmqos_mmup_init_thread, NULL, "mmqos-mmup");
+		if (IS_ERR(kthr_mmup))
+			MMQOS_ERR("Failed to start mmqos-mmup thread\n");
+	} else
+		MMQOS_DBG("MMUP not enable");
+
+	if (mmqos_state & VCP_ENABLE) {
+		kthr_vcp = kthread_run(mmqos_vcp_init_thread, NULL, "mmqos-vcp");
+		if (IS_ERR(kthr_vcp))
+			MMQOS_ERR("Failed to start mmqos-vcp thread\n");
+		if (mmqos_state & VMMRC_VCP_NO_WARM_BOOT)
+			mmqos_register_vcp_bw_cb(&mtk_mmqos_bw_fp);
+	} else
+		MMQOS_DBG("VCP not enable");
+
+	of_property_read_u32(pdev->dev.of_node,
+		"bwl-hrt-r-margin", &gmmqos->bwl_hrt_r_margin);
+	of_property_read_u32(pdev->dev.of_node,
+		"bwl-hrt-w-margin", &gmmqos->bwl_hrt_w_margin);
+	of_property_read_u32(pdev->dev.of_node,
+		"bwl-srt-r-margin", &gmmqos->bwl_srt_r_margin);
+	of_property_read_u32(pdev->dev.of_node,
+		"bwl-srt-w-margin", &gmmqos->bwl_srt_w_margin);
+	MMQOS_DBG("bwl_hrt_r_margin:%u, bwl_hrt_w_margin:%u, bwl_srt_r_margin:%u, bwl_srt_w_margin:%u",
+		gmmqos->bwl_hrt_r_margin, gmmqos->bwl_hrt_w_margin,
+		gmmqos->bwl_srt_r_margin, gmmqos->bwl_srt_w_margin);
+
+	return probe_ret;
+}
+EXPORT_SYMBOL_GPL(mtk_mmqos_v2_probe);
+
+void mtk_mmqos_remove(struct platform_device *pdev)
+{
+	struct mtk_mmqos *mmqos = platform_get_drvdata(pdev);
+	struct icc_node *node, *temp;
+
+	list_for_each_entry_safe(node, temp, &mmqos->prov.nodes, node_list) {
+		mtk_icc_node_del(node);
+		mtk_icc_node_destroy(node->id);
+	}
+	mtk_icc_provider_del(&mmqos->prov);
+	unregister_mmdvfs_notifier(&mmqos->nb);
+	//destroy_workqueue(mmqos->wq);
+	mtk_mmqos_unregister_hrt_sysfs(&pdev->dev);
+
+	/* destroy work queue */
+	cancel_delayed_work_sync(&mmqos_delayed_work);
+	destroy_workqueue(mmqos_wq);
+}
+
+void clear_chnn_bw(void)
+{
+	int i, j;
+
+	for (i = 0; i < MMQOS_MAX_COMM_NUM; i++) {
+		for (j = 0; j < MMQOS_COMM_CHANNEL_NUM; j++) {
+			chn_srt_r_bw[i][j] = 0;
+			chn_srt_w_bw[i][j] = 0;
+			chn_hrt_r_bw[i][j] = 0;
+			chn_hrt_w_bw[i][j] = 0;
+			v2_chn_srt_r_bw[i][j] = 0;
+			v2_chn_srt_w_bw[i][j] = 0;
+			v2_chn_hrt_r_bw[i][j] = 0;
+			v2_chn_hrt_w_bw[i][j] = 0;
+			disp_srt_r_bw[i][j] = 0;
+			disp_srt_w_bw[i][j] = 0;
+			disp_hrt_r_bw[i][j] = 0;
+			disp_hrt_w_bw[i][j] = 0;
+			emi_chn_hrt_bw[i][j] = 0;
+			emi_chn_srt_bw[i][j] = 0;
+		}
+	}
+}
+EXPORT_SYMBOL_GPL(clear_chnn_bw);
+
+void check_disp_chnn_bw(int i, int j, const int *ans)
+{
+	if (i >= 0 && j >= 0) {
+		_assert_eq(disp_srt_r_bw[i][j], ans[0], "disp_srt_r");
+		_assert_eq(disp_srt_w_bw[i][j], ans[1], "disp_srt_w");
+		_assert_eq(disp_hrt_r_bw[i][j], ans[2], "disp_hrt_r");
+		_assert_eq(disp_hrt_w_bw[i][j], ans[3], "disp_hrt_w");
+	}
+}
+EXPORT_SYMBOL_GPL(check_disp_chnn_bw);
+
+void check_chnn_bw(int i, int j, int srt_r, int srt_w, int hrt_r, int hrt_w)
+{
+	if (i >= 0 && j >= 0) {
+		_assert_eq(chn_srt_r_bw[i][j], srt_r, "chn_srt_r");
+		_assert_eq(chn_srt_w_bw[i][j], srt_w, "chn_srt_w");
+		_assert_eq(chn_hrt_r_bw[i][j], hrt_r, "chn_hrt_r");
+		_assert_eq(chn_hrt_w_bw[i][j], hrt_w, "chn_hrt_w");
+	}
+}
+EXPORT_SYMBOL_GPL(check_chnn_bw);
+
+struct common_port_node *create_fake_comm_port_node(int hrt_type,
+	int srt_r, int srt_w, int hrt_r, int hrt_w)
+{
+	struct common_port_node *cpn;
+
+	cpn = devm_kzalloc(gmmqos->dev, sizeof(*cpn), GFP_KERNEL);
+	if (cpn != NULL) {
+		cpn->hrt_type = hrt_type;
+		cpn->old_avg_r_bw = srt_r;
+		cpn->old_avg_w_bw = srt_w;
+		cpn->old_peak_r_bw = hrt_r;
+		cpn->old_peak_w_bw = hrt_w;
+	}
+
+	return cpn;
+}
+EXPORT_SYMBOL_GPL(create_fake_comm_port_node);
+
+static int mmqos_update_vdec_ostdl_trace(char *node_name, u32 larb_id, u32 value, u32 ostdl_set)
+{
+	uint32_t i, ostdl_value, is_read_bit, port_id;
+
+	for (i = 0; i < 4; i++) {
+		port_id = ostdl_set*4 + i;
+		if (MASK_8(value)) {
+			is_read_bit = RSH_7(MASK_8(value));
+			ostdl_value = value & 0x7f;
+			if (is_read_bit)
+				trace_mmqos__larb_port_ostdl(
+				"r",
+				node_name,
+				larb_id, port_id,
+				ostdl_value);
+			else
+				trace_mmqos__larb_port_ostdl(
+				"w",
+				node_name,
+				larb_id, port_id,
+				ostdl_value);
+		}
+		value = RSH_8(value);
+	}
+
+	return 0;
+}
+
+void mmqos_set_met(bool enable)
+{
+	if (enable)
+		ftrace_ena |= (1 << MMQOS_PROFILE_MET);
+	else
+		ftrace_ena &= ~(1 << MMQOS_PROFILE_MET);
+}
+EXPORT_SYMBOL_GPL(mmqos_set_met);
+
+bool mmqos_met_enabled(void)
+{
+	return ftrace_ena & (1 << MMQOS_PROFILE_MET);
+}
+
+bool mmqos_systrace_enabled(void)
+{
+#if IS_ENABLED(CONFIG_MTK_MMQOS_DEBUG)
+	return true;
+#else
+	return ftrace_ena & (1 << MMQOS_PROFILE_SYSTRACE);
+#endif
+}
+
+noinline int tracing_mark_write(char *fmt, ...)
+{
+#if IS_ENABLED(CONFIG_MTK_MMQOS_DEBUG)
+#if IS_ENABLED(CONFIG_TRACING)
+	char buf[TRACE_MSG_LEN];
+	va_list args;
+	int len;
+
+	va_start(args, fmt);
+	len = vsnprintf(buf, sizeof(buf), fmt, args);
+	va_end(args);
+
+	if (len >= TRACE_MSG_LEN) {
+		pr_notice("%s trace size %u exceed limit\n", __func__, len);
+		return -1;
+	}
+
+	trace_puts(buf);
+#endif
+#endif
+	return 0;
+}
+
+static u32 get_bw_from_reg(u32 reg_value, int bw_idx)
+{
+	u32 shift = bw_idx * 10;
+	u32 mask = (1 << 10) - 1;
+
+	return ((reg_value >> shift) & mask) << CHNN_BW_UNIT_SHIFT;
+}
+
+static void mmpc_ftrace_dump(void)
+{
+	char *subsys_name;
+	u32 reg_value, bw0, bw1, bw2;
+
+	for (int sid = 0; sid < MAX_SUBSYS_NUM; sid++) {
+		subsys_name = get_subsys_name(sid);
+		if (mmqos_state & MMPC_V2_ENABLE) {
+			for (int i = 0; i <  MAX_BW_VALUE_NUM; i++) {
+				reg_value = read_register(SUBSYS_V2_HW_BW_OFFSET(sid, i));
+				trace_mmqos__mmpc_v2_subsys_chnn_bw(
+					subsys_name, i,
+					reg_value << CHNN_BW_UNIT_SHIFT);
+			}
+			bw0 = read_register(SUBSYS_V2_HW_EMI_BW_HRT(sid));
+			bw1 = read_register(SUBSYS_V2_HW_EMI_BW_SRT(sid));
+			trace_mmqos__mmpc_subsys_emi_bw(subsys_name,
+				bw0 << DRAM_BW_UNIT_SHIFT,
+				bw1 << DRAM_BW_UNIT_SHIFT);
+			bw0 = read_register(SUBSYS_V2_HW_BW_HRT(sid));
+			bw1 = read_register(SUBSYS_V2_HW_BW_SRT(sid));
+		} else {
+			for (int i = 0; i < MAX_REG_VALUE_NUM; i++) {
+				reg_value = read_register(SUBSYS_HW_BW_OFFSET(sid, i));
+				bw0 = get_bw_from_reg(reg_value, 0);
+				bw1 = get_bw_from_reg(reg_value, 1);
+				bw2 = get_bw_from_reg(reg_value, 2);
+				trace_mmqos__mmpc_subsys_chnn_bw(
+					subsys_name, i,
+					bw0, bw1, bw2);
+			}
+			bw0 = read_register(SUBSYS_HW_BW_HRT(sid));
+			bw1 = read_register(SUBSYS_HW_BW_SRT(sid));
+		}
+		trace_mmqos__mmpc_subsys_dram_bw(subsys_name,
+			bw0 << DRAM_BW_UNIT_SHIFT,
+			bw1 << DRAM_BW_UNIT_SHIFT);
+	}
+	for (int i = 0; i < MAX_BW_VALUE_NUM; i++) {
+		bw0 = read_register(TOTAL_BW(i));
+		trace_mmqos__mmpc_total_chnn_bw(
+			i, bw0 << CHNN_BW_UNIT_SHIFT);
+		if (mmqos_state & MMPC_V2_ENABLE) {
+			bw1 = read_register(TOTAL_CUR_BW(i));
+			trace_mmqos__mmpc_total_current_chnn_bw(
+				i, bw1 << CHNN_BW_UNIT_SHIFT);
+		}
+	}
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		for (int i = 0; i < MAX_SLB_BW_NUM; i++) {
+			bw0 = read_register(TOTAL_SLB_BW(i));
+			trace_mmqos__mmpc_total_slb_chnn_bw(
+				i, bw0 << CHNN_BW_UNIT_SHIFT);
+			bw1 = read_register(TOTAL_CUR_SLB_BW(i));
+			trace_mmqos__mmpc_total_current_slb_chnn_bw(
+				i, bw1 << CHNN_BW_UNIT_SHIFT);
+		}
+	}
+	trace_mmqos__mmpc_total_dram_bw(
+		read_register(TOTAL_HRT_BW) << DRAM_BW_UNIT_SHIFT,
+		read_register(TOTAL_SRT_BW) << DRAM_BW_UNIT_SHIFT);
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		trace_mmqos__mmpc_total_emi_bw(
+			read_register(TOTAL_EMI_HRT_BW) << DRAM_BW_UNIT_SHIFT,
+			read_register(TOTAL_EMI_SRT_BW) << DRAM_BW_UNIT_SHIFT);
+		trace_mmqos__mmpc_total_current_bw(
+			read_register(TOTAL_CUR_HRT_BW) << DRAM_BW_UNIT_SHIFT,
+			read_register(TOTAL_CUR_SRT_BW) << DRAM_BW_UNIT_SHIFT);
+	}
+}
+
+static int mmqos_dbg_ftrace_thread(void *data)
+{
+	int retry = 0, dump_times = 0;
+
+	while (!mmqos_is_init_done()) {
+		MMQOS_DBG("start");
+		if (++retry > 20) {
+			MMQOS_DBG("mmqos vcp init not ready");
+			return 0;
+		}
+		ssleep(2);
+	}
+	while (!kthread_should_stop()) {
+		if (dump_times == 10) {
+			trace_mmqos__bw_to_emi(TYPE_IS_VCP,
+				readl(MEM_VCP_TOTAL_BW), 0);
+			trace_mmqos__chn_bw(0, 0,
+					RSH_16(readl(MEM_SMI_COMM0_CHN0_BW)),
+					MASK_16(readl(MEM_SMI_COMM0_CHN0_BW)),
+					0,
+					0,
+					0,
+					TYPE_IS_VCP,
+					TYPE_IS_MAX);
+			trace_mmqos__chn_bw(0, 1,
+					RSH_16(readl(MEM_SMI_COMM0_CHN1_BW)),
+					MASK_16(readl(MEM_SMI_COMM0_CHN1_BW)),
+					0,
+					0,
+					0,
+					TYPE_IS_VCP,
+					TYPE_IS_MAX);
+			trace_mmqos__chn_bw(1, 0,
+					RSH_16(readl(MEM_SMI_COMM1_CHN0_BW)),
+					MASK_16(readl(MEM_SMI_COMM1_CHN0_BW)),
+					0,
+					0,
+					0,
+					TYPE_IS_VCP,
+					TYPE_IS_MAX);
+			trace_mmqos__chn_bw(1, 1,
+					RSH_16(readl(MEM_SMI_COMM1_CHN1_BW)),
+					MASK_16(readl(MEM_SMI_COMM1_CHN1_BW)),
+					0,
+					0,
+					0,
+					TYPE_IS_VCP,
+					TYPE_IS_MAX);
+			trace_mmqos__larb_avg_bw(
+				"r", "vdec", RSH_16(readl(MEM_SMI_VDEC_COMM0_CHN0_BW)), 0, 0);
+			trace_mmqos__larb_avg_bw(
+				"w", "vdec", MASK_16(readl(MEM_SMI_VDEC_COMM0_CHN0_BW)), 0, 0);
+			trace_mmqos__larb_avg_bw(
+				"r", "vdec", RSH_16(readl(MEM_SMI_VDEC_COMM0_CHN1_BW)), 0, 1);
+			trace_mmqos__larb_avg_bw(
+				"w", "vdec", MASK_16(readl(MEM_SMI_VDEC_COMM0_CHN1_BW)), 0, 1);
+			trace_mmqos__larb_avg_bw(
+				"r", "vdec", RSH_16(readl(MEM_SMI_VDEC_COMM1_CHN0_BW)), 1, 0);
+			trace_mmqos__larb_avg_bw(
+				"w", "vdec", MASK_16(readl(MEM_SMI_VDEC_COMM1_CHN0_BW)), 1, 0);
+			trace_mmqos__larb_avg_bw(
+				"r", "vdec", RSH_16(readl(MEM_SMI_VDEC_COMM1_CHN1_BW)), 1, 1);
+			trace_mmqos__larb_avg_bw(
+				"w", "vdec", MASK_16(readl(MEM_SMI_VDEC_COMM1_CHN1_BW)), 1, 1);
+			trace_mmqos__larb_avg_bw(
+				"r", "venc", RSH_16(readl(MEM_SMI_VENC_COMM0_CHN0_BW)), 0, 0);
+			trace_mmqos__larb_avg_bw(
+				"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM0_CHN0_BW)), 0, 0);
+			trace_mmqos__larb_avg_bw(
+				"r", "venc", RSH_16(readl(MEM_SMI_VENC_COMM0_CHN1_BW)), 0, 1);
+			trace_mmqos__larb_avg_bw(
+				"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM0_CHN1_BW)), 0, 1);
+			trace_mmqos__larb_avg_bw(
+				"r", "venc", RSH_16(readl(MEM_SMI_VENC_COMM1_CHN0_BW)), 1, 0);
+			trace_mmqos__larb_avg_bw(
+				"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM1_CHN0_BW)), 1, 0);
+			trace_mmqos__larb_avg_bw(
+				"r", "venc", RSH_16(readl(MEM_SMI_VENC_COMM1_CHN1_BW)), 1, 1);
+			trace_mmqos__larb_avg_bw(
+				"w", "venc", MASK_16(readl(MEM_SMI_VENC_COMM1_CHN1_BW)), 1, 1);
+
+			trace_mmqos__comm_port_ostdl(
+				"w", "venc", 0, 0, MASK_8(readl(MEM_SMI_VENC_COMM0_OSTDL)));
+			trace_mmqos__comm_port_ostdl(
+				"r", "venc", 0, 0, MASK_8(RSH_8(readl(MEM_SMI_VENC_COMM0_OSTDL))));
+			trace_mmqos__comm_port_ostdl(
+				"w", "venc", 0, 1, MASK_8(RSH_16(readl(MEM_SMI_VENC_COMM0_OSTDL))));
+			trace_mmqos__comm_port_ostdl(
+				"r", "venc", 0, 1, MASK_8(RSH_8(RSH_16(readl(MEM_SMI_VENC_COMM0_OSTDL)))));
+			trace_mmqos__comm_port_ostdl(
+				"w", "venc", 1, 0, MASK_8(readl(MEM_SMI_VENC_COMM1_OSTDL)));
+			trace_mmqos__comm_port_ostdl(
+				"r", "venc", 1, 0, MASK_8(RSH_8(readl(MEM_SMI_VENC_COMM1_OSTDL))));
+			trace_mmqos__comm_port_ostdl(
+				"w", "venc", 1, 1, MASK_8(RSH_16(readl(MEM_SMI_VENC_COMM1_OSTDL))));
+			trace_mmqos__comm_port_ostdl(
+				"r", "venc", 1, 1, MASK_8(RSH_8(RSH_16(readl(MEM_SMI_VENC_COMM1_OSTDL)))));
+			if (mmqos_state & VDEC_COMM_PORT_OSTDL) {
+				trace_mmqos__comm_port_ostdl(
+					"w", "vdec", 0, 0, MASK_8(readl(MEM_SMI_VDEC_COMM0_OSTDL)));
+				trace_mmqos__comm_port_ostdl(
+					"r", "vdec", 0, 0, MASK_8(RSH_8(readl(MEM_SMI_VDEC_COMM0_OSTDL))));
+				trace_mmqos__comm_port_ostdl(
+					"w", "vdec", 0, 1, MASK_8(RSH_16(readl(MEM_SMI_VDEC_COMM0_OSTDL))));
+				trace_mmqos__comm_port_ostdl(
+					"r", "vdec", 0, 1, MASK_8(RSH_8(RSH_16(readl(MEM_SMI_VDEC_COMM0_OSTDL)))));
+				trace_mmqos__comm_port_ostdl(
+					"w", "vdec", 1, 0, MASK_8(readl(MEM_SMI_VDEC_COMM1_OSTDL)));
+				trace_mmqos__comm_port_ostdl(
+					"r", "vdec", 1, 0, MASK_8(RSH_8(readl(MEM_SMI_VDEC_COMM1_OSTDL))));
+				trace_mmqos__comm_port_ostdl(
+					"w", "vdec", 1, 1, MASK_8(RSH_16(readl(MEM_SMI_VDEC_COMM1_OSTDL))));
+				trace_mmqos__comm_port_ostdl(
+					"r", "vdec", 1, 1, MASK_8(RSH_8(RSH_16(readl(MEM_SMI_VDEC_COMM1_OSTDL)))));
+			}
+
+			mmqos_update_vdec_ostdl_trace("VDEC_larb4", 4,
+				readl(MEM_SMI_VDEC_LARB4_OSTDL0_3), 0);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb4", 4,
+				readl(MEM_SMI_VDEC_LARB4_OSTDL4_7), 1);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb4", 4,
+				readl(MEM_SMI_VDEC_LARB4_OSTDL8_11), 2);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb4", 4,
+				readl(MEM_SMI_VDEC_LARB4_OSTDL12_15), 3);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb4", 4,
+				readl(MEM_SMI_VDEC_LARB4_OSTDL16_19), 4);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb4", 4,
+				readl(MEM_SMI_VDEC_LARB4_OSTDL20_23), 5);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb4", 4,
+				readl(MEM_SMI_VDEC_LARB4_OSTDL24_27), 6);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb4", 4,
+				readl(MEM_SMI_VDEC_LARB4_OSTDL28_31), 7);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb5", 5,
+				readl(MEM_SMI_VDEC_LARB5_OSTDL0_3), 0);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb5", 5,
+				readl(MEM_SMI_VDEC_LARB5_OSTDL4_7), 1);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb5", 5,
+				readl(MEM_SMI_VDEC_LARB5_OSTDL8_11), 2);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb5", 5,
+				readl(MEM_SMI_VDEC_LARB5_OSTDL12_15), 3);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb5", 5,
+				readl(MEM_SMI_VDEC_LARB5_OSTDL16_19), 4);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb5", 5,
+				readl(MEM_SMI_VDEC_LARB5_OSTDL20_23), 5);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb5", 5,
+				readl(MEM_SMI_VDEC_LARB5_OSTDL24_27), 6);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb5", 5,
+				readl(MEM_SMI_VDEC_LARB5_OSTDL28_31), 7);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb6", 6,
+				readl(MEM_SMI_VDEC_LARB6_OSTDL0_3), 0);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb6", 6,
+				readl(MEM_SMI_VDEC_LARB6_OSTDL4_7), 1);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb6", 6,
+				readl(MEM_SMI_VDEC_LARB6_OSTDL8_11), 2);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb6", 6,
+				readl(MEM_SMI_VDEC_LARB6_OSTDL12_15), 3);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb6", 6,
+				readl(MEM_SMI_VDEC_LARB6_OSTDL16_19), 4);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb6", 6,
+				readl(MEM_SMI_VDEC_LARB6_OSTDL20_23), 5);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb6", 6,
+				readl(MEM_SMI_VDEC_LARB6_OSTDL24_27), 6);
+			mmqos_update_vdec_ostdl_trace("VDEC_larb6", 6,
+				readl(MEM_SMI_VDEC_LARB6_OSTDL28_31), 7);
+			dump_times = 0;
+		}
+
+		if (mmqos_state & MMPC_ENABLE || mmqos_state & MMPC_V2_ENABLE)
+			mmpc_ftrace_dump();
+
+		dump_times++;
+
+		usleep_range(1000, 2000);
+	}
+	return 0;
+}
+
+int mmqos_debug_set_ftrace(const char *val,
+	const struct kernel_param *kp)
+{
+	static struct task_struct *kthr;
+	u32 ena = 0;
+	int ret;
+
+	if (mmqos_met_not_freerun) {
+		MMQOS_DBG("mmqos met not freerun");
+		return 0;
+	}
+
+	if (!gmmqos) {
+		ftrace_ena = false;
+		return 0;
+	}
+
+	rt_mutex_lock(&gmmqos->bw_lock);
+	ret = kstrtou32(val, 0, &ena);
+
+	ftrace_ena = ena;
+	if (mmqos_state & VCP_ENABLE) {
+		if (ena) {
+			MMQOS_DBG("enable");
+			if (!kthr)
+				kthr = kthread_run(
+					mmqos_dbg_ftrace_thread, NULL, "mmqos-dbg-ftrace");
+		} else {
+			MMQOS_DBG("disable");
+			if (kthr) {
+				ret = kthread_stop(kthr);
+				kthr = NULL;
+				if (!ret)
+					MMQOS_DBG("stop kthread mmqos-dbg-ftrace");
+			}
+		}
+	}
+	rt_mutex_unlock(&gmmqos->bw_lock);
+	return 0;
+}
+EXPORT_SYMBOL_GPL(mmqos_debug_set_ftrace);
+
+module_param(log_level, uint, 0644);
+MODULE_PARM_DESC(log_level, "mmqos log level");
+
+void set_mmqos_state(const u32 new_state)
+{
+	mmqos_state = new_state;
+}
+EXPORT_SYMBOL_GPL(set_mmqos_state);
+
+int get_mmqos_state(void)
+{
+	return mmqos_state;
+}
+EXPORT_SYMBOL_GPL(get_mmqos_state);
+
+static int mmqos_set_state(const char *val, const struct kernel_param *kp)
+{
+	u32 state = 0;
+	int ret;
+
+	ret = kstrtou32(val, 0, &state);
+	if (ret) {
+		MMQOS_ERR("failed:%d state:%#x", ret, state);
+		return ret;
+	}
+
+	MMQOS_DBG("sync mmqos_state: %d -> %d", mmqos_state, state);
+	mmqos_state = state;
+
+	if (mmqos_state & MMUP_ENABLE) {
+		mtk_mmqos_enable_mmup(true);
+		ret = mmqos_mmup_ipi_send(FUNC_MMUP_SYNC_STATE, mmqos_state);
+		mtk_mmqos_enable_mmup(false);
+	}
+
+	if (mmqos_state & VCP_ENABLE) {
+		mtk_mmqos_enable_vcp(true);
+		ret = mmqos_vcp_ipi_send(FUNC_SYNC_STATE, mmqos_state, NULL);
+		mtk_mmqos_enable_vcp(false);
+	}
+	return ret;
+}
+
+static const struct kernel_param_ops mmqos_state_ops = {
+	.set = mmqos_set_state,
+	.get = param_get_uint,
+};
+module_param_cb(mmqos_state, &mmqos_state_ops, &mmqos_state, 0644);
+MODULE_PARM_DESC(mmqos_state, "mmqos_state");
+
+module_param(freq_mode, uint, 0644);
+MODULE_PARM_DESC(freq_mode, "mminfra change frequency mode");
+
+module_param(r_hrt_ostdl, uint, 0644);
+MODULE_PARM_DESC(r_hrt_ostdl, "Read HRT OSTDL Policy");
+
+module_param(w_hrt_ostdl, uint, 0644);
+MODULE_PARM_DESC(w_hrt_ostdl, "Write HRT OSTDL Policy");
+
+module_param(r_srt_ostdl, uint, 0644);
+MODULE_PARM_DESC(r_srt_ostdl, "Read SRT OSTDL Policy");
+
+module_param(w_srt_ostdl, uint, 0644);
+MODULE_PARM_DESC(w_srt_ostdl, "Write SRT OSTDL Policy");
+
+u32 larb_port_ostdl;
+
+struct device *get_larb_dev(int larb_id)
+{
+	struct icc_onecell_data *icc_data;
+	struct icc_node *node;
+	struct larb_node *larb_node;
+	int i;
+
+	if (larb_id < 0)
+		return NULL;
+
+	icc_data = (struct icc_onecell_data *)gmmqos->prov.data;
+	for (i = 0; i < icc_data->num_nodes; i++)
+		if (icc_data->nodes[i]->id == SLAVE_LARB(larb_id)) {
+			node = icc_data->nodes[i];
+			larb_node = (struct larb_node *)node->data;
+			MMQOS_DBG("found larb id:%d", larb_id);
+			return larb_node->larb_dev;
+		}
+
+	MMQOS_DBG("cannot find larb id:%d", larb_id);
+	return NULL;
+}
+
+int mmqos_set_larb_port_ostdl(const char *val, const struct kernel_param *kp)
+{
+	int result;
+	int larb_id, port_id, ostdl;
+	struct device *larb_dev;
+
+	result = sscanf(val, "%d %d %d", &larb_id, &port_id, &ostdl);
+	if (result != 3) {
+		MMQOS_ERR("Invalid input format. Expected 'larb_id port_id ostdl'");
+		return -EINVAL;
+	}
+
+	MMQOS_DBG("larb:%d port:%d ostdl:%d", larb_id, port_id, ostdl);
+	if (ostdl <= 0) {
+		MMQOS_DBG("ostdl should not <= 0");
+		return -EINVAL;
+	}
+
+	larb_dev = get_larb_dev(larb_id);
+	if (larb_dev == NULL) {
+		MMQOS_ERR("wrong larb_id");
+		return -EINVAL;
+	}
+
+	mtk_smi_larb_bw_set(larb_dev, port_id, ostdl);
+	return 0;
+}
+
+
+static const struct kernel_param_ops larb_port_ostdl_ops = {
+	.set = mmqos_set_larb_port_ostdl,
+	.get = param_get_uint,
+};
+module_param_cb(larb_port_ostdl, &larb_port_ostdl_ops, &larb_port_ostdl, 0644);
+MODULE_PARM_DESC(larb_port_ostdl, "force set ostdl to larb port");
+
+static const struct kernel_param_ops mmqos_debug_set_ftrace_ops = {
+	.set = mmqos_debug_set_ftrace,
+	.get = param_get_uint,
+};
+module_param_cb(ftrace_ena, &mmqos_debug_set_ftrace_ops, &ftrace_ena, 0644);
+MODULE_PARM_DESC(ftrace_ena, "mmqos ftrace log");
+
+static int sid;
+static int bw_id;
+int mmqos_set_sid_bw_id(const char *val, const struct kernel_param *kp)
+{
+	int result;
+
+	result = sscanf(val, "%d %d", &sid, &bw_id);
+	if (result != 2) {
+		MMQOS_ERR("Invalid input format. Expected 'sid bw_id'");
+		return -EINVAL;
+	}
+	if (sid < 0 || sid >= MAX_SUBSYS_NUM) {
+		MMQOS_ERR("sid:%d is wrong", sid);
+		return -EINVAL;
+	}
+	if (bw_id < 0 || bw_id >= MAX_BW_VALUE_NUM) {
+		MMQOS_ERR("bw_id:%d is wrong", bw_id);
+		return -EINVAL;
+	}
+	MMQOS_DBG("set sid:%d, bw_id:%d", sid, bw_id);
+
+	return 0;
+}
+
+int mmqos_check_channel_bw(char *val, const struct kernel_param *kp)
+{
+	int reg_id, bw;
+
+	if (mmqos_state & MMPC_V2_ENABLE) {
+		reg_id = bw_id;
+		bw = read_register(SUBSYS_V2_HW_BW_OFFSET(sid, reg_id));
+	} else {
+		reg_id = bw_id / 3;
+		bw = get_bw_from_reg(
+			read_register(SUBSYS_HW_BW_OFFSET(sid, reg_id)), bw_id % 3);
+	}
+	MMQOS_DBG("sid:%d, bw_id:%d, bw:%d", sid, bw_id, bw);
+
+	return sprintf(val, "%d", bw);
+}
+static const struct kernel_param_ops mmqos_check_channel_ops = {
+	.set = mmqos_set_sid_bw_id,
+	.get = mmqos_check_channel_bw,
+};
+module_param_cb(check_channel, &mmqos_check_channel_ops, NULL, 0644);
+MODULE_PARM_DESC(check_channel, "mmqos check channel bw");
+
+EXPORT_SYMBOL_GPL(mtk_mmqos_remove);
+MODULE_LICENSE("GPL v2");
+#endif /* MMQOS_MTK_C */

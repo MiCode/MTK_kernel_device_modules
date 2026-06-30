@@ -1,0 +1,51 @@
+config DRM_MEDIATEK_AUTO
+	tristate "DRM AUTO Support for Mediatek SoCs"
+	depends on DRM_MEDIATEK_V2
+	help
+	  DRM AUTO driver for Mediatek SoCs.
+	  This config will separate the auto from phone.
+	  Choose this option if you want to enable
+	  DRM AUTO driver for auto.
+
+config DRM_MEDIATEK_AUTO_HOST
+	tristate "DRM AUTO Host Support for Mediatek SoCs"
+	depends on DRM_MEDIATEK_V2
+	help
+	  DRM AUTO Host driver for Mediatek SoCs.
+	  This config will separate the auto host from phone.
+	  Choose this option if you want to enable
+	  DRM AUTO Host driver for auto.
+
+config DRM_MEDIATEK_AUTO_GUEST
+	tristate "DRM AUTO Guest Support for Mediatek SoCs"
+	depends on DRM_MEDIATEK_V2
+	help
+	  DRM AUTO Guest driver for Mediatek SoCs.
+	  This config will separate the auto guest from phone.
+	  Choose this option if you want to enable
+	  DRM AUTO Guest driver for auto.
+
+config DRM_MEDIATEK_AUTO_MBRAIN
+	bool "Enable MediaTek Display Support for MBRAIN"
+	help
+	  Enable support for MediaTek Display MBRAIN feature.
+	  This feature provides advanced display capabilities
+	  for MediaTek platforms. It is recommended to enable this
+	  option if you are using a MediaTek platform that supports
+	  the MBRAIN feature.
+
+config DRM_MEDIATEK_AUTO_DUAL_PIPE_W_DUAL_DSC
+	bool "Enable Dual Pipe with Dual DSC"
+	help
+	  Enable this option to support dual pipe with dual DSC (Display Stream Compression).
+	  This is typically used for high-resolution display configurations.
+	  If unsure, say N.
+	  Requires hardware support for dual DSC pipelines.
+
+config DRM_MEDIATEK_AUTO_VIRT_DISP_PATH
+	tristate "Support display virtual path"
+	help
+	  Used for no physical display-port, only used to configure exdma blender
+	  pq, etc.
+	  The function is used in the hypervisor android virtual machine.
+	  The function is used in the hypervisor android virtual machine.

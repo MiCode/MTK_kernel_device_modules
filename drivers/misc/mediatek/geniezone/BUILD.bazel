@@ -1,0 +1,152 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (C) 2024 MediaTek Inc.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("config.bzl", "gz_main_config", "gz_tz_system_config")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+# TODO: remove this compatibility label
+filegroup(
+	name = "ddk_makefile",
+	srcs = glob([
+		"**/*.c",
+		"**/*.h",
+		"**/Kbuild",
+		"**/Kbuild.*",
+		"**/Makefile",
+		"**/Makefile.*",
+	]),
+)
+
+mgk_package = "//kernel_device_modules-{}".format(kernel_version)
+
+gz_trusty_package = "{}/drivers/misc/mediatek/geniezone/gz-trusty".format(mgk_package)
+heaps_package = "{}/drivers/dma-buf/heaps".format(mgk_package)
+tmem_package = "{}/drivers/misc/mediatek/trusted_mem".format(mgk_package)
+
+ddk_headers(
+	name = "gz-public_hdrs",
+	hdrs = glob([
+		"public/**/*.h",
+		"public/*.h",
+	]),
+	includes = [
+		"public",
+	],
+)
+
+ddk_headers(
+	name = "gz-mtee_ut_hdrs",
+	hdrs = glob([
+		"mtee_ut/*.h",
+	]),
+	includes = [
+		".",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+ddk_headers(
+	name = "local_hdrs",
+	hdrs = glob([
+		"*.h",
+		"include/*.h",
+	]),
+	includes = [
+		".",
+		"include",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "gz_main",
+	out = "gz_main_mod.ko",
+	srcs = [
+		"dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_MAIN": {
+			True: [
+				"gz_main.c",
+				"mtee_ut/gz_ut.c",
+				"mtee_ut/gz_shmem_ut.c",
+				"mtee_ut/gz_vreg_ut.c",
+			],
+		},
+		"CONFIG_ARM_FFA_TRANSPORT": {
+			True: [
+				"gz_ffa.c",
+			],
+		},
+		"GZ_CHMEM_UT": {
+			True: [
+				"mtee_ut/gz_chmem_ut.c",
+			],
+		},
+	},
+	hdrs = [
+		":gz-public_hdrs",
+	],
+	header_deps = [
+		":local_hdrs",
+		":gz-mtee_ut_hdrs",
+	],
+	ko_deps = [
+		":gz_tz_system",
+		"{}:gz-trusty".format(gz_trusty_package),
+		"{}:mtk_sec_heap".format(heaps_package),
+		"{}:ffa".format(tmem_package),
+	],
+	local_defines = gz_main_config["local_defines"],
+	copts = gz_main_config["copts"],
+)
+
+define_mgk_ddk_ko(
+	name = "gz_tz_system",
+	out = "gz_tz_system.ko",
+	srcs = [
+		"dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_TZ_SYSTEM": {
+			True: [
+				"mtee-kree/kree_mem.c",
+				"mtee-kree/tz_mmap.c",
+				"tz_system.c",
+			],
+		},
+	},
+	hdrs = [
+		":gz-public_hdrs",
+	],
+	header_deps = [
+		":local_hdrs",
+	],
+	ko_deps = [
+		"{}:gz-trusty".format(gz_trusty_package),
+	],
+	local_defines = gz_tz_system_config["local_defines"],
+	copts = gz_tz_system_config["copts"],
+)
+

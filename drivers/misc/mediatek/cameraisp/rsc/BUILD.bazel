@@ -1,0 +1,50 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version")
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+# DDK conversion
+define_mgk_ddk_ko(
+    name = "camera_rsc_isp6s",
+    srcs = [
+        "engine_request.c",
+        "isp_6s/camera_rsc.c"
+    ]+glob(["**/*.h"]),
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+    ],
+
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/misc/mediatek/mmp/",
+        "-I$(DEVICE_MODULES_PATH)/misc/mediatek/cmdq/v3/",
+        "-I$(DEVICE_MODULES_PATH)/misc/mediatek/cmdq/mailbox/",
+        "-I$(DEVICE_MODULES_PATH)/staging/android/ion",
+        "-I$(DEVICE_MODULES_PATH)/staging/android/ion/mtk",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/",
+        "-I$(DEVICE_MODULES_PATH)/misc/mediatek/smi/",
+
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/*.c",
+        "**/*.h",
+        ]),
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)

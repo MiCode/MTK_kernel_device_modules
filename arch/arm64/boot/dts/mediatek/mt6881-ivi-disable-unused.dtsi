@@ -1,0 +1,20 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2025 MediaTek Inc.
+ * Author: Qiqi Wang <qiqi.wang@mediatek.com>
+ */
+
+&ivi_disable_unused {
+	status = "okay";
+
+	disable-unused-pd-pcie@a0 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xa0>;
+		power-domains = <&ivi_scpsys  MT6881_POWER_DOMAIN_PCIE>;
+	};
+	disable-unused-pd-pcie-phy@a1 {
+		compatible = "mediatek,scpsys-disable-unused";
+		reg = <0xa1>;
+		power-domains = <&ivi_scpsys  MT6881_POWER_DOMAIN_PCIE_PHY>;
+	};
+};

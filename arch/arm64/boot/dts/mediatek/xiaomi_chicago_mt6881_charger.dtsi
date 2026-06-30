@@ -1,0 +1,434 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2024 MediaTek Inc.
+ */
+
+#include <dt-bindings/power/mtk-charger.h>
+#include <dt-bindings/iio/mt635x-auxadc.h>
+
+&i2c12 {
+	clock-frequency = <400000>;
+	status = "okay";
+	bq28z610@55 {
+        compatible = "bq28z610";
+        reg = <0x55>;
+
+        enable_shutdown_delay;
+        normal_shutdown_vbat_1s = <3400>;
+        critical_shutdown_vbat_1s = <3340>;
+        report_full_rsoc_1s = <9500>;
+        soc_gap_1s = <2>;
+        //slave_connect_gpio = <&pio 75 0x1>;
+        soc_decimal_rate = <
+            0  38
+            10 35
+            20 33
+            30 33
+            40 33
+            50 33
+            60 33
+            70 30
+            80 25
+            90 20
+            95 10 >;
+
+        temp_hyst = <20>;
+        dynamic_shutdown_voltage_support;
+        dod_temp_range = <
+            (-200)	(-61)
+            (-60)	(-1)
+            0	99
+            100	600>;
+        dod_shutdown_voltage_0 = <
+            0	89	2550	2600	2650
+            90	168	2600    2650    2700
+            169	451	2700	2750	2800
+            452	1050	2750    2800    2850
+            1051	5000	2850	2900	2950 >;
+        dod_shutdown_voltage_1 = <
+            0	89	2500	2600	2650
+            90	168	2700    2750    2800
+            169	451	2800	2850	2900
+            452	1050	2850    2900    2950
+            1051	5000	2950	3000	3050 >;
+        dod_shutdown_voltage_2 = <
+            0	89	2650	2700	2700
+            90	168	2850    2900    2900
+            169	451	2950	3000	3000
+            452	1050	3000    3050    3050
+            1051	5000	3050	3150	3150 >;
+        dod_shutdown_voltage_3 = <
+            0	89	2800	2850	2850
+            90	168	3000    3050    3050
+            169	451	3100	3150	3150
+            452	1050	3150    3200    3200
+            1051	5000	3200	3250	3250 >;
+
+        cycle_temp_range = <
+            (-200)	(-61)
+            (-60)	(-1)
+            0	99
+            100	600>;
+        cycle_shutdown_voltage_0 = <
+            0	400	2500	2600	2650
+            401	800	2600    2650    2700
+            801	1200	2700	2750	2800
+            1201	5000	2750	2800	2850>;
+        cycle_shutdown_voltage_1 = <
+            0	400	2500	2600	2650
+            401	800	2700	2750	2800
+            801	1200	2800    2850    2900
+            1201	5000	2850	2900	2950>;
+        cycle_shutdown_voltage_2 = <
+            0	400	2650	2700	2700
+            401	800	2850	2900    2900
+            801	1200	2950	3000	3000
+            1201	5000	3000	3050	3050>;
+        cycle_shutdown_voltage_3 = <
+            0	400	2800	2850	2850
+            401	800	3000	3050	3050
+            801	1200	3100	3150	3150
+            1201	5000	3150	3200	3200>;
+
+        cold_dynamic_shutdown_voltage_support;
+        cold_shutdown_vol_current = <300>;
+        cold_shutdown_vol_soc = <6>;
+        cold_shutdown_vol_after_charging_time_s = <180>;
+        dod_cold_temp_range = <
+            (-200)	(-61)
+            (-60)	(-1)>;
+        cold_dod_shutdown_voltage_0 = <
+            0	89	3000	3050	3100
+            90	168	3000    3050    3100
+            169	451	3000	3050	3100
+            452	1050	3050    3100    3150
+            1051	5000	3050	3100	3150 >;
+        cold_dod_shutdown_voltage_1 = <
+            0	89	3000	3050	3100
+            90	168	3000    3050    3100
+            169	451	3050	3100	3150
+            452	1050	3050    3100    3150
+            1051	5000	3100	3150	3200 >;
+	};
+};
+
+&i2c11 {
+	clock-frequency = <400000>;
+	status = "okay";
+	sc858x-charger@6E{
+		compatible = "sc,sc858x-standalone";
+		reg = <0x6E>;
+		sc,sc858x,irq-gpio = <&pio 12 IRQ_TYPE_EDGE_FALLING>;
+
+		sc,sc858x,bat-ovp-disable = <0>;
+		sc,sc858x,bat-ovp-threshold = <11>;/*4450 + val * 25*/
+		sc,sc858x,usb-ovp-threshold = <11>;/*11000 + val * 1000*/
+		sc,sc858x,wpc-ovp-threshold = <11>;/*11000 + val * 1000*/
+		sc,sc858x,bus-ovp-threshold = <9>;/*15000 + val * 800*/
+		sc,sc858x,out-ovp-threshold = <1>;/*4800 + val * 200*/
+		sc,sc858x,bus-ocp-disable = <0>;
+		sc,sc858x,bus-ocp-threshold = <15>;/*2500 + val * 125*/
+		sc,sc858x,bus-ucp-fall-dg = <1>;/*0:8us 1:5ms 2:20ms 3:50ms*/
+		sc,sc858x,pmid2out-ovp-threshold = <2>;/*200 + val * 100*/
+		sc,sc858x,pmid2out-uvp-threshold = <7>;/*100 + val * 50*/
+		sc,sc858x,fsw-set = <7>;/*180 + val * 60*/
+		sc,sc858x,acdrv-hi-en = <1>;/*0:5V, 1:9V*/
+		sc,sc858x,ss-timeout = <5>;/*0:dis 3:320ms 4:1.28s 5:5.12s 6:20.48s 7:81.92s*/
+		sc,sc858x,wd-timeout = <0>;/*0:dis 1:0.2s 2:0.5s 3:1s 4:5s 5:30s*/
+		sc,sc858x,mode = <1>;/*0:(4:1 chg) 1:(2:1 chg) 2:(1:1 chg) 4:(1:4 con) 5:(1:2 con) 6:(1:1 con)*/
+		sc,sc858x,tsbat-flt-disable = <1>;
+		sc,sc858x,tshut-disable = <1>;
+		sc,sc858x,wpc-ovp-disable = <0>;
+		sc,sc858x,usb-ovp-disable = <0>;
+		sc,sc858x,bus-ovp-disable = <0>;
+		sc,sc858x,out-ovp-disable = <0>;
+		sc,sc858x,sense-r-mohm = <1>;/*0:1m  1:2m*/
+		mt6375_ovp_en_gpio = <&pio 11 0x0>;
+	};
+};
+
+&charger {
+	max_charger_voltage = <12000000>;
+    /* charging current */
+    usb_charger_current = <500000>;
+    ac_charger_current = <1600000>;
+    ac_charger_input_current = <1600000>;
+    charging_host_charger_current = <900000>;
+    step_fallback_hyst = <125>;
+    step_forward_hyst = <0>;
+    jeita_fallback_hyst = <10>;
+    jeita_forward_hyst = <10>;
+    mt6368_moscon1_control;
+    en_floatgnd;
+    enable_pdtest_mode = <1>;
+    support_quick_revchg;
+    smart_snschg_v2_support;
+    pd2_input_current = <1700000>;
+    min_charger_voltage_1 = <4200000>;
+    min_charger_voltage_2 = <4500000>;
+    ffc_low_tbat = <180>;
+    ffc_medium_tbat = <230>;
+    ffc_warm_tbat = <350>;
+    ffc_little_high_tbat = <400>;
+    ffc_high_tbat = <480>;
+    ffc_high_soc = <95>;
+    adapter_power = <100>;
+    support_pchg_policy;
+    io-channels = <&pmic_adc (ADC_PURES_100K | AUXADC_VIN4)>;
+    io-channel-names = "slave_connector_auxadc";
+    /* CN battery paremeter */
+    fv = <4520>;
+    fv_normal = <4500>;
+    fv_normal_warm = <4490>;
+    fv_normal_high = <4480>;
+    fv_ffc = <4580>;
+    iterm = <401>;
+    iterm_warm = <401>;
+    jeita_fcc_cfg = <(-100) 30      4150    729     583
+                    31      80      4150    1358    994
+                    81      110     4150    2087    1358
+                    111     130     4150    2087    1358
+                    131     180     4150    8748    7290
+                    181     470     4200    17600   17600
+                    471     600     4100    3645    3645>;
+	jeita_fv_cfg = <(-100)  30      4520
+                    31      80      4520
+                    81      110     4520
+                    111     130     4520
+                    131     180     4520
+                    181     470     4570
+                    471     600     4100>;
+    /* ATL START */
+    iterm_ffc_1_cycle_atl = <1282>;
+    iterm_ffc_little_warm_1_cycle_atl = <1684>;
+    iterm_ffc_warm_1_cycle_atl = <2480>;
+    iterm_ffc_hot_1_cycle_atl = <3368>;
+    /* ATL 12-23C cycle step */
+    /* 1-50cls */
+    step_chg_cfg_1_cycle_atl = <3000        4250    12400
+                            4251    4500    10935
+                            4501    4570    8748>;
+    /* 50-100cls */
+    step_chg_cfg_50_cycle_atl = <3000       4220    12400
+                            4221    4480    10935
+                            4481    4570    8748>;
+    /* 100-150cls */
+    step_chg_cfg_100_cycle_atl = <3000      4220    12400
+                            4221    4460    10935
+                            4461    4550    8748>;
+    /* 150-300cls */
+    step_chg_cfg_150_cycle_atl = <3000      4220    12400
+                            4221    4440    10935
+                            4441    4550    8748>;
+    /* 300-800cls */
+    step_chg_cfg_300_cycle_atl = <3000      4220    12400
+                            4221    4420    10935
+                            4421    4540    8748>;
+    /* >800cls */
+    step_chg_cfg_800_cycle_atl = <3000      4220    12400
+                            4221    4420    10935
+                            4421    4520    8748>;
+    /* ATL 23-48C cycle step */
+    /* 1-50cls */
+    step_chg_cfg_warm_1_cycle_atl = <3000   4220    17400
+                                    4221    4320    12400
+                                    4321    4500    10940
+                                    4501    4570    8750>;
+	/* 50-100cls */
+    step_chg_cfg_warm_50_cycle_atl = <3000  4190    17400
+                                    4191    4300    11780
+                                    4301    4480    10390
+                                    4481    4570    8310>;
+    /* 100-150cls */
+    step_chg_cfg_warm_100_cycle_atl = <3000 4190    17400
+                                    4191    4280    11160
+                                    4281    4460    9840
+                                    4461    4550    7870>;
+    /* 150-300cls */
+    step_chg_cfg_warm_150_cycle_atl = <3000 4190    17400
+                                    4191    4260    10540
+                                    4261    4400    9290
+                                    4401    4550    7440>;
+    /* 300-800cls */
+    step_chg_cfg_warm_300_cycle_atl = <3000 4190    17400
+                                    4191    4240    9920
+                                    4241    4420    8750
+                                    4421    4540    7000>;
+    /* >800cls */
+    step_chg_cfg_warm_800_cycle_atl = <3000 4190    17400
+                                    4191    4240    9920
+                                    4241    4420    8750
+                                    4421    4520    7000>;
+    /* ATL END */
+    /* LWN START */
+    iterm_ffc_1_cycle_lwn = <1443>;
+    iterm_ffc_little_warm_1_cycle_lwn = <1844>;
+    iterm_ffc_warm_1_cycle_lwn = <2646>;
+    iterm_ffc_hot_1_cycle_lwn = <3448>;
+    /* LWN 12-23C cycle step */
+    /* 1-50cls */
+    step_chg_cfg_1_cycle_lwn = <3000        4250    12400
+                            4251    4500    10935
+                            4501    4570    8748>;
+    /* 50-100cls */
+    step_chg_cfg_50_cycle_lwn = <3000       4220    12400
+                            4221    4480    10935
+                            4481    4570    8748>;
+    /* 100-150cls */
+    step_chg_cfg_100_cycle_lwn = <3000      4220    12400
+                            4221    4460    10935
+                            4461    4550    8748>;
+    /* 150-300cls */
+    step_chg_cfg_150_cycle_lwn = <3000      4220    12400
+                            4221    4440    10935
+                            4441    4550    8748>;
+    /* 300-800cls */
+    step_chg_cfg_300_cycle_lwn = <3000      4220    12400
+                            4221    4420    10935
+                            4421    4540    8748>;
+    /* >800cls */
+    step_chg_cfg_800_cycle_lwn = <3000      4220    12400
+                            4221    4420    10935
+                            4421    4520    8748>;
+    /* LWN 23-48C cycle step */
+    /* 1-50cls */
+    step_chg_cfg_warm_1_cycle_lwn = <3000   4150    17400
+                                    4151    4320    12400
+                                    4321    4500    10940
+                                    4501    4570    8750>;
+    /* 50-100cls */
+    step_chg_cfg_warm_50_cycle_lwn = <3000  4120    17400
+                                    4121    4300    11780
+                                    4301    4480    10390
+                                    4481    4570    8310>;
+    /* 100-150cls */
+    step_chg_cfg_warm_100_cycle_lwn = <3000 4120    17400
+                                    4121    4280    11160
+                                    4281    4460    9840
+                                    4461    4550    7870>;
+    /* 150-300cls */
+    step_chg_cfg_warm_150_cycle_lwn = <3000 4120    17400
+                                    4121    4260    10540
+                                    4261    4400    9290
+                                    4401    4550    7440>;
+    /* 300-800cls */
+    step_chg_cfg_warm_300_cycle_lwn = <3000 4120    17400
+                                    4121    4240    9920
+                                    4241    4420    8750
+                                    4421    4540    7000>;
+	/* >800cls */
+    step_chg_cfg_warm_800_cycle_lwn = <3000 4120    17400
+                                    4121    4240    9920
+                                    4241    4420    8750
+                                    4421    4520    7000>;
+    /* LWN END */
+    thermal_limit_dcp = <1900 1900 1900 1900 1900 1900 1900 1900 1900 1900 1900 1900 1500 1400 1200 1000>;
+    thermal_limit_qc2 = <2500 2500 2500 2500 2500 2500 2500 2500 2500 2500 2500 2000 1500 1500 1000 500>;
+    thermal_limit_qc3_18w = <2500 2500 2500 2500 2500 2500 2400 2300 2200 2100 1500 1000 800 700 600 500>;
+    thermal_limit_qc3_27w = <2500 2500 2500 2500 2500 2500 2400 2300 2200 2100 1500 1000 800 700 600 500>;
+    thermal_limit_qc35 = <2500 2500 2500 2500 2500 2500 2400 2300 2200 2100 1500 1000 800 700 600 500>;
+    thermal_limit_pd = <17600 13500 11000 9000 8000 7000 6000 5000 4500 3500 3000 2500 2000 1500 1000 500>;
+    smart_bypass_support;
+    smart_bypass_entry_soc = <20>;
+    smart_bypass_exit_soc = <90>;
+    smart_bypass_fallback_hyst = <5>; // board_temp(0.1 degree) hyst
+    smart_bypass_forward_hyst = <5>;
+    smart_bypass_high_lmt_cfg = <(-100)     250     3000
+                    251     280     2500
+                    281     300     2000
+                    301     330     1600
+                    331     370     1200
+                    371     800     900>;
+    smart_bypass_med_lmt_cfg = <(-100)      150     17600
+                    151     200     17600
+                    201     250     17600
+                    251     300     8000
+                    301     370     5000
+                    371     800     2000>;
+    smart_bypass_low_lmt_cfg = <(-100)      150     17600
+                    151     200     17600
+                    201     250     17600
+                    251     300     17600
+                    301     370     17600
+                    371     800     17600>;
+};
+
+&lk_charger {
+	non-std-ac-charger-current = <1000000>;
+	ac-charger-current = <1600000>;
+	ac-charger-input-current = <2000000>;
+	/* battery temperature protection */
+	temp-t4-threshold = <58>;
+	temp-t3-threshold = <45>;
+	temp-t1-threshold = <(-10)>;
+	boot-battery-voltage-max = <3650000>;
+	boot-battery-voltage = <3200000>;
+	pre-charger-current = <700000>;
+	boot-voltage-level = <3000 3100 3200 3200 3400>;
+	ta-capability-level = <1900 1350 850 500 0>;
+	extrem-boot-battery-voltage = <3100000>;
+};
+
+&pd_cp_manager {
+		compatible = "pd_cp_manager";
+		fv = <4492>;
+		fv_ffc = <4562>;
+		max_fcc = <17600>;
+		max_vbus = <20000>;
+		max_ibus = <4400>;
+		fcc_low_hyst = <150>;
+		fcc_high_hyst = <10>;
+		low_tbat = <100>;
+		high_tbat = <480>;
+		high_vbat = <4400>;
+		high_soc = <95>;
+		low_fcc = <2000>;
+		cv_vbat = <4480>;
+		cv_vbat_ffc = <4510>;
+		cv_ibat = <1200>;
+		min_pdo_vbus = <8000>;
+		max_pdo_vbus = <21000>;
+		mt6375_control_gpio = <&pio 11 0x0>;
+		lsw_control_gpio = <&pio 10 0x0>;
+		support_4_1_mode;
+		support_pmic_parachg;
+		switch1_1_enter = <2500>;
+		switch1_1_exit = <3700>;
+		switch2_1_enter = <4200>;
+		switch2_1_exit = <6500>;
+		pdm_ibus_gap = <0>;
+		pdm_bypass_ibus_gap = <2600>;
+		adapter_power = <100>;
+		fv_hyst = <9>;
+		support_pchg_policy;
+};
+
+&mtk_gauge {
+	disable-mtkbattery = <(1)>;
+	FIXED_BATTERY_TEMPERATURE = <(25)>;
+};
+
+&rt_pd_manager {
+	en-wd0-port0;
+};
+
+&mt6720_typec {
+	tcpc,en_floatgnd;
+};
+
+&i2c5 {
+	hl7603_3@77 {
+		compatible = "hl7603_3";
+		reg = <0x77>;
+		vout_threshold = <3600>;
+	};
+};
+
+&mt6368_vtp {
+		regulator-always-on;
+};
+
+&mt6720_div2 {
+    status = "disabled";
+};
+

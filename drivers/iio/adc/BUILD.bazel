@@ -1,0 +1,59 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+MODULE_NAME = [
+    "mt635x-auxadc",
+    "mt6360-adc",
+    "mt6370-adc",
+    "mt6375-adc",
+    "mt6375-auxadc",
+    "mt6379-adc",
+    "mtk-spmi-pmic-adc",
+    "rt9490-adc",
+    "mt6338-auxadc",
+    "mt6577_auxadc",
+    "mt6720-adc",
+]
+
+[define_mgk_ddk_ko(
+    name = "{}".format(mod),
+    srcs = [
+        "{}.c".format(mod),
+    ],
+    includes = ["."],
+) for mod in MODULE_NAME]
+
+define_mgk_ddk_ko(
+    name = "mt6681-auxadc",
+    srcs = [
+        "mt6681-auxadc.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/mfd:mt6685-audclk".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/i2c/busses:i2c-mt65xx".format(kernel_version),
+    ],
+)

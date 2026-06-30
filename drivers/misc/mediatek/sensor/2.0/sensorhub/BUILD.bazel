@@ -1,0 +1,70 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "sensorhub",
+    srcs = [
+        "tiny_crc8.c",
+        "tiny_crc32.c",
+        "ready.c",
+        "ipi_comm.c",
+        "sensor_comm.c",
+        "sensor_list.c",
+        "transceiver.c",
+        "share_memory.c",
+        "timesync.c",
+	"debug.c",
+	"custom_cmd.c",
+	"sensor_freq.c",
+	"sap_custom_cmd.c"
+    ],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+	"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/include",
+	"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/scp/rv",
+	"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sensor/2.0/sensorhub",
+    ],
+    header_deps = [
+	"//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sensor/2.0/core:hf_manager".format(kernel_version),
+	"//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:scp".format(kernel_version),
+	"//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = [
+        ".",
+    ],
+    hdrs = glob(["**/*.h"]),
+    linux_includes = [
+        "include",
+    ],
+)

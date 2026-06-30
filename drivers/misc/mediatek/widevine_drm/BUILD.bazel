@@ -1,0 +1,49 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+	"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "ddk_srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kconfig",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "widevine_driver",
+
+	srcs = [
+		"widevine_driver.c",
+	],
+
+	hdrs = [
+		"widevine_driver.h",
+	],
+
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps",
+	],
+
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
+	],
+
+	out = "widevine_driver.ko",
+)

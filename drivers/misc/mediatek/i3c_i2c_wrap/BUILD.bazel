@@ -1,0 +1,49 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "i3c_i2c_wrap_headers",
+    hdrs = glob([
+        "mtk-i3c-i2c-wrap.h",
+    ]),
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-i3c-i2c-wrap",
+    srcs = [
+        "mtk-i3c-i2c-wrap.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/i3c/master:mtk-i3c-master-mt69xx".format(kernel_version),
+    ],
+    hdrs = glob(["mtk-i3c-i2c-wrap.h"]),
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/i3c/master:i3c_master_api_headers".format(kernel_version),
+    ],
+    out = "mtk-i3c-i2c-wrap.ko",
+)

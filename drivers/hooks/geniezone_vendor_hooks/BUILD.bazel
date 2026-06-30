@@ -1,0 +1,50 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (C) 2024 MediaTek Inc.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+	name = "gzvm_hooks",
+	out = "gzvm_hooks.ko",
+	srcs = [
+		"gzvm_hooks.c",
+	],
+	includes = [
+		".",
+	],
+	copts = [
+		"-Wall",
+		"-Werror",
+	],
+	header_deps = [
+	],
+	ko_deps = [
+	],
+)

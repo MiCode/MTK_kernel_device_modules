@@ -1,0 +1,248 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+## ddk ko
+
+# isp6s
+define_mgk_ddk_ko(
+    name = "camera_eeprom",
+    srcs = [
+        "common/v2/eeprom_driver.c",
+        "common/v2/eeprom_i2c_common_driver.c",
+        "common/v2/eeprom_utils.c",
+    ] + [
+        "custom/eeprom_i2c_custom_driver.c",
+        "custom/cam_cal_list.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:cam_cal_header".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    # copts = [
+    #     "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+    # ],
+    includes = [
+        ".",
+        "common/v2",
+        "custom",
+    ],
+)
+
+# isp6s_lag
+define_mgk_ddk_ko(
+    name = "camera_eeprom_isp6s_lag",
+    srcs = [
+        "common/v2/eeprom_driver.c",
+        "common/v2/eeprom_i2c_common_driver.c",
+        "common/v2/eeprom_utils.c",
+    ] + [
+        "isp6s_lag/eeprom_i2c_custom_driver.c",
+        "isp6s_lag/cam_cal_list.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:cam_cal_header".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    # copts = [
+    #     "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+    # ],
+    includes = [
+        ".",
+        "common/v2",
+        "isp6s_lag",
+    ],
+    local_defines = [
+        "EEPROM_PLATFORM_DEFINE",
+    ],
+)
+
+# isp6s_mon
+define_mgk_ddk_ko(
+    name = "camera_eeprom_isp6s_mon",
+    srcs = [
+        "common/v2/eeprom_driver.c",
+        "common/v2/eeprom_i2c_common_driver.c",
+        "common/v2/eeprom_utils.c",
+    ] + [
+        "isp6s_mon/eeprom_i2c_custom_driver.c",
+        "isp6s_mon/cam_cal_list.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:cam_cal_header".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    # copts = [
+    #     "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+    # ],
+    includes = [
+        ".",
+        "common/v2",
+        "isp6s_mon",
+    ],
+)
+
+# isp6s_mou
+define_mgk_ddk_ko(
+    name = "camera_eeprom_isp6s_mou",
+    srcs = [
+        "common/v2/eeprom_driver.c",
+        "common/v2/eeprom_i2c_common_driver.c",
+        "common/v2/eeprom_utils.c",
+    ] + [
+        "isp6s_mou/eeprom_i2c_custom_driver.c",
+        "isp6s_mou/cam_cal_list.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:cam_cal_header".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    # copts = [
+    #     "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+    # ],
+    includes = [
+        ".",
+        "common/v2",
+        "isp6s_mou",
+    ],
+)
+
+# isp4_c
+define_mgk_ddk_ko(
+    name = "camera_eeprom_isp4_c",
+    srcs = [
+        "common/v1/eeprom_driver.c",
+        "common/v1/eeprom_i2c_common_driver.c",
+    ] + [
+        "isp4_c/eeprom_i2c_custom_driver.c",
+        "isp4_c/cam_cal_list.c",
+        "isp4_c/eeprom_i2c_dev.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:cam_cal_header".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+    ],
+    includes = [
+        ".",
+        "common/v1",
+        "isp4_c",
+    ],
+)
+
+# isp4_t
+define_mgk_ddk_ko(
+    name = "camera_eeprom_isp4_t",
+    srcs = [
+        "common/v1/eeprom_driver.c",
+        "common/v1/eeprom_i2c_common_driver.c",
+    ] + [
+        "isp4_t/eeprom_i2c_custom_driver.c",
+        "isp4_t/cam_cal_list.c",
+        "isp4_t/eeprom_i2c_dev.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:cam_cal_header".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+    ],
+    includes = [
+        ".",
+        "common/v1",
+        "isp4_t",
+    ],
+)
+
+# isp3_m
+define_mgk_ddk_ko(
+    name = "camera_eeprom_isp3_m",
+    srcs = [
+        "common/v1/eeprom_driver.c",
+        "common/v1/eeprom_i2c_common_driver.c",
+    ] + [
+        "isp3_m/eeprom_i2c_custom_driver.c",
+        "isp3_m/cam_cal_list.c",
+        "isp3_m/eeprom_i2c_dev.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:cam_cal_header".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+    ],
+    includes = [
+        ".",
+        "common/v1",
+        "isp3_m",
+    ],
+)
+
+# isp3_z
+define_mgk_ddk_ko(
+    name = "camera_eeprom_isp3_z",
+    srcs = [
+        "common/v1/eeprom_driver.c",
+        "common/v1/eeprom_i2c_common_driver.c",
+    ] + [
+        "isp3_z/eeprom_i2c_custom_driver.c",
+        "isp3_z/cam_cal_list.c",
+        "isp3_z/eeprom_i2c_dev.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cam_cal:cam_cal_header".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    hdrs = glob([
+        "**/*.h"
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+    ],
+    includes = [
+        ".",
+        "common/v1",
+        "isp3_z",
+    ],
+)

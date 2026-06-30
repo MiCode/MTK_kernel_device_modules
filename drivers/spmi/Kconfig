@@ -1,0 +1,28 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# SPMI driver configuration
+#
+if SPMI
+
+config DEVICE_MODULES_SPMI_MTK_PMIF
+	tristate "Mediatek SPMI Controller (PMIC Arbiter)"
+	help
+	  If you say yes to this option, support will be included for the
+	  built-in SPMI PMIC Arbiter interface on Mediatek family
+	  processors.
+
+	  This is required for communicating with Mediatek PMICs and
+	  other devices that have the SPMI interface.
+
+config MTK_SPMI_NACK_DEBUG
+	tristate "Mediatek SPMI NACK DEBUG"
+	help
+	  Say Y here to enable SPMI NACK debug support.
+	  There are two possibilities when SPMI master receives an NACK,
+	  By enabling SPMI NACK debug support, we can distinguish these
+	  two different types of NACK, and handler it properly.
+	  We will mask SPMI NACK irq for 100us if this is a current clamping
+	  NACK, in order to avoid IRQ flooding.
+	  We will trigger assert if this is a real NACK, in order to stop the
+	  system in time and make debug signal issue easier.
+endif

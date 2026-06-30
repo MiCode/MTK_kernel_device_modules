@@ -1,0 +1,7 @@
+config MEDIATEK_CCI_DEBUG_LITE
+	tristate "Mediatek cci dvfs debug driver"
+	help
+	  This kernel config can be used to debug cci dvfs (dynamic voltage
+	  and frequency scaling) for Mediatek cci driver.
+	  When enable this option, we can get more dvfs information.
+          If unsure, say N.

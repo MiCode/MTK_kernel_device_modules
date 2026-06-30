@@ -1,0 +1,4 @@
+config  XM_POWER_SUPPLY
+	tristate "Xiaomi power supply config"
+	help
+	  Say Y or M here to enable xiaomi power supply

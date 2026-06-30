@@ -1,0 +1,174 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_ioctl_touch_boost",
+    srcs = [
+        "perf_ioctl/ioctl_touch_boost.c",
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "perf_ioctl/ioctl_touch_boost.h",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_ioctl_powerhal",
+    srcs = [
+        "perf_ioctl/ioctl_powerhal.c",
+    ],
+    includes = [
+        ".",
+        "perf_ioctl",
+    ],
+    hdrs = [
+        "perf_ioctl/ioctl_powerhal.h",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_perf_ioctl_magt",
+    srcs = [
+        "perf_ioctl/perf_ioctl_magt.c",
+        "pelt_hint/include/pelt_hint.h",
+    ],
+    includes = [
+        ".",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:fpsgo_v8_public_headers".format(kernel_version),
+    ],
+    hdrs = [
+        "perf_ioctl/perf_ioctl_magt.h",
+    ],
+	ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),],
+    copts = [
+        "-I$(srctree)/kernel/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/pelt_hint/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_perf_ioctl",
+    srcs = [
+        "perf_ioctl/perf_ioctl.c",
+    ],
+    includes = [
+        ".",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:fpsgo_v8_public_headers".format(kernel_version),
+    ],
+    hdrs = [
+        "perf_ioctl/perf_ioctl.h",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_sbe_ioctl",
+    srcs = [
+        "perf_ioctl/sbe_ioctl.c",
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "perf_ioctl/sbe_ioctl.h",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "load_track",
+    srcs = [
+        "load_track/load_track.c",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "frs",
+    srcs = [
+        "frs/frs.c",
+        "frs/frs.h"
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance/fpsgo_v8:mtk_fpsgo_v8".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/fstb",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/fbt/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include"
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "uload_ind",
+    srcs = [
+        "uload_ind/uload_ind.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance:load_track".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_pelt_hint",
+    srcs = [
+        "pelt_hint/src/pelt_hint_main.c",
+        "pelt_hint/src/pelt_hint_sysfs.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_perf_ioctl_magt".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "pelt_hint/include/pelt_hint.h",
+        "pelt_hint/include/pelt_hint_sysfs.h",
+        "pelt_hint/include/pelt_hint_trace_event.h",
+        "pelt_hint/include/pelt_hint_usedext.h",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/pelt_hint/include/",
+        "-I$(srctree)/kernel/",
+        "-I$(srctree)/include/",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.mk",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)

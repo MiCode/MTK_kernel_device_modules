@@ -1,0 +1,88 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "wla_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "wla-v1",
+    srcs = [
+        "version/v1/wla.c",
+        "version/v1/wla_mon.c",
+    ],
+    hdrs = [
+        "version/v1/wla.h",
+        "version/v1/memsys_wlapm_reg.h",
+    ],
+    includes = [
+        "version/v1",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "wla-v1-dbg",
+    srcs = [
+        "version/v1/wla_dbg_fs.c",
+        "wla_fs/wla_sysfs.c",
+        "wla_fs/wla_sysfs_procfs.c",
+        "wla_fs/wla_dbg_sysfs.c",
+    ],
+    ko_deps = [
+        ":wla-v1",
+    ],
+    hdrs = [
+        "wla_fs/wla_sysfs.h",
+        "wla_fs/wla_kernfs.h",
+        "wla_fs/wla_dbg_sysfs.h",
+    ],
+    includes = [
+        "version/v1",
+        "wla_fs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "wla-v2",
+    srcs = [
+        "version/v2/wla.c",
+        "version/v2/wla_mon.c",
+    ],
+    hdrs = [
+        "version/v2/wla.h",
+        "version/v2/memsys_wlapm_reg.h",
+    ],
+    includes = [
+        "version/v2",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "wla-v2-dbg",
+    srcs = [
+        "version/v2/wla_dbg_fs.c",
+        "wla_fs/wla_sysfs.c",
+        "wla_fs/wla_sysfs_procfs.c",
+        "wla_fs/wla_dbg_sysfs.c",
+    ],
+    ko_deps = [
+        ":wla-v2",
+    ],
+    hdrs = [
+        "wla_fs/wla_sysfs.h",
+        "wla_fs/wla_kernfs.h",
+        "wla_fs/wla_dbg_sysfs.h",
+    ],
+    includes = [
+        "version/v2",
+        "wla_fs",
+    ],
+)

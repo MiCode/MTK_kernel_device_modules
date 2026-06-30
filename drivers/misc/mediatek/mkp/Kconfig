@@ -1,0 +1,19 @@
+config MTK_MKP
+	tristate "MTK MKP feature"
+	help
+	  Protect the kernel section and module section, and
+	  provide hook implementation to detect the changes
+	  of critical kernel data. It uses some mechanisms
+	  provided by EL2 to set memory type in S2 page table.
+
+config MTK_MKP_TEST
+	bool "MKP Test Functions"
+	depends on MTK_MKP && !(KASAN_GENERIC || KASAN_SW_TAGS || GCOV_KERNEL)
+	default n
+	help
+	  Provide MKP test functions to verify whether the
+	  protection mechanism works. It contains functions to
+	  simulate attacks on the kernel text and rodata. If
+	  the protection works, the test will trigger OOPs
+	  after some trials. Please do not enable it on USER
+	  loads.

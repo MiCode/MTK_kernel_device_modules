@@ -1,0 +1,47 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "sspm_v1",
+    srcs = [
+	"sspm_ipi_timeout_cb.c",
+	"sspm_helper.c",
+	"sspm_irq.c",
+        "sspm_sysfs.c",
+        "sspm_reservedmem.c",
+        "sspm_plt.c",
+        "sspm_mbox.c",
+        "sspm_ipi_mbox.c",
+        "sspm_logger_impl.c",
+        "sspm_timesync.c",
+        "sspm_emi_mpu.c",
+    ],
+    includes = ["include"],
+    hdrs = glob(["**/*.h"]),
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+             "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek",],
+    ko_deps = ["//kernel_device_modules-{}/drivers/memory/mediatek:emimpu".format(kernel_version),],
+)

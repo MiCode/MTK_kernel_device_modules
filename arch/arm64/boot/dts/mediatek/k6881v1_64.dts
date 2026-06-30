@@ -1,0 +1,286 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/phy/phy.h>
+#include <dt-bindings/pinctrl/mt6881-pinfunc.h>
+
+/* chosen */
+&chosen {
+	bootargs_ext = "";
+};
+
+&mtkfb {
+	pinctrl-names = "lcd_bias_enp0_gpio",
+		"lcd_bias_enn0_gpio",
+		"lcm_vddi_out0_gpio",
+		"lcm_vci_out0_gpio",
+		"lcm_vddr_out0_gpio",
+		"lcm_rst_out0_gpio",
+		"mode_te_te",
+		"lcm_led_en0_gpio";
+	pinctrl-0 = <&mtkfb_pins_lcd_bias_enp0>;
+	pinctrl-1 = <&mtkfb_pins_lcd_bias_enn0>;
+	pinctrl-2 = <&mtkfb_pins_lcm_vddi_out0_gpio>;
+	pinctrl-3 = <&mtkfb_pins_lcm_vci_out0_gpio>;
+	pinctrl-4 = <&mtkfb_pins_lcm_vddr_out0_gpio>;
+	pinctrl-5 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-6 = <&mtkfb_pins_lcm_dsi_te>;
+	pinctrl-7 = <&mtkfb_pins_lcm_led_en0>;
+
+	status = "okay";
+};
+
+&dispsys_config {
+	pinctrl-names = "mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+
+&mt6363keys {
+	pinctrl-names = "kpcol0_mode";
+	pinctrl-0 = <&kpcol0_pins_gpio_mode>;
+	home2 {
+		linux,keycodes = <114>;
+		wakeup-source;
+	};
+};
+
+&i2c6 {
+	spk: speaker-amp@5c {
+		compatible = "richtek,rt5512";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		#sound-dai-cells = <0>;
+		reg = <0x5c>;
+		status = "okay";
+		sound-name-prefix = "Left";
+	};
+};
+
+&connfem {
+/* Enable epa_elna node to support Wifi & BT ePA/eLNA FEM on customer load */
+#if 0
+	epa-elna {
+		parts = <&wlan7207h &wlan7207c>;
+		wifi {
+			flags-0 {
+				open-loop;
+			};
+		};
+		bt {
+			flags-0 {
+				/* choose one of: epa-elna/epa/elna/bypass */
+				epa-elna;
+			};
+		};
+	};
+#endif
+};
+
+&pio {
+	kpcol0_pins_gpio_mode: gpio-mode {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO16__FUNC_GPIO16>;
+			input-enable;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enp0: lcd-bias-enp0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcd_bias_enn0: lcd-bias-enn0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_vddi_out0_gpio: lcd-vddi-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_vci_out0_gpio: lcd-vci-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO61__FUNC_GPIO61>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_vddr_out0_gpio: lcd-vddr-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO141__FUNC_GPIO141>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm-rst-out0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO60__FUNC_GPIO60>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_dsi_te: lcm-dsi-te {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO59__FUNC_DSI_TE>;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en0: lcm-led-en0-gpio {
+		pins-cmd-dat {
+			pinmux = <PINMUX_GPIO135__FUNC_GPIO135>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	switch-fps = <120>;
+	panel1@0 {
+		compatible = "vtdr6126a,vdo";
+		reg = <0>;
+		vddi-gpios = <&pio 135 0>;
+		vci-gpios = <&pio 61 0>;
+		vddr-gpios = <&pio 141 0>;
+		res-switch = <2>;
+		reset-gpios = <&pio 60 0>;
+		pinctrl-names = "default";
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out1>;
+			};
+		};
+	};
+	panel2@1 {
+		compatible = "jdi,nt36672e,vdo,120hz,frameratev5";
+		reg = <1>;
+		pm-enable-gpios = <&pio 135 0>;
+		res-switch = <2>;
+		reset-gpios = <&pio 60 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in2: endpoint {
+				remote-endpoint = <&dsi_out2>;
+			};
+		};
+	};
+	panel3@2 {
+		compatible = "jdi,nt36672e,vdo,60hz,frameratev5";
+		reg = <2>;
+		pm-enable-gpios = <&pio 135 0>;
+		reset-gpios = <&pio 60 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in3: endpoint {
+				remote-endpoint = <&dsi_out3>;
+			};
+		};
+	};
+	panel4@3 {
+		compatible = "jdi,nt36672e,cphy,vdo";
+		reg = <3>;
+		pm-enable-gpios = <&pio 135 0>;
+		reset-gpios = <&pio 60 0>;
+		gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in4: endpoint {
+				remote-endpoint = <&dsi_out4>;
+			};
+		};
+	};
+
+	ports {
+		port {
+			dsi_out1: endpoint@0 {
+				remote-endpoint = <&panel_in1>;
+			};
+			dsi_out2: endpoint@1 {
+				remote-endpoint = <&panel_in2>;
+			};
+			dsi_out3: endpoint@2 {
+				remote-endpoint = <&panel_in3>;
+			};
+			dsi_out4: endpoint@3 {
+				remote-endpoint = <&panel_in4>;
+			};
+		};
+	};
+};
+
+/* MD/RF always-on setting */
+&mt6363_vbuck5 {
+	regulator-always-on;
+};
+
+&mt6363_vbuck6 {
+	regulator-always-on;
+};
+
+&mt6363_vcn15 {
+	regulator-always-on;
+};
+
+&mt6363_vrf12 {
+	regulator-always-on;
+};
+
+&mt6363_vsram_digrf {
+	regulator-always-on;
+};
+
+&mt6363_vsram_modem {
+	regulator-always-on;
+};
+
+&audio_sram {
+	reg = <0 0x11060000 0 0x10000>;
+	mode-size = <0x10000 0x10000>;
+};
+
+&audio_xhci_sram {
+	reg = <0 0x11070000 0 0x4000>;
+	mode-size = <0x4000>;
+	afe-reserved;
+};
+
+&sound {
+	mediatek,spk-i2s = <23 22>;
+	mediatek,speaker-codec {
+		sound-dai = <&spk>;
+	};
+};
+
+&pkvm {
+	mtkcam-security-cam-normal-preview-support = "okay";
+};
+
+#include <k6881v1_64/cust.dtsi>
+#include "mediatek/cust_mt6881_camera_v4l2.dtsi"
+#include "mediatek/cust_mt6881_touch_1080x2400_mult.dtsi"
+#include "mediatek/cust_k6881_connfem.dtsi"
+/*End of this file, DO NOT ADD ANYTHING HERE*/

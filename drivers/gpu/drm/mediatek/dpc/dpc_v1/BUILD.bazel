@@ -1,0 +1,132 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_vdisp_v1",
+    srcs = [
+        "mtk_vdisp.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc/dpc_v1",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mml",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/v1",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2/v1:mediatek_drm_v1".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/hwccf:hwccf".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:mdp_drv_dummy".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+        if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:smi_dbg_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:v3_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_dpc_v1",
+    srcs = [
+        "mtk_dpc_driver.c",
+        "mtk_dpc_mmp.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = [
+        "include",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc/dpc_v1",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mml",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mdp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/v1",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme",
+    ],
+    ko_deps = [
+        ":mtk_vdisp_v1",
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2/v1:mediatek_drm_v1".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mdp:mdp_drv_dummy".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/hwccf:hwccf".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+        if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mml_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:smi_dbg_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:v3_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
+    ]
+)
+
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = ["."],
+    hdrs = glob(["**/*.h"]), # export all headers for other modules to use
+)

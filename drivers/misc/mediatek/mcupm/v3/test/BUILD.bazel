@@ -1,0 +1,37 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/bazel_mgk_rules:mgk_ko.bzl", "define_mgk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mcupm_test",
+    srcs = [
+        "mcupm_test.c",
+    ],
+    hdrs = glob(["*.h"]),
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/{}:mcupm".format(kernel_version, "v3"),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/{}:mcupm".format(kernel_version, "v2"),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm:mcupm_public_headers".format(kernel_version),
+    ],
+)
+

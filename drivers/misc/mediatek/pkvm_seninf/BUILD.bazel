@@ -1,0 +1,77 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig"
+    ])
+)
+
+ddk_headers(
+    name = "export_headers",
+    hdrs = glob(
+        ["*.h"]
+    ),
+)
+
+define_mgk_ddk_ko(
+    name = "pkvm_seninf_6881",
+    srcs = [
+        "isp8/pkvm_seninf_host.c",
+        "isp8/pkvm_seninf_host.h",
+    ],
+    out = "pkvm_seninf_6881.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf/isp8/hyp:hyp_6881".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pkvm_seninf_6993",
+    srcs = [
+        "isp8/pkvm_seninf_host.c",
+        "isp8/pkvm_seninf_host.h",
+    ],
+    out = "pkvm_seninf_6993.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf/isp8/hyp:hyp_6993".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pkvm_seninf_6858",
+    srcs = [
+        "isp6/pkvm_seninf_host.c",
+        "isp6/pkvm_seninf_host.h",
+        "isp6/pkvm_seninf_ioctl.h",
+    ],
+    out = "pkvm_seninf_6858.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_seninf/isp6/hyp:hyp_6858".format(kernel_version),
+    ],
+)

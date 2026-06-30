@@ -1,0 +1,104 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+	name = "ddk_srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+        "**/*.mk",
+		"**/*.c",
+        "**/**/*.c",
+		"**/*.h",
+        "**/**/*.h",
+	]),
+)
+
+filegroup(
+	name="ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+ddk_headers(
+    name = "fpsgo_v8_public_headers",
+    hdrs = [
+        "base/include/fpsgo_frame_info.h",
+        "base/include/fpsgo_base.h",
+    ],
+    includes = ["base/include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_fpsgo_v8",
+    srcs = glob([
+        "base/src/*.c",
+        "composer/src/*.c",
+        "fbt/src/*.c",
+        "fbt/platform/*.c",
+        "fstb/*.c",
+        "*.c",
+    ]),
+    hdrs = glob([
+        "**/**/*.h",
+        "**/*.h",
+    ]),
+    includes = glob([
+        "**/**",
+        "**",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_perf_ioctl".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_perf_ioctl_magt".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance:mtk_ioctl_powerhal".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/performance/powerhal_cpu_ctrl:powerhal_cpu_ctrl".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:scheduler".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2/v1:mediatek_drm_v1".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cache-auditor:cpuqos_v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/ged:ged".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/include/",
+        "-I$(srctree)/kernel/",
+        "-I$(DEVICE_MODULES_PATH)/include/",
+        "-I$(DEVICE_MODULES_PATH)/kernel/",
+        "-I$(srctree)/kernel/trace/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dfrc/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/perf_ioctl/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/powerhal_cpu_ctrl/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/game/kernel_core_ctrl/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/base/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/composer/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/fbt/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/fstb/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/performance/fpsgo_v8/fstb/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cm_mgr/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/video/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/dfrc/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/video/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cache-auditor/cpuqos_v3/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/ged/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/thermal/mediatek/",
+
+    ],
+)

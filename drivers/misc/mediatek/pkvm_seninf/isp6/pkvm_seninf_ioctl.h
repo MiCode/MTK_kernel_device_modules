@@ -1,0 +1,18 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2025 MediaTek Inc.
+ */
+
+#ifndef PKVM_SENINF_IOCTL_H
+#define PKVM_SENINF_IOCTL_H
+
+#define PKVM_SENINF_DEV_NAME "pkvm_seninf"
+#define PKVM_SENINF_IOC_MAGIC 'P'
+
+enum pkvm_seninf_ioctl_cmd {
+	IOCTL_ID_PKVM_SENINF_IS_ENABLED = _IO(PKVM_SENINF_IOC_MAGIC, 0),
+	IOCTL_ID_PKVM_SENINF_CHECKPIPE = _IO(PKVM_SENINF_IOC_MAGIC, 1),
+	IOCTL_ID_PKVM_SENINF_FREE = _IO(PKVM_SENINF_IOC_MAGIC, 2),
+};
+
+#endif // PKVM_SENINF_IOCTL_H

@@ -1,0 +1,102 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "headers",
+    srcs = glob([
+        "include/**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_wdt",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_DEVICE_MODULES_MEDIATEK_WATCHDOG": {
+            True:["mtk_wdt.c"],
+        },
+    },
+    includes = [
+        "include",
+    ],
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+    local_defines = [
+        "MTK_WDT_TEST_ENABLED=0"
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "sos_kick",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MEDIATEK_HYPER_WATCHDOG_SOS_KICK": {
+            True:["sos_kick.c"],
+        },
+    },
+    includes = [
+        "include",
+    ],
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "uos_kick",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MEDIATEK_HYPER_WATCHDOG_UOS_KICK": {
+            True:["uos_kick.c"],
+        },
+    },
+    includes = [
+        "include",
+    ],
+    hdrs = glob(["*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_wdt_hyper",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MEDIATEK_HYPER_WATCHDOG": {
+            True:["mtk_wdt_hyper.c"],
+        },
+    },
+    includes = [
+        "include",
+    ],
+    hdrs = glob(["*.h"]),
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/watchdog:uos_kick".format(kernel_version)
+    ],
+
+    copts = [
+        "-Wall",
+        "-Werror",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)

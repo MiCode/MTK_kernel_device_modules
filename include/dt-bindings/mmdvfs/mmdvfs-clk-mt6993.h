@@ -1,0 +1,84 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2024 MediaTek Inc.
+ * Author: Anthony Huang <anthony.huang@mediatek.com>
+ */
+
+#ifndef _DT_BINDINGS_MMDVFS_CLK_MT6993_H
+#define _DT_BINDINGS_MMDVFS_CLK_MT6993_H
+
+#define MMDVFS_MUX_CAM		0
+#define MMDVFS_MUX_CAMTM	1
+#define MMDVFS_MUX_VDE		2
+#define MMDVFS_MUX_IMG		3
+#define MMDVFS_MUX_IPE		4
+#define MMDVFS_MUX_DIS		5
+#define MMDVFS_MUX_MDP		6
+#define MMDVFS_MUX_SMI		7
+#define MMDVFS_MUX_VEN		8
+#define MMDVFS_MUX_VEN_MDP	9
+#define MMDVFS_MUX_NUM		10
+
+
+#define MMDVFS_USER_CAM		0
+#define MMDVFS_USER_IMG		1
+#define MMDVFS_USER_VDEC	2
+#define MMDVFS_USER_DISP	3
+#define MMDVFS_USER_MML		4
+#define MMDVFS_USER_SMI		5
+#define MMDVFS_USER_MDP		6
+#define MMDVFS_USER_JPEGDEC	7
+#define MMDVFS_USER_JPEGENC	8
+#define MMDVFS_USER_VENC	9
+#define MMDVFS_USER_ADAB	10
+#define MMDVFS_USER_VCP_SMI	11
+#define MMDVFS_USER_IMG_SMI	12
+
+#define MMDVFS_USER_MMPC	13
+#define MMDVFS_USER_CPC		14
+#define MMDVFS_USER_DPC	        15
+
+#define MMDVFS_AP_CAM		16
+#define MMDVFS_AP_CAMTM		17
+#define MMDVFS_AP_VDE		18
+#define MMDVFS_AP_IMG		19
+#define MMDVFS_AP_IPE		20
+#define MMDVFS_AP_DIS		21
+#define MMDVFS_AP_MML		22
+#define MMDVFS_AP_SMI		23
+#define MMDVFS_AP_VEN		24
+#define MMDVFS_AP_MDP		25
+
+#define MMDVFS_VCP_CAM		26
+#define MMDVFS_VCP_CAMTM	27
+#define MMDVFS_VCP_VDE		28
+#define MMDVFS_VCP_IMG		29
+#define MMDVFS_VCP_IPE		30
+#define MMDVFS_VCP_DIS		31
+#define MMDVFS_VCP_MML		32
+#define MMDVFS_VCP_SMI		33
+#define MMDVFS_VCP_VEN		34
+#define MMDVFS_VCP_MDP		35
+
+#define MMDVFS_FORCE_CAM	36
+#define MMDVFS_FORCE_CAMTM	37
+#define MMDVFS_FORCE_VDE	38
+#define MMDVFS_FORCE_IMG	39
+#define MMDVFS_FORCE_IPE	40
+#define MMDVFS_FORCE_DIS	41
+#define MMDVFS_FORCE_MML	42
+#define MMDVFS_FORCE_SMI	43
+#define MMDVFS_FORCE_VEN	44
+#define MMDVFS_FORCE_MDP	45
+/* next MMDVFS_USER */
+
+#define MMDVFS_USER_NUM		46
+
+
+#define MMDVFS_PWR_VCORE	0
+#define MMDVFS_PWR_VMM		1
+#define MMDVFS_PWR_VDISP	2
+#define MMDVFS_PWR_NUM		3
+
+#endif
+

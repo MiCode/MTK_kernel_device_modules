@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config INTERCONNECT_MTK_EXTENSION
+	tristate "Mediatek Network-on-Chip interconnect extension drivers"
+	depends on INTERCONNECT_MTK
+	help
+	  New framework for Mediatek's Network-on-Chip interconnect hardware.
+
+config MTK_INTERCONNECT_DEBUG
+	tristate "enable MTK INTERCONNECT driver debug extension"
+	help
+	  This extension enables interconnect systrace for mmqos driver, we
+	  only default enable interconnect systrace feature in userdebug/eng load,
+	  and avoid user load for performance concern. But for systrace feature,
+	  user can enable/disable it with adb command.

@@ -1,0 +1,344 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (C) 2024 MediaTek Inc.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("config.bzl", "ffa_config", "tmem_config", "tmem_ffa_config")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+# TODO: remove this compatibility label
+filegroup(
+	name = "ddk_makefile",
+	srcs = glob([
+		"**/*.c",
+		"**/*.h",
+		"**/Kbuild",
+		"**/Kbuild.*",
+		"**/Makefile",
+		"**/Makefile.*",
+	]),
+)
+
+mgk_package = "//kernel_device_modules-{}".format(kernel_version)
+
+gz_package = "{}/drivers/misc/mediatek/geniezone".format(mgk_package)
+iommu_package = "{}/drivers/misc/mediatek/iommu".format(mgk_package)
+tee_package = "{}/drivers/tee/gud".format(mgk_package)
+
+
+## @package Arm FF-A (ffa)
+#  Cloned from common-kernel's arm_ffa driver.
+#
+#  This driver provides interface for all the client drivers making use of the
+#  features offered by ARM FF-A.
+#
+
+ffa_module = "ffa_v11"
+
+ddk_headers(
+	name = "ffa_hdrs",
+	hdrs = glob([
+		"{}/*.h".format(ffa_module),
+	]),
+	includes = [
+		".",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "ffa",
+	out = "{}.ko".format(ffa_module),
+	srcs = [
+		"{}/bus.c".format(ffa_module),
+		"{}/driver.c".format(ffa_module),
+		"{}/smccc.c".format(ffa_module),
+	],
+	hdrs = [
+		":ffa_hdrs",
+	],
+	includes = [
+		"{}".format(ffa_module),
+	],
+	local_defines = ffa_config["local_defines"],
+	copts = ffa_config["copts"],
+)
+
+## @package Trusted Memory (trusted_mem, tmem/tmem_ffa)
+#  Trusted memory driver for MediaTek ALPS platforms.
+#
+
+ddk_headers(
+	name = "tmem_hdrs",
+	hdrs = glob([
+		"public/*.h",
+	]),
+	includes = [
+		".",
+	],
+)
+
+ddk_headers(
+	name = "tmem_local_hdrs",
+	hdrs = glob([
+		"private/*.h",
+		"ssmr/*.h",
+		"ssheap/*.h",
+		"mtee_impl/*.h",
+		"tee_impl/*.h",
+		"tests/*.h",
+		"tmemperf/*.h",
+	]),
+	includes = [
+		".",
+		"ssheap",
+		"ssmr",
+		"tmemperf",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+filegroup(
+	name = "tmem_srcs",
+	srcs = [
+		"alloc_api.c",
+		"dev_mgr.c",
+		"entry.c",
+		"peer_mgr.c",
+		"proc.c",
+		"region_mgr.c",
+		"ssheap_proc.c",
+		"ssheap/ssheap_lib.c",
+		"ssmr_mgr.c",
+		"ssmr/memory_ssmr.c",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+filegroup(
+	name = "tmem_memleak_detect_srcs",
+	srcs = [
+		"mld_helper.c",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+filegroup(
+	name = "tmem_perf_srcs",
+	srcs = [
+		"tmemperf/tmemperf.c",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+filegroup(
+	name = "tmem_prof_srcs",
+	srcs = [
+		"profiler.c",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+filegroup(
+	name = "tmem_mtee_srcs",
+	srcs = [
+		"mtee_devices.c",
+		"mtee_impl/mtee_ops.c",
+		"mtee_impl/mtee_invoke.c",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+filegroup(
+	name = "tmem_tee_srcs",
+	srcs = [
+		"tee_devices.c",
+		"tee_impl/tee_invoke.c",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+filegroup(
+	name = "tmem_tee_ops_srcs",
+	srcs = [
+		"tee_impl/tee_ops.c",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+filegroup(
+	name = "tmem_ut_srcs",
+	srcs = [
+		"tests/ut_common.c",
+		"tests/ut_server.c",
+		"tests/ut_cases.c",
+		"tests/ut_ssheap.c",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "trusted_mem",
+	module_type = "main",
+	ko_deps = [
+		":tmem",
+		":tmem_ffa",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "tmem",
+	module_type = "sub",
+	out = "trusted_mem.ko",
+	srcs = [
+		"dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ": {
+			True: [
+				":tmem_perf_srcs",
+			],
+		},
+		"CONFIG_MICROTRUST_TEE_SUPPORT": {
+			True: [
+				":tmem_tee_ops_srcs",
+			],
+		},
+		"CONFIG_MTK_SECURE_MEM_SUPPORT": {
+			True: [
+				":tmem_tee_srcs",
+			],
+		},
+		"CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM": {
+			True: [
+				":tmem_srcs",
+				":tmem_mtee_srcs",
+				#":tmem_prof_srcs",
+				"mtee_impl/tmem_carveout_heap.c",
+			],
+		},
+		"CONFIG_TEST_MTK_TRUSTED_MEMORY": {
+			True: [
+				":tmem_memleak_detect_srcs",
+				":tmem_ut_srcs",
+			],
+		},
+		"CONFIG_TRUSTONIC_TEE_SUPPORT": {
+			True: [
+				":tmem_tee_ops_srcs",
+			],
+		},
+	},
+	hdrs = [
+		":tmem_hdrs",
+	],
+	header_deps = [
+		":tmem_local_hdrs",
+	],
+	ko_deps = [
+		"{}:gz_tz_system".format(gz_package),
+		"{}:iommu_gz".format(iommu_package),
+		"{}:mcDrvModule".format(tee_package),
+	],
+	local_defines = tmem_config["local_defines"],
+	copts = tmem_config["copts"],
+)
+
+define_mgk_ddk_ko(
+	name = "tmem_ffa",
+	module_type = "sub",
+	out = "tmem_ffa.ko",
+	srcs = [
+		"dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_ALLOC_TMEM_WITH_HIGH_FREQ": {
+			True: [
+				":tmem_perf_srcs",
+			],
+		},
+		"CONFIG_ARM_FFA_TRANSPORT": {
+			False: [
+				"mtee_impl/tmem_carveout_heap.c",
+			],
+			True: [
+				"mtee_impl/tmem_ffa.c",
+			],
+		},
+		"CONFIG_MICROTRUST_TEE_SUPPORT": {
+			True: [
+				":tmem_tee_ops_srcs",
+			],
+		},
+		"CONFIG_MTK_SECURE_MEM_SUPPORT": {
+			True: [
+				":tmem_tee_srcs",
+			],
+		},
+		"CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM": {
+			True: [
+				":tmem_srcs",
+				":tmem_mtee_srcs",
+				#":tmem_prof_srcs",
+			],
+		},
+		"CONFIG_TEST_MTK_TRUSTED_MEMORY": {
+			True: [
+				":tmem_memleak_detect_srcs",
+				":tmem_ut_srcs",
+			],
+		},
+		"CONFIG_TRUSTONIC_TEE_SUPPORT": {
+			True: [
+				":tmem_tee_ops_srcs",
+			],
+		},
+	},
+	hdrs = [
+		":tmem_hdrs",
+	],
+	header_deps = [
+		":tmem_local_hdrs",
+	],
+	ko_deps = [
+		":ffa",
+		"{}:gz_tz_system".format(gz_package),
+		"{}:iommu_gz".format(iommu_package),
+		"{}:mcDrvModule-ffa".format(tee_package),
+	],
+	local_defines = tmem_ffa_config["local_defines"],
+	copts = tmem_ffa_config["copts"],
+)
+

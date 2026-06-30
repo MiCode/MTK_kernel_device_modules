@@ -1,0 +1,42 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/*.h",
+          "**/*.c",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "cpudvfs",
+    srcs = [
+        "cpufreq-dbg-lite.c",
+        "cpufreq-dbg-lite.h",
+        "mtk_freq_qos.c",
+        "mtk_freq_qos.h",
+        "pf_ctrl.c",
+        "pf_ctrl_trace.h",
+    ],
+    hdrs = [
+        "pf_ctrl.h",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/include/",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek/",
+    ],
+)

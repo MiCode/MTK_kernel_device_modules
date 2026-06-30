@@ -1,0 +1,260 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2021 MediaTek Inc.
+ */
+
+#ifndef __MTKFB_DEBUG_H
+#define __MTKFB_DEBUG_H
+
+#include "mtk_panel_ext.h"
+
+#define ERROR_BUFFER_COUNT 4
+#define FENCE_BUFFER_COUNT 20
+#define DEBUG_BUFFER_COUNT 30
+#define DUMP_BUFFER_COUNT 10
+#define STATUS_BUFFER_COUNT 3
+#define DBGTP_BUFFER_COUNT 1
+#define _DRM_P_H_
+#if IS_ENABLED(CONFIG_MT_ENG_BUILD) || !IS_ENABLED(CONFIG_MTK_GMO_RAM_OPTIMIZE)
+#define LOGGER_BUFFER_SIZE (16 * 1024)
+#else
+#define LOGGER_BUFFER_SIZE (256)
+#endif
+#define DEBUG_BUFFER_SIZE                                                      \
+	(4096 +                                                                \
+	 (ERROR_BUFFER_COUNT + FENCE_BUFFER_COUNT + DEBUG_BUFFER_COUNT +       \
+	  DUMP_BUFFER_COUNT + STATUS_BUFFER_COUNT + DBGTP_BUFFER_COUNT) *                           \
+		 LOGGER_BUFFER_SIZE)
+
+#if IS_ENABLED(CONFIG_MTK_MME_SUPPORT)
+#if IS_ENABLED(CONFIG_MT_ENG_BUILD) || !IS_ENABLED(CONFIG_MTK_GMO_RAM_OPTIMIZE)
+#define DBG_BUFFER_SIZE (1.5 * 1024 * 1024)
+#define IRQ_BUFFER_SIZE (240 * 1024)
+#else
+#define DBG_BUFFER_SIZE (20 * 256)
+#define IRQ_BUFFER_SIZE (10 * 256)
+#endif
+#endif
+
+#define POLLING_RDMA_OUTPUT_LINE_ENABLE
+#if IS_ENABLED(POLLING_RDMA_OUTPUT_LINE_ENABLE)
+extern void mtk_mux_set_quick_switch_chk_cb(void (*callback) (void));
+#endif
+
+enum MTK_DRM_DEBUG_LOG_SWITCH_OPS {
+	MTK_DRM_OTHER = 0,
+	MTK_DRM_MOBILE_LOG,
+	MTK_DRM_DETAIL_LOG,
+	MTK_DRM_FENCE_LOG,
+	MTK_DRM_IRQ_LOG,
+	MTK_DRM_DBGTP_LOG,
+};
+
+enum MTK_DSI_CMD_V2_SCN_OPS {
+	BACKLIGHT_DBG = 0,
+	SPR_DBG,
+	PANEL_INIT_DBG,
+	MODE_SWITCH_DBG,
+	ESD_CHECK_DBG,
+	PU_DBG,
+#ifdef CONFIG_MI_DISP
+	DDIC_CMD_DBG,
+	AOD_DBG,
+#endif
+	DSI_CMD_V2_SCN_NUM
+};
+
+struct LCM_setting_table_V4 {
+	uint8_t cmd;
+	unsigned int count;
+	char para_list[128];
+	unsigned int flag;
+};
+
+extern unsigned char reg_value_buf[16];
+extern unsigned char reg_value_buf1[16];
+extern int read_lcm_lp_by_cmdq(struct mtk_ddp_comp *comp, struct LCM_setting_table_V4 *para_tbl,
+		unsigned int size,
+		unsigned int count,
+		unsigned char force_update);
+extern int write_lcm_lp_by_cmdq(struct mtk_ddp_comp *comp, struct LCM_setting_table_V4 *para_tbl,
+		unsigned int size,
+		unsigned char force_update);
+extern ssize_t dsi_dcs_write_lcm(struct mtk_ddp_comp *comp, const void *data, size_t len);
+
+extern int read_lcm_lp_by_cmdq_dual(struct mtk_ddp_comp *comp, struct LCM_setting_table_V4 *para_tbl,
+		unsigned int size,
+		unsigned int count,
+		unsigned char force_update);
+extern int write_lcm_lp_by_cmdq_dual(struct mtk_ddp_comp *comp, struct LCM_setting_table_V4 *para_tbl,
+		unsigned int size,
+		unsigned char force_update);
+extern ssize_t dsi_dcs_write_lcm_dual(struct mtk_ddp_comp *comp, const void *data, size_t len);
+extern int mtk_disp_hrt_bw_dbg(void);
+extern int mtk_mdp_rsz_bypass_info(struct mtk_ddp_comp *comp);
+
+struct cb_data_store {
+	struct cmdq_cb_data data;
+	struct list_head link;
+};
+#ifdef _DRM_P_H_
+struct disp_rect {
+	u32 x;
+	u32 y;
+	u32 width;
+	u32 height;
+};
+typedef void (*hrt_notify_callback)(int threshold);
+
+void disp_dbg_probe(void);
+void disp_dbg_init(struct drm_device *drm_dev);
+void disp_dbg_deinit(void);
+void mtk_wakeup_pf_wq(unsigned int m_id);
+void mtk_wakeup_frame_done_wq(void);
+void mtk_real_frame_done(bool *real_frame_done);
+void mtk_dump_backup_tpr(void);
+void mtk_drm_cwb_backup_copy_size(void);
+int mtk_dprec_mmp_dump_ovl_layer(struct mtk_plane_state *plane_state);
+int mtk_dprec_mmp_dump_wdma_layer(struct drm_crtc *crtc,
+	struct drm_framebuffer *wb_fb);
+int mtk_dprec_mmp_dump_cwb_buffer(struct drm_crtc *crtc,
+	void *buffer, unsigned int buf_idx);
+int disp_met_set(void *data, u64 val);
+void mtk_drm_idlemgr_kick_ext(const char *source);
+unsigned int mtk_dbg_get_lfr_mode_value(void);
+unsigned int mtk_dbg_get_lfr_type_value(void);
+unsigned int mtk_dbg_get_lfr_enable_value(void);
+unsigned int mtk_dbg_get_lfr_update_value(void);
+unsigned int mtk_dbg_get_lfr_vse_dis_value(void);
+unsigned int mtk_dbg_get_lfr_skip_num_value(void);
+unsigned int mtk_dbg_get_lfr_dbg_value(void);
+int mtk_drm_add_cb_data(struct cb_data_store *cb_data, unsigned int crtc_id);
+struct cb_data_store *mtk_drm_get_cb_data(unsigned int crtc_id);
+void mtk_drm_del_cb_data(struct cmdq_cb_data data, unsigned int crtc_id);
+int hrt_lp_switch_get(void);
+void mtk_dump_mminfra_ck(void *priv);
+void mtk_dprec_snapshot(void);
+
+void mtkfb_set_partial_roi_highlight(int en);
+bool mtkfb_is_partial_roi_highlight(void);
+void mtkfb_set_force_partial_roi(int en);
+int mtkfb_is_force_partial_roi(void);
+int mtkfb_force_partial_y_offset(void);
+int mtkfb_force_partial_height(void);
+
+int mtk_ddic_dsi_send_cmd(struct mtk_ddic_dsi_msg *cmd_msg, bool blocking);
+int mtk_ddic_dsi_read_cmd(struct mtk_ddic_dsi_msg *cmd_msg);
+int mtk_mbrain2disp_register_hrt_cb(hrt_notify_callback func);
+int mtk_mbrain2disp_unregister_hrt_cb(hrt_notify_callback func);
+void mtk_disp2mbrain_notify(int threshold);
+
+bool mtk_disp_get_logger_enable(void);
+bool mtk_disp_get_dump_prop_enable(void);
+#endif
+
+enum mtk_drm_mml_dbg {
+	DISP_MML_DBG_LOG = 0x0001,
+	DISP_MML_MMCLK_UNLIMIT = 0x0002,
+	DISP_MML_IR_CLEAR = 0x0004,
+	MMP_ADDON_CONNECT = 0x1000,
+	MMP_ADDON_DISCONNECT = 0x2000,
+	MMP_MML_SUBMIT = 0x4000,
+	MMP_MML_IDLE = 0x8000,
+	MMP_MML_REPAINT = 0x10000,
+	MMP_MML_SUBMITED = 0x20000,
+	MMP_MML_RESUBMIT = 0x40000,
+	MMP_MML_RESUBMITED = 0x80000,
+	MMP_MML_PLANE_ENABLED = 0x100000,
+	MMP_MML_PLANE_DISABLED = 0x200000,
+	MMP_MML_DL_LYE = 0x4000000,
+	MMP_MML_IR_LYE = 0x8000000,
+	MMP_MML_ADDON_CONFIG = 0x10000000,
+};
+
+#if IS_ENABLED(CONFIG_MTK_DISP_DEBUG)
+struct reg_dbg {
+	uint32_t addr;
+	uint32_t val;
+	uint32_t mask;
+};
+
+struct wr_online_dbg {
+	struct reg_dbg reg[64];
+	uint32_t index;
+	uint32_t after_commit;
+};
+
+extern struct wr_online_dbg g_wr_reg;
+#endif
+
+enum GCE_COND_REVERSE_COND {
+	R_CMDQ_NOT_EQUAL = CMDQ_EQUAL,
+	R_CMDQ_EQUAL = CMDQ_NOT_EQUAL,
+	R_CMDQ_LESS = CMDQ_GREATER_THAN_AND_EQUAL,
+	R_CMDQ_GREATER = CMDQ_LESS_THAN_AND_EQUAL,
+	R_CMDQ_LESS_EQUAL = CMDQ_GREATER_THAN,
+	R_CMDQ_GREATER_EQUAL = CMDQ_LESS_THAN,
+};
+
+#define GCE_COND_DECLARE \
+	u32 _inst_condi_jump, _inst_jump_end; \
+	u64 _jump_pa; \
+	u64 *_inst; \
+	struct cmdq_pkt *_cond_pkt; \
+	u16 _gpr, _reg_jump
+
+#define GCE_COND_ASSIGN(pkt, addr, gpr) do { \
+	_cond_pkt = pkt; \
+	_reg_jump = addr; \
+	_gpr = gpr; \
+} while (0)
+
+#define GCE_IF(lop, cond, rop) do { \
+	_inst_condi_jump = _cond_pkt->cmd_buf_size; \
+	cmdq_pkt_assign_command(_cond_pkt, _reg_jump, 0); \
+	cmdq_pkt_cond_jump_abs(_cond_pkt, _reg_jump, &lop, &rop, (enum CMDQ_CONDITION_ENUM) cond); \
+	_inst_jump_end = _inst_condi_jump; \
+} while (0)
+
+#define GCE_ELSE do { \
+	_inst_jump_end = _cond_pkt->cmd_buf_size; \
+	cmdq_pkt_jump_addr(_cond_pkt, 0); \
+	_inst = cmdq_pkt_get_va_by_offset(_cond_pkt, _inst_condi_jump); \
+	_jump_pa = cmdq_pkt_get_pa_by_offset(_cond_pkt, _cond_pkt->cmd_buf_size); \
+	*_inst = *_inst | CMDQ_REG_SHIFT_ADDR(_jump_pa); \
+} while (0)
+
+#define GCE_FI do { \
+	_inst = cmdq_pkt_get_va_by_offset(_cond_pkt, _inst_jump_end); \
+	_jump_pa = cmdq_pkt_get_pa_by_offset(_cond_pkt, _cond_pkt->cmd_buf_size); \
+	*_inst = *_inst & ((u64)0xFFFFFFFF << 32); \
+	*_inst = *_inst | CMDQ_REG_SHIFT_ADDR(_jump_pa); \
+} while (0)
+
+#define GCE_DO(act, name) cmdq_pkt_##act(_cond_pkt, mtk_crtc->gce_obj.event[name])
+
+#define GCE_BACKUP3(addr, slot) cmdq_pkt_mem_move(_cond_pkt, mtk_crtc->gce_obj.base, addr, slot, CMDQ_THR_SPR_IDX3)
+
+#define GCE_SLEEP(us) cmdq_pkt_sleep(_cond_pkt, us, _gpr)
+int mtk_disp_ioctl_debug_log_switch(struct drm_device *dev, void *data,
+	struct drm_file *file_priv);
+
+enum DISP_PQ_TEST_FLAG {
+	TEST_FLAG_DRE = 0, //0
+	TEST_FLAG_C3D,
+	TEST_FLAG_COLOR,
+	TEST_FLAG_DRECOLOR,
+	TEST_FLAG_GAMMALUT,
+	TEST_FLAG_GAMMAGAIN, //5
+	TEST_FLAG_DBI_COUNT,
+};
+
+void disp_pq_set_test_flag(unsigned int flag);
+bool is_disp_reg(uint32_t addr, char *comp_name, uint32_t comp_name_len);
+
+#if defined(CONFIG_VIS_DISPLAY_V2_D2)
+void nvt_set_idlemgr(unsigned int flag);
+void nvt_set_pq_trigger(unsigned int flag);
+#endif
+
+#endif

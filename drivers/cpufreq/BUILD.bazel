@@ -1,0 +1,37 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+        "**/Kconfig.arm",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mediatek-cpufreq-hw",
+    srcs = [
+        "mediatek-cpufreq-hw_main.c",
+        "mediatek-cpufreq-hw_fdvfs.c",
+        "mediatek-cpufreq-hw_fdvfs.h",
+    ],
+	hdrs = [
+		"mediatek-cpufreq-hw_fdvfs.h",
+    ],
+)

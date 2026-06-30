@@ -1,0 +1,56 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2025 MediaTek Inc.
+ */
+
+#ifndef STD_TCPCI_V10_REG_H_
+#define STD_TCPCI_V10_REG_H_
+
+/* Standard TCPC V10 RegMap */
+
+#define TCPC_V10_REG_VID				(0x00)
+#define TCPC_V10_REG_PID				(0x02)
+#define TCPC_V10_REG_DID				(0x04)
+#define TCPC_V10_REG_TYPEC_REV				(0x06)
+#define TCPC_V10_REG_PD_REV				(0x08)
+#define TCPC_V10_REG_PDIF_REV				(0x0A)
+
+#define TCPC_V10_REG_ALERT				(0x10)
+#define TCPC_V10_REG_ALERT_MASK				(0x12)
+#define TCPC_V10_REG_POWER_STATUS_MASK			(0x14)
+#define TCPC_V10_REG_FAULT_STATUS_MASK			(0x15)
+#define TCPC_V10_REG_EXT_STATUS_MASK			(0x16)
+
+#define TCPC_V10_REG_TCPC_CTRL				(0x19)
+#define TCPC_V10_REG_ROLE_CTRL				(0x1A)
+#define TCPC_V10_REG_FAULT_CTRL				(0x1B)
+#define TCPC_V10_REG_POWER_CTRL				(0x1C)
+
+#define TCPC_V10_REG_CC_STATUS				(0x1D)
+#define TCPC_V10_REG_POWER_STATUS			(0x1E)
+#define TCPC_V10_REG_FAULT_STATUS			(0x1F)
+#define TCPC_V10_REG_EXT_STATUS				(0x20)
+
+#define TCPC_V10_REG_COMMAND				(0x23)
+
+#define TCPC_V10_REG_MSG_HDR_INFO			(0x2e)
+
+#define TCPC_V10_REG_RX_DETECT				(0x2f)
+
+#define TCPC_V10_REG_RX_BYTE_CNT			(0x30)
+#define TCPC_V10_REG_RX_BUF_FRAME_TYPE			(0x31)
+#define TCPC_V10_REG_RX_HDR				(0x32)
+#define TCPC_V10_REG_RX_DATA				(0x34)
+
+#define TCPC_V10_REG_TRANSMIT				(0x50)
+#define TCPC_V10_REG_TX_BYTE_CNT			(0x51)
+#define TCPC_V10_REG_TX_HDR				(0x52)
+#define TCPC_V10_REG_TX_DATA				(0x54)/* through 0x6f */
+
+#define TCPC_V10_REG_VBUS_VOLTAGE_L			(0x70)
+#define TCPC_V10_REG_VBUS_SINK_DISCONNECT_THD		(0x72)
+#define TCPC_V10_REG_VBUS_STOP_DISCHARGE_THD		(0x74)
+#define TCPC_V10_REG_VBUS_VOLTAGE_ALARM_HI		(0x76)
+#define TCPC_V10_REG_VBUS_VOLTAGE_ALARM_LO		(0x78)
+
+#endif /* STD_TCPCI_V10_REG_H_ */

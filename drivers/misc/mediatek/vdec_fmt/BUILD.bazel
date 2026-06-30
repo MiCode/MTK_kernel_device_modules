@@ -1,0 +1,46 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "vdec-fmt",
+    srcs = [
+        "vdec_fmt_driver.c",
+        "vdec_fmt_pm.c",
+        "vdec_fmt_dmabuf.c",
+        "vdec_fmt_sync.c",
+        "vdec_fmt_driver.h",
+        "vdec_fmt_pm.h",
+        "vdec_fmt_dmabuf.h",
+        "vdec_fmt_utils.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu/",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),
+    ],
+)

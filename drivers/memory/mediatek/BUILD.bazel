@@ -1,0 +1,340 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "makefiles",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_dramc",
+    srcs = [
+        "dramc.c",
+        "dramc_bin.c"
+    ],
+
+    hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name="emi",
+    srcs=[],
+    conditional_srcs={
+        "CONFIG_MTK_EMI_LEGACY": {
+            True: [
+                "emi_legacy/emi_legacy_v2/emi-cen.c",
+                "emi_legacy/emi_legacy_v2/emi-isu.c",
+                "emi_legacy/emi_legacy_v2/emi-dbg.c",
+            ],
+            False: [
+                "emi-cen.c",
+                "emi-isu.c",
+                "emi-dbg.c",
+            ],
+        },
+    },
+
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        ":emi-mpu",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emi-fake-eng",
+    srcs = [],
+
+    conditional_srcs={
+        "CONFIG_MTK_EMI_LEGACY": {
+            True: [
+                "emi_legacy/emi_legacy_v2/mtk-emi-fake-eng.c",
+            ],
+            False: [
+                "mtk-emi-fake-eng.c",
+            ],
+        },
+    },
+
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emi-fake-eng-v2",
+    srcs = [
+        "mtk-emi-fake-eng-v2.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		":emi",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emi-mpu",
+    srcs = [],
+
+    conditional_srcs={
+        "CONFIG_MTK_EMI_LEGACY": {
+            True: [
+                "emi_legacy/emi_legacy_v2/mtk-emi-mpu.c",
+            ],
+            False: [
+                "mtk-emi-mpu.c",
+            ],
+        },
+    },
+
+    hdrs = ["emi_mpu.h"],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emi-mpu-test",
+    srcs = [],
+
+    conditional_srcs={
+        "CONFIG_MTK_EMI_LEGACY": {
+            True: [
+                "emi_legacy/emi_legacy_v2/mtk-emi-mpu-test.c",
+            ],
+            False: [
+                "mtk-emi-mpu-test.c",
+            ],
+        },
+    },
+
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        ":emi-mpu",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emi-slb",
+    srcs = [],
+
+    conditional_srcs={
+        "CONFIG_MTK_EMI_LEGACY": {
+            True: [
+                "emi_legacy/emi_legacy_v2/mtk-emi-slb.c",
+            ],
+            False: [
+                "mtk-emi-slb.c",
+            ],
+        },
+    },
+
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "slc-parity",
+    srcs = [
+        "slc-parity.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emi-mpu-v2",
+    srcs = [
+        "emi_legacy/emi_legacy_v2/emi-mpu-v2.c",
+    ],
+    includes = ["."],
+    hdrs = ["emi_mpu.h"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/memory/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        ":emi-mpu",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emi-mpu-hook-v1",
+    srcs = [
+        "emi_legacy/emi_legacy_v2/emi-mpu-hook-v1.c",
+    ],
+    hdrs = ["emi_mpu.h"],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        ":emi-mpu-v2",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emicen",
+    srcs = [
+        "emi_legacy/emi_legacy_v1/emicen.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emimpu",
+    srcs = [
+        "emi_legacy/emi_legacy_v1/emimpu.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emiisu",
+    srcs = [
+        "emi_legacy/emi_legacy_v1/emiisu.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "emictrl",
+    srcs = [
+        "emi_legacy/emi_legacy_v1/emictrl.c",
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "smpu",
+    srcs = [
+        "smpu.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        ":emi-mpu",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "smpu-hook-v1",
+    srcs = [
+        "smpu-hook-v1.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/include/soc/mediatek/",
+    ],
+    ko_deps = [
+        ":smpu",
+    ]
+)
+
+define_mgk_ddk_ko(
+    name = "emi-mpu-test-v2",
+    srcs = [],
+
+    conditional_srcs={
+        "CONFIG_MTK_EMI_LEGACY": {
+            True: [
+                "emi_legacy/emi_legacy_v2/mtk-emi-mpu-test-v2.c",
+            ],
+            False: [
+                "mtk-emi-mpu-test-v2.c",
+            ],
+        },
+    },
+    includes = ["."],
+)

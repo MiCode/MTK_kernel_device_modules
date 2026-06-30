@@ -1,0 +1,7 @@
+config INPUT_VHOST_HANDLER
+	tristate "Input Vhost Handler support"
+	help
+	  Say Y here if you have a Input Vhost
+	  Handler.
+	  If build module, say M.
+	  If unsure, say N.
