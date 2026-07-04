@@ -1,0 +1,65 @@
+#include "subpmic_irq.h"
+
+&i2c4 {
+    status = "okay";
+    clock-frequency = <700000>;
+
+    subpmic_core@61 {
+        compatible = "southchip,subpmic_core";
+        reg = <0x61>;
+        status = "okay";
+        interrupt-controller;
+        #interrupt-cells = <1>;
+        subpmic_chg {
+            compatible = "southchip,subpmic_chg";
+            interrupts = <SUBPMIC_IRQ_HK>, <SUBPMIC_IRQ_CHARGER>,
+                            <SUBPMIC_IRQ_DPDM>, <SUBPMIC_IRQ_LED>;
+            interrupt-names = "Hourse Keeping", "Buck Charger",
+                                "DPDM", "LED";
+			sc,vsys-limit = <3500>;
+			sc,batsnc-enable = <0>;
+			sc,vbat = <4450>;
+			sc,charge-curr = <4000>;
+			sc,iindpm-disable = <0>;
+			sc,input-curr-limit = <3000>;
+			sc,ico-enable = <0>;
+			sc,iindpm-ico = <100>;
+			sc,precharge-volt = <1>;      /* 0:2900mv, 1:3000, 2:3100, 3:3200 */
+			sc,precharge-curr = <500>;
+			sc,term-en = <1>;
+			sc,term-curr = <500>;     /* ma */
+			sc,rechg-dis = <0>;
+			sc,rechg-dg = <0>;    /* 0:64ms , 1:256ms , 2:1024ms , 3:2048ms */
+			sc,rechg-volt = <0>;  /* 0:100mv , 1:200mv , 2:300mv , 3:400mv */
+			sc,boost-voltage = <5000>;
+			sc,boost-max-current = <1500>;
+			sc,conv-ocp-dis = <0>;
+			sc,tsbat-jeita-dis = <1>;
+			sc,ibat-ocp-dis = <0>;
+			sc,vpmid-ovp-otg-dis = <0>;
+			sc,vbat-ovp-buck-dis = <0>;
+			sc,ibat-ocp = <1>;    /* 0:12A , 1:16A */
+        };
+        subpmic_ufcs {
+            compatible = "southchip,subpmic_ufcs";
+            interrupts = <SUBPMIC_IRQ_UFCS>;
+            interrupt-names = "UFCS";
+
+            subpmic_ufcs,name = "ufcs_port2";
+            subpmic_ufcs,default-baudrate = <0>; /*0: 115200, 1: 57600
+                                                2: 38400, 3: 19200*/
+            subpmic_ufcs,default-request-volt = <6000>; /*mV*/
+            subpmic_ufcs,default-request-curr = <2000>; /*mA*/
+        };
+        subpmic_cid {
+            compatible = "southchip,subpmic_cid";
+            interrupts = <SUBPMIC_IRQ_CID>;
+            interrupt-names = "CID";
+        };
+        subpmic_dvchg {
+            compatible = "southchip,subpmic_dvchg";
+            interrupts = <SUBPMIC_IRQ_DVCHG>;
+            interrupt-names = "DVCHG";
+        };
+    };
+};

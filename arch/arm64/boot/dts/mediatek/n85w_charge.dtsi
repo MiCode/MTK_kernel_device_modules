@@ -1,0 +1,4 @@
+&xm_chg_dfs {
+		compatible = "xiaomi,xm-chg-dfs";
+		status = "okay";
+};

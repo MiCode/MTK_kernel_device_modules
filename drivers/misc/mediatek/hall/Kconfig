@@ -1,0 +1,6 @@
+config HALL_STATE
+	tristate "Enable press hall state"
+	default n
+        help
+	Press the power button volume up button
+	and volume down button to trigger the crash.

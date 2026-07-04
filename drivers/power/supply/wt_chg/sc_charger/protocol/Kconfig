@@ -1,0 +1,10 @@
+menuconfig PROTOCOL
+	tristate "support protocol for southchip"
+	help
+	  Say Y here to support protocol.
+
+if PROTOCOL
+
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/wt_chg/sc_charger/protocol/bc12/Kconfig"
+
+endif

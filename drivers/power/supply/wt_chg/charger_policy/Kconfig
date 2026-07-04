@@ -1,0 +1,25 @@
+#SPDX-License-Identifier: GPL-2.0
+
+config PD_ADAPTER
+    depends on SOUTHCHIP_ADAPTER_CLASS
+    bool "southchip PD adapter"
+    default n
+    help 
+      Say Y to enable southchip pd adapter
+config SOUTHCHIP_CHARGER_MANAGER
+	tristate "support southchip charger manger"
+	default n
+	help
+		Say Y here to support southchip charger manger.
+
+config SOUTHCHIP_DVCHG_POLICY
+	tristate "support southchip charger pump policy"
+	default n
+	help
+		Say Y here to support southchip charger class.
+
+config XIAOMI_SMART_CHG
+        tristate "support xiaomi smart charge"
+        default n
+        help
+                Say Y here to support xiaomi smart charge.
