@@ -1,0 +1,13 @@
+config MI_DISP
+	bool "Xiaomi Display Feature support"
+	default y
+	depends on DRM_MEDIATEK_V2
+	help
+	  This creates /dev/mi_display/disp_feature.
+
+config MI_DISP_DFS_EVENT
+	bool "Xiaomi Display DFS support"
+	default n
+	depends on MI_DISP
+	help
+	  This is used to support remote diagnosis.

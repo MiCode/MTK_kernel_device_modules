@@ -1,0 +1,17 @@
+/ {
+    charger_manager:charger_manager {
+        compatible = "southchip,charger_manager";
+        status = "okay";
+    };
+
+    dvchg_policy {
+        compatible = "southchip,dvchg_policy";
+        status = "okay";
+    };
+
+    pd_adapter {
+        compatible = "southchip,pd_adapter";
+        status = "okay";
+        pd_adapter,name = "pd_adapter1";
+    };
+};

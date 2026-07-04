@@ -1,0 +1,5 @@
+config MI_LAUNCH_BOOST
+	tristate "app cold launch boot boost"
+	default n
+	help
+	  This driver used for preread io for app cold launch.

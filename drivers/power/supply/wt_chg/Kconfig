@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-2.0
+#charge_policy
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/wt_chg/charger_policy/Kconfig"
+#sc_charger
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/wt_chg/sc_charger/Kconfig"
+#protocol
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/wt_chg/sc_charger/protocol/Kconfig"
+#subpimc
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/wt_chg/sc_charger/subpmic/Kconfig"
+config SOUTHCHIP_ADAPTER_CLASS
+	tristate "support southchip charger adapter class"
+	default n
+	help
+		Say Y here to support southchip charger adapter class.
+config SOUTHCHIP_CHARGER_CLASS
+	tristate "support southchip charger class"
+	default n
+	help
+		Say Y here to support southchip charger class.
+config SOUTHCHIP_DVCHG_CLASS
+	tristate "support southchip chager pump class"
+	default n
+	help
+		Say Y here to support southchip chager pump class.
