@@ -1,12 +1,14 @@
-#
-# Generic framework for controlling remote processors
-#
+# SPDX-License-Identifier: GPL-2.0
 
-obj-$(CONFIG_REMOTEPROC)		+= remoteproc.o
-remoteproc-y				:= remoteproc_core.o
-remoteproc-y				+= remoteproc_debugfs.o
-remoteproc-y				+= remoteproc_virtio.o
-remoteproc-y				+= remoteproc_elf_loader.o
-obj-$(CONFIG_OMAP_REMOTEPROC)		+= omap_remoteproc.o
-obj-$(CONFIG_STE_MODEM_RPROC)	 	+= ste_modem_rproc.o
-obj-$(CONFIG_DA8XX_REMOTEPROC)		+= da8xx_remoteproc.o
+ccflags-y += -I$(srctree)/drivers/remoteproc
+
+obj-$(CONFIG_MTK_CCU_RPROC)		+= mtk_ccu.o
+obj-$(CONFIG_MTK_CCU_RPROC)		+= mtk_ccu_mssv.o
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/ \
+			 -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include \
+			 -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu \
+			 -I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3 \
+			 -I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps
+
+mtk_ccu-objs += mtk_ccu_isp71.o mtk_ccu_common.o mtk_ccu_ipi.o
+mtk_ccu_mssv-objs += mtk_ccu_isp71_mssv.o mtk_ccu_common_mssv.o mtk_ccu_ipi_mssv.o

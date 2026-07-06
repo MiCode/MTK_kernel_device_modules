@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config MQOS_PERF_ACTUATOR
+        tristate "perf actuator interface"
+	default n
+        help
+	  perf actuator

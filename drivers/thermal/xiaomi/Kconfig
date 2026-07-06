@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Xiaomi thermal drivers configuration
+#
+
+config MI_THERMAL_MULTI_CHARGE
+	tristate "enable multi charge themral interface"
+	help
+	  Enable multi charge function in kernel, add two sysfs nodes in
+	  thermal_message.
+
+config MI_THERMAL_ATC_ENABLE
+	tristate "enable atc enable themral interface"
+	help
+	  Enable atc enable function in kernel, add two sysfs nodes in
+	  thermal_message.
+
+config MI_THERMAL_TEMP_TRIP
+	tristate "board sensor single temperature trip"
+	depends on MI_THERMAL_INTERFACE
+	default n
+	help
+	  This is for board sensor single temperature point update.
+
+config MI_THERMAL_COMM_SYSFS
+	tristate "thermal common sysfs node"
+	depends on MI_THERMAL_INTERFACE
+	default n
+	help
+	  This is for new sysfs node can add by dtsi.

@@ -1,11 +1,17 @@
-#
-# Makefile for memory devices
-#
+# SPDX-License-Identifier: GPL-2.0
 
-ifeq ($(CONFIG_DDR),y)
-obj-$(CONFIG_OF)		+= of_memory.o
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/memory
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/
+
+ifneq ($(filter y m, $(CONFIG_MTK_MME_SUPPORT)),)
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mme
 endif
-obj-$(CONFIG_TI_EMIF)		+= emif.o
-obj-$(CONFIG_MVEBU_DEVBUS)	+= mvebu-devbus.o
-obj-$(CONFIG_TEGRA20_MC)	+= tegra20-mc.o
-obj-$(CONFIG_TEGRA30_MC)	+= tegra30-mc.o
+
+ifneq ($(filter mt6771, $(CONFIG_MTK_LEGACY_PLATFORM)),)
+ccflags-y += -DCONFIG_MTK_SMI_MT6771
+obj-$(CONFIG_DEVICE_MODULES_MTK_SMI)		+= mtk-smi-mt6771.o
+else
+obj-$(CONFIG_DEVICE_MODULES_MTK_SMI)		+= mtk-smi.o
+endif
+
+obj-$(CONFIG_HAVE_MTK_MC)	+= mediatek/

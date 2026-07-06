@@ -1,67 +1,38 @@
+# SPDX-License-Identifier: GPL-2.0-only
 menu "Remoteproc drivers"
 
-# REMOTEPROC gets selected by whoever wants it
-config REMOTEPROC
-	tristate
-	depends on HAS_DMA
-	select CRC32
-	select FW_LOADER
-	select VIRTIO
-	select VIRTUALIZATION
+if REMOTEPROC
 
-config OMAP_REMOTEPROC
-	tristate "OMAP remoteproc support"
-	depends on HAS_DMA
-	depends on ARCH_OMAP4 || SOC_OMAP5
-	depends on OMAP_IOMMU
-	select REMOTEPROC
-	select MAILBOX
-	select OMAP2PLUS_MBOX
-	select RPMSG
+config MTK_CCD_REMOTEPROC
+	tristate "MediaTek CCD driver"
+	depends on RPMSG_MTK_CCD
 	help
-	  Say y here to support OMAP's remote processors (dual M3
-	  and DSP on OMAP4) via the remote processor framework.
+	  Say y here to enable support communication channels to remote
+	  processors in MediaTek platforms. This uses MTK ccd driver to
+	  communicate with Camera Control Daemon base on rpmsg framework. It
+	  provide channels, endpoints creation and send operations.
 
-	  Currently only supported on OMAP4.
-
-	  Usually you want to say y here, in order to enable multimedia
-	  use-cases to run on your platform (multimedia codecs are
-	  offloaded to remote DSP processors using this framework).
-
-	  It's safe to say n here if you're not interested in multimedia
-	  offloading or just want a bare minimum kernel.
-
-config STE_MODEM_RPROC
-	tristate "STE-Modem remoteproc support"
-	depends on HAS_DMA
-	select REMOTEPROC
-	default n
+config MTK_CCU_RPROC
+	tristate "MediaTek CCU driver"
+	depends on RPMSG_MTK_CCD
 	help
-	  Say y or m here to support STE-Modem shared memory driver.
-	  This can be either built-in or a loadable module.
-	  If unsure say N.
+	  Say y here to support Camera Control Unit's remote processors via
+	  the remote processor framework. Support MTK Camera module using
+	  CCU hardware to do hard-real time task. Offers speed up of 3A,
+	  including faster control flow and stabler frame rate
 
-config DA8XX_REMOTEPROC
-	tristate "DA8xx/OMAP-L13x remoteproc support"
-	depends on ARCH_DAVINCI_DA8XX
-	select CMA
-	select REMOTEPROC
-	select RPMSG
+config MTK_CCU_DEBUG
+	bool "Debugging log for Mediatek CCU"
+	depends on MTK_CCU_RPROC
 	help
-	  Say y here to support DA8xx/OMAP-L13x remote processors via the
-	  remote processor framework.
+	  Select this to output the CCU uP log message on
+	  engeering load or user debug load.The user space
+	  logging procedure mmaps the ccu_rproc node.
+	  For security concerns, register ccu_rproc node
+	  only on engeering load or user debug load.
 
-	  You want to say y here in order to enable AMP
-	  use-cases to run on your platform (multimedia codecs are
-	  offloaded to remote DSP processors using this framework).
+	  If unsure, say N.
 
-	  This module controls the name of the firmware file that gets
-	  loaded on the DSP.  This file must reside in the /lib/firmware
-	  directory.  It can be specified via the module parameter
-	  da8xx_fw_name=<filename>, and if not specified will default to
-	  "rproc-dsp-fw".
-
-	  It's safe to say n here if you're not interested in multimedia
-	  offloading.
+endif # REMOTEPROC
 
 endmenu

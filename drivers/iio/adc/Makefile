@@ -1,24 +1,14 @@
-#
-# Makefile for IIO ADC drivers
-#
+# SPDX-License-Identifier: GPL-2.0
 
-# When adding new entries keep the list in alphabetical order
-obj-$(CONFIG_AD_SIGMA_DELTA) += ad_sigma_delta.o
-obj-$(CONFIG_AD7266) += ad7266.o
-obj-$(CONFIG_AD7298) += ad7298.o
-obj-$(CONFIG_AD7923) += ad7923.o
-obj-$(CONFIG_AD7476) += ad7476.o
-obj-$(CONFIG_AD7791) += ad7791.o
-obj-$(CONFIG_AD7793) += ad7793.o
-obj-$(CONFIG_AD7887) += ad7887.o
-obj-$(CONFIG_AT91_ADC) += at91_adc.o
-obj-$(CONFIG_EXYNOS_ADC) += exynos_adc.o
-obj-$(CONFIG_LP8788_ADC) += lp8788_adc.o
-obj-$(CONFIG_MAX1363) += max1363.o
-obj-$(CONFIG_MCP320X) += mcp320x.o
-obj-$(CONFIG_MCP3422) += mcp3422.o
-obj-$(CONFIG_NAU7802) += nau7802.o
-obj-$(CONFIG_TI_ADC081C) += ti-adc081c.o
-obj-$(CONFIG_TI_AM335X_ADC) += ti_am335x_adc.o
-obj-$(CONFIG_TWL6030_GPADC) += twl6030-gpadc.o
-obj-$(CONFIG_VIPERBOARD_ADC) += viperboard_adc.o
+obj-$(CONFIG_MEDIATEK_MT6338_AUXADC) += mt6338-auxadc.o
+obj-$(CONFIG_MEDIATEK_MT635X_AUXADC) += mt635x-auxadc.o
+obj-$(CONFIG_MEDIATEK_MT6375_AUXADC) += mt6375-auxadc.o
+obj-$(CONFIG_MEDIATEK_MT6681_AUXADC) += mt6681-auxadc.o
+obj-$(CONFIG_DEVICE_MODULES_MEDIATEK_MT6577_AUXADC) += mt6577_auxadc.o
+obj-$(CONFIG_MEDIATEK_SPMI_PMIC_ADC) += mtk-spmi-pmic-adc.o
+obj-$(CONFIG_MEDIATEK_MT6362_ADC) += mt6362-adc.o
+obj-$(CONFIG_DEVICE_MODULES_MEDIATEK_MT6370_ADC) += mt6370-adc.o
+obj-$(CONFIG_MEDIATEK_MT6375_ADC) += mt6375-adc.o
+obj-$(CONFIG_MEDIATEK_MT6379_ADC) += mt6379-adc.o
+obj-$(CONFIG_MEDIATEK_MT6360_AUXADC) += mt6360-adc.o
+obj-$(CONFIG_RT9490_ADC) += rt9490-adc.o

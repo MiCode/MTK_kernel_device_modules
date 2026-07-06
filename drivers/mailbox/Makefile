@@ -1,7 +1,12 @@
-obj-$(CONFIG_PL320_MBOX)	+= pl320-ipc.o
+# SPDX-License-Identifier: GPL-2.0
+# Generic MAILBOX API
 
-obj-$(CONFIG_OMAP_MBOX)		+= omap-mailbox.o
-obj-$(CONFIG_OMAP1_MBOX)	+= mailbox_omap1.o
-mailbox_omap1-objs		:= mailbox-omap1.o
-obj-$(CONFIG_OMAP2PLUS_MBOX)	+= mailbox_omap2.o
-mailbox_omap2-objs		:= mailbox-omap2.o
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox
+
+ccflags-y += -I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include
+
+obj-$(CONFIG_DEVICE_MODULES_MTK_CMDQ_MBOX)	+= mtk-cmdq-mailbox.o
+
+obj-$(CONFIG_MTK_TINYSYS_MBOX)    += mtk-mbox-mailbox.o
+
+obj-$(CONFIG_MTK_ISE_MBOX)	+= mtk-ise-mailbox.o
