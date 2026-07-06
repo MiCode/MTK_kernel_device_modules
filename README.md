@@ -10,3 +10,4 @@
 | yili-w-oss | REDMI K Pad 2 | Android W | t-alps-release-b0.mp1.rc-V10.25 |[yili-w-oss](https://github.com/MiCode/MTK_kernel_device_modules/tree/yili-w-oss) |
 | flare-w-oss | Redmi Pad SE 8.7 | Android W | t-alps-release-v0.mp1.tc8sp3-V1.121 |[flare-w-oss](https://github.com/MiCode/MTK_kernel_device_modules/tree/flare-w-oss) |
 | spark-w-oss | Redmi Pad SE 4G / Redmi Pad SE 8.7 4G | Android W | t-alps-release-v0.mp1.tc8sp3-V1.121 |[spark-w-oss](https://github.com/MiCode/MTK_kernel_device_modules/tree/spark-w-oss) |
+| bsp-chagall-w-oss | Xiaomi 17T | Android W | alps-mp-v0.mp1.tc8sp6-V1 | [bsp-chagall-w-oss](https://github.com/MiCode/MTK_kernel_device_modules/tree/bsp-chagall-w-oss ) |
