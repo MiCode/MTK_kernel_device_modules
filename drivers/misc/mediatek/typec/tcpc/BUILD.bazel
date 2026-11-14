@@ -1,0 +1,163 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+        "inc/*.h",
+    ]),
+)
+
+CHIP_NAME = [
+    "mt6360",
+    "mt6370",
+    "mt6375",
+    "mt6379",
+    "rt1711h",
+    "rt1718s",
+]
+
+define_mgk_ddk_ko(
+    name = "pd_dbg_info",
+    srcs = [
+        "pd_dbg_info.c",
+    ],
+    includes = ["inc", "."],
+    hdrs = glob(["inc/*.h", "pd_dpm_prv.h"]),
+
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-DCONFIG_RT_REGMAP",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/mfd/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "tcpc_class",
+    srcs = [
+        "rt-regmap.c",
+        "tcpci.c",
+        "tcpci_alert.c",
+        "tcpci_core.c",
+        "tcpci_timer.c",
+        "tcpci_typec.c",
+        "tcpm.c",
+    ],
+    conditional_srcs = {
+        "CONFIG_USB_POWER_DELIVERY": {
+            True: [
+                "pd_core.c",
+                "pd_dpm_alt_mode_dp.c",
+                "pd_dpm_core.c",
+                "pd_dpm_pdo_select.c",
+                "pd_dpm_reaction.c",
+                "pd_policy_engine.c",
+                "pd_policy_engine_com.c",
+                "pd_policy_engine_dbg.c",
+                "pd_policy_engine_dfp.c",
+                "pd_policy_engine_dr.c",
+                "pd_policy_engine_drs.c",
+                "pd_policy_engine_prs.c",
+                "pd_policy_engine_snk.c",
+                "pd_policy_engine_src.c",
+                "pd_policy_engine_ufp.c",
+                "pd_policy_engine_vcs.c",
+                "pd_process_evt.c",
+                "pd_process_evt_com.c",
+                "pd_process_evt_dbg.c",
+                "pd_process_evt_drs.c",
+                "pd_process_evt_prs.c",
+                "pd_process_evt_snk.c",
+                "pd_process_evt_src.c",
+                "pd_process_evt_tcp.c",
+                "pd_process_evt_vcs.c",
+                "pd_process_evt_vdm.c",
+                "tcpci_event.c",
+            ],
+        },
+    },
+    includes = ["inc", "."],
+    hdrs = glob(["inc/*.h", "pd_dpm_prv.h"]),
+    ko_deps = [":pd_dbg_info",],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-DCONFIG_RT_REGMAP",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/mfd/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "tcpci_late_sync",
+    srcs = [
+        "tcpci_late_sync.c",
+    ],
+    includes = ["inc", "."],
+    hdrs = glob(["inc/*.h", "pd_dpm_prv.h"]),
+    ko_deps = [":tcpc_class"],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-DCONFIG_RT_REGMAP",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/mfd/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "rt_pd_manager",
+    srcs = [
+        "rt_pd_manager.c",
+    ],
+    includes = ["inc", "."],
+    hdrs = glob(["inc/*.h", "pd_dpm_prv.h"]),
+    ko_deps = [":tcpc_class"],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-DCONFIG_RT_REGMAP",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/mfd/",
+    ],
+)
+
+[define_mgk_ddk_ko(
+    name = "tcpc_{}".format(chip),
+    srcs = [
+        "tcpc_{}.c".format(chip),
+    ],
+    includes = ["inc", "."],
+    hdrs = glob(["inc/*.h", "*.h"]),
+    ko_deps = [
+        ":tcpc_class",
+        ":pd_dbg_info",
+        "//kernel_device_modules-{}/drivers/power/supply:charger_class".format(kernel_version),
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-DCONFIG_RT_REGMAP",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/mfd/",
+    ],
+) for chip in CHIP_NAME]

@@ -1,0 +1,25 @@
+#SPDX-License-Identifier: GPL-2.0
+
+config BQ_FUELGAUGE
+	tristate "bq28z610 fuelgauge"
+	default n
+	help
+		Say Y here to support bq28z610 fuelgauge.
+
+config HUAQIN_FUEL_ALGORITHM
+	tristate "support huaqin fuel algorithm"
+	default n
+	help
+		Say Y here to support huaqin fuel algorithm
+
+config HUAQIN_SOC_SMOOTH_SUPPORT
+	tristate "support soc smooth support"
+	default n
+	help
+		Say Y here to support soc smooth
+
+config HUAQIN_SOC_REACH_100_ALGO_SUPPORT
+	tristate "support soc reach 100 algo support"
+	default n
+	help
+		Say Y here to support soc reach 100 algo

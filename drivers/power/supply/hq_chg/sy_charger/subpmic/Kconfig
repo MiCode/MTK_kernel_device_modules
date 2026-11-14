@@ -1,0 +1,12 @@
+config SY_SUBPMIC_DRIVER
+    tristate "subpmic driver"
+    default n
+    help
+      Say Y to use subpmic core driver
+
+config SC_CHARGER
+    tristate "subpmic 6601"
+    default n
+	help
+      Say Y to use subpmic core driver
+

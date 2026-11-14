@@ -1,0 +1,156 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Makefile for trusty components
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-core",
+    srcs = [
+        "trusty.c",
+        "trusty-irq.c",
+        "trusty-irq.h",
+        "trusty-irq-trace.h",
+        "trusty-mem.c",
+        "trusty-sched-share.c",
+        "trusty-sched-share.h",
+        "trusty-sched-share-api.h",
+        "trusty-trace.h",
+        "trusty-transport.h",
+    ],
+    includes = ["."],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-ffa",
+    srcs = [
+        "trusty-ffa-transport.c",
+        "trusty-ffa.h",
+        "trusty-sched-share-api.h",
+        "trusty-transport.h",
+    ],
+    includes = ["."],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa_hdrs".format(kernel_version),
+    ],
+    ko_deps = [
+        ":trusty-core",
+        "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:ffa".format(kernel_version),
+    ],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-smc",
+    srcs = [
+        "trusty-smc-arm64.S",
+        "trusty-smc-transport.c",
+        "trusty-ffa.h",
+        "trusty-smc.h",
+        "trusty-transport.h",
+    ],
+    includes = ["."],
+    ko_deps = [
+        ":trusty-core",
+        ":trusty-ffa",
+    ],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-ipc",
+    srcs = [
+        "trusty-ipc.c",
+        "trusty-ipc-trace.h",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-log",
+    srcs = [
+        "trusty-log.c",
+        "trusty-log.h",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-test",
+    srcs = [
+        "trusty-test.h",
+        "trusty-test-arm64.S",
+        "trusty-test-main.c",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-virtio",
+    srcs = [
+        "trusty-virtio.c",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-virtio-polling",
+    srcs = [
+        "trusty-virtio.c",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "trusty-populate",
+    srcs = [
+        "trusty-populate.c",
+    ],
+    includes = ["."],
+    ko_deps = [":trusty-core"],
+    local_defines = [
+        "MTK_ADAPTED",
+    ],
+)

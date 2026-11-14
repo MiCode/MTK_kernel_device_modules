@@ -1,0 +1,475 @@
+// SPDX-License-Identifier: (GPL-2.0 OR MIT)
+/*
+ * Copyright (C) 2021 MediaTek Inc.
+ */
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/mt6789-pinfunc.h>
+#include "mediatek/cust_mt6789_camera_o7.dtsi"
+#include "mediatek/tanzanite_audio_pa.dtsi"
+#include "mediatek/tanzanite_charge.dtsi"
+#include <dt-bindings/gpio/gpio.h>
+#include "mediatek/cust_mt6789_fingerprint.dtsi"
+
+&chosen {
+
+};
+
+&mmc1{
+	cd-gpios = <&pio 7 GPIO_ACTIVE_HIGH>;
+};
+
+&mtk_leds {
+	compatible = "mediatek,disp-leds";
+
+	backlight {
+		force-dts = <1>;
+		led-mode = <4>;
+		max-brightness = <4095>;
+		max-hw-brightness = <4095>;
+		data = <1>;
+		pwm-config = <12 12>;
+	};
+};
+
+&pio {
+	mtkfb_pins_lcm_led_en1: lcm_led_en1_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_led_en0: lcm_led_en0_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO12__FUNC_GPIO12>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out1_gpio: lcm_rst_out1_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO85__FUNC_GPIO85>;
+			slew-rate = <1>;
+			output-high;
+		};
+	};
+
+	mtkfb_pins_lcm_rst_out0_gpio: lcm_rst_out0_gpio {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO85__FUNC_GPIO85>;
+			slew-rate = <1>;
+			output-low;
+		};
+	};
+	mtkfb_pins_lcm_dsi_te: lcm_dsi_te {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO83__FUNC_DSI_TE>;
+		};
+	};
+};
+
+&mtkfb {
+	pinctrl-names = "lcm_led_en1_gpio", "lcm_led_en0_gpio",
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_led_en1>;
+	pinctrl-1 = <&mtkfb_pins_lcm_led_en0>;
+	pinctrl-2 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-3 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-4 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+
+&dispsys_config {
+	pinctrl-names =
+		"lcm_rst_out1_gpio", "lcm_rst_out0_gpio",
+		"mode_te_te";
+	pinctrl-0 = <&mtkfb_pins_lcm_rst_out1_gpio>;
+	pinctrl-1 = <&mtkfb_pins_lcm_rst_out0_gpio>;
+	pinctrl-2 = <&mtkfb_pins_lcm_dsi_te>;
+	status = "okay";
+};
+
+&dsi0 {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+	panel1@0 {
+		compatible = "o7_38_0c_0a_dsc_vdo,lcm";
+		reg = <0>;
+		//pm-enable-gpios = <&pio 12 0>;
+		reset-gpios = <&pio 85 0>;
+		vddi-gpios = <&pio 156 0>;
+		vci-gpios = <&pio 155 0>;
+		//mi,esd-err-irq-gpio = <&pio 5 0>;
+		//gate-ic = <4831>;
+		pinctrl-names = "default";
+		port {
+			panel_in1: endpoint {
+				remote-endpoint = <&dsi_out>;
+			};
+		};
+	};
+	ports {
+		port {
+			dsi_out: endpoint {
+				remote-endpoint = <&panel_in1>;
+			};
+		};
+	};
+};
+
+/* O6/O7 add widevine at 2025/07/08 start */
+&mtee_svp {
+        mtee: MTEE {
+                compatible = "mediatek,mtk_svp_on_mtee_support";
+        };
+        svp: SecureVideoPath {
+                compatible = "mediatek,mtk_sec_video_path_support";
+        };
+};
+
+&mtkheap_region_svp {
+	status = "ok";
+};
+/* O6/O7 add widevine at 2025/07/08 end */
+
+/* GPS GPIO standardization start */
+&pio {
+	gps_pins_default: gps_default {
+	};
+	gps_l1_lna_pins_ol: gps_l1_lna@0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO25__FUNC_GPIO25>;
+			output-low;
+		};
+	};
+	gps_l1_lna_pins_dsp_ctrl: gps_l1_lna@1 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO25__FUNC_GPS_L1_ELNA_EN>;
+		};
+	};
+	gps_l1_lna_pins_oh: gps_l1_lna@2 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO25__FUNC_GPIO25>;
+			output-high;
+		};
+	};
+	gps_l5_lna_pins_ol: gps_l5_lna@0 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO26__FUNC_GPIO26>;
+			output-low;
+		};
+	};
+	gps_l5_lna_pins_dsp_ctrl: gps_l5_lna@1 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO26__FUNC_GPS_L5_ELNA_EN>;
+		};
+	};
+	gps_l5_lna_pins_oh: gps_l5_lna@2 {
+		pins_cmd_dat {
+			pinmux = <PINMUX_GPIO26__FUNC_GPIO26>;
+			output-high;
+		};
+	};
+};
+&gps {
+	pinctrl-names = "default",
+		"gps_l1_lna_disable",
+		"gps_l1_lna_dsp_ctrl",
+		"gps_l1_lna_enable",
+		"gps_l5_lna_disable",
+		"gps_l5_lna_dsp_ctrl",
+		"gps_l5_lna_enable";
+	pinctrl-0 = <&gps_pins_default>;
+	pinctrl-1 = <&gps_l1_lna_pins_ol>;
+	pinctrl-2 = <&gps_l1_lna_pins_dsp_ctrl>;
+	pinctrl-3 = <&gps_l1_lna_pins_oh>;
+	pinctrl-4 = <&gps_l5_lna_pins_ol>;
+	pinctrl-5 = <&gps_l5_lna_pins_dsp_ctrl>;
+	pinctrl-6 = <&gps_l5_lna_pins_oh>;
+	status = "okay";
+};
+/* GPS GPIO standardization end */
+
+/*#include "mediatek/cust_mt6789_touch_1080x2400.dtsi"*/
+#include "mediatek/tanzanite_mt6789_touch_1080x2400.dtsi"
+
+/* O7 code for by wangqiang at 2024.7.6 start */
+#include "mediatek/cust_mt6789_camera_v4l2_o7.dtsi"
+/* O7 code for by wangqiang at 2024.7.6 end */
+
+&i2c6 {
+	spk: speaker_amp@5c {
+		compatible = "richtek,rt5512";
+		#sound-dai-cells = <0>;
+		reg = <0x5c>;
+		status = "disabled";
+		sound-name-prefix = "Left";
+	};
+};
+
+&i2c3 {
+	nfc: nfc@28 {
+		compatible = "nxp,sn-nci";
+		reg = <0x28>;
+		nxp,sn-irq = <&pio 1 0x00>;
+		nxp,sn-ven-rstn = <&pio 98 0x1>;
+		status = "okay";
+	};
+};
+
+&sound {
+	mediatek,spk-i2s = <3 0>;
+	mediatek,speaker-codec {
+		sound-dai = <&spk>;
+	};
+};
+
+&pdc {
+	pd_vbus_upper_bound = <9000000>;
+};
+
+/* O7W code for charge by p-songweijie at 20250529 start */
+
+/* Unuse MTK charger framework */
+&charger {
+	status = "disabled";
+};
+&mt6358_batoc_throttle {
+	status = "disabled";
+};
+&mt6358_dynamic_loading_throttling {
+	status = "disabled";
+};
+&pe {
+	status = "disabled";
+};
+&pe2 {
+	status = "disabled";
+};
+&pe45 {
+	status = "disabled";
+};
+&pdc {
+	status = "disabled";
+};
+&pd_adapter {
+	status = "disabled";
+};
+/* Use MTK fuel gauge */
+&mtk_gauge {
+	status = "okay";
+};
+/* O7W code for charge by p-songweijie at 20250529 end */
+/* BSP.AUDIO modify for ultra_snd compatible start*/
+/* if you want to modify scp@10500000 in mt6789.dts. For compatibility reasons, please modify here */
+&soc{
+	scp@10500000 {
+		compatible = "mediatek,scp";
+		status = "okay";
+		reg = <0 0x10500000 0 0xc0000>, /* tcm */
+		<0 0x10724000 0 0x1000>,	 /* cfg */
+		<0 0x10721000 0 0x1000>,	 /* clk*/
+		<0 0x10730000 0 0x3000>,	 /* cfg core0 */
+		<0 0x10740000 0 0x1000>,	 /* cfg core1 */
+		<0 0x10752000 0 0x1000>,	 /* bus tracker */
+		<0 0x10760000 0 0x40000>,	 /* llc */
+		<0 0x107a5000 0 0x4>,		 /* cfg_sec */
+		<0 0x107fb000 0 0x100>,		 /* mbox0 base */
+		<0 0x107fb100 0 0x4>,		 /* mbox0 set */
+		<0 0x107fb10c 0 0x4>,		 /* mbox0 clr */
+		<0 0x107a5020 0 0x4>,		 /* mbox0 init */
+		<0 0x107fc000 0 0x100>,		 /* mbox1 base */
+		<0 0x107fc100 0 0x4>,		 /* mbox1 set */
+		<0 0x107fc10c 0 0x4>,		 /* mbox1 clr */
+		<0 0x107a5024 0 0x4>,		 /* mbox1 init */
+		<0 0x107fd000 0 0x100>,		 /* mbox2 base */
+		<0 0x107fd100 0 0x4>,		 /* mbox2 set */
+		<0 0x107fd10c 0 0x4>,		 /* mbox2 clr */
+		<0 0x107a5028 0 0x4>,		 /* mbox2 init */
+		<0 0x107fe000 0 0x100>,		 /* mbox3 base */
+		<0 0x107fe100 0 0x4>,		 /* mbox3 set */
+		<0 0x107fe10c 0 0x4>,		 /* mbox3 clr */
+		<0 0x107a502c 0 0x4>,		 /* mbox3 init */
+		<0 0x107ff000 0 0x100>,		 /* mbox4 base */
+		<0 0x107ff100 0 0x4>,		 /* mbox4 set */
+		<0 0x107ff10c 0 0x4>,		 /* mbox4 clr */
+		<0 0x107a5030 0 0x4>;		 /* mbox4 init */
+
+		reg-names = "scp_sram_base",
+		"scp_cfgreg",
+		"scp_clkreg",
+		"scp_cfgreg_core0",
+		"scp_cfgreg_core1",
+		"scp_bus_tracker",
+		"scp_l1creg",
+		"scp_cfgreg_sec",
+		"mbox0_base",
+		"mbox0_set",
+		"mbox0_clr",
+		"mbox0_init",
+		"mbox1_base",
+		"mbox1_set",
+		"mbox1_clr",
+		"mbox1_init",
+		"mbox2_base",
+		"mbox2_set",
+		"mbox2_clr",
+		"mbox2_init",
+		"mbox3_base",
+		"mbox3_set",
+		"mbox3_clr",
+		"mbox3_init",
+		"mbox4_base",
+		"mbox4_set",
+		"mbox4_clr",
+		"mbox4_init";
+
+		interrupts = <GIC_SPI 466 IRQ_TYPE_LEVEL_HIGH 0>,
+		<GIC_SPI 467 IRQ_TYPE_LEVEL_HIGH 0>,
+		<GIC_SPI 468 IRQ_TYPE_LEVEL_HIGH 0>,
+		<GIC_SPI 469 IRQ_TYPE_LEVEL_HIGH 0>,
+		<GIC_SPI 470 IRQ_TYPE_LEVEL_HIGH 0>,
+		<GIC_SPI 471 IRQ_TYPE_LEVEL_HIGH 0>,
+		<GIC_SPI 472 IRQ_TYPE_LEVEL_HIGH 0>;
+
+		interrupt-names = "ipc0",
+		"ipc1",
+		"mbox0",
+		"mbox1",
+		"mbox2",
+		"mbox3",
+		"mbox4";
+
+		scp-sram-size = <0x000c0000>;
+		scp-dram-size = <0x70000>; /* scp dram image size */
+		scp-cache-dump-buf-size = <0x0003c000>;
+		scp-reg-dump-buf-size = <0x00003c00>;
+		scp-tbuf-dump-buf-size = <0x00000400>;
+
+		core-0 = "enable";
+		core-nums = <1>;	/* core number */
+		twohart = <1>;		/* two hart arch */
+
+		mbox-count = <4>;
+		/* id, mbox, send_size*/
+		send-table =
+		< 0 0  11>, /* IPI_OUT_AUDIO_VOW_1 */
+		< 3 1  2>, /* IPI_OUT_APCCCI_0 */
+		< 4 1  1>, /* IPI_OUT_DVFS_SET_FREQ_0 */
+		< 5 1  2>, /* IPI_OUT_C_SLEEP_0 */
+		< 6 1  1>, /* IPI_OUT_TEST_0 */
+		<26 1  9>, /* IPI_OUT_AUDIO_ULTRA_SND_0 */
+		<58 1  1>, /* IPI_OUT_TP_PS */
+		<29 2 16>, /* IPI_OUT_SENSOR_CTRL */
+		<31 2  7>, /* IPI_OUT_SENSOR_NOTIFY */
+		<41 2  2>, /* IPI_OUT_DEBUG_CMD */
+		<14 3  1>, /* IPI_OUT_DVFS_SET_FREQ_1 */
+		<15 3  2>, /* IPI_OUT_C_SLEEP_1 */
+		<16 3  1>, /* IPI_OUT_TEST_1 */
+		<17 3  6>, /* IPI_OUT_LOGGER_CTRL */
+		<18 3  2>; /* IPI_OUT_SCPCTL_1 */
+
+		/* id, mbox, recv_size, recv_opt */
+		recv-table =
+		< 1 0  2 0>, /* IPI_IN_AUDIO_VOW_ACK_1 */
+		< 2 0 26 0>, /* IPI_IN_AUDIO_VOW_1 */
+		< 7 1  2 0>, /* IPI_IN_APCCCI_0 */
+		< 8 1 10 0>, /* IPI_IN_SCP_ERROR_INFO_0 */
+		< 9 1  1 0>, /* IPI_IN_SCP_READY_0 */
+		<10 1  2 0>, /* IPI_IN_SCP_RAM_DUMP_0 */
+		<27 1  2 0>, /* IPI_IN_AUDIO_ULTRA_SND_ACK_0 */
+		<28 1  5 0>, /* IPI_IN_AUDIO_ULTRA_SND_0 */
+		< 5 1  1 1>, /* IPI_OUT_C_SLEEP_0 */
+		<30 2  2 0>, /* IPI_IN_SENSOR_CTRL */
+		<32 2  7 0>, /* IPI_IN_SENSOR_NOTIFY */
+		<42 2  8 0>, /* IPI_IN_RV_SPK_PROCESS */
+		<20 3 10 0>, /* IPI_IN_SCP_ERROR_INFO_1 */
+		<21 3  6 0>, /* IPI_IN_LOGGER_CTRL */
+		<22 3  1 0>, /* IPI_IN_SCP_READY_1 */
+		<23 3  2 0>, /* IPI_IN_SCP_RAM_DUMP_1 */
+		<15 3  1 1>; /* IPI_OUT_C_SLEEP_1 */
+
+		/* feature, frequecy, coreid */
+		scp-feature-tbl =
+		< 0   5 1>,	/* vow */
+		< 1   0 0>,	/* sensor */
+		< 2  26 0>,	/* flp */
+		< 3   0 0>,	/* rtos */
+		< 4 200 1>,	/* speaker */
+		< 5   0 0>,	/* vcore */
+		< 6 120 1>,	/* barge in */
+		< 7  10 1>,	/* vow dump */
+		< 8  80 1>,	/* vow vendor M */
+		< 9  43 1>,	/* vow vendor A */
+		<10  22 1>,	/* vow vendor G */
+		<11  20 1>,	/* vow dual mic */
+		<12 135 1>,	/* vow dual mic barge in */
+		<13 200 0>,	/* ultrasound */
+		<14 100 0>;	/* spk process */
+
+		debug_dumptimeout = "enable"; /*core dump timeout debug*/
+		scp-protect = "disable";   /* enable scp protections */
+		secure-dump = "enable";	/* enable dump via secure world */
+		secure-dump-size = <0x200000>;
+
+		scp-mem-key = "mediatek,reserve-memory-scp_share";
+		scp-mem-tbl =
+		< 0 0x0 0x0>,      /* secure dump, its size is in secure_dump_size */
+		< 1 0xca700 0x0>,  /* vow, 297KB (2 model size)*/
+		< 2 0x100000 0x0>, /* ensor main, 1 MB */
+		< 3 0x180000 0x0>, /* logger, 1.5 MB */
+		< 4 0x200000 0x0>,  /* audio, 2 MB */
+		< 5 0xa000 0x0>,   /* vow bargein, 22.5KB */
+		< 6 0x100 0x0>,    /* scp parames, 256 bytes */
+		< 7 0x19000 0x0>,   /* ultrasound */
+		< 8 0x10000 0x0>,  /* sensor supper, 64 KB */
+		< 9 0x1000 0x0>,   /* sensor list, 4 KB */
+		<10 0x2000 0x0>,  /* sensor debug, 8 KB */
+		<11 0x100 0x0>,   /* sensor custom writer, 256 bytes */
+		<12 0x100 0x0>,   /* sensor custom reader, 256 bytes */
+		<13 0x19000  0x0>; /* rv spk, 0x1000(share)+0x18000(memif)*/
+		memorydump =
+		<0x0c0000>, /* l2tcm */
+		<0x03c000>, /* l1c */
+		<0x003c00>, /* regdump */
+		<0x000400>, /* trace buffer */
+		<0x100000>; /* dram */
+	};
+    	regulator_vibrator: regulator_vibrator {
+                status = "okay";
+                min-volt = <3000000>;
+                max-volt = <3000000>;
+        };
+	/*O7 code for HQ-387672 by wangfengbin at 2024/07/23 start*/
+		esd_flag: esd_flag {
+			compatible = "mediatek, esd_flag-eint";
+			status = "disabled";
+		};
+/*O7 code for HQ-387672 by wangfengbin at 2024/07/23 end*/
+
+};
+/* BSP.AUDIO modify for ultra_snd compatible end*/
+
+/* O6 code for HQFEAT-113939 by shaowen at 2025/06/28 start */
+&u2port0{
+	mediatek,eye-vrt = <6>;
+	mediatek,eye-term = <4>;
+	mediatek,rev4 = <1>;
+	mediatek,rx_sqth = <5>;
+	mediatek,discth = <7>;
+	mediatek,rev6 = <3>;
+	mediatek,eye-vrt-host = <6>;
+	mediatek,eye-term-host = <4>;
+	mediatek,rev6-host = <3>;
+};
+/* O6 code for HQFEAT-113939 by shaowen at 2025/06/28 end */
+
+#include <tanzanite/cust.dtsi>
+/*End of this file, DO NOT ADD ANYTHING HERE*/

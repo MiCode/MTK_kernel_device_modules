@@ -1,0 +1,59 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "stmvl53l4",
+    srcs = glob([
+          "vl53l4/vl53l4.c",
+          "vl53l4/vl53l4.h",
+          "core/src/vl53lx_api.c",
+          "core/src/vl53lx_api_core.c",
+          "core/src/vl53lx_core.c",
+          "core/src/vl53lx_register_funcs.c",
+          "core/src/vl53lx_api_preset_modes.c",
+          "core/src/vl53lx_api_calibration.c",
+          "core/src/vl53lx_silicon_core.c",
+          "core/src/vl53lx_nvm.c",
+          "core/src/vl53lx_api_debug.c",
+          "core/src/vl53lx_core_support.c",
+          "core/src/vl53lx_wait.c",
+          "core/src/vl53lx_nvm_debug.c",
+          "core/src/vl53lx_platform.c",
+          "core/src/vl53lx_platform_init.c",
+          "core/src/vl53lx_platform_ipp.c",
+          "core/src/vl53lx_platform_log.c",
+          "core/src/vl53lx_hist_funcs.c",
+          "core/src/vl53lx_xtalk.c",
+          "core/src/vl53lx_hist_core.c",
+          "core/src/vl53lx_dmax.c",
+          "core/src/vl53lx_hist_algos_gen3.c",
+          "core/src/vl53lx_hist_algos_gen4.c",
+          "core/src/vl53lx_hist_char.c",
+          "core/src/vl53lx_sigma_estimate.c",
+          "core/inc/*.h",
+    ]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lens/tof/core/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lens/tof/core/src",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lens/tof/core/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lens/tof",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lens/tof/vl53l4/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "vl53l0",
+    srcs = [
+        "vl53l0/vl53l0.c",
+    ],
+    copts = [
+        "-I$(srctree)/drivers/misc/mediatek/tof",
+    ],
+)

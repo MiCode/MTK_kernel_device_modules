@@ -1,0 +1,70 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl",
+     "kernel_version",
+     )
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "pmsr_v4",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_PMSR": {
+            True:["pmsr_v4.c"],
+        },
+    },
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:ddk_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "pmsr_v4.h",
+        "apmcupm_scmi_v2.h",
+    ],
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = [
+        ".",
+
+    ],
+    hdrs = [
+        "apmcupm_scmi_v2.h",
+    ],
+)

@@ -1,0 +1,63 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/*.c",
+        "**/*.h",
+        ]),
+)
+
+define_mgk_ddk_ko(
+    name = "ccu_isp4",
+    srcs = glob([
+        "ccu_drv.c",
+        "ccu_hw.c",
+        "ccu_kd_mailbox.c",
+        "ccu_reg.c",
+        "ccu_sw_ver.c",
+        "**/*.h",
+    ]),
+    includes = [
+        ".",
+    ],
+    local_defines = [
+        "MTK_VPU_KERNEL",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/imgsensor:imgsensor_kd_header".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccu/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccu/src/isp4",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/ccu/src/isp4/ccu_ext_interface",
+        "-I$(DEVICE_MODULES_PATH)/drivers/i2c/busses",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs",
+        "-I$(DEVICE_MODULES_PATH)/include/dt-bindings/memory",
+    ],
+    out = "ccu_isp4.ko",
+)

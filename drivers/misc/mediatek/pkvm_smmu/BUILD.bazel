@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig"
+    ])
+)
+
+define_mgk_ddk_ko(
+    name = "pkvm_smmu",
+    srcs = [
+        "pkvm_smmu_host.c",
+        "pkvm_smmu_host.h"
+    ],
+    out = "pkvm_smmu.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    ko_deps = [
+        # Depends on the exported hyp_pmm APIs
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt:pkvm_mgmt".format(kernel_version),
+        # Depends on the ddk_library that builds the hypervisor code.
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_smmu/hyp:hyp".format(kernel_version),
+    ],
+)

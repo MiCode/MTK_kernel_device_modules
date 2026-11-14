@@ -1,0 +1,239 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+	name = "power_throttling_headers",
+	hdrs = glob(["**/*.h"]),
+	includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_battery_oc_throttling",
+    srcs = [
+        "mtk_battery_oc_throttling.c",
+    ],
+    hdrs = [
+        "mtk_battery_oc_throttling.h",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_bp_thl",
+    srcs = [
+        "mtk_bp_thl.c",
+        "mtk_md_power_throttling.h",
+    ],
+    hdrs = [
+        "mtk_bp_thl.h"
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:power_throttling_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+    ],
+    includes = [
+        ".",
+        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_dynamic_loading_throttling",
+    srcs = [
+        "mtk_dynamic_loading_throttling.c",
+    ],
+    hdrs = [
+        "mtk_low_battery_throttling.h",
+        "mtk_dynamic_loading_throttling.h",
+    ],
+    includes = ["include"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pmic_lvsys_notify",
+    srcs = [
+        "pmic_lvsys_notify.c",
+    ],
+    hdrs = ["pmic_lvsys_notify.h"],
+    includes = ["include"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pmic_lbat_service",
+    srcs = [
+        "pmic_lbat_service.c",
+    ],
+    hdrs = ["pmic_lbat_service.h"],
+    includes = ["include"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pmic_dual_lbat_service",
+    srcs = [
+        "pmic_dual_lbat_service.c",
+    ],
+    hdrs = ["pmic_lbat_service.h"],
+    includes = ["include"],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_low_battery_throttling",
+    srcs = [
+        "mtk_low_battery_throttling.c",
+		"mtk_low_battery_throttling_trace.h",
+    ],
+	hdrs = [
+	    "mtk_low_battery_throttling.h",
+	],
+	ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lvsys_notify".format(kernel_version),
+    ],
+    includes = [
+	    ".",
+        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink",
+    ],
+    copts = [
+	    "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mbraink",
+    ],
+)
+
+
+define_mgk_ddk_ko(
+    name = "mtk_cpu_power_throttling",
+    srcs = [
+        "mtk_cpu_power_throttling.c",
+        "mtk_low_battery_throttling_trace.h",
+    ],
+    hdrs = [
+        "mtk_cpu_power_throttling.h",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_bp_thl".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sched:cpufreq_sugov_ext".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/core_ctl",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_apu_power_throttling",
+    srcs = [
+        "mtk_apu_power_throttling.c",
+    ],
+    hdrs = [
+        "mtk_apu_power_throttling.h",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_bp_thl".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_gpu_power_throttling",
+    srcs = [
+        "mtk_gpu_power_throttling.c",
+        "mtk_low_battery_throttling_trace.h",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:gpufreq_public_headers".format(kernel_version),
+    ],
+    hdrs = [
+        "mtk_gpu_power_throttling.h",
+    ],
+    includes = [
+        ".",
+        "$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_bp_thl".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/gpu/mediatek/gpufreq/v2:mtk_gpufreq_wrapper".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/v2/include",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_md_power_throttling",
+    srcs = [
+        "mtk_md_power_throttling.c",
+        "mtk_md_power_throttling.h",
+        "mtk_battery_oc_throttling.h",
+        "pmic_lbat_service.h",
+    ],
+    hdrs = [
+        "mtk_low_battery_throttling.h",
+        "mtk_bp_thl.h",
+    ],
+	header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:power_throttling_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_bp_thl".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:pmic_lbat_service".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+    ],
+    includes = [
+        ".",
+        "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/mediatek/gpufreq/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sched/core_ctl/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+)

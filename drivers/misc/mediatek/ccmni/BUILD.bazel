@@ -1,0 +1,43 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/*.h",
+	]),
+)
+
+ddk_headers(
+	name = "ccmni_header",
+	hdrs = ["ccmni.h"],
+	includes = ["."],
+)
+
+define_mgk_ddk_ko(
+	name = "ccmni",
+	hdrs = ["ccmni.h"],
+	includes = ["."],
+	header_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_header".format(kernel_version)],
+	ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/rps:rps_perf".format(kernel_version)],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci/inc/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/c2k_ccci/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	srcs = ["ccmni.c"],
+)

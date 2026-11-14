@@ -1,0 +1,116 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-swpm-audio-dbg-v6993",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_SWPM_MT6991": {
+            True:[
+                "swpm_audio_v6993.h",
+                "swpm_audio_v6993.c",
+                "swpm_audio_v6993_dbg_init.c",
+            ],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+    ]
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-swpm-disp-dbg-v6993",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_SWPM_MT6993": {
+            True:[
+                "swpm_disp_v6993.h",
+                "swpm_disp_v6993.c",
+                "swpm_disp_v6993_dbg_init.c",
+            ],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:ddk_public_headers".format(kernel_version),
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-swpm-mml-dbg-v6993",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_SWPM_MT6993": {
+            True:[
+                "swpm_mml_v6993.h",
+                "swpm_mml_v6993.c",
+                "swpm_mml_v6993_dbg_init.c",
+            ],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/sspm/v3",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:ddk_public_headers".format(kernel_version),
+    ]
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-swpm-isp-dbg-v6993",
+    srcs = [
+        "swpm_isp_v6993.c",
+        "swpm_isp_v6993.h",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v1:mtk-swpm-dbg-common-v1".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v1/subsys:mtk-swpm-isp-wrapper".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+    ],
+    out = "mtk-swpm-isp-dbg-v6993.ko"
+)

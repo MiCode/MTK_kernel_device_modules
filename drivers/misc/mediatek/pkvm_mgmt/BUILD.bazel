@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig"
+    ])
+)
+
+define_mgk_ddk_ko(
+    name = "pkvm_mgmt",
+    srcs = ["pkvm_mgmt_host.c", "pkvm_mgmt_host.h"],
+    out = "pkvm_mgmt.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+    ],
+    includes = [".", "hyp"],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/pkvm_mgmt/hyp:hyp".format(kernel_version),
+    ],
+)
+

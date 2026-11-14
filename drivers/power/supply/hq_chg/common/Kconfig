@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: GPL-2.0
+config HUAQIN_CHARGER_COMMON
+	bool "Support Huaqin Charger Common Utils"
+	default y
+	help
+	  Say Y/M here to support huaqin voter utils
+
+config HUAQIN_VOTER
+	depends on HUAQIN_CHARGER_COMMON
+	tristate "Support Huaqin Voter Driver"
+	default m
+	help
+	  Say Y/M here to support huaqin voter utils
+
+config HQ_NOTIFY
+	depends on HUAQIN_CHARGER_COMMON
+	tristate "Support Huaqin Notify Driver"
+	default m
+	help
+	  Say Y/M here to support huaqin notify utils

@@ -1,0 +1,18 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config MTK_MM_MONITOR
+	tristate "MediaTek MM_MONITOR Support"
+	depends on ARCH_MEDIATEK || COMPILE_TEST
+	help
+	  Say yes here to add support for the MediaTek Multimedia Monitor Controller (MMMC)
+	  driver. The MMMC is used to debug for Mediatek multimedia drivers.
+	  Say no if the project version does not need MMMC to debug bw / latency information
+	  for Multimedia drivers.
+
+config MTK_MMMC_DEBUG
+	tristate "enable MM_MONITOR_CONTROLLER driver debug extension"
+	help
+	  This extension enables some debug feature for the Multimedia Monitor Controller
+	  Driver (MMMC). For some debug functions, we only default enable in userdebug/eng
+	  load, and avoid the debug functions to be enabled in user load for security concern.
+	  Debug function includes user trigger to control MMMC related HW.

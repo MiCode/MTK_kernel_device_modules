@@ -1,0 +1,10 @@
+menuconfig SY_PROTOCOL
+	tristate "support protocol for southchip"
+	help
+	  Say Y here to support protocol.
+
+if SY_PROTOCOL
+
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/sy_charger/protocol/bc12/Kconfig"
+
+endif

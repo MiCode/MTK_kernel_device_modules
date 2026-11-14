@@ -1,0 +1,184 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# BUILD.bazel for trusty components
+#
+# Copyright (C) 2024 MediaTek Inc.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("config.bzl", "gz_trusty_config", "gz_trusty_ipc_config",
+		"gz_trusty_irq_config", "gz_trusty_log_config",
+		"gz_trusty_virtio_config")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+mgk_package = "//kernel_device_modules-{}".format(kernel_version)
+
+gz_main_package = "{}/drivers/misc/mediatek/geniezone".format(mgk_package)
+
+ddk_headers(
+	name = "local_hdrs",
+	hdrs = glob([
+		"*.h",
+	]),
+	includes = [
+		".",
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "gz-trusty",
+	module_type = "main",
+	ko_deps = [
+		":gz_trusty",
+		":gz_trusty_ipc",
+		":gz_trusty_irq",
+		":gz_trusty_log",
+		":gz_trusty_virtio",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "gz_trusty",
+	module_type = "sub",
+	out = "gz_trusty_mod.ko",
+	srcs = [
+		"dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_MTK_ENABLE_GENIEZONE": {
+			True: [
+				"trusty.c",
+				"smcnr-table.c",
+			],
+		},
+		"CONFIG_MT_GZ_TRUSTY_DEBUGFS": {
+			True: [
+				"trusty-debugfs.c",
+			],
+		},
+	},
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
+	],
+	header_deps = [
+		":local_hdrs",
+	],
+	local_defines = gz_trusty_config["local_defines"],
+	copts = gz_trusty_config["copts"],
+)
+
+define_mgk_ddk_ko(
+	name = "gz_trusty_ipc",
+	module_type = "sub",
+	out = "gz_ipc_mod.ko",
+	srcs = [
+		"dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_VIRTIO_IPC": {
+			True: [
+				"trusty-ipc.c",
+			],
+		},
+	},
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
+	],
+	header_deps = [
+		":local_hdrs",
+	],
+	local_defines = gz_trusty_ipc_config["local_defines"],
+	copts = gz_trusty_ipc_config["copts"],
+)
+
+define_mgk_ddk_ko(
+	name = "gz_trusty_irq",
+	module_type = "sub",
+	out = "gz_irq_mod.ko",
+	srcs = [
+		"dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_IRQ": {
+			True: [
+				"trusty-irq.c",
+			],
+		},
+	},
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
+	],
+	header_deps = [
+		":local_hdrs",
+	],
+	local_defines = gz_trusty_irq_config["local_defines"],
+	copts = gz_trusty_irq_config["copts"],
+)
+
+define_mgk_ddk_ko(
+	name = "gz_trusty_log",
+	module_type = "sub",
+	out = "gz_log_mod.ko",
+	srcs = [
+		"dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_LOG": {
+			True: [
+				"gz-log.c",
+			],
+		},
+	},
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
+	],
+	header_deps = [
+		":local_hdrs",
+	],
+	local_defines = gz_trusty_log_config["local_defines"],
+	copts = gz_trusty_log_config["copts"],
+
+)
+
+define_mgk_ddk_ko(
+	name = "gz_trusty_virtio",
+	module_type = "sub",
+	out = "gz_virtio_mod.ko",
+	srcs = [
+		"dummy.c",
+	],
+	conditional_srcs = {
+		"CONFIG_MTK_GZ_VIRTIO": {
+			True: [
+				"trusty-virtio.c",
+				"trusty-mem.c",
+			],
+		},
+	},
+	hdrs = [
+		"{}:gz-public_hdrs".format(gz_main_package),
+	],
+	header_deps = [
+		":local_hdrs",
+	],
+	local_defines = gz_trusty_virtio_config["local_defines"],
+	copts = gz_trusty_virtio_config["copts"],
+)
+

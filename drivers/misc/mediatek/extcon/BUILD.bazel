@@ -1,0 +1,45 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_srcs",
+    srcs = glob([
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "extcon-mtk-usb",
+    srcs = [
+        "extcon-mtk-usb.c",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/hq_typec/tcpc:ddk_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+	"//kernel_device_modules-{}/drivers/misc/hq_typec/tcpc:tcpc_class".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    conditional_srcs = {
+    },
+    out = "extcon-mtk-usb.ko",
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/hq_typec/tcpc/inc",
+    ],
+)

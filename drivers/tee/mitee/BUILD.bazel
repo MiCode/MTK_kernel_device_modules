@@ -1,0 +1,46 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+ddk_headers(
+    name = "mitee_local_hdrs",
+    # include header files
+    hdrs = glob([
+        "include/tee/*.h",
+        "include/*.h",
+    ]),
+    # include directory for relative path
+    includes = [
+        "include",
+        "include/tee",
+    ],
+    visibility = [
+        "//visibility:private",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mitee",
+    srcs = glob([
+		"**/src/*.c",
+        "**/src/tee/*.c",
+		"**/include/*.h",
+        "**/include/tee/*.h",
+	]),
+    header_deps = [
+        ":mitee_local_hdrs",
+    ],
+    out = "mitee.ko",
+)

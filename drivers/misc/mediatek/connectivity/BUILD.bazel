@@ -1,0 +1,78 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefiles",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "connadp_headers",
+    hdrs = glob([
+        "common/conn_dbg.h",
+        "common/connectivity_build_in_adapter.h",
+        "common/wmt_build_in_adapter.h",
+        "power_throttling/conn_power_throttling.h",
+    ]),
+    includes = [
+        "common",
+        "power_throttling",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "connadp",
+    srcs = [
+        "common/connectivity_build_in_adapter.c",
+        "common/wmt_build_in_adapter.c",
+        "power_throttling/adapter.c",
+        "power_throttling/core.c",
+    ],
+    conditional_srcs = {
+        "CONFIG_CONN_PWR_DEBUG": {
+            True: ["power_throttling/test.c"],
+        },
+    },
+    includes = [
+        "common",
+        "power_throttling",
+    ],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-Werror",
+        "-I$(srctree)/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/base/power/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/clkbuf/src",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(srctree)/drivers/mmc/core",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/eccci",
+        "-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/pinctrl/mediatek",
+        "-I$(srctree)/drivers/misc/mediatek/power_throttling",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:power_throttling_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+    ],
+)

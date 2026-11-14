@@ -1,0 +1,27 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "nt36672c_i2c",
+    srcs = [
+        "nt36xxx.c",
+        "nt36xxx_fw_update.c",
+        "nt36xxx_ext_proc.c",
+        "nt36xxx_mp_ctrlram.c",
+        "tpd_setting.c",
+        "mtk_tpd.c",
+        "tpd_button.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-Wall",
+        "-Werror",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)

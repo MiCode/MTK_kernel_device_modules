@@ -1,0 +1,23 @@
+&i2c0 {
+	status ="okay";
+	clock-frequency = <400000>;
+	focaltech@38{
+		status ="okay";
+		compatible = "focaltech,fts"; /* do not modify */
+		reg = <0x38>; /* do not modify */
+		interrupt-parent = <&pio>; /* INT pin */
+		interrupts = <9 0x2001>;
+		//vdd-supply = <&pm8916_l15>;
+		//vcc_i2c-supply = <&pm8916_l16>;
+		//vtouch-supply = <&mt_pmic_vtp_ldo_reg>;
+		focaltech,avdd-name = "avdd";
+		focaltech,avdd-gpio = <&pio 53 0x00>;
+		focaltech,iovdd-name = "iovdd";
+		focaltech,iovdd-gpio = <&pio 157 0x00>;
+		focaltech,reset-gpio = <&pio 152 0x0>; /* RST pin */
+		focaltech,irq-gpio = <&pio 9 0x2001>; /* INT pin */
+		focaltech,max-touch-number = <10>;
+		focaltech,display-coords = <0 0 17280 38400>; /* resolution */
+	};
+};
+/* TOUCH end */

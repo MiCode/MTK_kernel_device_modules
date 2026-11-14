@@ -1,0 +1,52 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "clkbuf",
+    srcs = [
+        "src/clkbuf-ctrl.c",
+        "src/clkbuf-pmic.c",
+        "src/srclken.c",
+        "src/clkbuf-pmif.c",
+        "src/platform-hdlr.c",
+        "src/clkbuf-debug.c",
+        "src/dcxo-6357.c",
+        "src/dcxo-6358.c",
+        "src/dcxo-6358-tb.c",
+        "src/dcxo-6359p.c",
+        "src/dcxo-6366.c",
+        "src/dcxo-6366-tb.c",
+        "src/dcxo-6685.c",
+        "src/dcxo-6685-tb.c",
+        "src/dcxo-6687.c",
+        "src/pmif-data-v1.c",
+        "src/src-data-v1.c",
+        "src/src-data-v2.c",
+        "src/src-data-v3.c",
+    ],
+    includes = ["src",],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/mfd",
+    ],
+)

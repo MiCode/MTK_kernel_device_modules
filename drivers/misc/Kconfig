@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+source "drivers/misc/mediatek/Kconfig"
+source "drivers/misc/hq_typec/Kconfig"
+source "drivers/misc/xiaomi/Kconfig"
+source "drivers/misc/perfhelper/Kconfig"

@@ -1,0 +1,742 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+# For Kconfig
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+# For out of tree device
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+# apusys public header (export for apu_top)
+ddk_headers(
+	name = "apusys_public_hdrs",
+	hdrs = glob([
+		"include/*.h",
+		"debug/*.h",
+	]),
+	includes = [
+		"include",
+		"debug",
+	],
+)
+
+
+
+#######################################
+# MDW
+#######################################
+APUSYS_VERSION_MIDWARE = "3.0"
+
+# mdw header
+ddk_headers(
+	name = "apu_mdw_hdrs",
+	# include header files
+	hdrs = glob([
+		"midware/{}/*.h".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/*.h".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/*/*.h".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/ap/sample/*.h".format(APUSYS_VERSION_MIDWARE),
+	]),
+	# include directory for relative path
+	includes = [
+		"midware/{}".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/ap".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/ap/sample".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/cmd_history".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/dvfs_policy".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/ext".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/power_budget".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/rv".format(APUSYS_VERSION_MIDWARE),
+		"midware/{}/plat/sanity".format(APUSYS_VERSION_MIDWARE),
+	]
+)
+
+# mdw src
+apu_mdw_srcs_list = glob([
+	"midware/{}/*.c".format(APUSYS_VERSION_MIDWARE),
+	"midware/{}/plat/*.c".format(APUSYS_VERSION_MIDWARE),
+	"midware/{}/plat/*/*.c".format(APUSYS_VERSION_MIDWARE),
+	"midware/{}/plat/ap/sample/*.c".format(APUSYS_VERSION_MIDWARE),
+])
+
+#######################################
+# APU memory (sysmem, apummu, reviser)
+#######################################
+APUSYS_VERSION_REVISER = "2.0"
+
+# apu_mem header
+ddk_headers(
+	name = "apu_mem_hdrs",
+	# include header files
+	hdrs = glob([
+		"apu_mem/*.h",
+		"apu_mem/reviser/{}/common/*.h".format(APUSYS_VERSION_REVISER),
+		"apu_mem/reviser/{}/platform/*.h".format(APUSYS_VERSION_REVISER),
+		"apu_mem/reviser/{}/platform/v_1_0/*.h".format(APUSYS_VERSION_REVISER),
+		"apu_mem/reviser/{}/platform/v_rv/*.h".format(APUSYS_VERSION_REVISER),
+		"apu_mem/apummu/common/*.h",
+		"apu_mem/apummu/platform/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"apu_mem",
+		"apu_mem/reviser/{}/common".format(APUSYS_VERSION_REVISER),
+		"apu_mem/reviser/{}/platform".format(APUSYS_VERSION_REVISER),
+		"apu_mem/reviser/{}/platform/v_1_0".format(APUSYS_VERSION_REVISER),
+		"apu_mem/reviser/{}/platform/v_rv".format(APUSYS_VERSION_REVISER),
+		"apu_mem/apummu/common",
+		"apu_mem/apummu/platform",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+# apu_mem src
+apu_mem_srcs_list = glob([
+	"apu_mem/*.c",
+	"apu_mem/reviser/{}/common/*.c".format(APUSYS_VERSION_REVISER),
+	"apu_mem/reviser/{}/platform/*.c".format(APUSYS_VERSION_REVISER),
+	"apu_mem/reviser/{}/platform/v_1_0/*.c".format(APUSYS_VERSION_REVISER),
+	"apu_mem/reviser/{}/platform/v_rv/*.c".format(APUSYS_VERSION_REVISER),
+	"apu_mem/apummu/common/*.c",
+	"apu_mem/apummu/platform/*.c",
+])
+
+
+#######################################
+# EDMA
+#######################################
+ddk_headers(
+	name = "apu_edma_hdrs",
+	# include header files
+	hdrs = glob([
+		"edma/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"edma",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+# edma src
+edma_srcs_list = glob([
+	"edma/edma_driver.c",
+	"edma/edma_dbgfs.c",
+	"edma/edma_cmd_hnd.c",
+	"edma/edma_plat_device.c",
+	"edma/edma_v20.c",
+	"edma/edma_v30.c",
+	"edma/edma_rv.c",
+	# "edma/apusys_power_dummy.c",
+])
+
+
+#######################################
+# NoC
+#######################################
+APUSYS_VERSION_MNOC = "1.5"
+
+ddk_headers(
+	name = "apu_noc_hdrs",
+	# include header files
+	hdrs = glob([
+		"mnoc/{}/common/*.h".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/platform/*.h".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/platform/*/*.h".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/utilities/*.h".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/interface/*.h".format(APUSYS_VERSION_MNOC),
+	]),
+	# include directory for relative path
+	includes = [
+		"mnoc/{}/common".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/platform".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/platform/v1_50".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/platform/v1_51".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/platform/v1_52".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/utilities".format(APUSYS_VERSION_MNOC),
+		"mnoc/{}/interface".format(APUSYS_VERSION_MNOC),
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+noc_srcs_list = glob([
+	"mnoc/{}/common/mnoc_drv.c".format(APUSYS_VERSION_MNOC),
+	"mnoc/{}/common/mnoc_pmu.c".format(APUSYS_VERSION_MNOC),
+	"mnoc/{}/common/mnoc_tag.c".format(APUSYS_VERSION_MNOC),
+	"mnoc/{}/common/mnoc_rv.c".format(APUSYS_VERSION_MNOC),
+	"mnoc/{}/platform/*.c".format(APUSYS_VERSION_MNOC),
+	"mnoc/{}/platform/*/*.c".format(APUSYS_VERSION_MNOC),
+	"mnoc/{}/utilities/*.c".format(APUSYS_VERSION_MNOC),
+])
+
+
+#######################################
+# debug
+#######################################
+APUSYS_VERSION_DEBUG = "1.0"
+
+ddk_headers(
+	name = "apu_debug_hdrs",
+	# include header files
+	hdrs = glob([
+		"debug/*.h",
+		"debug/{}/common/*.h".format(APUSYS_VERSION_DEBUG),
+		"debug/{}/platform/*.h".format(APUSYS_VERSION_DEBUG),
+		"debug/{}/interface/*.h".format(APUSYS_VERSION_DEBUG),
+	]),
+	# include directory for relative path
+	includes = [
+		"debug",
+		"debug/{}/common".format(APUSYS_VERSION_DEBUG),
+		"debug/{}/platform".format(APUSYS_VERSION_DEBUG),
+		"debug/{}/interface".format(APUSYS_VERSION_DEBUG),
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+
+#######################################
+# power_tag
+#######################################
+ddk_headers(
+	name = "apu_power_tag_hdrs",
+	# include header files
+	hdrs = glob([
+		"power/2.5/inc/*.h",
+		"power/3.0/inc/*.h",
+		"power/3.0/inc/platform/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"power/2.5/inc",
+		"power/3.0/inc",
+		"power/3.0/inc/platform",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+power_tag_srcs_list = glob([
+	"power/2.5/common/apu-tag.c",
+])
+
+
+#######################################
+# power budget
+#######################################
+ddk_headers(
+	name = "apu_pbm_hdrs",
+	# include header files
+	hdrs = glob([
+		"pbm/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"pbm",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+pbm_srcs_list = glob([
+	"pbm/*.c",
+])
+
+
+#######################################
+# MDLA
+#######################################
+# mdla header
+ddk_headers(
+	name = "apu_mdla_hdrs",
+	# include header files
+	hdrs = glob([
+		"mdla/*/*.h",
+		"mdla/platform/*/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"mdla",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+mdla_srcs_list = glob([
+	"mdla/*/*.c",
+	"mdla/platform/*/*.c",
+])
+
+
+#######################################
+# Devapc
+#######################################
+# dapc header
+ddk_headers(
+	name = "apu_dapc_hdrs",
+	# include header files
+	hdrs = glob([
+		"devapc/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"devapc",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+dapc_srcs_list = glob([
+	"devapc/*.c",
+])
+
+#######################################
+# AISTE
+#######################################
+# aiste header
+ddk_headers(
+	name = "apu_aiste_hdrs",
+	# include header files
+	hdrs = glob([
+		"aiste/*.h",
+		"tinysys-scmi.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"aiste",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+aiste_srcs_list = glob([
+	"aiste/*.c",
+])
+
+#######################################
+# VPU
+#######################################
+APUSYS_VERSION_VPU = "4.5"
+
+ddk_headers(
+	name = "apu_vpu_hdrs",
+	# include header files
+	hdrs = glob([
+		"vpu/{}/*.h".format(APUSYS_VERSION_VPU),
+	]),
+	# include directory for relative path
+	includes = [
+		"vpu/{}".format(APUSYS_VERSION_VPU),
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+
+#######################################
+# APUSYS RV
+#######################################
+# apusys_rv header
+ddk_headers(
+	name = "apusys_rv_hdrs",
+	# include header files
+	hdrs = glob([
+		"apusys_rv/*.h",
+		"apusys_rv/4.0/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"apusys_rv",
+		"apusys_rv/4.0",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+apusys_rv_common_srcs_list = glob([
+	"apusys_rv/*.c",
+])
+
+apusys_rv_plat_srcs_list=\
+(["apusys_rv/1.0/mt6893_plat.c"] if glob(["apusys_rv/1.0/mt6893_plat.c"]) else []) +\
+(["apusys_rv/2.0/mt6878_plat.c"] if glob(["apusys_rv/2.0/mt6878_plat.c"]) else []) +\
+(["apusys_rv/2.0/mt6879_plat.c"] if glob(["apusys_rv/2.0/mt6879_plat.c"]) else []) +\
+(["apusys_rv/2.0/mt6886_plat.c"] if glob(["apusys_rv/2.0/mt6886_plat.c"]) else []) +\
+(["apusys_rv/2.0/mt6895_plat.c"] if glob(["apusys_rv/2.0/mt6895_plat.c"]) else []) +\
+(["apusys_rv/2.0/mt6897_plat.c"] if glob(["apusys_rv/2.0/mt6897_plat.c"]) else []) +\
+(["apusys_rv/2.0/mt6983_plat.c"] if glob(["apusys_rv/2.0/mt6983_plat.c"]) else []) +\
+(["apusys_rv/2.0/mt6985_plat.c"] if glob(["apusys_rv/2.0/mt6985_plat.c"]) else []) +\
+(["apusys_rv/2.0/mt8188_plat.c"] if glob(["apusys_rv/2.0/mt8188_plat.c"]) else []) +\
+(["apusys_rv/3.0/mt6989_plat.c"] if glob(["apusys_rv/3.0/mt6989_plat.c"]) else []) +\
+(["apusys_rv/3.0/mt6991_plat.c"] if glob(["apusys_rv/3.0/mt6991_plat.c"]) else []) +\
+(["apusys_rv/4.0/mt6993_plat.c"] if glob(["apusys_rv/4.0/mt6993_plat.c"]) else [])
+
+apusys_rv_local_define_list=\
+(["MT6893_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/1.0/mt6893_plat.c"]) else []) +\
+(["MT6878_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6878_plat.c"]) else []) +\
+(["MT6879_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6879_plat.c"]) else []) +\
+(["MT6886_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6886_plat.c"]) else []) +\
+(["MT6895_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6895_plat.c"]) else []) +\
+(["MT6897_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6897_plat.c"]) else []) +\
+(["MT6983_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6983_plat.c"]) else []) +\
+(["MT6985_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt6985_plat.c"]) else []) +\
+(["MT8188_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/2.0/mt8188_plat.c"]) else []) +\
+(["MT6989_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/3.0/mt6989_plat.c"]) else []) +\
+(["MT6991_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/3.0/mt6991_plat.c"]) else []) +\
+(["MT6993_APUSYS_RV_PLAT_DATA"] if glob(["apusys_rv/4.0/mt6993_plat.c"]) else [])
+
+
+#######################################
+# APUSYS CE
+#######################################
+# apusys_ce header
+ddk_headers(
+	name = "apusys_ce_hdrs",
+	# include header files
+	hdrs = glob([
+		"apusys_ce/*.h",
+		"apusys_ce/*/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"apusys_ce",
+		"apusys_ce/1.0",
+		"apusys_ce/2.0",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+apusys_ce_srcs_list = glob([
+	"apusys_ce/*.c",
+	"apusys_ce/*/*.c",
+])
+
+
+#######################################
+# APUSYS IPI
+#######################################
+ddk_headers(
+	name = "apusys_ipi_hdrs",
+	# include header files
+	hdrs = glob([
+		"ipi/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"ipi",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+apusys_ipi_srcs_list = glob([
+	"ipi/*.c",
+])
+
+
+#######################################
+# logger
+#######################################
+ddk_headers(
+	name = "apu_logger_hdrs",
+	# include header files
+	hdrs = glob([
+		"sw_logger/*.h",
+		"hw_logger/*.h",
+		"hw_logger/*/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"sw_logger",
+		"hw_logger",
+		"hw_logger/1.0",
+		"hw_logger/2.0",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+# logger src
+apu_logger_srcs_list = glob([
+	"sw_logger/sw_logger.c",
+	"hw_logger/*.c",
+	"hw_logger/*/*.c",
+])
+
+logger_local_define_list= [
+	"LOGGER_V1_PLAT_DATA",
+	"LOGGER_V2_PLAT_DATA",
+]
+
+
+#######################################
+# MVPU
+#######################################
+# mvpu header
+ddk_headers(
+	name = "apu_mvpu_hdrs",
+	# include header files
+	hdrs = glob([
+		"mvpu/common/*.h",
+		"mvpu/platform/*.h",
+		"mvpu/platform/*/*.h",
+		"mvpu/platform/*/*/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"mvpu/common",
+		"mvpu/platform/v2",
+		"mvpu/platform/v2/2.0",
+		"mvpu/platform/v2/2.5",
+		"mvpu/platform/v3",
+		"mvpu/platform/v3/3.0",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+# mvpu src
+mvpu_srcs_list = glob([
+	"mvpu/common/*.c",
+	"mvpu/platform/v2/*.c",
+	"mvpu/platform/v2/*/*.c",
+	"mvpu/platform/v3/*.c",
+	"mvpu/platform/v3/*/*.c",
+])
+
+mvpu_local_define_list= [
+	"MVPU_V20_PLAT_DATA",
+	"MVPU_V25_PLAT_DATA",
+	"MVPU_V30_PLAT_DATA",
+]
+
+
+#######################################
+# APS
+#######################################
+# aps header
+ddk_headers(
+	name = "apu_aps_hdrs",
+	# include header files
+	hdrs = glob([
+		"aps/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"aps",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+# aps src
+aps_srcs_list = glob([
+	"aps/*.c",
+])
+
+
+#######################################
+# HDS
+#######################################
+# hds header
+ddk_headers(
+	name = "apu_hds_hdrs",
+	# include header files
+	hdrs = glob([
+		"hds/*.h",
+		"hds/platform/*.h",
+		"hds/platform/1.0/*.h",
+	]),
+	# include directory for relative path
+	includes = [
+		"hds",
+		"hds/platform",
+		"hds/platform/1.0",
+	],
+	visibility = [
+		"//visibility:public",
+	],
+)
+
+# hds src
+hds_srcs_list = glob([
+	"hds/*.c",
+	"hds/platform/*.c",
+	"hds/platform/1.0/*.c",
+])
+
+
+
+# APUSYS DDK KO
+define_mgk_ddk_ko(
+	name = "apusys",
+	srcs =
+		[
+			"core/apusys_core.c",
+			"util/apusys_trace.c",
+			"util/apu_bmap.c",
+			"secure_mem/smmu_device.c",
+		] +
+		apu_mdw_srcs_list +
+		apu_mem_srcs_list +
+		edma_srcs_list +
+		noc_srcs_list +
+		power_tag_srcs_list +
+		pbm_srcs_list +
+		mdla_srcs_list +
+		dapc_srcs_list +
+		aiste_srcs_list +
+		apusys_rv_common_srcs_list +
+		apusys_rv_plat_srcs_list +
+		apusys_ce_srcs_list +
+		apusys_ipi_srcs_list +
+		apu_logger_srcs_list +
+		mvpu_srcs_list +
+		aps_srcs_list +
+		hds_srcs_list
+	,
+	header_deps = [
+		":apusys_public_hdrs",
+		":apu_mdw_hdrs",
+		":apu_mem_hdrs",
+		":apu_edma_hdrs",
+		":apu_noc_hdrs",
+		":apu_debug_hdrs",
+		":apu_power_tag_hdrs",
+		":apu_pbm_hdrs",
+		":apu_mdla_hdrs",
+		":apu_dapc_hdrs",
+		":apu_aiste_hdrs",
+		":apu_vpu_hdrs",
+		":apusys_rv_hdrs",
+		":apusys_ce_hdrs",
+		":apusys_ipi_hdrs",
+		":apu_logger_hdrs",
+		":apu_mvpu_hdrs",
+		":apu_aps_hdrs",
+		":apu_hds_hdrs",
+		"//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:pbm_headers".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+	],
+	# header export to other DDK
+	hdrs = glob([
+		"include/*.h",
+		"util/*.h",
+	]),
+	includes = [
+		"include",
+		"util",
+	],
+	conditional_srcs = {
+		"CONFIG_MTK_APUSYS_DEBUG": {
+			True: [
+				"debug/apu_tags.c",
+				"debug/apu_tp.c",
+				"debug/{}/common/debug_drv.c".format(APUSYS_VERSION_DEBUG),
+				"debug/{}/platform/debug_plat_device.c".format(APUSYS_VERSION_DEBUG),
+				"debug/{}/platform/debug_platform.c".format(APUSYS_VERSION_DEBUG),
+			],
+		},
+		"CONFIG_MTK_APUSYS_VPU_DEBUG": {
+			True: [
+				"vpu/{}/vpu_tag.c".format(APUSYS_VERSION_VPU),
+				"vpu/{}/vpu_met.c".format(APUSYS_VERSION_VPU),
+			],
+		},
+		"CONFIG_MTK_APUSYS_VPU": {
+			True: [
+				"vpu/{}/vpu_main.c".format(APUSYS_VERSION_VPU),
+				"vpu/{}/vpu_algo.c".format(APUSYS_VERSION_VPU),
+				"vpu/{}/vpu_cmd.c".format(APUSYS_VERSION_VPU),
+				"vpu/{}/vpu_hw.c".format(APUSYS_VERSION_VPU),
+				"vpu/{}/vpu_mem.c".format(APUSYS_VERSION_VPU),
+				"vpu/{}/vpu_power.c".format(APUSYS_VERSION_VPU),
+				"vpu/{}/vpu_cfg.c".format(APUSYS_VERSION_VPU),
+				"vpu/{}/vpu_debug.c".format(APUSYS_VERSION_VPU),
+				"vpu/{}/vpu_dump.c".format(APUSYS_VERSION_VPU),
+			],
+		},
+		"CONFIG_MTK_QOS_FRAMEWORK": {
+			True: [
+				"mnoc/{}/common/mnoc_dbg.c".format(APUSYS_VERSION_MNOC),
+				"mnoc/{}/common/mnoc_qos.c".format(APUSYS_VERSION_MNOC),
+				"mnoc/{}/common/mnoc_qos_sys.c".format(APUSYS_VERSION_MNOC),
+			],
+		},
+	},
+	local_defines =
+		apusys_rv_local_define_list +
+		logger_local_define_list +
+		mvpu_local_define_list
+	,
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+		"-I$(DEVICE_MODULES_PATH)/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/staging/android/ion",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
+		"-I$(srctree)/drivers/rpmsg",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/apusys/power:apu_top".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_pbm".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/pbm:mtk_peak_power_budget".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/qos:mtk_qos".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_iommu_util".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/iommu:mtk_iommu".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:arm_smmu_v3".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+	],
+)
+

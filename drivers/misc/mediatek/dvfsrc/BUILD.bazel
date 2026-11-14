@@ -1,0 +1,113 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefiles",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-dvfsrc-helper",
+    srcs = [
+        "dvfsrc-helper.c",
+		"dvfsrc-debug-v3.c",
+		"dvfsrc-sysfs.c",
+		"dvfsrc-debug-v2.c",
+    ],
+    conditional_srcs = {
+      "CONFIG_MTK_DVFSRC_MET": {
+        True: ["dvfsrc-met.c"],
+      },
+      "CONFIG_MTK_DVFSRC_MET_MT6873": {
+        True: ["dvfsrc-met-v6873.c",
+               "dvfsrc-met-v6983.c",
+              ],
+      },
+      "CONFIG_MTK_DVFSRC_MET_MT6768": {
+        True: ["dvfsrc-met-v6768.c",
+               "dvfsrc-ipi.c",
+              ],
+      },
+      "CONFIG_MTK_DVFSRC_MET_MT6765": {
+        True: ["dvfsrc-met-v6765.c",
+               "dvfsrc-ipi.c",
+              ],
+      },
+      "CONFIG_MTK_DVFSRC_MET_MT6761": {
+        True: ["dvfsrc-met-v6768.c",
+               "dvfsrc-ipi.c",
+              ],
+      },
+      "CONFIG_MTK_DVFSRC_MB": {
+        True: ["dvfsrc-mb.c"],
+      },
+      "CONFIG_MTK_DVFSRC_DEBUGFS": {
+        True: ["dvfsrc-debugfs.c"],
+      },
+       "CONFIG_MTK_DVFSRC_VSMR": {
+        True: ["dvfsrc-vsmr.c"],
+      },
+    },
+    hdrs = glob(["**/*.h"]),
+    copts = [
+                "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+                "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs",
+            ],
+    ko_deps = [
+                "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),
+                "//kernel_device_modules-{}/drivers/misc/mediatek/mmdvfs:mtk-mmdvfs-debug".format(kernel_version),
+              ],
+)
+
+define_mgk_ddk_ko(
+    name = "dvfsrc-opp-mt6768",
+    srcs = [
+        "dvfsrc-opp-mt6768.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = ["//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),],
+)
+define_mgk_ddk_ko(
+    name = "dvfsrc-opp-mt6765",
+    srcs = [
+        "dvfsrc-opp-mt6765.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = ["//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),],
+)
+define_mgk_ddk_ko(
+    name = "dvfsrc-opp-mt6761",
+    srcs = [
+        "dvfsrc-opp-mt6761.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = ["//kernel_device_modules-{}/drivers/memory/mediatek:mtk_dramc".format(kernel_version),],
+)
+define_mgk_ddk_ko(
+    name = "dvfsrc-opp-mt6781",
+    srcs = [
+        "dvfsrc-opp-mt6781.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+)
+

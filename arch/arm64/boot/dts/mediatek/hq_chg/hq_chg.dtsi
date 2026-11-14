@@ -1,0 +1,86 @@
+#include "mediatek/hq_chg/subpmic.dtsi"
+#include "mediatek/hq_chg/rt1711.dtsi"
+#include "mediatek/hq_chg/sc8541.dtsi"
+#include "mediatek/hq_chg/nu2115.dtsi"
+#include "mediatek/hq_chg/hq_jeita.dtsi"
+#include "mediatek/hq_chg/thermal_chg.dtsi"
+#include "mediatek/hq_chg/hq_qc.dtsi"
+#include "mediatek/hq_chg/xm_smart_chg.dtsi"
+#include "mediatek/hq_chg/xm_chg_dfs.dtsi"
+#include "mediatek/hq_chg/bq25960.dtsi"
+#include "mediatek/hq_chg/auth_battery.dtsi"
+
+&hq_chg_manager {
+	status = "okay";
+	hq_chg_manager,charge_control_limit_max = <18>;
+	hq_chg_manager,QC3_mode = <0>; /*0-not support; 1-QC3; 2-QC3P5*/
+	hq_chg_manager,usb_charger_current = <500>;
+	hq_chg_manager,float_charger_current = <1000>;
+	hq_chg_manager,cdp_charger_current = <1000>;
+	hq_chg_manager,ac_charger_current = <1500>;
+	hq_chg_manager,hvdcp_charger_current = <3600>;
+	hq_chg_manager,hvdcp_input_current = <2000>;
+	hq_chg_manager,hvdcp3_charger_current = <4000>;
+	hq_chg_manager,hvdcp3_input_current = <3000>;
+	hq_chg_manager,pd2_charger_current = <3600>;
+	hq_chg_manager,pd2_input_current = <2000>;
+	hq_chg_manager,xm_outdoor_current = <1900>;
+	hq_chg_manager,input_power_over = <33>;
+	hq_chg_manager,model_name = "project_5000mah_33w";
+	hq_chg_manager,en_floatgnd;
+	hq_chg_manager,single_cell_det;
+	// huaqin fuelgauge algorithm
+	hq_fuel_algo,heavy_loading_current = <1000>;
+	hq_fuel_algo,normal_temp = <15>;
+	hq_fuel_algo,soc_update_rate_fast = <10>;
+	hq_fuel_algo,soc_update_rate_normal = <20>;
+	hq_fuel_algo,soc_update_rate_low = <60>;
+	hq_fuel_algo,batt_id_count = <3>;
+	hq_fuel_algo,cycle_range_data = <0 100 300 800>;
+					       /*batid 0, 1, 2 */
+	hq_fuel_algo,cycle_soc_reach_100_rate = <0 0 0>,/* 0 ~ 99 */
+						<1 1 1>,/* 100 ~ 299 */
+						<3 3 3>,/* 300 ~ 799 */
+						<4 4 4>;/* >= 800 */
+	hq_fuel_algo,temp_range_data = <(-100) 0 100 250 580>;
+						 /*batid 0, 1, 2 */
+	hq_fuel_algo,temp_soc_reach_100_rate = <5 7 5>, /*  < 0 */
+					 	<4 6 4>,/* 0 ~ 99 */
+						<4 5 4>,/* 100 ~ 249 */
+						<3 3 3>,/* 250 ~ 579 */
+						<3 3 3>; /* >= 580  */
+};
+
+&hq_cp_policy {
+	status = "okay";
+
+	hq_cp_policy,cv_offset = <25>;
+	hq_cp_policy,exit_cc = <1800>;
+	hq_cp_policy,min_vbat = <3500>;
+	hq_cp_policy,step_volt = <20>;
+	hq_cp_policy,warm_temp = <480>;
+
+	hq_cp_policy,max_request_volt = <11000>;
+	hq_cp_policy,min_request_volt = <3000>;
+	hq_cp_policy,max_request_curr = <3000>;
+	hq_cp_policy,min_request_curr = <2000>;
+
+	hq_cp_policy,max_ibat = <6000>;
+	hq_cp_policy,max_vbat = <4530>;
+
+	//hq_cp_policy,s_cp_enable;
+};
+
+&hq_pd_adapter {
+	status = "okay";
+	pd_adapter,name = "pd_adapter1";
+};
+
+&xm_pd_adapter {
+	status = "okay";
+	adapter_name = "pd_adapter";
+};
+
+&hq_qc_policy {
+	status = "okay";
+};

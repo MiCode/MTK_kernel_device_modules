@@ -1,0 +1,69 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = [
+        "inc/lpm.h",
+        "modules/include/lpm_dbg_common_v1.h",
+    ],
+)
+
+ddk_headers(
+    name = "ddk_public_headers",
+    hdrs = glob([
+        "inc/**/*.h",
+        "modules/include/**/*.h",
+        "mtk_lpm_fs/*.h"
+    ]),
+    includes = [
+        "inc",
+        "inc/lpm_trace_event",
+        "mtk_lpm_fs",
+        "modules/include",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-lpm-legacy",
+    srcs = glob([
+        "*.c",
+        "*.h",
+        "inc/*.h",
+        "lpm_trace_event/*.c",
+        "inc/lpm_trace_event/*.h",
+        "platform/*.c",
+        "platform/*.h",
+        "mtk_lpm_fs/*.h",
+        "mtk_lpm_fs/*.c",
+    ]),
+    hdrs = [
+        "inc/lpm.h",
+        "inc/lpm_module.h",
+        "inc/lpm_type.h",
+        "mtk_lpm_fs/mtk_cpuidle_sysfs.h",
+        "mtk_lpm_fs/mtk_lp_sysfs.h",
+    ],
+    includes = [
+        ".",
+        "inc",
+        "platform",
+        "inc/lpm_trace_event",
+        "lpm_trace_event",
+        "mtk_lpm_fs",
+        "modules",
+    ],
+)

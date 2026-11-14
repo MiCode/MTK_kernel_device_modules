@@ -1,0 +1,208 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "iommu_misc_headers",
+    hdrs = glob([
+        "iommu_debug.h",
+        "iommu_pseudo.h",
+        "iommu_secure.h",
+        "mtk-iommu-util.h",
+        "mtk-smmu-ela.h",
+        "smmu_secure.h",
+    ]) + ["//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),]
+       + ["//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),]
+       + ["//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:tmem_hdrs".format(kernel_version),],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_iommu_util",
+    srcs = [
+        "mtk-iommu-util.c",
+    ],
+    hdrs = glob(["mtk-iommu-util.h"]),
+    includes = ["."],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+    ],
+    out = "mtk_iommu_util.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "smmu_secure",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_IOMMU_MISC_SECURE": {
+            True: ["smmu-secure.c"],
+            False: ["smmu-secure-dummy.c"],
+        },
+    },
+    hdrs = glob([
+        "smmu_secure.h",
+    ]),
+    includes = ["."],
+    header_deps = [
+    	":iommu_misc_headers",
+    ],
+    out = "smmu_secure.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "iommu_secure",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_IOMMU_MISC_SECURE": {
+            True: [
+                "iommu-secure.c",
+            ],
+            False: [
+                "iommu_secure_dummy.c"
+            ],
+        }
+    },
+    hdrs = glob([
+        "iommu_debug.h",
+        "iommu_secure.h",
+        "mtk-iommu-util.h"
+    ]),
+    includes = ["."],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),
+    ],
+    out = "iommu_secure.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "iommu_engine",
+    srcs = [
+        "iommu_engine.c",
+    ],
+    hdrs = glob([
+	"iommu_engine.h",
+    ]),
+    includes = ["."],
+    out = "iommu_engine.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "iommu_test",
+    srcs = [
+        "iommu_test.c",
+    ],
+    hdrs = glob([
+        "iommu_engine.h",
+    ]),
+    includes = ["."],
+    header_deps = [
+        ":iommu_misc_headers",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
+    ],
+    out = "iommu_test.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "iommu_debug",
+    srcs = [
+        "iommu_port.h",
+        "iommu-debug.c",
+        "mtk-smmu-ela.c",
+        "smmu_reg.h",
+    ],
+    hdrs = glob([
+        "iommu_debug.h",
+        "mtk-smmu-ela.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(srctree)/drivers/iommu/",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu:iommu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        ":mtk_iommu_util",
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+    ],
+    out = "iommu_debug.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_smmu_qos",
+    srcs = [
+        "mtk_smmu_qos_events.h",
+        "mtk_smmu_qos.c",
+    ],
+    header_deps = [
+        ":iommu_misc_headers",
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        ":mtk_iommu_util",
+        ":iommu_debug",
+    ],
+    out = "mtk_smmu_qos.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "iommu_gz",
+    srcs = [
+        "iommu_gz_dummy.c",
+    ],
+    conditional_srcs = {
+        "CONFIG_DEVICE_MODULES_ARM_SMMU_V3": {
+            False: [
+                "iommu_pseudo.c",
+            ],
+        },
+        "CONFIG_MTK_ENABLE_GENIEZONE": {
+            True: [
+                "iommu_gz_sec.c",
+                "iommu_gz_sec.h",
+            ],
+        },
+    },
+    hdrs = glob([
+        "iommu_pseudo.h",
+    ]),
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:tmem_hdrs".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/geniezone:gz_tz_system".format(kernel_version),
+    ],
+    includes = ["."],
+    out = "iommu_gz.ko",
+)
+

@@ -1,0 +1,116 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefiles",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "uarthub_drv_headers",
+    hdrs = glob([
+        "common/uarthub_drv_export.h",
+    ]),
+    includes = [
+        "common",
+    ],
+)
+
+uarthub_mt6985_srcs=[
+    "common/platform/6985/mt6985.c"
+]
+
+uarthub_mt6989_srcs=[
+    "common/platform/6989/mt6989.c",
+    "common/platform/6989/mt6989_debug.c"
+]
+
+uarthub_mt6991_srcs=[
+    "common/platform/6991/mt6991.c",
+    "common/platform/6991/mt6991_debug.c"
+]
+
+uarthub_mt6993_srcs=[
+    "common/platform/6993/mt6993.c",
+    "common/platform/6993/mt6993_debug.c"
+]
+
+uarthub_mt6989_ut_it_srcs=[
+    "common/platform/6989/ut/mt6989_ut_test.c",
+    "common/platform/6989/ut/mt6989_ut_test_for_ip.c",
+    "common/platform/6989/ut/mt6989_ut_dat.c",
+    "common/platform/6989/ut/ut_util.c"
+]
+
+uarthub_mt6991_ut_it_srcs=[
+    "common/platform/6991/test/mt6991_test_api.c",
+    "common/platform/6991/test/test_dat.c",
+    "common/platform/6991/test/test_util.c",
+    "common/platform/6991/test/it/it_tc_000_help_info.c",
+    "common/platform/6991/test/ut/ut_tc_000_help_info.c"
+]
+
+uarthub_mt6993_ut_it_srcs=[
+    "common/platform/6993/test/mt6993_test_api.c",
+    "common/platform/6993/test/test_dat.c",
+    "common/platform/6993/test/test_util.c",
+    "common/platform/6993/test/it/it_tc_000_help_info.c",
+    "common/platform/6993/test/ut/ut_tc_000_help_info.c"
+]
+
+define_mgk_ddk_ko(
+    name = "uarthub_drv",
+    srcs = [
+        "common/uarthub_drv_core.c",
+        "common/uarthub_drv_debug.c",
+        "common/uarthub_drv_ut_test.c",
+        "common/uarthub_drv_export.c"] +
+        #(uarthub_mt6989_ut_it_srcs if glob(["common/platform/6989/mt6989.c"]) else []) +
+        #(uarthub_mt6991_ut_it_srcs if glob(["common/platform/6991/mt6991.c"]) else []) +
+        #(uarthub_mt6993_ut_it_srcs if glob(["common/platform/6993/mt6993.c"]) else []) +
+        (uarthub_mt6985_srcs if glob(["common/platform/6985/mt6985.c"]) else []) +
+        (uarthub_mt6989_srcs if glob(["common/platform/6989/mt6989.c"]) else []) +
+        (uarthub_mt6991_srcs if glob(["common/platform/6991/mt6991.c"]) else []) +
+        (uarthub_mt6993_srcs if glob(["common/platform/6993/mt6993.c"]) else []),
+    includes = [
+        "common",
+        "common/platform",
+    ],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-Werror",
+        "-I$(srctree)/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+        "-I$(DEVICE_MODULES_PATH)/drivers/pinctrl/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/uarthub/common",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_disp_notify".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/tty/serial/8250:8250_mtk".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory/mediatek:emi".format(kernel_version),
+    ],
+)

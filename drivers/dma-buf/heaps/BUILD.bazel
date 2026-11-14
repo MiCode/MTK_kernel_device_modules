@@ -1,0 +1,110 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "system_heap",
+    srcs = [
+        "mtk-deferred-free-helper.c",
+        "mtk_cache_pool.c",
+        "mtk_dmabuf_monitor.c",
+        "mtk_page_pool.c",
+        "mtk_system_heap.c",
+    ],
+    hdrs = glob([
+        "mtk-deferred-free-helper.h",
+        "mtk_dmabuf_events.h",
+        "mtk_heap.h",
+        "mtk_heap_priv.h",
+        "mtk_page_pool.h",
+    ]),
+    includes = ["."],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+    ],
+    out = "system_heap.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_heap_refill",
+    srcs = [
+        "mtk_heap_refill.c",
+    ],
+    ko_deps = [":system_heap"],
+    out = "mtk_heap_refill.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_sec_heap",
+    srcs = [
+        "mtk_sec_heap.h",
+        "mtk_sec_heap_priv.h",
+        "mtk_sec_heap_main.c",
+        "mtk_tmem_interop.c",
+        "mtk_tmem_interop.h",
+    ],
+    hdrs = glob([
+	    "mtk_heap.h",
+	    "mtk_heap_priv.h",
+	    "mtk_page_pool.h",
+    ]),
+    includes = ["."],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:trusted_mem".format(kernel_version),
+        ":system_heap",
+    ],
+    out = "mtk_sec_heap.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_heap_debug",
+    srcs = [
+        "mtk_heap_debug.c",
+    ],
+    hdrs = glob([
+        "mtk-deferred-free-helper.h",
+        "mtk_heap.h",
+        "mtk_heap_priv.h",
+        "mtk_page_pool.h",
+    ]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/monitor_hang:monitor_hang".format(kernel_version),
+        ":mtk_sec_heap",
+        ":system_heap",
+    ],
+    out = "mtk_heap_debug.ko",
+)

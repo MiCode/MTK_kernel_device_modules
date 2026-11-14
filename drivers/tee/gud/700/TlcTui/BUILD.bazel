@@ -1,0 +1,61 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "t-base-tui",
+	srcs = glob([
+		"**/main.c",
+		"**/tlcTui.c",
+		"**/trustedui.c",
+		"**/tui-hal_mt.c",
+		"**/*.h"
+	]),
+
+	local_defines = [
+		"NDEBUG",
+		"TUI_ENABLE_DISPLAY",
+		"TUI_ENABLE_TOUCH",
+	],
+
+	includes = [
+ 		".",
+		"inc",
+		"public",
+	],
+
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/tee/gud:mobicore_public_hdrs".format(kernel_version),
+	],
+
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/trusted_mem:trusted_mem".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/tee/gud:mcDrvModule".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/tee/gud:mcDrvModule-ffa".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/input/touchscreen/tui_common:tui-common".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mediatek-drm".format(kernel_version),
+	],
+
+	copts = [
+		"-I$(GUD_ROOT_FOLDER)/MobiCoreDriver/public",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/trusted_mem",
+		"-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps",
+	],
+
+	out = "t-base-tui.ko",
+)

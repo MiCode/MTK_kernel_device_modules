@@ -1,0 +1,38 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = [
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-lpm-plat-v1-legacy",
+    srcs = glob([
+        "*.h",
+        "*.c",
+        "suspend_v1/*.c",
+        "suspend_v1/*.h",
+    ]),
+    includes = [
+        ".",
+        "suspend_v1"
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm:mcupm_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy:mtk-lpm-legacy".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/lpm_legacy/modules/debug:mtk-lpm-dbg-common-v1-legacy".format(kernel_version),
+    ],
+    local_defines = ["MTK_LPM_MODE_MODULE"]
+)

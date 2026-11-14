@@ -1,0 +1,77 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("@mgk_info//:dict.bzl",
+     "DEFCONFIG_OVERLAYS",
+)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+PLATFORMS = [
+    "mt6991",
+    "mt6993",
+]
+
+define_mgk_ddk_ko(
+    name = "mtk-vmm-notifier",
+    includes = [
+        ".",
+    ],
+    hdrs = glob([
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/mtk-vmm-notifier.h",
+    ]),
+    srcs = [
+        "mtk-vmm-notifier.c",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/hwccf:hwccf".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+)
+
+[define_mgk_ddk_ko(
+    name = "mtk-vmm-notifier-{}".format(p),
+    includes = [
+        ".",
+    ],
+    hdrs = glob([
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/mtk-vmm-notifier.h",
+    ]),
+    srcs = [
+        "mtk-vmm-notifier-{}.c".format(p),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/hwccf:hwccf".format(kernel_version),
+    ],
+) for p in PLATFORMS]

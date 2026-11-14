@@ -1,0 +1,60 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+SIMPLE_MODULE_NAME = [
+    "mt6360",
+    "mt6370",
+    "subpmic",
+]
+
+define_mgk_ddk_ko(
+    name = "generic_debugfs",
+    srcs = [
+        "generic_debugfs.c",
+        "generic_debugfs.h",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "extdev_io_class",
+    srcs = [
+        "extdev_io_class.c",
+    ],
+    includes = ["."],
+    hdrs = glob([
+        "linux/extdev_io_class.h",
+    ]),
+)
+
+[define_mgk_ddk_ko(
+    name = "{}-dbg".format(mod),
+    srcs = [
+        "{}-dbg.c".format(mod),
+        "generic_debugfs.h",
+    ],
+    includes = ["."],
+    ko_deps = [":extdev_io_class"],
+) for mod in SIMPLE_MODULE_NAME]

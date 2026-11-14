@@ -1,0 +1,111 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "vcp_status_v2_headers",
+    hdrs = [
+        "vcp_status.h",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "vcp_status_v2",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_TINYSYS_VCP_V2_SUPPORT": {
+            True:["vcp_status.c"],
+        },
+    },
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "vcp_status.h",
+    ],
+    copts = [
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "vcp_v2",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_TINYSYS_VCP_V2_SUPPORT": {
+            True:[
+                "vcp_helper.c",
+                "vcp_excep.c",
+                "vcp_irq.c",
+                "vcp_logger.c",
+                "vcp_vcpctl.c",
+                "vcp_feature_table.c",
+                "vcp_awake.c",
+                "vcp_hwvoter_dbg.c",
+                "mmup.c",
+            ],
+        },
+    },
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek/devapc:device-apc-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+    ],
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "mmup.h",
+        "mmup_ipi_table.h",
+        "vcp_excep.h",
+        "vcp_feature_define.h",
+        "vcp_helper.h",
+        "vcp_hwvoter_dbg.h",
+        "vcp_ipi_pin.h",
+        "vcp_ipi_table.h",
+        "vcp_reg.h",
+        "vcp_reservedmem_define.h",
+        "vcp_vcpctl.h",
+    ],
+    copts = [
+        "-fno-pic",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    local_defines = [
+        "DEBUG_DO"
+    ],
+)

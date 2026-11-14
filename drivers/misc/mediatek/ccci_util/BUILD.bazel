@@ -1,0 +1,45 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/*.h",
+	]),
+)
+
+ddk_headers(
+	name = "ccci_util_header",
+	hdrs = glob([
+		"**/*.h",
+	]),
+	includes = ["."],
+)
+
+define_mgk_ddk_ko(
+	name = "ccci_util_lib",
+	hdrs = glob(["**/*.h"]),
+	includes = ["."],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+     	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	srcs = glob(["**/*.c"]),
+)

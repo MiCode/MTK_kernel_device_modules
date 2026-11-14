@@ -1,0 +1,47 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefiles",
+    srcs = glob([
+        "**/Makefile",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "smap-mt6991",
+    srcs = [
+      "smap-v6991.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name = "smap-mt6993",
+    srcs = [
+      "smap-v6993.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-smap-debug",
+    srcs = [
+      "mtk-smap-debug.c",
+    ],
+    hdrs = glob(["**/*.h"]),
+)

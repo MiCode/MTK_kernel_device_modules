@@ -1,0 +1,210 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("@mgk_info//:dict.bzl", "DEFCONFIG_OVERLAYS",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+# add ddk_headers to export headers for other modules to use in the future
+ddk_headers(
+    name = "mml_public_headers",
+    includes = ["."],
+    hdrs = glob(["**/*.h"]), # export all headers for other modules to use
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-mml",
+
+    srcs = [
+        "DpTileScaler.c",
+        "mtk-mml-aal.c",
+        "mtk-mml-adaptor.c",
+        "mtk-mml-buf.c",
+        "mtk-mml-c3d.c",
+        "mtk-mml-chist.c",
+        "mtk-mml-color.c",
+        "mtk-mml-core.c",
+        "mtk-mml-dbgtp.c",
+        "mtk-mml-dle-adaptor.c",
+        "mtk-mml-dpc.c",
+        "mtk-mml-driver.c",
+        "mtk-mml-drm-adaptor.c",
+        "mtk-mml-fg.c",
+        "mtk-mml-fg-fw.c",
+        "mtk-mml-hdr.c",
+        "mtk-mml-m2m-adaptor.c",
+        "mtk-mml-merge.c",
+        "mtk-mml-monitor.c",
+        "mtk-mml-mutex.c",
+        "mtk-mml-pq-birsz.c",
+        "mtk-mml-pq-birsz-fw.c",
+        "mtk-mml-pq-core.c",
+        "mtk-mml-pq-rdma.c",
+        "mtk-mml-rdma.c",
+        "mtk-mml-rrot.c",
+        "mtk-mml-rsz.c",
+        "mtk-mml-rsz-fw.c",
+        "mtk-mml-scmi.c",
+        "mtk-mml-sys.c",
+        "mtk-mml-tcc.c",
+        "mtk-mml-tdshp.c",
+        "mtk-mml-tile.c",
+        "mtk-mml-wdma.c",
+        "mtk-mml-wrot.c",
+        "tile_core.c",
+        "tile_mdp_func.c",
+    ],
+
+    conditional_srcs = {
+        "CONFIG_MTK_MML_DEBUG": {
+            True: ["mtk-mml-test.c",],
+        },
+         "CONFIG_MMPROFILE": {
+            True: ["mtk-mml-mmp.c",],
+        },
+    },
+
+    includes = ["."],
+
+    hdrs = glob([
+        "**/*.h",
+        "slbc_ops.h",
+        "tinysys-scmi.h",
+        "mtk-mminfra-util.h",
+        "mtk_dpc.h",
+    ]),
+
+    local_defines = select({
+            "@mgk_internal//:mgk_internal_setting" : [
+                "MML_DL_SUPPORT=1",
+                "MML_IR_SUPPORT=1",
+            ],
+            "//conditions:default": [],
+    }) + [
+        "MML_STASH_SUPPORT=1"
+    ],
+
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/devfreq",
+        "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-vcodec/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mminfra/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
+    ],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mmp/src:mmprofile".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:mtk_sync".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:system_heap".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/slbc:mtk_slbc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mminfra:mtk-mminfra-util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+    ] + (["//kernel_device_modules-{}/drivers/soc/mediatek/mmdvfs:mtk-mmdvfs-v5".format(kernel_version),]
+         if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mediatek_v2:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/dpc:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:headers".format(kernel_version),
+    ],
+)
+
+platforms = [
+    "mt6878",
+    "mt6895",
+    "mt6991",
+    "mt6993",
+]
+
+[define_mgk_ddk_ko(
+    name = "mtk-mml-{}".format(p),
+
+    srcs = [
+        "mtk-mml-tp-{}.c".format(p),
+    ],
+
+    includes = ["."],
+
+    hdrs = glob([
+        "**/*.h",
+    ]),
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/gpu/drm/mediatek/mml:mtk-mml".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+    ],
+
+    local_defines = select({
+            "@mgk_internal//:mgk_internal_setting" : [
+                "MML_DL_SUPPORT=1",
+                "MML_IR_SUPPORT=1",
+            ],
+            "//conditions:default": [],
+    }) + [
+        "MML_STASH_SUPPORT=1"
+    ],
+
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/devfreq",
+        "-I$(DEVICE_MODULES_PATH)/drivers/dma-buf/heaps/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/dpc/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/gpu/drm/mediatek/mediatek_v2/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu/arm/arm-smmu-v3/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/media/platform/mtk-vcodec/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/mailbox/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/cmdq/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mminfra/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmp/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/slbc/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi/",
+    ],
+) for p in platforms]

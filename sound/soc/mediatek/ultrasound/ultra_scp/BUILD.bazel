@@ -1,0 +1,76 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "snd-soc-mtk-scp-ultra",
+    ko_deps =[
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:mtk-scp-ultra".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:scp".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+    ],
+
+    header_deps = [
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/sound/soc/mediatek/ultrasound/ultra_common:ddk_public_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/common",
+        "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/ultrasound/ultra_common",
+        "-I$(DEVICE_MODULES_PATH)/sound/soc/mediatek/ultrasound",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+
+    srcs = [
+        "mtk-scp-ultra-pcm.c",
+        "mtk-scp-ultra-mem-control.c",
+        "mtk-scp-ultra-platform-driver.c",
+        "mtk-scp-ultra-common.c",
+        "ultra_ipi.c",
+        "mtk-scp-ultra_dump.c",
+        "mtk-scp-ultra-mem-control.h",
+        "mtk-scp-ultra-platform-driver.h",
+        "mtk-scp-ultra-common.h",
+        "ultra_ipi.h",
+        "audio_ultra_msg_id.h",
+        "mtk-base-scp-ultra.h",
+        "mtk-scp-ultra_dump.h",
+    ],
+
+    out = "snd-soc-mtk-scp-ultra.ko",
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+   name = "headers",
+   hdrs = [
+           "mtk-scp-ultra-common.h",
+   ],
+   includes = ["."],
+)

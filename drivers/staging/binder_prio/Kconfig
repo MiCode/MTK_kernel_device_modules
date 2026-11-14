@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Mi memory info
+#
+config BINDER_PRIO
+	tristate "Xiaomi binder prio"
+	default n
+config BINDER_PRIO_MIDDLE
+	tristate "Xiaomi binder prio middle"
+	default n

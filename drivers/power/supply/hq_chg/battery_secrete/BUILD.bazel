@@ -1,0 +1,222 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+        "*.h",
+    ]),
+)
+
+LEGACY_GAUGE_MODULES = [
+    "mt6357",
+    "mt6358",
+    "mt6359p",
+]
+
+GAUGE_MODULES = [
+    "mt6375",
+    "mt6379",
+]
+
+SIMPLE_CHG_MODULES = [
+    "mt6360_charger",
+    "mt6362-chg",
+    "mt6370-charger",
+    "mt6375-charger",
+    "mtk_2p_charger",
+    "rt9465",
+    "rt9490-charger",
+    "rt9758-charger",
+    "rt9759",
+]
+
+SPLIT_TYPE_CHG_MODULES = [
+    "mt6379",
+]
+
+define_mgk_ddk_ko(
+    name = "battery_auth_class",
+    srcs = [
+        "battery_auth_class.c",
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_policy",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_class",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/fuelgauge",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/common/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/hqsysfs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/battery_secrete",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "ds28e30_verify",
+    srcs = [
+        "ds28e30.c",
+        "ds28e30lib/bignum.c",
+        "ds28e30lib/deep_cover_coproc.c",
+        "ds28e30lib/ecc_generate_key.c",
+        "ds28e30lib/ecdsa_generic_api.c",
+        "ds28e30lib/ecdsa_high.c",
+        "ds28e30lib/sha256_hmac.c",
+        "ds28e30lib/sha256_software.c",
+        "ds28e30lib/sha256_stone.c",
+        "ds28e30lib/ucl_rng.c",
+        "ds28e30lib/ucl_sha256.c",
+        "ds28e30lib/ucl_sha3.c",
+        "ds28e30lib/ucl_sia256.c",
+        "ds28e30lib/ucl_sys.c",
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_policy",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_class",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/fuelgauge",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/common/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/hqsysfs",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "slg_verify",
+    srcs = [
+        "slg.c",
+        "slglib/uECC.c",
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_policy",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_class",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/fuelgauge",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/common/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/hqsysfs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/battery_secrete",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "stick_verify",
+    srcs = [
+        "stick.c",
+        "stickapi/stickapitest.c",
+        "stickapi/stick_api.c",
+        "stickapi/libsticknvm.c",
+        "stickapi/st1wire_kernel.c",
+        "stickapi/stick_core.c",
+        "stickapi/stick_kernel_platform.c",
+        "stickapi/stick_NVM_attributes.c",
+        "stickapi/libstickcrypto/libstickcrypto.c",
+        "stickapi/libstickcrypto/libstickcrypto_rng.c",
+        "stickapi/libstickcrypto/aes.c",
+        "stickapi/libstickcrypto/aes_tab.c",
+        "stickapi/libstickcrypto/ccm_add_aad.c",
+        "stickapi/libstickcrypto/ccm_add_nonce.c",
+        "stickapi/libstickcrypto/ccm_done.c",
+        "stickapi/libstickcrypto/ccm_init.c",
+        "stickapi/libstickcrypto/ccm_memory.c",
+        "stickapi/libstickcrypto/ccm_process.c",
+        "stickapi/libstickcrypto/ccm_reset.c",
+        "stickapi/libstickcrypto/hash_memory.c",
+        "stickapi/libstickcrypto/sha512.c",
+        "stickapi/libstickcrypto/omac_done.c",
+        "stickapi/libstickcrypto/omac_init.c",
+        "stickapi/libstickcrypto/omac_memory.c",
+        "stickapi/libstickcrypto/omac_memory_multi.c",
+        "stickapi/libstickcrypto/omac_process.c",
+        "stickapi/libstickcrypto/copy_or_zeromem.c",
+        "stickapi/libstickcrypto/crypt_argchk.c",
+        "stickapi/libstickcrypto/crypt_cipher_descriptor.c",
+        "stickapi/libstickcrypto/crypt_cipher_is_valid.c",
+        "stickapi/libstickcrypto/crypt_find_cipher.c",
+        "stickapi/libstickcrypto/crypt_find_hash.c",
+        "stickapi/libstickcrypto/crypt_hash_descriptor.c",
+        "stickapi/libstickcrypto/crypt_hash_is_valid.c",
+        "stickapi/libstickcrypto/crypt_prng_descriptor.c",
+        "stickapi/libstickcrypto/crypt_prng_is_valid.c",
+        "stickapi/libstickcrypto/crypt_register_cipher.c",
+        "stickapi/libstickcrypto/crypt_register_hash.c",
+        "stickapi/libstickcrypto/error_to_string.c",
+        "stickapi/libstickcrypto/mem_neq.c",
+        "stickapi/libstickcrypto/zeromem.c",
+        "stickapi/libstickcrypto/ec25519_export.c",
+        "stickapi/libstickcrypto/tweetnacl.c",
+        "stickapi/libstickcrypto/ed25519_export.c",
+        "stickapi/libstickcrypto/ed25519_import_raw.c",
+        "stickapi/libstickcrypto/ed25519_make_key.c",
+        "stickapi/libstickcrypto/ed25519_sign.c",
+        "stickapi/libstickcrypto/ed25519_verify.c",
+        "stickapi/libstickcrypto/x25519_export.c",
+        "stickapi/libstickcrypto/x25519_import_raw.c",
+        "stickapi/libstickcrypto/x25519_make_key.c",
+        "stickapi/libstickcrypto/x25519_shared_secret.c",
+        "stickapi/libstickcrypto/stick_kzalloc.c",
+    ],
+    includes = ["."],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_policy",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_class",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/fuelgauge",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/common/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/hqsysfs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/battery_secrete",
+    ],
+)

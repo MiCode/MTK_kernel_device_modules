@@ -1,0 +1,88 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+
+PLATFORMS = [
+    "6991",
+    "6993",
+    "6858",
+]
+
+MTK_SWPM_DBG_VERSION = "v1"
+SWPM_MODULES_FOLDER= "$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/modules/"
+
+[define_mgk_ddk_ko(
+    name = "mtk-swpm-dbg-v{}".format(p),
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_MTK_SWPM_MT{}".format(p): {
+            True:[
+                "v{}/swpm_v{}_dbg_init.c".format(p, p),
+                "v{}/swpm_v{}_ext.c".format(p, p),
+                "v{}/swpm_v{}_subsys.c".format(p, p),
+                "v{}/swpm_v{}.c".format(p, p),
+            ],
+        },
+    },
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:ddk_public_headers".format(kernel_version),
+    ],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm:mtk-swpm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/swpm/modules/debug/v1:mtk-swpm-dbg-common-v1".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/sspm/v3:sspm_v3".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/qos:mtk_qos".format(kernel_version),
+    ],
+
+
+    includes = [
+        "v{}/swpm_v{}_ext.h".format(p, p),
+        "v{}/swpm_v{}.h".format(p, p),
+        "v{}/swpm_v{}_subsys.h".format(p, p),
+    ],
+    hdrs = glob([
+        "v{}/*.h".format(p),
+    ]),
+
+    copts = [
+        "-Wall",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/inc/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/mtk_swpm_fs/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/modules/debug/$(MTK_SWPM_DBG_VERSION)/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/swpm/modules/debug/v{}".format(p),
+        "-I$(SWPM_MODULES_FOLDER)/debug/v{}/".format(p),
+        "-I$(SWPM_MODULES_FOLDER)/debug/v{}/subsys/".format(p),
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+		"-DMTK_SWPM_KERNEL_MODULE",
+    ],
+) for p in PLATFORMS]
+
+
+
+ddk_headers(
+    name = "ddk_public_headers",
+    hdrs = glob([
+        "**/*.h",
+    ]),
+)

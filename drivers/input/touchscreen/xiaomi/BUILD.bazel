@@ -1,0 +1,26 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = ["."],
+    hdrs = glob(["**/*.h"]), # export all headers for other modules to use
+)
+
+define_mgk_ddk_ko(
+    name = "xiaomi",
+    srcs = [
+        "xiaomi_touch.c"
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/xiaomi/miev:miev".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+)

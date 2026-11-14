@@ -1,0 +1,84 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+        "*.h",
+    ]),
+)
+
+LEGACY_GAUGE_MODULES = [
+    "mt6357",
+    "mt6358",
+    "mt6359p",
+]
+
+GAUGE_MODULES = [
+    "mt6375",
+    "mt6379",
+]
+
+SIMPLE_CHG_MODULES = [
+    "mt6360_charger",
+    "mt6362-chg",
+    "mt6370-charger",
+    "mt6375-charger",
+    "mtk_2p_charger",
+    "rt9465",
+    "rt9490-charger",
+    "rt9758-charger",
+    "rt9759",
+]
+
+SPLIT_TYPE_CHG_MODULES = [
+    "mt6379",
+]
+
+define_mgk_ddk_ko(
+    name = "bq25960_charger",
+    srcs = [
+        "bq25960_charger.c",
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    header_deps = ["//kernel_device_modules-{}/drivers/power/supply/hq_chg/charger_class:ddk_public_headers".format(kernel_version),
+                   "//kernel_device_modules-{}/drivers/power/supply/hq_chg/common:ddk_public_headers".format(kernel_version),],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/usb/usb20:musb_hdrc".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply/hq_chg/charger_class:hq_charger_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply/hq_chg/charger_class:hq_cp_class".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/power/supply/hq_chg/common:hq_notify".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_policy",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/charger_class",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/fuelgauge",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/common/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/hqsysfs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/hq_chg/bq_charger",
+    ],
+)

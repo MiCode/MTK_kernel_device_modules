@@ -1,0 +1,23 @@
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+ddk_headers(
+    name = "mtk_gpufreq_headers",
+    hdrs = glob(["**/*.h"]),
+    includes = [
+        ".",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/*.h",
+    ]),
+)

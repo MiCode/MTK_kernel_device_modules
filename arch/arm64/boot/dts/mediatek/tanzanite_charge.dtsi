@@ -1,0 +1,137 @@
+/* Start of this file, DO NOT ADD ANYTHING HERE */
+#include "mediatek/hq_chg/hq_chg.dtsi"
+
+&i2c5 {
+	/* No NU6601 subpmic on O7 */
+	subpmic_core_nu@30 {
+		status = "disabled";
+	};
+
+	nu6601-pd@33 {
+		status = "disabled";
+	};
+
+	sc660x-pd@62 {
+		pd-data {
+			pd,sink-pdo-data = <0x3601912c 0x3602d12c 0xc0dc243c>;
+		};
+	};
+
+	sy6976-pd@3e {
+		pd-data {
+			pd,sink-pdo-data = <0x3601912c 0x3602d12c 0xc0dc243c>;
+		};
+	};
+};
+
+&i2c7 {
+	/* No NU2115 charge pump on O7 */
+	nu2115@master {
+		status = "disabled";
+	};
+};
+
+&hq_chg_manager {
+	hq_chg_manager,input_power_over = <33>;
+	hq_chg_manager,model_name = "o7_5500mah_33w";
+	hq_chg_manager,charge_control_limit_max = <16>;
+
+	hq,pd-thermal-mitigation =
+		<6000 5400 5000 4500 4000
+		3500 3000 2700 2500 2300
+		2100 1900 1500 900 500
+		300>;
+
+	hq,qc2-thermal-mitigation =
+		<3600 2700 2500 2300 2100
+		1900 1700 1500 1000 1000
+		1000 1000 1000 900 500
+		300>;
+
+	hq,pd-thermal-mitigation-fast =
+		<6000 5700 5400 5000 4500
+		3800 3500 3200 3000 2800
+		2500 2200 1900 1600 900
+		500 300 300 300>;
+
+	step_jeita {
+			max_charger_voltage = <12000000>;
+
+			jeita_normal_cfg =
+			<(-100)	0	537	0	0	430	376	376	4500
+			1	50	1074	0	0	430	376	376	4500
+			51	100	2685	0	0	430	376	376	4500
+			101	150	4296	0	0	430	376	376	4500
+			151	350	6000	4250	5400	430	376	376	4472
+			351	450	6000	4250	5400	430	376	376	4472
+			451	580	2685	0	0	430	376	376	4500>;
+
+			jeita_ffc_cfg =
+				<151 350 6000 4250 5400 4500 4296 4530 4296 1074 1020 859 4530
+				351 450	6000 4250 5400 4500 4296 4530 4296 1396 1288 1127 4530>;
+
+			step_chg_cfg_bat_cycle =
+				<3600	4220	4800
+				4221	4460	4320
+				4461	4500	3436>;
+
+			rechg_fv_offset_cfg =
+				<(-100)	0	250
+				0	50	200
+				50	100	200
+				100	150	100
+				150	350	150
+				350	450	100
+				450	580	100>;
+	};
+
+	ffc_chg_cfg_bat_cycle {
+		cycle_count_data = <0 100 300 800>;
+		cycle_temp_data = <150 450>;
+
+		cycle_vol_data =
+			<4250 4500 4530>, /* cycle 0 ~ 100, temp 15 ~ 45 */
+			<4220 4470 4510>, /* cycle 101 ~ 300, temp 15 ~ 45 */
+			<4220 4460 4500>, /* cycle 301 ~ 800, temp 15 ~ 45 */
+			<4220 4460 4500>; /* cycle > 800 , temp 15 ~ 45 */
+
+		cycle_curr_data =
+			<6000 5400 4296>, /* cycle 0 ~ 100, temp 15 ~ 45 */
+			<6000 5400 4296>, /* cycle 101 ~ 300, temp 15 ~ 45 */
+			<6000 5400 4296>, /* cycle 301 ~ 800, temp 15 ~ 45 */
+			<4800 4320 3436>; /* cycle > 800 , temp 15 ~ 45 */
+	};
+
+	normal_chg_cfg_bat_cycle {
+		cycle_count_data = <0 100 300 800>;
+		cycle_temp_data = <150 450>;
+		cycle_vol_data = <4480>,<4470>,<4460>,<4440>;
+		cycle_curr_data = <5400>,<5400>,<5400>,<4320>;
+	};
+
+	eea_normal_chg_cfg_bat_cycle {
+		cycle_count_data = <0 100 300 800>;
+		cycle_temp_data = <150 450>;
+
+		cycle_vol_data =
+			<4250 4480>,
+			<4220 4470>,
+			<4220 4460>,
+			<4220 4440>;
+
+		cycle_curr_data =
+			<6000 5400>,
+			<6000 5400>,
+			<6000 5400>,
+			<4800 4320>;
+	};
+};
+
+&mtk_gauge {
+	#include "bat_setting/o7_nvt_battery_prop.dtsi"
+	#include "bat_setting/o7_nvt_battery_aging_prop.dtsi"
+	#include "bat_setting/o7_swd_battery_prop.dtsi"
+	#include "bat_setting/o7_swd_battery_aging_prop.dtsi"
+	#include "bat_setting/o7_cos_battery_prop.dtsi"
+	#include "bat_setting/o7_cos_battery_aging_prop.dtsi"
+};

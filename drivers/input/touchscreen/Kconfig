@@ -1,0 +1,84 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Touchscreen driver configuration
+#
+
+if INPUT_TOUCHSCREEN
+config TOUCHSCREEN_MTK_TOUCH
+       string "Touch IC name for Mediatek package"
+       help
+         Set touch IC name if you have touch panel.
+
+         To compile this dirver for used touch IC.
+
+config TOUCHSCREEN_MT6985_ALPHA_SUPPORT
+       tristate "Specify Alpha Touch Platform is mt6985"
+       help
+         Select Alpha Touch Platform is mt6985.
+         To compile this dirver for used touch IC.
+         Set Y or M to select this feature for specific platform-mt6985,
+         and set N to disable.
+
+config TOUCHSCREEN_ILITEK_TOUCH
+       tristate "ILITEK TOUCHSCREEN"
+       help
+         Set Y or M to select this feature for touch compile,
+         and set N to disable.
+
+config TOUCHSCREEN_BOTAI_MULTI_TOUCH
+       tristate "GT9XX MULTIPLE TOUCHSCREEN"
+       help
+         Set Y or M to select this feature for touch compile,
+         and set N to disable.for BoTai touch feature.
+
+config TOUCHSCREEN_GT9XX
+       tristate "GT9XX TOUCHSCREEN FOR CAR SERDES TOUCH"
+       help
+         Set Y or M to select this feature for touch compile,
+         and set N to disable.for car serdes touch feature.
+
+config TOUCHSCREEN_FT3519T
+    tristate "Focaltech Touchscreen FT3519T"
+    default n
+    help
+      Say Y here if you have Focaltech touch panel.
+      If unsure, say N.
+
+config TOUCHSCREEN_FT3683G
+    tristate "Focaltech Touchscreen FT3683G"
+    default n
+    help
+      Say Y here if you have Focaltech touch panel.
+      If unsure, say N.
+
+config TOUCHSCREEN_GT9916
+	tristate "Goodix berlin touchscreen"
+	help
+	  Say Y here if you have a Goodix berlin series touch controller
+	  to your system.
+	  If build module, say M.
+	  If unsure, say N.
+
+config TOUCHSCREEN_COMMON
+     tristate "lct Touchscreen Driver"
+     help
+     Say Y here if you want to add lct touchscreen driver.
+     If unsure, say N.
+
+config TOUCHSCREEN_XIAOMI_TOUCHFEATURE
+	tristate "Xiaomi Touch Feature"
+	depends on INPUT_TOUCHSCREEN
+	help
+		Say Y here if you enable xiaomi touch feature.
+		If unsure, say N.
+		To compile this driver as a module, choose M here:
+
+# source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/BoTai_Multi_Touch/Kconfig"
+# source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/GT9966/Kconfig"
+# source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/gt9xx/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/ILITEK/Kconfig"
+# source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/synaptics_dsx_96789/Kconfig"
+# source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/synaptics_dsx_96851/Kconfig"
+# source "$(KCONFIG_EXT_PREFIX)drivers/input/touchscreen/NT36532/Kconfig"
+
+endif

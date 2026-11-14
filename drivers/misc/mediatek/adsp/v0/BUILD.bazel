@@ -1,0 +1,26 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "adsp-v0",
+    srcs = glob([
+        "*.h",
+        "*.c",
+    ]),
+    copts = [
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/sound/soc/mediatek/common:ddk_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/adsp:adsp".format(kernel_version),
+		"//kernel_device_modules-{}/sound/soc/mediatek/common:mtk-afe-external".format(kernel_version),
+	],
+)

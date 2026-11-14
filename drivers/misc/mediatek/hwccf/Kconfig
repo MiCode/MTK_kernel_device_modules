@@ -1,0 +1,7 @@
+config MTK_HWCCF
+    tristate "Mediatek HWCCF Support"
+    select REGMAP
+    help
+      Select this option to enable support for the Mediatek HWCCF driver.
+      This driver provides support for PLL, clock gate (CG), multiplexer (MUX)
+      and MTCMOS control by hardware.

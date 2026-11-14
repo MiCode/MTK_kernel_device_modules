@@ -1,0 +1,56 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (c) 2025 MediaTek Inc.
+ */
+
+#ifndef __CMDQ_ERRNO_H__
+#define __CMDQ_ERRNO_H__
+
+#include <linux/types.h>
+
+/*  */
+/* ERROR code number (ERRNO) */
+/* note the error result returns negative value, i.e, -(ERRNO) */
+/*  */
+#define	CMDQ_ERR_NOMEM		(12)	/* out of memory */
+#define	CMDQ_ERR_FAULT		(14)	/* bad address */
+
+#define CMDQ_ERR_ADDR_CONVERT_HANDLE_2_PA (1000)
+#define CMDQ_ERR_ADDR_CONVERT_ALLOC_MVA   (1100)
+#define CMDQ_ERR_ADDR_CONVERT_ALLOC_MVA_N2S	(1101)
+#define CMDQ_ERR_ADDR_CONVERT_FREE_MVA	  (1200)
+#define CMDQ_ERR_PORT_CONFIG			  (1300)
+
+/* param check */
+#define CMDQ_ERR_UNKNOWN_ADDR_METADATA_TYPE (1400)
+#define CMDQ_ERR_TOO_MANY_SEC_HANDLE (1401)
+/* security check */
+#define CMDQ_ERR_SECURITY_INVALID_INSTR	  (1500)
+#define CMDQ_ERR_SECURITY_INVALID_SEC_HANDLE (1501)
+#define CMDQ_ERR_SECURITY_INVALID_DAPC_FALG (1502)
+#define CMDQ_ERR_INSERT_DAPC_INSTR_FAILED (1503)
+#define CMDQ_ERR_INSERT_PORT_SECURITY_INSTR_FAILED (1504)
+#define CMDQ_ERR_INVALID_SECURITY_THREAD (1505)
+#define CMDQ_ERR_PATH_RESOURCE_NOT_READY (1506)
+#define CMDQ_ERR_NULL_TASK (1507)
+#define CMDQ_ERR_SECURITY_INVALID_SOP (1508)
+#define CMDQ_ERR_SECURITY_INVALID_SEC_PORT_FALG (1511)
+
+/* msee error */
+#define CMDQ_ERR_OPEN_IOCTL_FAILED (1600)
+/* secure access error */
+#define CMDQ_ERR_MAP_ADDRESS_FAILED (2001)
+#define CMDQ_ERR_UNMAP_ADDRESS_FAILED (2002)
+#define CMDQ_ERR_RESUME_WORKER_FAILED (2003)
+#define CMDQ_ERR_SUSPEND_WORKER_FAILED (2004)
+/* HW error */
+#define CMDQ_ERR_SUSPEND_HW_FAILED (4001)
+#define CMDQ_ERR_RESET_HW_FAILED (4002)
+
+#define CMDQ_TL_ERR_UNKNOWN_IWC_CMD	   (5000)
+
+#define CMDQ_ERR_DR_IPC_EXECUTE_SESSION   (5001)
+#define CMDQ_ERR_DR_IPC_CLOSE_SESSION	 (5002)
+#define CMDQ_ERR_DR_EXEC_FAILED		   (5003)
+
+#endif /* __CMDQ_ERRNO_H__ */

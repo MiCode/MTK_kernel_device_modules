@@ -1,0 +1,57 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+UFCS_MODULES = [
+    "mt6379",
+]
+
+define_mgk_ddk_ko(
+    name = "ufcs_class",
+    srcs = [
+        "ufcs_class.c",
+    ],
+    hdrs = glob([
+        "ufcs_class.h"
+    ]),
+    includes = ["."],
+)
+
+[define_mgk_ddk_ko(
+    name = "ufcs_{}".format(mod),
+    srcs = [
+        "ufcs_{}.c".format(mod),
+    ],
+    includes = ["."],
+    ko_deps = [
+        ":ufcs_class",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/typec/tcpc/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/usb/usb20/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/power/supply/ufcs",
+    ],
+) for mod in UFCS_MODULES]

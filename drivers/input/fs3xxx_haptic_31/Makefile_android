@@ -1,0 +1,2 @@
+obj-$(CONFIG_INPUT_FS3XXX_HAPTIC) +=  fshaptic_o.o
+fshaptic_o-objs := fshaptic.o fshaptic3001.o

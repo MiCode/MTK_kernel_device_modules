@@ -1,0 +1,80 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/*.h",
+		"**/*.c",
+		"**/Makefile",
+	]),
+)
+filegroup(
+	name = "md_all_need_srcs",
+	srcs = [
+		"ap_md_mem.c",
+		"ap_md_reg_dump.c",
+		"ap_md_reg_dump_gen93.c",
+		"ap_md_reg_dump_gen95.c",
+		"ap_md_reg_dump_gen97.c",
+		"ccci_fsm.c",
+		"ccci_fsm_ee.c",
+		"ccci_fsm_ioctl.c",
+		"ccci_fsm_monitor.c",
+		"ccci_fsm_poller.c",
+		"ccci_fsm_sys.c",
+		"mdee_dumper_v1.c",
+		"mdee_dumper_v2.c",
+		"mdee_dumper_v3.c",
+		"mdee_dumper_v5.c",
+		"mdee_dumper_v6.c",
+		"md_sys1_platform.c",
+		"modem_sys1.c",
+	]
+)
+
+ddk_headers(
+	name = "ccci_fsm_header",
+	hdrs = glob([
+		"**/*.h",
+	]),
+	includes = ["."],
+)
+
+define_mgk_ddk_ko(
+	name = "ccci_fsm_scp",
+	hdrs = glob(["**/*.h",]),
+	local_defines = ["CCCI_KMODULE_ENABLE"],
+	includes = [".", "inc"],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ccci_util:ccci_util_lib".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_md_all".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/scp/rv:scp".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci:ccci_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/eccci/hif:ccci_hif_header".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/scp/include:scp_public_headers".format(kernel_version),
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+	],
+	srcs = [
+		"ccci_fsm_scp_c.c"
+	],
+)

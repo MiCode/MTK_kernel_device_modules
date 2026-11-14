@@ -1,0 +1,48 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefiles",
+    srcs = glob([
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "btif_drv_headers",
+    hdrs = glob(["**/*.h"])
+)
+
+define_mgk_ddk_ko(
+    name = "btif_drv",
+    srcs = [
+        "common/mtk_btif.c",
+        "common/mtk_btif_exp.c",
+        "common/btif_dma_plat.c",
+        "common/btif_plat.c",
+    ],
+    includes = [
+        "common/inc",
+        "common/plat_inc"
+    ],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat"
+    ],
+    local_defines = [
+        "BTIF_DBG_SUPPORT=0"
+    ],
+)

@@ -1,0 +1,90 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+PLATFORMS = [
+    # PMIC
+    "mt6363",
+    "mt6373",
+    "mt6661",
+    "mt6667",
+    # SOC
+    "mt6761",
+    "mt6765",
+    "mt6768",
+    "mt6779",
+    "mt6781",
+    "mt6789",
+    "mt6833",
+    "mt6853",
+    "mt6855",
+    "mt6858",
+    "mt6873",
+    "mt6877",
+    "mt6885",
+    "mt6886",
+    "mt6895",
+    "mt6897",
+    "mt6899",
+    "mt6983",
+    "mt6985",
+    "mt6989",
+    "mt6991",
+    "mt6993",
+    "mt8188",
+    "mt8195",
+]
+
+define_mgk_ddk_ko(
+    name = "pinctrl-mtk-v2",
+    srcs = [
+        "mtk-eint.h",
+        "pinctrl-mtk-common-v2.h",
+        "pinctrl-paris.h",
+    ],
+    conditional_srcs = {
+      "CONFIG_DEVICE_MODULES_EINT_MTK": {
+        True: ["mtk-eint.c"],
+      },
+      "CONFIG_DEVICE_MODULES_PINCTRL_MTK_V2": {
+        True: ["pinctrl-mtk-common-v2.c"],
+      },
+      "CONFIG_DEVICE_MODULES_PINCTRL_MTK_PARIS": {
+        True: ["pinctrl-paris.c"],
+      },
+    },
+    copts = ["-I$(srctree)/drivers/pinctrl/mediatek"],
+)
+
+define_mgk_ddk_ko(
+    name = "pinctrl-mtk-common-v2_debug",
+    srcs = [
+        "pinctrl-mtk-common-v2_debug.c",
+        "pinctrl-mtk-common-v2.h",
+        "pinctrl-paris.h",
+    ],
+    copts = ["-I$(srctree)/drivers/pinctrl/mediatek"],
+    ko_deps = [":pinctrl-mtk-v2"],
+)
+
+[define_mgk_ddk_ko(
+    name = "pinctrl-{}".format(p),
+    srcs = [
+        "pinctrl-{}.c".format(p),
+        "pinctrl-mtk-common-v2.h",
+        "pinctrl-paris.h",
+    ] + glob(["pinctrl-mtk-{}.h".format(p)]),
+    copts = ["-I$(srctree)/drivers/pinctrl/mediatek"],
+    ko_deps = [":pinctrl-mtk-v2"],
+) for p in PLATFORMS]

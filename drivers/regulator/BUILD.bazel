@@ -1,0 +1,132 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+SIMPLE_MODULE_NAME = [
+    "mt6315-regulator",
+    "mt6316-regulator",
+    "mt6359p-regulator",
+    "mt6358-regulator",
+    "mt6360-regulator",
+    "mt6363-regulator",
+    "mt6368-regulator",
+    "mt6369-regulator",
+    "mt6370-regulator",
+    "mt6373-regulator",
+    "mt6379-regulator",
+    "mt6661-regulator",
+    "mt6667-regulator",
+    "mt6688",
+    "mtk-extbuck-debug",
+    "rt4803",
+    "fan53870-ldo",
+    "wl2868c-regulator",
+]
+
+[define_mgk_ddk_ko(
+    name = "{}".format(mod),
+    srcs = [
+        "{}.c".format(mod),
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+) for mod in SIMPLE_MODULE_NAME]
+
+define_mgk_ddk_ko(
+    name = "rt5133-regulator",
+    srcs = [
+        "rt5133-regulator.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/subpmic:extdev_io_class".format(kernel_version),
+    ],
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "rt6160-regulator",
+    srcs = [
+        "rt6160.h",
+        "rt6160-regulator.c",
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-dvfsrc-regulator",
+    srcs = [
+        "mtk-dvfsrc-regulator.c",
+    ],
+
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+
+    ko_deps = ["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version)],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-vmm-isp71-regulator",
+    srcs = [
+        "mtk-vmm-isp71-regulator.c",
+    ],
+
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/remoteproc:mtk_ccu".format(kernel_version),
+    ],
+    out = "mtk-vmm-isp71-regulator.ko",
+)
+
+define_mgk_ddk_ko(
+    name = "mt6681-regulator",
+    srcs = [
+        "mt6681-regulator.c",
+    ],
+
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(srctree)/drivers/regulator",
+    ],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/mfd:mt6685-audclk".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/i2c/busses:i2c-mt65xx".format(kernel_version),
+    ],
+)

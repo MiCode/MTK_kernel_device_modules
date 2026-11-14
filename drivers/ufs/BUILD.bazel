@@ -1,0 +1,373 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+ddk_headers(
+	name = "headers",
+	hdrs = glob([
+		"**/*.h",
+		"mi_ufs/code/*.h",
+		"mi_ufs/host/*.h",
+		"mi_ufs/include/*.h",
+	]),
+	includes = [
+		".",
+		"mi_ufs/code",
+		"mi_ufs/host",
+		"mi_ufs/include",
+	],
+	linux_includes = [
+		"include",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+		"mi_ufs/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "ufs-mediatek-mod",
+	srcs = [
+	],
+
+	header_deps = [
+	],
+
+	hdrs = glob(["**/*.h"]),
+
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/char/rpmb:rpmb".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/mailbox:mtk-ise-mailbox".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-dbg".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/xiaomi/miev:miev".format(kernel_version),
+	],
+
+	includes = [
+		".",
+	],
+
+	conditional_srcs = {
+		"CONFIG_UFS_MEDIATEK_MT6893": {
+			True: [
+				"ufs-mediatek-sysfs.c",
+				"ufs-mediatek-mimic.c",
+				"ufs-mediatek-mbrain.c",
+			],
+			False: [
+				"ufs-mediatek.c",
+				"ufs-mediatek-sysfs.c",
+				"ufs-mediatek-mimic.c",
+				"ufs-mediatek-mbrain.c",
+			],
+		},
+	# mi_ufs .c add
+		"CONFIG_SCSI_UFS_XIAOMI": {
+			True: [
+				"mi_ufs/core/mi_ufshcd.c",
+				"mi_ufs/core/mi_ufs-sysfs.c",
+				"mi_ufs/core/mi_ufs-mcq.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_XIAOMI_CLD": {
+			True: glob([
+				"mi_ufs/feature/cld/*.c",
+			]),
+		},
+		"CONFIG_SCSI_UFS_XIAOMI_FFU": {
+			True: glob([
+				"mi_ufs/feature/ffu/*.c",
+			]),
+		},
+		"CONFIG_SCSI_UFSHCD_PLATFORM": {
+			True: [
+				"mi_ufs/host/mi_ufshcd-pltfrm.c",
+			],
+		},
+		"CONFIG_DEBUG_FS": {
+			True: [
+				"mi_ufs/core/mi_ufs-debugfs.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_BSG": {
+			True: [
+				"mi_ufs/core/mi_ufs_bsg.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_CRYPTO": {
+			True: [
+				"mi_ufs/core/mi_ufshcd-crypto.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_FAULT_INJECTION": {
+			True: [
+				"mi_ufs/core/mi_ufs-fault-injection.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_HWMON": {
+			True: [
+				"mi_ufs/core/mi_ufs-hwmon.c",
+			],
+		},
+	# mi_ufs .c end
+		"CONFIG_MTK_BLOCK_IO_TRACER": {
+			True: [
+				"ufs-mediatek-btag.c",
+			],
+		},
+		"CONFIG_MTK_RPMB": {
+			True: [
+				"ufs-mediatek-rpmb.c",
+				"ufs-mediatek-ise-dummy.c",
+			],
+		},
+		"CONFIG_UFSFEATURE": {
+			True: [
+				"vendor/ufsfeature.c",
+				"vendor/ufsfeature-mimic.c",
+			],
+		},
+		"CONFIG_UFSSHPB": {
+			True: [
+				"vendor/ufsshpb.c",
+			],
+		},
+		"CONFIG_UFSTW": {
+			True: [
+				"vendor/ufstw.c",
+			],
+		},
+		"CONFIG_UFSHID": {
+			True: [
+				"vendor/ufshid.c",
+			],
+		},
+		"CONFIG_UFSRINGBUF": {
+			True: [
+				"vendor/ufsringbuf.c",
+			],
+		},
+	},
+
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/mi_ufs/core/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/mi_ufs/host/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/mi_ufs/include/",
+		"-I$(srctree)/drivers/devfreq/",
+		"-I$(srctree)/kernel/",
+		"-I$(srctree)/drivers/scsi/",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "ufs-mediatek-mod-ise",
+	srcs = [
+	],
+
+	header_deps = [
+	],
+
+	hdrs = glob(["**/*.h"]),
+
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/char/rpmb:rpmb".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/mailbox:mtk-ise-mailbox".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/ise_lpm:ise_lpm".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_battery_oc_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/power_throttling:mtk_low_battery_throttling".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-dbg".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/xiaomi/miev:miev".format(kernel_version),
+	],
+
+	includes = [
+		".",
+	],
+
+	conditional_srcs = {
+		"CONFIG_UFS_MEDIATEK_MT6893": {
+			True: [
+				"ufs-mediatek-perf.c",
+				"ufs-mediatek-sysfs.c",
+				"ufs-mediatek-mimic.c",
+				"ufs-mediatek-mbrain.c",
+			],
+			False: [
+				"ufs-mediatek.c",
+				"ufs-mediatek-sysfs.c",
+				"ufs-mediatek-mimic.c",
+				"ufs-mediatek-mbrain.c",
+			],
+		},
+	# mi_ufs .c add
+		"CONFIG_SCSI_UFS_XIAOMI": {
+			True: [
+				"mi_ufs/core/mi_ufshcd.c",
+				"mi_ufs/core/mi_ufs-sysfs.c",
+				"mi_ufs/core/mi_ufs-mcq.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_XIAOMI_CLD": {
+			True: glob([
+				"mi_ufs/feature/cld/*.c",
+			]),
+		},
+		"CONFIG_SCSI_UFS_XIAOMI_FFU": {
+			True: glob([
+				"mi_ufs/feature/ffu/*.c",
+			]),
+		},
+		"CONFIG_SCSI_UFSHCD_PLATFORM": {
+			True: [
+				"mi_ufs/host/mi_ufshcd-pltfrm.c",
+			],
+		},
+		"CONFIG_DEBUG_FS": {
+			True: [
+				"mi_ufs/core/mi_ufs-debugfs.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_BSG": {
+			True: [
+				"mi_ufs/core/mi_ufs_bsg.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_CRYPTO": {
+			True: [
+				"mi_ufs/core/mi_ufshcd-crypto.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_FAULT_INJECTION": {
+			True: [
+				"mi_ufs/core/mi_ufs-fault-injection.c",
+			],
+		},
+		"CONFIG_SCSI_UFS_HWMON": {
+			True: [
+				"mi_ufs/core/mi_ufs-hwmon.c",
+			],
+		},
+	# mi_ufs .c end
+		"CONFIG_MTK_BLOCK_IO_TRACER": {
+			True: [
+				"ufs-mediatek-btag.c",
+			],
+		},
+		"CONFIG_MTK_RPMB": {
+			True: [
+				"ufs-mediatek-rpmb.c",
+				"ufs-mediatek-ise.c",
+			],
+		},
+		"CONFIG_UFSFEATURE": {
+			True: [
+				"vendor/ufsfeature.c",
+				"vendor/ufsfeature-mimic.c",
+			],
+		},
+		"CONFIG_UFSSHPB": {
+			True: [
+				"vendor/ufsshpb.c",
+			],
+		},
+		"CONFIG_UFSTW": {
+			True: [
+				"vendor/ufstw.c",
+			],
+		},
+		"CONFIG_UFSHID": {
+			True: [
+				"vendor/ufshid.c",
+			],
+		},
+		"CONFIG_UFSRINGBUF": {
+			True: [
+				"vendor/ufsringbuf.c",
+			],
+		},
+	},
+
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/mi_ufs/core/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/mi_ufs/host/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/mi_ufs/include/",
+		"-I$(srctree)/drivers/devfreq/",
+		"-I$(srctree)/kernel/",
+		"-I$(srctree)/drivers/scsi/",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "ufs-mediatek-dbg",
+	srcs = [
+		"ufs-mediatek-dbg.c",
+	],
+
+	header_deps = [
+	],
+
+	hdrs = glob(["**/*.h"]),
+
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/sda:irq-dbg".format(kernel_version),
+	],
+
+	includes = [
+		".",
+	],
+
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/clk/mediatek/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/power_throttling/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/vendor/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/mi_ufs/core/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/mi_ufs/host/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/mi_ufs/include/",
+		"-I$(srctree)/drivers/devfreq/",
+		"-I$(srctree)/kernel/",
+	],
+)

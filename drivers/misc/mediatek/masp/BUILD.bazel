@@ -1,0 +1,42 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+         "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_srcs",
+    srcs = glob([
+	"**/Makefile",
+	"asfv3/Makefile.sec",
+	"**/*.c",
+	"asfv3/src/*.c",
+	"asfv3/inc/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "sec",
+    srcs = [
+        "asfv3/sec/sec_ao.c",
+        "asfv3/sec/sec_boot_core.c",
+        "asfv3/sec/sec_lib.c",
+        "asfv3/sec/sec_mod.c",
+        "asfv3/sec/sec_mod_core.c",
+        "asfv3/sec/sec_osal.c",
+    ],
+    includes = [
+        "asfv3/inc",
+    ],
+    hdrs = glob(["**/*.h"]),
+)
+

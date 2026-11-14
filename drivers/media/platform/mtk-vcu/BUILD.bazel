@@ -1,0 +1,66 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+# to export headers for other modules to use
+ddk_headers(
+    name = "headers",
+    hdrs = [
+        "mtk_vcu.h",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk-vcu",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_VIDEO_MEDIATEK_VCU": {
+            True:[
+                "mtk_vcu.c",
+                "mtk_vcodec_mem.c",
+                "mtk_vcodec_mem.h",
+            ],
+        },
+    },
+    hdrs = [
+        "mtk_vcu.h",
+    ],
+    includes = [
+        ".",
+    ],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/media/platform/mtk-vcodec:mtk-vcodec-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv_v2:vcp_status_v2".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/dma-buf/heaps:mtk_sec_heap".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_gz".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:mtk-cmdq-drv-ext".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/cmdq/mailbox:cmdq-sec-drv".format(kernel_version),
+    ],
+    copts = [
+        "-Werror",
+        "-I$(srctree)/arch/arm",
+        "-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+)

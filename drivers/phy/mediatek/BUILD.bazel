@@ -1,0 +1,104 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "phy-mtk-io",
+    hdrs = [
+        "phy-mtk-io.h",
+    ],
+    includes = ["."],
+    linux_includes = [
+        "include",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "phy-mtk-fpgaphy",
+    srcs = [
+        "phy-mtk-fpgaphy.c",
+        "phy-mtk-fpgaphy.h",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "phy-mtk-mt6379-eusb2-repeater",
+    srcs = [
+        "phy-mtk-mt6379-eusb2-repeater.c",
+        "phy-mtk-io.h",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "phy-mtk-nxp-eusb2-repeater",
+    srcs = [
+        "phy-mtk-nxp-eusb2-repeater.c",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "phy-mtk-pcie",
+    srcs = [
+        "phy-mtk-pcie.c",
+        "phy-mtk-io.h",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "phy-mtk-tphy",
+    srcs = [
+        "phy-mtk-tphy.c",
+        "phy-mtk-io.h",
+    ],
+    includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "phy-mtk-ufs",
+    srcs = [
+        "phy-mtk-ufs.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
+    ],
+    includes = ["."],
+    copts = [
+        "-I$(srctree)/drivers/ufs",
+    ]
+)
+
+define_mgk_ddk_ko(
+    name = "phy-mtk-xsphy",
+    srcs = [
+        "phy-mtk-xsphy.c",
+        "phy-mtk-io.h",
+    ],
+    includes = ["."],
+)

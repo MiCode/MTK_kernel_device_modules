@@ -1,0 +1,79 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+ddk_headers(
+	name = "headers",
+	hdrs = glob(["**/*.h"]),
+	includes = ["."],
+	linux_includes = [
+		"include",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+filegroup(
+	name = "srcs",
+	srcs = glob([
+		"**/Makefile",
+		"**/Kbuild",
+		"**/*.c",
+		"**/*.h",
+	]),
+)
+
+define_mgk_ddk_ko(
+	name = "aee_hangdet",
+	srcs = [],
+
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:headers".format(kernel_version),
+	],
+
+	hdrs = glob(["*.h"]),
+
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/irq_monitor:irq_monitor".format(kernel_version)
+	],
+
+	includes = [
+		"."
+	],
+
+	conditional_srcs = {
+		"CONFIG_MTK_AEE_HANGDET": {
+			True: [
+				"hangdet.c",
+				"sched_debug.c",
+				"timer_list_debug.c"
+			],
+		},
+	},
+
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/",
+		"-I$(srctree)/kernel/",
+		"-I$(srctree)/include/",
+		"-Wall",
+		"-Werror",
+		"-Wno-frame-address",
+	],
+
+	local_defines = [
+		"MTK_HANGDET_TEST_ENABLED=0"
+	],
+)

@@ -1,0 +1,104 @@
+#
+# Copyright (C) 2025 MediaTek Inc.
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
+ddk_headers(
+    name = "gpueb_public_headers",
+    hdrs = [
+        "include/gpueb_ipi.h",
+        "include/gpueb_reserved_mem.h",
+        "include/gpueb_debug.h",
+        "include/gpueb_common.h",
+        "include/gpueb_timesync.h",
+        "include/ghpm_wrapper.h",
+    ],
+    includes = ["include"],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_gpueb",
+    out = "mtk_gpueb.ko",
+    srcs = [
+        "gpueb.c",
+        "gpueb_ipi.c",
+        "gpueb_logger.c",
+        "gpueb_plat_service.c",
+        "gpueb_reserved_mem.c",
+        "gpueb_gpumpu.c",
+        "gpueb_hwvoter_dbg.c",
+        "gpueb_debug.c",
+        "gpueb_timesync.c",
+        "ghpm_wrapper.c",
+        "ghpm_debug.c"
+    ]+glob(["**/include/*.h"]),
+
+    includes = ["include"],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+    ],
+
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_ghpm_mt6991",
+    out = "mtk_ghpm_mt6991.ko",
+    srcs = [
+        "ghpm_mt6991.c"
+    ]+glob(["**/include/*.h"]),
+
+    includes = ["include"],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_gpueb".format(kernel_version),
+    ]
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_ghpm_mt6993",
+    out = "mtk_ghpm_mt6993.ko",
+    srcs = [
+        "ghpm_mt6993.c"
+    ]+glob(["**/include/*.h"]),
+
+    includes = ["include"],
+
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_gpueb".format(kernel_version),
+    ]
+)

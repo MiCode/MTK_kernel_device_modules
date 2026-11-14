@@ -1,0 +1,49 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load(":dummy.bzl", "dummy")
+
+package (
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+dummy(
+    name = "dummy.c"
+)
+
+ddk_headers (
+    name = "ddk_public_headers",
+    includes = ["."],
+    hdrs = glob(["**/*.h"]), # export all headers for other modules to use
+)
+
+define_mgk_ddk_ko (
+    name = "lct_tp",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_TOUCHSCREEN_COMMON": {
+            True: [ "lct_tp_proximity_switch.c" ],
+            False: [":dummy.c"],
+         },
+    },
+    hdrs = ["lct_tp_proximity_switch.h"],
+)
+

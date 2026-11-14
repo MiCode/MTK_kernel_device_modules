@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: GPL-2.0
+#
+# Copyright (c) 2025 MediaTek Inc.
+#
+
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("//build/bazel_mgk_rules:mgk_ddk_library.bzl", "define_mgk_ddk_library")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+define_mgk_ddk_library(
+    name = "hyp",
+    srcs = [
+      "action.c",
+      "emi_mpu.h",
+      "emi_mpu_v2.c",
+      "handle.c",
+      "handle.h",
+      "hvcfunc.h",
+      "lib/err.h",
+      "lib/list_debug.c",
+      "lib/malloc.c",
+      "lib/malloc.h",
+      "lib/spinlock.h",
+      "lib/stdlib.h",
+      "lib/utils.h",
+      "mapping.c",
+      "mapping_attr.h",
+      "mkp_err.h",
+      "mkp_handler.c",
+      "mkp_handler.h",
+      "pkvm_mkp_hyp.c",
+      "policy.c",
+      "policy.h",
+      "sharebuf.c",
+      "sharebuf.h",
+    ],
+
+    pkvm_el2 = True,
+    includes = [
+      "lib",
+    ],
+    copts = [
+        "-I$(srctree)/arch/arm64/kvm/hyp/include/nvhe",
+		"-I$(DEVICE_MODULES_PATH)/include/linux/soc/mediatek",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump",
+    ],
+)

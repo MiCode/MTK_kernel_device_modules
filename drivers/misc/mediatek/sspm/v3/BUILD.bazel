@@ -1,0 +1,62 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h"
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "sspm_v3",
+    srcs = [
+	"sspm_helper.c",
+        "sspm_logger_impl.c",
+        "sspm_plt.c",
+        "sspm_reservedmem.c",
+        "sspm_sysfs.c",
+        "sspm_timesync.c",
+    ],
+    ko_deps = [
+          "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:tinysys-scmi".format(kernel_version),
+    ],
+    header_deps = [
+          "//kernel_device_modules-{}/drivers/misc/mediatek/tinysys_scmi:ddk_public_headers".format(kernel_version),
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/tinysys_scmi",
+    ],
+)
+
+ddk_headers(
+    name = "ddk_public_headers",
+    includes = [
+        ".",
+    ],
+    hdrs = [
+        "sspm_reservedmem.h",
+    ],
+    linux_includes = [
+        "include",
+    ],
+)

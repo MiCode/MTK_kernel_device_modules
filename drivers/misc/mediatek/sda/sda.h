@@ -1,0 +1,59 @@
+/* SPDX-License-Identifier: GPL-2.0 */
+/*
+ * Copyright (C) 2019 Mediatek Inc.
+ */
+
+#ifndef __MTK_SDA_H__
+#define __MTK_SDA_H__
+
+enum SDA_FEATURE {
+	SDA_BUS_PARITY = 0,
+	SDA_ERR_FLAG = 1,
+	SDA_SYSTRACKER = 2,
+	SDA_DBGTOP_DRM = 3,
+	SDA_CHINFRA_MASTER = 4,
+	SDA_ERRATA_3502731_CTRL = 5,
+	NR_SDA_FEATURE
+};
+
+enum BUS_PARITY_OP {
+	BP_MCU_CLR = 0,
+	NR_BUS_PARITY_OP
+};
+
+enum SYSTRACKER_OP {
+	TRACKER_SW_RST = 0,
+	TRACKER_IRQ_SWITCH = 1,
+	NR_SYSTRACKER_OP
+};
+
+enum DBGTOP_DRM_OP {
+	DRM_GET_STATUS = 0,
+	DRM_SET_STATUS = 1,
+	NR_DBGTOP_DRM_OP
+};
+
+enum CHINFRA_MASTER_OP {
+	CHINFRA_SPM_REQ = 0,
+	CHINFRA_SPM_FREE = 1,
+	NR_CHINFRA_MASTER_OP,
+};
+
+enum ERRATA_CTRL_OP {
+	ERRATA_DISABLE = 0,
+	ERRATA_ENABLE = 1,
+	ERRATA_STATUS_GET = 2,
+	NR_ERRATA_CTRL,
+};
+
+struct tag_chipid {
+	u32 size;
+	u32 hw_code;
+	u32 hw_subcode;
+	u32 hw_ver;
+	u32 sw_ver;
+};
+
+extern void init_mem_rename_opt(void);
+
+#endif   /*__MTK_SDA_H__*/

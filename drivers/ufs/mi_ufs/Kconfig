@@ -1,0 +1,38 @@
+# SPDX-License-Identifier: GPL-2.0-only
+
+config SCSI_UFS_XIAOMI
+	bool "Xiaomi customized UFS driver based on MTK platform"
+	select MI_ERROR_STATE
+	select SCSI_UFS_XIAOMI_FFU
+	depends on DEVICE_MODULES_SCSI_UFS_MEDIATEK
+	default n
+	help
+	  This adds support for Xiaomi's customized platform driver by skipping GKI.
+
+config MI_ERROR_STATE
+	bool "Xiaomi err_state & err_reason function"
+	depends on SCSI_UFS_XIAOMI
+	default n
+	help
+	  This adds support for Xiaomi err_state and err_reason function.
+
+config SCSI_UFS_XIAOMI_FFU
+	bool "Xiaomi UFS FFU"
+	depends on SCSI_UFS_XIAOMI
+	default n
+	help
+	  This adds support for Xiaomi FFU driver support.
+
+config SCSI_UFS_XIAOMI_CLD
+	bool "Xiaomi UFS CLD"
+	depends on SCSI_UFS_XIAOMI
+	default n
+	help
+	  This adds support for Xiaomi CLD driver support.
+
+config UFS_WB
+	bool "Xiaomi WB NODE"
+	depends on SCSI_UFS_XIAOMI
+	default n
+	help
+	  This adds support for Xiaomi WB node .

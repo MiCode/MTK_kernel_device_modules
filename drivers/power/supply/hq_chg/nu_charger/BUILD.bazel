@@ -1,0 +1,54 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version",)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+        "*.h",
+    ]),
+)
+
+LEGACY_GAUGE_MODULES = [
+    "mt6357",
+    "mt6358",
+    "mt6359p",
+]
+
+GAUGE_MODULES = [
+    "mt6375",
+    "mt6379",
+]
+
+SIMPLE_CHG_MODULES = [
+    "mt6360_charger",
+    "mt6362-chg",
+    "mt6370-charger",
+    "mt6375-charger",
+    "mtk_2p_charger",
+    "rt9465",
+    "rt9490-charger",
+    "rt9758-charger",
+    "rt9759",
+]
+
+SPLIT_TYPE_CHG_MODULES = [
+    "mt6379",
+]
+

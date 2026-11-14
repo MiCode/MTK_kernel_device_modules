@@ -1,0 +1,5 @@
+config PERF_HELPER
+	tristate "Perflock helper"
+	default m
+	help
+	  this module support for performance.

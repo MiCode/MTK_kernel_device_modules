@@ -1,0 +1,98 @@
+# SPDX-License-Identifier: GPL-2.0
+# common utils
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/common/Kconfig"
+
+#charge_policy
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/charger_policy/Kconfig"
+
+#sc_charger
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/sc_charger/Kconfig"
+
+#protocol
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/sc_charger/protocol/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/sc_charger/protocol/bc12/Kconfig"
+
+#subpimc
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/sc_charger/subpmic/Kconfig"
+
+#sy_charger
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/sy_charger/Kconfig"
+
+#sy subpimc
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/sy_charger/subpmic/Kconfig"
+
+#sy_protocol
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/sy_charger/protocol/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/sy_charger/protocol/bc12/Kconfig"
+
+#nu_charger
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/nu_charger/Kconfig"
+
+#nuvolta subpimc
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/nu_charger/subpmic/Kconfig"
+
+#fuelgauge
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/fuelgauge/Kconfig"
+
+#bq_charger
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/bq_charger/Kconfig"
+
+# tiny battery secret
+#source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/battery_secrete/Kconfig"
+source "$(KCONFIG_EXT_PREFIX)drivers/power/supply/hq_chg/tiny_battery_secrete/Kconfig"
+
+config HUAQIN_ADAPTER_CLASS
+	tristate "support hauqin charger adapter class"
+	default n
+	help
+		Say Y here to support hauqin charger adapter class.
+
+config HUAQIN_CHARGER_CLASS
+	tristate "support hauqin charger class"
+	default n
+	help
+		Say Y here to support hauqin charger class.
+
+config HUAQIN_CP_CLASS
+	tristate "support hauqin chager pump class"
+	default n
+	help
+		Say Y here to support hauqin chager pump class.
+
+config PD_BATTERY_SECRET
+	tristate "pd battery secret"
+	default n
+	help
+		Say Y here to support pd battery secret.
+
+config XIAOMI_SMART_CHG
+        tristate "support xiaomi smart charge"
+        default n
+        help
+                Say Y here to support xiaomi smart charge.
+
+config XM_CHG_ANIMATION
+        tristate "support xiaomi charge animation"
+        default n
+        help
+                Say Y here to support xiaomi charge animation.
+
+config XM_FG_I2C_ERR
+        tristate "support xiaomi fg i2c error"
+        default n
+        help
+                Say Y here to support xiaomi fg i2c error.
+
+config HUAQIN_ERP_SUPPORT
+        tristate "support erp law"
+        default n
+        help
+                Say Y here to support erp law
+
+config HUAQIN_SOH2_SUPPORT
+        tristate "support soh2 algo"
+        default n
+        help
+                Say Y here to support soh2 algo
+
+

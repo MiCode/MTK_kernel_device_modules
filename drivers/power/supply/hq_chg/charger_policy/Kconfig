@@ -1,0 +1,49 @@
+#SPDX-License-Identifier: GPL-2.0
+
+config HUAQIN_CHARGER_MANAGER
+	tristate "support hauqin charger manger"
+	default n
+	help
+		Say Y here to support hauqin charger manger.
+
+config HUAQIN_CP_POLICY
+	tristate "support hauqin charger pump policy"
+	default n
+	help
+		Say Y here to support hauqin charger class.
+
+config HUAQIN_QC_POLICY
+	tristate "support hauqin qc policy"
+	default n
+	help
+		Say Y here to support hauqin charger class.
+
+config XM_CHG_DFS
+	tristate "support xiaomi charge dfs features"
+	default n
+	help
+		Say Y or M to support xiaomi charge dfs features.
+
+config BC12_RETRY_FOR_MI_PD
+	tristate "support retry BC1.2"
+	default n
+	help
+		Say Y here to support retry BC1.2.
+
+config HUAQIN_SOFT_ITERM_SUPPORT
+	tristate "support soft iterm support"
+	default n
+	help
+		Say Y here to support soft iterm.
+
+config HUAQIN_ERP_SUPPORT
+	tristate "support erp"
+	default n
+	help
+		Say Y here to support erp.
+
+config HUAQIN_USE_AUTH_CYCLE_COUNT
+	tristate "support soft iterm support"
+	default n
+	help
+		Say Y here to support soft iterm.

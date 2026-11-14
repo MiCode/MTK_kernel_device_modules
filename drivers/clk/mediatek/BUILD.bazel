@@ -1,0 +1,267 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl","kernel_version",)
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("clkmgr_ko.bzl", "define_platform_clkmgr_ko")
+load("clkmgr_ko.bzl", "define_v1_platform_clkmgr_ko")
+load("clkmgr_ko.bzl", "define_v2_platform_clkmgr_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_makefile",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+	name = "headers",
+	hdrs = glob(["**/*.h"]),
+	includes = ["."],
+)
+
+define_mgk_ddk_ko(
+    name = "clk-disable-unused",
+    srcs = [
+        "clk-disable-unused.c",
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+)
+define_mgk_ddk_ko(
+    name = "clk-common",
+    srcs = [
+        "clk-mtk.c",
+        "clk-pll.c",
+        "clk-gate.c",
+        "clk-mux.c",
+        "clkchk.c",
+        "clk-fmeter.c",
+        "mtk-pd-chk.c",
+        "clkdbg.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+    ],
+    includes = ["."],
+    copts = ["-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/"],
+    hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name = "clk-bringup",
+    srcs = [
+        "clk-bringup.c",
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+    ],
+    includes = ["."],
+    hdrs = glob(["**/*.h"]),
+)
+
+define_mgk_ddk_ko(
+    name = "fhctl",
+    srcs = [],
+    conditional_srcs = {
+        "CONFIG_COMMON_CLK_MTK_FREQ_HOPPING":{
+            True: [
+                "clk-fhctl-ap.c",
+                "clk-fhctl-debug.c",
+                "clk-fhctl-pll.c",
+                "clk-fhctl.c",
+                #"clk-fhctl-vcp.c",
+            ],
+        },
+        "CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_SSPM":{
+            True: ["clk-fhctl-sspm.c"],
+        },
+        "CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_MCUPM":{
+            True: ["clk-fhctl-mcupm.c"],
+        },
+        "CONFIG_COMMON_CLK_MTK_FREQ_HOPPING_GPUEB":{
+            True: ["clk-fhctl-gpueb.c"],
+        },
+    },
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/clk/mediatek:clk-common".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/aed:aee_aed".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm/v3:mcupm".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk_tinysys_ipi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mbox".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:mtk_gpueb".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status".format(kernel_version),
+    ],
+    includes = ["."],
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mcupm:mcupm_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/gpu/mediatek/gpueb:gpueb_public_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/rv:vcp_status_headers".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/vcp/include:vcp_public_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+    ],
+    hdrs = glob(["**/*.h"]),
+)
+
+define_v1_platform_clkmgr_ko("mt6897", None)
+define_v1_platform_clkmgr_ko("mt6897", "adsp")
+define_v1_platform_clkmgr_ko("mt6897", "cam")
+define_v1_platform_clkmgr_ko("mt6897", "ccu")
+define_v1_platform_clkmgr_ko("mt6897", "img")
+define_v1_platform_clkmgr_ko("mt6897", "mmsys")
+define_v1_platform_clkmgr_ko("mt6897", "peri")
+define_v1_platform_clkmgr_ko("mt6897", "bus")
+define_v1_platform_clkmgr_ko("mt6897", "mdpsys")
+define_v1_platform_clkmgr_ko("mt6897", "vlp")
+define_v1_platform_clkmgr_ko("mt6897", "vcodec")
+define_v1_platform_clkmgr_ko("mt6899", None)
+define_v1_platform_clkmgr_ko("mt6899", "adsp")
+define_v1_platform_clkmgr_ko("mt6899", "cam")
+define_v1_platform_clkmgr_ko("mt6899", "img")
+define_v1_platform_clkmgr_ko("mt6899", "mmsys")
+define_v1_platform_clkmgr_ko("mt6899", "peri")
+define_v1_platform_clkmgr_ko("mt6899", "infracfg_ao")
+define_v1_platform_clkmgr_ko("mt6899", "mdpsys")
+define_v1_platform_clkmgr_ko("mt6899", "vcodec")
+define_platform_clkmgr_ko("mt6789", None)
+define_platform_clkmgr_ko("mt6789", "vcodec")
+define_platform_clkmgr_ko("mt6789", "mfgcfg")
+define_platform_clkmgr_ko("mt6789", "bus")
+define_platform_clkmgr_ko("mt6789", "i2c")
+define_platform_clkmgr_ko("mt6789", "img")
+define_platform_clkmgr_ko("mt6789", "disp_dsc")
+define_platform_clkmgr_ko("mt6789", "mmsys")
+define_platform_clkmgr_ko("mt6789", "cam")
+define_platform_clkmgr_ko("mt6789", "audiosys")
+define_platform_clkmgr_ko("mt6789", "impen")
+define_platform_clkmgr_ko("mt6893", None)
+define_platform_clkmgr_ko("mt6893", "ven1")
+define_platform_clkmgr_ko("mt6893", "ven2")
+define_platform_clkmgr_ko("mt6893", "vde1")
+define_platform_clkmgr_ko("mt6893", "vde2")
+define_platform_clkmgr_ko("mt6893", "scp_adsp")
+define_platform_clkmgr_ko("mt6893", "mm")
+define_platform_clkmgr_ko("mt6893", "mfgcfg")
+define_platform_clkmgr_ko("mt6893", "mdp")
+define_platform_clkmgr_ko("mt6893", "ipe")
+define_platform_clkmgr_ko("mt6893", "imps")
+define_platform_clkmgr_ko("mt6893", "impn")
+define_platform_clkmgr_ko("mt6893", "impc")
+define_platform_clkmgr_ko("mt6893", "impe")
+define_platform_clkmgr_ko("mt6893", "imgsys2")
+define_platform_clkmgr_ko("mt6893", "imgsys1")
+define_platform_clkmgr_ko("mt6893", "cam_rc")
+define_platform_clkmgr_ko("mt6893", "cam_rb")
+define_platform_clkmgr_ko("mt6893", "cam_ra")
+define_platform_clkmgr_ko("mt6893", "cam_m")
+define_platform_clkmgr_ko("mt6893", "audsys")
+define_platform_clkmgr_ko("mt6893", "apum1")
+define_platform_clkmgr_ko("mt6893", "apum0")
+define_platform_clkmgr_ko("mt6893", "apuc")
+define_platform_clkmgr_ko("mt6893", "apuv")
+define_platform_clkmgr_ko("mt6893", "apu2")
+define_platform_clkmgr_ko("mt6893", "apu1")
+define_platform_clkmgr_ko("mt6893", "apu0")
+define_platform_clkmgr_ko("mt6893", "pg")
+define_platform_clkmgr_ko("mt6855", None)
+define_platform_clkmgr_ko("mt6855", "adsp")
+define_platform_clkmgr_ko("mt6855", "cam_m")
+define_platform_clkmgr_ko("mt6855", "cam")
+define_platform_clkmgr_ko("mt6855", "mmsys")
+define_platform_clkmgr_ko("mt6855", "imgsys1")
+define_platform_clkmgr_ko("mt6855", "imgsys2")
+define_platform_clkmgr_ko("mt6855", "peri")
+define_platform_clkmgr_ko("mt6855", "bus")
+define_platform_clkmgr_ko("mt6855", "img")
+define_platform_clkmgr_ko("mt6855", "mdp1")
+define_platform_clkmgr_ko("mt6855", "mdp")
+define_platform_clkmgr_ko("mt6855", "vcodec")
+define_platform_clkmgr_ko("mt6985", None)
+define_platform_clkmgr_ko("mt6985", "adsp")
+define_platform_clkmgr_ko("mt6985", "bus")
+define_platform_clkmgr_ko("mt6985", "cam")
+define_platform_clkmgr_ko("mt6985", "ccu")
+define_platform_clkmgr_ko("mt6985", "img")
+define_platform_clkmgr_ko("mt6985", "mdpsys")
+define_platform_clkmgr_ko("mt6985", "mmsys")
+define_platform_clkmgr_ko("mt6985", "peri")
+define_platform_clkmgr_ko("mt6985", "vcodec")
+define_platform_clkmgr_ko("mt6985", "vlp")
+define_platform_clkmgr_ko("mt6991", None)
+define_platform_clkmgr_ko("mt6991", "adsp")
+define_platform_clkmgr_ko("mt6991", "bus")
+define_platform_clkmgr_ko("mt6991", "cam")
+define_platform_clkmgr_ko("mt6991", "img")
+define_platform_clkmgr_ko("mt6991", "mdpsys")
+define_platform_clkmgr_ko("mt6991", "mmsys")
+define_platform_clkmgr_ko("mt6991", "pd")
+define_platform_clkmgr_ko("mt6991", "peri")
+define_platform_clkmgr_ko("mt6991", "vcodec")
+define_v1_platform_clkmgr_ko("mt6993", None)
+define_v1_platform_clkmgr_ko("mt6993", "vcodec")
+define_v1_platform_clkmgr_ko("mt6993", "adsp")
+define_v1_platform_clkmgr_ko("mt6993", "mmsys")
+define_v1_platform_clkmgr_ko("mt6993", "img")
+define_v1_platform_clkmgr_ko("mt6993", "peri")
+define_v1_platform_clkmgr_ko("mt6993", "ifrao")
+define_v1_platform_clkmgr_ko("mt6993", "cam")
+define_v1_platform_clkmgr_ko("mt6993", "pd")
+define_v1_platform_clkmgr_ko("mt6983", None)
+define_v1_platform_clkmgr_ko("mt6983", "adsp_grp")
+define_v1_platform_clkmgr_ko("mt6983", "ccu_main")
+define_v1_platform_clkmgr_ko("mt6983", "img")
+define_v1_platform_clkmgr_ko("mt6983", "imp_iic_wrap")
+define_v1_platform_clkmgr_ko("mt6983", "vcodec")
+define_v1_platform_clkmgr_ko("mt6983", "mdp_grp")
+define_v1_platform_clkmgr_ko("mt6983", "mfg_top_config")
+define_v1_platform_clkmgr_ko("mt6983", "mm")
+define_v1_platform_clkmgr_ko("mt6983", "cam")
+define_v1_platform_clkmgr_ko("mt6886", None)
+define_v1_platform_clkmgr_ko("mt6886", "adsp")
+define_v1_platform_clkmgr_ko("mt6886", "cam")
+define_v1_platform_clkmgr_ko("mt6886", "ccu")
+define_v1_platform_clkmgr_ko("mt6886", "img")
+define_v1_platform_clkmgr_ko("mt6886", "mmsys")
+define_v1_platform_clkmgr_ko("mt6886", "peri")
+define_v1_platform_clkmgr_ko("mt6886", "bus")
+define_v1_platform_clkmgr_ko("mt6886", "mdpsys")
+define_v1_platform_clkmgr_ko("mt6886", "scp")
+define_v1_platform_clkmgr_ko("mt6886", "vcodec")
+define_v1_platform_clkmgr_ko("mt6895", None)
+define_v1_platform_clkmgr_ko("mt6895", "adsp")
+define_v1_platform_clkmgr_ko("mt6895", "cam")
+define_v1_platform_clkmgr_ko("mt6895", "ccu")
+define_v1_platform_clkmgr_ko("mt6895", "img")
+define_v1_platform_clkmgr_ko("mt6895", "mmsys")
+define_v1_platform_clkmgr_ko("mt6895", "peri")
+define_v1_platform_clkmgr_ko("mt6895", "bus")
+define_v1_platform_clkmgr_ko("mt6895", "mdpsys")
+define_v1_platform_clkmgr_ko("mt6895", "vcodec")
+define_v2_platform_clkmgr_ko("mt6989", None)
+define_v2_platform_clkmgr_ko("mt6989", "adsp")
+define_v2_platform_clkmgr_ko("mt6989", "cam")
+define_v2_platform_clkmgr_ko("mt6989", "img")
+define_v2_platform_clkmgr_ko("mt6989", "mmsys")
+define_v2_platform_clkmgr_ko("mt6989", "peri")
+define_v2_platform_clkmgr_ko("mt6989", "bus")
+define_v2_platform_clkmgr_ko("mt6989", "mdpsys")
+define_v2_platform_clkmgr_ko("mt6989", "vlp")
+define_v2_platform_clkmgr_ko("mt6989", "vcodec")
+define_v2_platform_clkmgr_ko("mt6858", None)
+define_v2_platform_clkmgr_ko("mt6858", "cg")

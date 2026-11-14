@@ -1,0 +1,262 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+load("@mgk_info//:dict.bzl",
+     "DEFCONFIG_OVERLAYS",
+)
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+          "**/Makefile",
+          "**/Kbuild",
+          "**/*.c",
+          "**/*.h",
+    ]),
+)
+
+define_mgk_ddk_ko(
+    name = "pda_drv_mt6855",
+    srcs = glob([
+          "isp_6s/camera_pda.c",
+          "isp_6s/camera_pda.h",
+          "isp_6s/pda_mt6855.c",
+    ]),
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pda_drv_mt6858",
+    srcs = glob([
+          "isp_6s/camera_pda.c",
+          "isp_6s/camera_pda.h",
+          "isp_6s/pda_mt6858.c",
+    ]),
+    ko_deps = ["//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pda_drv_mt6879",
+    srcs = glob([
+          "isp_71/camera_pda.h",
+          "isp_71/camera_pda_mt6879.c",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pda_drv_mt6895",
+    srcs = glob([
+          "isp_71/camera_pda.h",
+          "isp_71/camera_pda_mt6895.c",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "camera_pda",
+    srcs = glob([
+          "isp_71/camera_pda.c",
+          "isp_71/camera_pda.h",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pda_drv_mt6985",
+    srcs = glob([
+          "isp_7s/camera_pda.c",
+          "isp_7s/camera_pda.h",
+          "isp_7s/pda_mt6985.c",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_iommu_util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+    header_deps = [
+       "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mmdvfs",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pda_drv_mt6886",
+    srcs = glob([
+          "isp_7s/camera_pda.c",
+          "isp_7s/camera_pda.h",
+          "isp_7s/pda_mt6886.c",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_iommu_util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+    header_deps = [
+       "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pda_drv_mt6897",
+    srcs = glob([
+          "isp_7sp/camera_pda.c",
+          "isp_7sp/camera_pda.h",
+          "isp_7sp/pda_mt6897.c",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_iommu_util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+    header_deps = [
+       "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+       "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pda_drv_mt6989",
+    srcs = glob([
+          "isp_7sp/camera_pda.c",
+          "isp_7sp/camera_pda.h",
+          "isp_7sp/pda_mt6989.c",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_iommu_util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+    header_deps = [
+       "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+       "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "pda_drv_mt6878",
+    srcs = glob([
+          "isp_7sp/camera_pda.c",
+          "isp_7sp/camera_pda.h",
+          "isp_7sp/pda_mt6878.c",
+    ]),
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/memory:mtk-smi".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/smi:mtk-smi-dbg".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtk-interconnect:mtk-icc-core".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:mtk_iommu_util".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_debug".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs".format(kernel_version),
+    ] +
+    (["//kernel_device_modules-{}/drivers/soc/mediatek:mtk-mmdvfs-v3".format(kernel_version),]
+     if "entry_level.config" not in DEFCONFIG_OVERLAYS else []),
+    header_deps = [
+       "//kernel_device_modules-{}/drivers/iommu/arm/arm-smmu-v3:smmu_public_headers".format(kernel_version),
+       "//kernel_device_modules-{}/drivers/misc/mediatek/iommu:iommu_misc_headers".format(kernel_version),
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/smi",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtk-interconnect",
+        "-I$(DEVICE_MODULES_PATH)/drivers/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/iommu",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/",
+    ],
+)

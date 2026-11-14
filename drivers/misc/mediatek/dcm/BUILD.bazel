@@ -1,0 +1,58 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("dcm_ko.bzl", "define_platform_dcm_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_src",
+    srcs = glob([
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+filegroup(
+    name = "dcm_common_headers",
+    srcs = [
+        "include/mtk_dcm_common.h",
+        "include/mtk_dcm.h",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mtk_dcm",
+    srcs = [
+        "mtk_dcm.c",
+    ],
+    includes = ["include"],
+    hdrs = [":dcm_common_headers"],
+)
+
+define_platform_dcm_ko("mt6761")
+define_platform_dcm_ko("mt6765")
+define_platform_dcm_ko("mt6768")
+define_platform_dcm_ko("mt6789")
+define_platform_dcm_ko("mt6833")
+define_platform_dcm_ko("mt6855")
+define_platform_dcm_ko("mt6858")
+define_platform_dcm_ko("mt6885")
+define_platform_dcm_ko("mt6877")
+define_platform_dcm_ko("mt6895")
+define_platform_dcm_ko("mt6985")
+define_platform_dcm_ko("mt6878")
+define_platform_dcm_ko("mt6897")
+define_platform_dcm_ko("mt6899")
+define_platform_dcm_ko("mt6989")
+define_platform_dcm_ko("mt6991")
+define_platform_dcm_ko("mt6993")

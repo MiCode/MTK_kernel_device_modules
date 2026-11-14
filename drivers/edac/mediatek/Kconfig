@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-2.0
+
+config MTK_EDAC
+	bool "MediaTek EDAC support"
+	help
+	  Support for the EDAC devices found on MediaTek(R) SoCs.
+	  This config enables MTK_SLC for SLC drivers.
+
+if MTK_EDAC
+
+config MTK_SLC
+	tristate "MediaTek System Level Cache driver"
+	depends on MTK_EDAC
+	help
+	  This selects the MediaTek(R) SLC driver.
+
+endif

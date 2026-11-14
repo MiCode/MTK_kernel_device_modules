@@ -1,0 +1,95 @@
+config MTK_FPSGO_V3
+	tristate "Support FPSGO_V3 framework"
+	help
+	  Support FPSGO_V3 framework for most FPS performance and
+	  low power balance. As a perquisite to ensure FPS performance,
+	  FPSGO_V3 persuades lowest power consumption for better DoU
+	  endurance and gaming experience.
+	  FPSGO_V3 include AI performance and low power.
+	  If you are not sure about this, set n.
+
+config MTK_FPSGO_V8
+	tristate "Support FPSGO_V8 framework"
+	help
+	  Support FPSGO_V8 common framework for most FPS performance and
+	  low power balance. As a perquisite to ensure FPS performance,
+	  FPSGO_V8 provide general API for scenario to achieve lower power
+	  consumption.
+	  If you are not sure about this, set n.
+
+config MTK_PERFORMANCE_MODULE
+	tristate "Mediatek Performance Module"
+	help
+	  For MediaTek performance modules, such as FPSGO and EARA-QoS
+	  Select "y" if you want to enable power throttling feature
+	  Select "n" if unsure.
+
+config MTK_FRS
+	tristate "Mediatek Frame Rate Smoother"
+	help
+	  Support Frame Rate Smoother kernel intergface. It will adjustment
+	  target fps by thermal.
+	  If you are not sure about this, set n.
+
+config MTK_LOAD_TRACKER
+	tristate "CPU Loading Tracking Service"
+	depends on CPU_FREQ
+	default n
+	help
+	  MTK_LOAD_TRACKER is the kernel config of CPU Loading Tracking
+	  Service designed by MTK, which is a service to get CPU Loading
+	  information. User can register callback and config polling
+	  duration to get CPU loading.
+
+config MTK_LOAD_TRACKER_DEBUG
+	tristate "CPU Loading Tracking Service"
+	help
+	  MTK_LOAD_TRACKER_DEBUG is the kernel debug config of CPU Loading
+	  Tracking Service designed by MTK. Use can use it to avoid print
+	  trace log on use load.
+	  Default it enable on eng, userdebug load.
+
+config MTK_PERF_IOCTL_MAGT
+	tristate "Mediatek Adaptive Gaming Technology"
+	help
+	  Support MAGT analysis performance.
+          If you are not sure about this, set n.
+
+config MTK_SBE
+	tristate "MediaTek Scenario Boost Engine"
+	help
+	  For UX scenario, SBE identify scrolling behavior, and adjust
+	  CPU boost policy to achieve FPS performance and low power balance
+	  via kernel config of MTK_SBE
+	  If you are not sure about this, set n.
+
+config MTK_GAME
+	tristate "GAME module specific"
+	help
+	  MTK game module, in order to decouple with FPSGO module
+	  This module is for game feature use, If some flow modification
+	  for game only, need to modify in this module.
+	  Default it enable on eng, user, userdebug load.
+
+config MTK_PELT_HINT
+	tristate "MediaTek PELT HINT"
+	help
+	  Enable the MediaTek PELT (Per-Entity Load Tracking) HINT module. This
+	  module provides an API for boosting the CPU resources allocated to tasks
+	  by providing hints to the scheduler. It is useful in scenarios where
+	  tasks require more immediate CPU resources for better performance.
+	  If unsure, or if you do not need task-specific CPU resource optimization,
+	  select 'n'.
+
+config MTK_POWER_RL_V2
+	tristate "Support Power RL V2"
+	help
+	  Power RL V2 is a MediaTek feature designed
+	  to manage the power consumption of games running on the device. It
+	  works by monitoring the system's thermal conditions and dynamically
+	  adjusting the power usage to prevent overheating. This can help to
+	  maintain a balance between performance and power, ensuring that
+	  the device operates within safe thermal limits. Enable this feature if
+	  you want to provide thermal management for gaming applications on
+	  MediaTek platforms. If unsure, or if your device does not require this
+	  feature, choose 'n'.

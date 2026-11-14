@@ -1,0 +1,60 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "log_store",
+    srcs = [
+    ],
+    conditional_srcs = {
+      "CONFIG_MTK_DRAM_LOG_STORE": {
+        True: ["log_store.c"],
+      },
+    },
+    header_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:headers".format(kernel_version),
+    ],
+    ko_deps = [
+        "//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+        "//kernel_device_modules-{}/drivers/misc/mediatek/mtprof:bootprof".format(kernel_version),
+    ],
+    hdrs = glob(["**/*.h"]),
+    includes = ["."],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/aee/mrdump/",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/mtprof/",
+        "-I$(srctree)/kernel/",
+    ],
+    out = "log_store.ko",
+)
+
+ddk_headers(
+   name = "headers",
+   hdrs = glob(["**/*.h"]),
+   includes = ["."],
+   linux_includes = [
+       "include",
+   ],
+)
+
+filegroup(
+    name = "srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/*.c",
+        "**/*.h",
+        ]),
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+        ]),
+)

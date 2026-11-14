@@ -1,0 +1,24 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+define_mgk_ddk_ko(
+    name = "mainaf",
+    srcs = glob([
+          "**/*.c",
+          "**/*.h",
+    ]),
+    includes = [
+        ".",
+    ],
+    copts = [
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lens/vcm/proprietary/main/inc",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lens/vcm/proprietary/main/common/lc898122af",
+        "-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/lens/vcm/proprietary/main/common/lc898212xdaf/inc",
+    ],
+    out = "mainaf.ko",
+)

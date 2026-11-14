@@ -1,0 +1,153 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Makefile for trusty components
+#
+
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+	default_visibility = [
+		"//visibility:public",
+	],
+)
+
+filegroup(
+	name = "ddk_kconfigs",
+	srcs = glob([
+		"**/Kconfig",
+	]),
+)
+
+# TODO: remove this compatibility label
+filegroup(
+	name = "ddk_makefile",
+	srcs = glob([
+		"**/*.c",
+		"**/*.h",
+		"**/Kbuild",
+		"**/Kbuild.*",
+		"**/Makefile",
+		"**/Makefile.*",
+	]),
+)
+
+# ARM FFA driver
+TRUSTONIC_TEE_VERSION = "700"
+
+# trusted_mem package with symbol and header files
+mgk_package = "//kernel_device_modules-{}".format(kernel_version)
+tmem_package = "{}/drivers/misc/mediatek/trusted_mem".format(mgk_package)
+
+ddk_headers(
+	name = "mobicore_public_hdrs",
+	hdrs = glob([
+		"{}/MobiCoreDriver/public/*.h".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/public/GP/*.h".format(TRUSTONIC_TEE_VERSION),
+	]),
+	includes = [
+		"{}/MobiCoreDriver/public".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/public/GP".format(TRUSTONIC_TEE_VERSION),
+	],
+)
+
+ddk_headers(
+	name = "mobicore_local_hdrs",
+	# include header files
+	hdrs = glob([
+		"{}/MobiCoreDriver/*.h".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/mci/*.h".format(TRUSTONIC_TEE_VERSION),
+	]),
+	# include directory for relative path
+	includes = [
+		"{}/MobiCoreDriver".format(TRUSTONIC_TEE_VERSION),
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+mobicore_local_defines = [
+	"MTK_ADAPTED",
+]
+
+filegroup(
+	name = "mobicore_source",
+	srcs = [
+		"{}/MobiCoreDriver/admin.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/client.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/clientlib.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/clock.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/fastcall.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/iwp.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/logging.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/main.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/mcp.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/mmu.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/nq.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/protocol.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/protocol_be.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/protocol_fe.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/session.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/teeclientapi.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/user.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/vlx_be.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/vlx_common.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/vlx_fe.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/xen_be.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/xen_common.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/xen_fe.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/raite_be.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/raite_common.c".format(TRUSTONIC_TEE_VERSION),
+		"{}/MobiCoreDriver/raite_fe.c".format(TRUSTONIC_TEE_VERSION),
+	],
+	visibility = [
+		"//visibility:private",
+	],
+)
+
+define_mgk_ddk_ko(
+	name = "mcDrvModule",
+	srcs = [
+		":mobicore_source",
+		"{}/MobiCoreDriver/ffa_dummy.c".format(TRUSTONIC_TEE_VERSION),
+	],
+	out = "{}/MobiCoreDriver/mcDrvModule.ko".format(TRUSTONIC_TEE_VERSION),
+	hdrs = [
+		":mobicore_public_hdrs",
+	],
+	header_deps = [
+		":mobicore_local_hdrs",
+	],
+	local_defines = mobicore_local_defines,
+)
+
+define_mgk_ddk_ko(
+	name = "mcDrvModule-ffa",
+	srcs = [
+		":mobicore_source",
+	],
+	conditional_srcs = {
+		"CONFIG_ARM_FFA_TRANSPORT": {
+			False: [
+				"{}/MobiCoreDriver/ffa_dummy.c".format(TRUSTONIC_TEE_VERSION),
+			],
+			True: [
+				"{}/MobiCoreDriver/ffa.c".format(TRUSTONIC_TEE_VERSION),
+			],
+		},
+	},
+	out = "{}/MobiCoreDriver/mcDrvModule-ffa.ko".format(TRUSTONIC_TEE_VERSION),
+	# This ko depends on ffa symbol. Therefore, using ko_deps to include it.
+	ko_deps = [
+		"{}:ffa".format(tmem_package),
+	],
+	hdrs = [
+		":mobicore_public_hdrs",
+	],
+	header_deps = [
+		":mobicore_local_hdrs",
+	],
+	local_defines = mobicore_local_defines,
+)

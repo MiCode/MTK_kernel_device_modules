@@ -1,0 +1,43 @@
+config MTK_ZRAM_ENGINE
+	tristate "MTK zram engine feature"
+	help
+	  MTK proprietary compression engine, which is highly integrated with
+	  ZRAM to provide fast and light-loading compression tasks.
+	  This is used for the improvement of sw compression over some scenarios.
+	  If you are not sure about whether to enable it or not, please set n.
+
+config MTK_ZRAM
+	tristate "MTK zram feature"
+	depends on BLOCK && SYSFS && MMU
+	depends on CRYPTO_LZ4
+	depends on MTK_ZRAM_ENGINE && MTK_KCOMPRESSD
+	select ZSMALLOC
+	help
+	  Creates virtual block devices called /dev/block/zramX (X = 0, 1, ...).
+	  Pages written to these disks are compressed and stored in memory itself.
+	  These disks allow very fast I/O and compression provides good amounts of
+	  memory savings.
+	  If you are not sure about whether to enable it or not, please set n.
+
+config ZRAM_ENGINE_COMP_FIFO_BITS
+	int "The entry bits of ZRAM ENGINE Compression FIFOs (8-11)"
+	range 8 11
+	default "11"
+	help
+	  This will create a fifo with depth of 2^8 ~ 2^11.
+
+config ZRAM_ENGINE_DECOMP_FIFO_BITS
+	int "The entry bits of ZRAM ENGINE Decompression FIFOs (3-7)"
+	range 3 7
+	default "7"
+	help
+	  This will create per-cpu fifos with depth of 2^3 ~ 2^7 for
+	  decompression.
+
+config HWCOMP_SUPPORT_NO_DST_COPY
+	bool "No extra SW copy to store HW compressed data"
+	default y
+	help
+	  Original zram uses zsmalloc to store compressed data. The flow is to compress
+	  SRC page and then copy the compressed data to zsmalloc. Turn on this option will
+	  use slab memory to store compressed data directly without the SW copy.

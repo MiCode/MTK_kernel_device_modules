@@ -1,0 +1,171 @@
+load("//build/bazel_mgk_rules:mgk_ddk_ko.bzl", "define_mgk_ddk_ko")
+load("//build/kernel/kleaf:kernel.bzl", "ddk_headers")
+load("@mgk_info//:kernel_version.bzl", "kernel_version")
+
+package(
+    default_visibility = [
+        "//visibility:public",
+    ],
+)
+
+filegroup(
+    name = "ddk_kconfigs",
+    srcs = glob([
+        "**/Kconfig",
+    ]),
+)
+
+filegroup(
+    name = "ddk_srcs",
+    srcs = glob([
+        "**/Makefile",
+        "**/Kbuild",
+        "**/*.c",
+        "**/*.h",
+    ]),
+)
+
+ddk_headers(
+    name = "msdc_headers",
+    hdrs = glob([
+        "**/*.h",
+    ]),
+    includes = ["."],
+    visibility = ["//visibility:public"],
+)
+
+define_mgk_ddk_ko(
+	name = "mtk-mmc-dbg",
+	srcs = [
+		"mtk-mmc-dbg.c",
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:headers".format(kernel_version),
+	],
+	hdrs = [
+		"mtk-mmc-dbg.h",
+		"mtk-mmc.h",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/aee/mrdump:mrdump".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-common-v2_debug".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
+	],
+	includes = [
+		".",
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/mmc/host/",
+		"-I$(srctree)/drivers/ufs/",
+		"-I$(srctree)/drivers/mmc/host/",
+		"-I$(srctree)/include/ufs/",
+	],
+    out = "mtk-mmc-dbg.ko",
+)
+
+define_mgk_ddk_ko(
+	name = "cqhci",
+	srcs = [
+		"cqhci-core.c",
+		"cqhci-crypto.c"
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/ufs:ufs-mediatek-mod".format(kernel_version),
+	],
+	includes = [
+		".",
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/mmc/host/",
+		"-I$(srctree)/drivers/ufs/",
+		"-I$(srctree)/drivers/mmc/host/",
+		"-I$(srctree)/include/ufs/",
+	],
+    out = "cqhci.ko",
+)
+
+define_mgk_ddk_ko(
+	name = "mtk-sd",
+	srcs = [
+		"mtk-sd.c",
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:headers".format(kernel_version),
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/mmc/host:cqhci".format(kernel_version),
+	],
+	includes = [
+		".",
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/mmc/host/",
+		"-I$(srctree)/drivers/ufs/",
+		"-I$(srctree)/drivers/mmc/host/",
+		"-I$(srctree)/include/ufs/",
+	],
+    out = "mtk-sd.ko",
+)
+
+define_mgk_ddk_ko(
+	name = "mtk-mmc",
+	srcs = [
+		"mtk-mmc.c",
+	],
+	header_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:headers".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/ufs:headers".format(kernel_version),
+	],
+	hdrs = [
+		"mtk-mmc-dbg.h",
+		"mtk-mmc.h",
+	],
+	ko_deps = [
+		"//kernel_device_modules-{}/drivers/misc/mediatek/blocktag:blocktag".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/mmc/host:cqhci".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/char/rpmb:rpmb-mtk".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/mmc/host:mtk-mmc-dbg".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/pinctrl/mediatek:pinctrl-mtk-common-v2_debug".format(kernel_version),
+		"//kernel_device_modules-{}/drivers/soc/mediatek:mtk-dvfsrc".format(kernel_version),
+	],
+	includes = [
+		".",
+	],
+	copts = [
+		"-I$(DEVICE_MODULES_PATH)/drivers/char/rpmb/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/include/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/misc/mediatek/blocktag/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/ufs/",
+		"-I$(DEVICE_MODULES_PATH)/drivers/mmc/host/",
+		"-I$(srctree)/drivers/ufs/",
+		"-I$(srctree)/drivers/mmc/host/",
+		"-I$(srctree)/include/ufs/",
+	],
+    out = "mtk-mmc.ko",
+)
+
+define_mgk_ddk_ko(
+	name = "mtk-mmc-wp",
+	srcs = [
+		"mtk-mmc-wp.c",
+	],
+	includes = [
+		".",
+	],
+    out = "mtk-mmc-wp.ko",
+)
